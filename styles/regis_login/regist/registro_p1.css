@@ -1,0 +1,45 @@
+/* Estilos generales */
+body {
+    background-color: #2E3C76;
+    background: linear-gradient(to left, rgba(46, 60, 118, 1.2), rgba(46, 60, 118, 0.4)),
+        url("https://altertecnia.com/wp-content/uploads/almacenes-inteligentes-portada.jpg");
+}
+
+/* Sección de registro */
+.register-section {
+    max-width: 500px;
+    margin: 50px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    background-color: #FFB74D;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos de encabezados */
+.text-center {
+    font: bold 700 Montserrat;
+}
+
+/* Botones */
+.btn-outline-secondary {
+    color: #FFB74D;
+    background-color: #2E3C76;
+    background-image: none;
+    border-color: #0000;
+}
+
+.btn-outline-secondary:hover {
+    color: #FFB74D;
+    background-color: #0069d9;
+    border-color: #0000;
+}
+
+.btn-primary {
+    color: #FFB74D;
+    background-color: #2E3C76;
+    background-image: none;
+    border-color: #0000;
+    margin: 10px auto;
+    width: 200px;
+}
