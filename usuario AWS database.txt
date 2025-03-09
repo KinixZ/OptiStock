@@ -1,0 +1,2 @@
+usuario maestro: admin
+contraseña maestra: root0pt1st0ck
