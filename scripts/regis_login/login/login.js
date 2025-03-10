@@ -1,11 +1,11 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth"; // Importa los métodos de Firebase
+import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth"; // Importa los métodos de Firebase
 import app from "../../firebase/firebase-config.js";  // Asegúrate de que la ruta sea correcta
 
 const auth = getAuth(app);  // Obtiene la instancia de autenticación
-const provider = new GoogleAuthProvider();  // Crea un nuevo proveedor de autenticación con Google
 
 // Función para manejar el inicio de sesión con Google
 document.getElementById("google-login").addEventListener("click", () => {
+    const provider = new GoogleAuthProvider();  // Crea un nuevo proveedor de autenticación con Google
     signInWithPopup(auth, provider)
         .then((result) => {
             const user = result.user;  // Usuario autenticado
@@ -17,13 +17,9 @@ document.getElementById("google-login").addEventListener("click", () => {
         });
 });
 
-import { getAuth, FacebookAuthProvider, signInWithPopup } from "firebase/auth"; // Importa los métodos de Firebase
-import app from "../../firebase-config.js";  // Asegúrate de que la ruta sea correcta
-
-const provider2 = new FacebookAuthProvider();  // Crea un nuevo proveedor de autenticación con Facebook
-
 // Función para manejar el inicio de sesión con Facebook
 document.getElementById("facebook-login").addEventListener("click", () => {
+    const provider2 = new FacebookAuthProvider();  // Crea un nuevo proveedor de autenticación con Facebook
     signInWithPopup(auth, provider2)
         .then((result) => {
             const user = result.user;  // Usuario autenticado
