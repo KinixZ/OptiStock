@@ -1,45 +1,35 @@
-/* Estilos generales */
+/* style.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+
 body {
-    background-color: #2E3C76;
     background: linear-gradient(to left, rgba(46, 60, 118, 1.2), rgba(46, 60, 118, 0.4)),
-        url("https://altertecnia.com/wp-content/uploads/almacenes-inteligentes-portada.jpg");
+                url("https://altertecnia.com/wp-content/uploads/almacenes-inteligentes-portada.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
-/* Sección de registro */
-.register-section {
-    max-width: 500px;
-    margin: 50px auto;
+.login-container {
+    background: rgba(255, 183, 77, 0.9);
     padding: 20px;
-    border: 1px solid #ccc;
     border-radius: 20px;
-    background-color: #FFB74D;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 400px;
 }
 
-/* Estilos de encabezados */
-.text-center {
-    font: bold 700 Montserrat;
+.login-container h3 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1a1a1a;
 }
 
-/* Botones */
-.btn-outline-secondary {
-    color: #FFB74D;
-    background-color: #2E3C76;
-    background-image: none;
-    border-color: #0000;
+.error-text {
+    color: red;
+    font-size: 14px;
+    display: none;
 }
 
-.btn-outline-secondary:hover {
-    color: #FFB74D;
-    background-color: #0069d9;
-    border-color: #0000;
-}
-
-.btn-primary {
-    color: #FFB74D;
-    background-color: #2E3C76;
-    background-image: none;
-    border-color: #0000;
-    margin: 10px auto;
-    width: 200px;
+.valid-text {
+    color: green;
+    font-size: 14px;
+    display: none;
 }

@@ -1,33 +1,32 @@
-// Google Login
-function handleCredentialResponse(response) {
-    console.log("Google ID Token: ", response.credential);
-}
+import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth"; // Importa los métodos de Firebase
+import app from "../../firebase/firebase-config.js";  // Asegúrate de que la ruta sea correcta
 
-window.onload = function () {
-    google.accounts.id.initialize({
-        client_id: "YOUR_GOOGLE_CLIENT_ID",
-        callback: handleCredentialResponse
-    });
-    google.accounts.id.renderButton(
-        document.getElementById("google-login"),
-        { theme: "outline", size: "large" }
-    );
-};
+const auth = getAuth(app);  // Obtiene la instancia de autenticación
 
-// Facebook Login
-window.fbAsyncInit = function () {
-    FB.init({
-        appId: 'YOUR_FACEBOOK_APP_ID',
-        cookie: true,
-        xfbml: true,
-        version: 'v12.0'
-    });
-};
+// Función para manejar el inicio de sesión con Google
+document.getElementById("google-login").addEventListener("click", () => {
+    const provider = new GoogleAuthProvider();  // Crea un nuevo proveedor de autenticación con Google
+    signInWithPopup(auth, provider)
+        .then((result) => {
+            const user = result.user;  // Usuario autenticado
+            console.log("Usuario autenticado con Google:", user);
+            // Aquí puedes redirigir al usuario a la página principal o hacer algo más
+        })
+        .catch((error) => {
+            console.error("Error en autenticación con Google:", error);
+        });
+});
 
-document.getElementById("facebook-login").addEventListener("click", function () {
-    FB.login(function (response) {
-        if (response.authResponse) {
-            console.log("Facebook Login Success", response);
-        }
-    }, { scope: 'public_profile,email' });
+// Función para manejar el inicio de sesión con Facebook
+document.getElementById("facebook-login").addEventListener("click", () => {
+    const provider2 = new FacebookAuthProvider();  // Crea un nuevo proveedor de autenticación con Facebook
+    signInWithPopup(auth, provider2)
+        .then((result) => {
+            const user = result.user;  // Usuario autenticado
+            console.log("Usuario autenticado con Facebook:", user);
+            // Aquí puedes redirigir al usuario a la página principal o hacer algo más
+        })
+        .catch((error) => {
+            console.error("Error en autenticación con Facebook:", error);
+        });
 });
