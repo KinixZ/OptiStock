@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - OptiStock</title>
+    <title>Inicio de Sesion</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../../styles/regis_login/login/login.css">
 </head>
@@ -17,17 +17,19 @@
     <div class="d-flex flex-column align-items-center">
         <div class="login-container text-center">
             <h3 class="mb-4">INICIA SESIÓN CON TU CUENTA</h3>
-            <form>
+            <form id="loginForm">
                 <div class="mb-3">
-                    <input type="text" class="form-control" placeholder="Correo o Nombre de Usuario" required>
+                    <input type="email" id="email" class="form-control" placeholder="Correo" required>
                 </div>
                 <div class="mb-3">
-                    <input type="password" class="form-control" placeholder="Contraseña" required>
+                    <input type="password" id="password" class="form-control" placeholder="Contraseña" required>
                 </div>
                 <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
             </form>
             <hr>
-            <button class="btn btn-danger w-100" id="google-login">Acceder con Google</button>
+            <!-- Botón de Google -->
+            <div id="google-login"></div>
+            <!-- Botón de Facebook -->
             <button class="btn btn-primary btn-facebook mt-2" id="facebook-login">Login with Facebook</button>
         </div>
         <div class="register-section mt-3">
