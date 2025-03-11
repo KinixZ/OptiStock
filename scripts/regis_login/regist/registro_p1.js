@@ -65,3 +65,13 @@ document.getElementById('confirmPassword').addEventListener('input', function() 
         confirmPasswordError.style.display = 'none';
     }
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const emailField = document.querySelector('input[type="email"]');
+    const email = sessionStorage.getItem("tempUserEmail");
+
+    if (email) {
+        emailField.value = email;
+        emailField.readOnly = true; // Para evitar que lo editen manualmente
+    }
+});
