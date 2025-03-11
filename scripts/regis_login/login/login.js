@@ -87,7 +87,7 @@ function handleCredentialResponse(response) {
 }
 window.onload = function () {
     google.accounts.id.initialize({
-        client_id: "YOUR_GOOGLE_CLIENT_ID", // 🔴 Reemplazar con tu CLIENT_ID de Google
+        client_id: "145523824957-hoi7fcgdfg6qep6i5shhc5qpg3b8mc2g.apps.googleusercontent.com", // 🔴 Reemplazar con tu CLIENT_ID de Google
         callback: handleCredentialResponse
     });
     google.accounts.id.renderButton(
