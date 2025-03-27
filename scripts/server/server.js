@@ -13,7 +13,7 @@ const client = new OAuth2Client(CLIENT_ID);
 
 // Configuración de la base de datos
 const db = mysql.createConnection({
-    host: 'localhost',
+    host: 'optistock.site',
     user: 'u296155119_Admin	',
     password: 'admin123',
     database: 'u296155119_OptiStock',
@@ -128,5 +128,5 @@ app.post('/auth/google', async (req, res) => {
 // Inicia el servidor
 const port = 3000;
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server running on http://optistock.site:${port}`);
 });

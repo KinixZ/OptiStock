@@ -26,7 +26,7 @@ document.getElementById('registerForm').addEventListener('submit', function(even
     let valid = true;
 
     if (validateForm(nombre, apellido, nacimiento, telefono, email, password, confirmPassword)) {
-        fetch('http://localhost:3000/registro', {
+        fetch('http://optistock.site/registro', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
