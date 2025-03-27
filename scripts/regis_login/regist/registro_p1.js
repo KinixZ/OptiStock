@@ -1,61 +1,32 @@
-
-/* script.js */
 function validatePassword(password) {
     const minLength = /.{8,}/;
     const uppercase = /[A-Z]/;
     const number = /[0-9]/;
     const specialChar = /[!@#$%^&*(),.?":{}|<>]/;
-
     return minLength.test(password) && uppercase.test(password) && number.test(password) && specialChar.test(password);
 }
 
 document.getElementById('registerForm').addEventListener('submit', function(event) {
-    const password = document.getElementById('password').value;
+    event.preventDefault(); // Detiene el envío automático del formulario
+
     const nombre = document.getElementById('nombre').value;
     const apellido = document.getElementById('apellido').value;
     const nacimiento = document.getElementById('nacimiento').value;
     const telefono = document.getElementById('tel').value;
-    const email = document.getElementById('email').value;
-
+    const correo = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
+
     const passwordError = document.getElementById('passwordError');
     const confirmPasswordError = document.getElementById('confirmPasswordError');
     const passwordValid = document.getElementById('passwordValid');
 
-
+    // Validaciones
     let valid = true;
 
-    if (validateForm(nombre, apellido, nacimiento, telefono, email, password, confirmPassword)) {
-        fetch('http://optistock.site/registro', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                nombre,
-                apellido,
-                fecha_nacimiento: nacimiento,
-                telefono,
-                correo: email,
-                contrasena: password
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                sendVerificationEmail(email);
-                window.location.href = `regist_inter.html?email=${encodeURIComponent(email)}`;
-            } else {
-                alert(data.message || "Error al registrar.");
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Error de conexión con el servidor.");
-        });
-        
-    } else {
+    if (!validateForm(nombre, apellido, nacimiento, telefono, correo, password, confirmPassword)) {
         alert("Por favor, completa correctamente todos los campos.");
+        return;
     }
 
     if (!validatePassword(password)) {
@@ -74,12 +45,37 @@ document.getElementById('registerForm').addEventListener('submit', function(even
         confirmPasswordError.style.display = 'none';
     }
 
-    if (!valid) {
-        event.preventDefault(); // Prevent form submission if there are errors
-    }
+    if (!valid) return;
+
+    // Enviar datos al backend PHP
+    fetch('../../php/registro.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nombre,
+            apellido,
+            nacimiento,
+            telefono,
+            correo,
+            contrasena: password
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            console.log("Usuario registrado correctamente.");
+            window.location.href = `regist_inter.html?email=${encodeURIComponent(correo)}`;
+        } else {
+            alert("Error en el registro: " + (data.message || "Intenta más tarde."));
+        }
+    })
+    .catch(error => {
+        console.error('Error al registrar:', error);
+        alert("Ocurrió un error al registrar.");
+    });
 });
 
-// Real-time validation
+// Validaciones en tiempo real
 document.getElementById('password').addEventListener('input', function() {
     const password = this.value;
     const passwordError = document.getElementById('passwordError');
@@ -106,23 +102,11 @@ document.getElementById('confirmPassword').addEventListener('input', function() 
     }
 });
 
-document.addEventListener("DOMContentLoaded", function () {
-    const emailField = document.querySelector('input[type="email"]');
-    const email = sessionStorage.getItem("tempUserEmail");
-
-    if (email) {
-        emailField.value = email;
-        emailField.readOnly = true; // Para evitar que lo editen manualmente
-    }
-});
-
 function validateForm(nombre, apellido, nacimiento, telefono, email, password, confirmPassword) {
-    // Validación simple de los campos
     if (!nombre || !apellido || !nacimiento || !telefono || !email || !password || !confirmPassword) {
         return false;
     }
 
-    // Validación de formato de correo
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     if (!emailPattern.test(email)) {
         alert("Por favor ingresa un correo válido.");
@@ -130,11 +114,4 @@ function validateForm(nombre, apellido, nacimiento, telefono, email, password, c
     }
 
     return true;
-}
-
-function sendVerificationEmail(email) {
-    // Lógica para enviar un correo de verificación (esto se simula aquí)
-    console.log("Correo de verificación enviado a: " + email);
-
-    // En un escenario real, se enviaría un correo a este correo con un enlace único para la verificación.
 }

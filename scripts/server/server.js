@@ -128,5 +128,6 @@ app.post('/auth/google', async (req, res) => {
 // Inicia el servidor
 const port = 3000;
 app.listen(port, () => {
-    console.log(`Server running on http://optistock.site:${port}`);
+    console.log(`Server running on http://localhost:${port}`);
 });
+
