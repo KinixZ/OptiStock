@@ -1,68 +1,88 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
-const jwt = require("jsonwebtoken");
-const mysql = require("mysql2");
-
+const express = require('express');
+const { OAuth2Client } = require('google-auth-library');
+const mysql = require('mysql');
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Para parsear JSON
 
-// Conexión a la base de datos MySQL
+const CLIENT_ID = '145523824957-hoi7fcgdfg6qep6i5shhc5qpg3b8mc2g.apps.googleusercontent.com'; // Reemplaza con tu CLIENT_ID
+const client = new OAuth2Client(CLIENT_ID);
+
+// Configuración de la base de datos
 const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "password",
-    database: "auth_db"
-});
-db.connect(err => {
-    if (err) throw err;
-    console.log("Conectado a MySQL");
+    host: 'localhost',
+    user: 'admin',
+    password: 'admin123',
+    database: 'u296155119_OptiStock',
 });
 
-// Verificación de Google
-app.post("/auth/google", async (req, res) => {
+db.connect();
+
+// Función para verificar el token de Google
+async function verifyToken(idToken) {
+    const ticket = await client.verifyIdToken({
+        idToken: idToken,
+        audience: CLIENT_ID, // Especificar el CLIENT_ID de Google para el cual se emitió el token
+    });
+    const payload = ticket.getPayload(); // Información del usuario
+    return payload; // Devuelve la información del usuario
+}
+
+// Función para comprobar si el usuario ya existe
+async function checkIfUserExists(email) {
+    return new Promise((resolve, reject) => {
+        db.query('SELECT * FROM usuario WHERE correo = ?', [email], (err, results) => {
+            if (err) return reject(err);
+            resolve(results);
+        });
+    });
+}
+
+// Función para crear un nuevo usuario
+async function createUser(userData) {
+    return new Promise((resolve, reject) => {
+        const { nombre, apellido, correo, fecha_nacimiento } = userData;
+        db.query('INSERT INTO usuario (nombre, apellido, correo, fecha_nacimiento) VALUES (?, ?, ?, ?)', 
+            [nombre, apellido, correo, fecha_nacimiento], (err, results) => {
+            if (err) return reject(err);
+            resolve(results);
+        });
+    });
+}
+
+// Endpoint para recibir el token de Google
+app.post('/auth/google', async (req, res) => {
     const { token } = req.body;
 
     try {
-        const googleResponse = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
-        const { email, name, picture } = googleResponse.data;
+        const userData = await verifyToken(token);  // Verifica el token
+        console.log(userData);  // Información del usuario (nombre, correo, etc.)
 
-        const sql = `INSERT INTO users (email, name, picture, provider) VALUES (?, ?, ?, ?) 
-                     ON DUPLICATE KEY UPDATE name=?, picture=?`;
-        db.query(sql, [email, name, picture, "Google", name, picture], (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
+        // Verificar si el usuario ya existe en la base de datos
+        const existingUser = await checkIfUserExists(userData.email);
 
-            const authToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "7d" });
-            res.json({ success: true, token: authToken });
-        });
-
+        if (existingUser.length > 0) {
+            // Si el usuario ya existe, verificar si la cuenta está verificada
+            const user = existingUser[0];
+            if (user.verificacion_cuenta) {
+                // Si la cuenta está verificada, iniciar sesión
+                res.status(200).json({ success: true, user });
+            } else {
+                // Si la cuenta no está verificada, redirigir a la página de verificación de correo
+                res.status(200).json({ success: false, message: "Verifica tu correo antes de acceder." });
+            }
+        } else {
+            // Si el usuario no existe, lo creamos y enviamos el correo de verificación
+            await createUser(userData);
+            res.status(200).json({ success: true, message: "Usuario creado. Revisa tu correo para verificar la cuenta." });
+        }
     } catch (error) {
-        res.status(400).json({ error: "Token inválido" });
+        res.status(400).json({ success: false, error: 'Token inválido' });
     }
 });
 
-// Verificación de Facebook
-app.post("/auth/facebook", async (req, res) => {
-    const { token } = req.body;
 
-    try {
-        const facebookResponse = await axios.get(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${token}`);
-        const { email, name, picture } = facebookResponse.data;
-
-        const sql = `INSERT INTO users (email, name, picture, provider) VALUES (?, ?, ?, ?) 
-                     ON DUPLICATE KEY UPDATE name=?, picture=?`;
-        db.query(sql, [email, name, picture.data.url, "Facebook", name, picture.data.url], (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
-
-            const authToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "7d" });
-            res.json({ success: true, token: authToken });
-        });
-
-    } catch (error) {
-        res.status(400).json({ error: "Token inválido" });
-    }
+// Inicia el servidor
+const port = 3000;
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });
-
-app.listen(3000, () => console.log("Servidor corriendo en http://localhost:3000"));
