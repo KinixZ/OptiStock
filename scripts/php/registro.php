@@ -16,8 +16,8 @@ if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$
 $contrasena_hash = sha1($contrasena_plana);
 
 // 4. Conectarse a la base de datos MySQL
-$server = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)&#8203;:contentReference[oaicite:5]{index=5}
-$database   = "u296155119_OptiStock";   // Nombre de tu base de datos
+$server = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
+$database   = "u296155119_OptiStock";   // Nombre de la base de datos
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
 $db_pass    = "Admin123"; // Contraseña de la base de datos
 
