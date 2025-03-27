@@ -5,6 +5,8 @@ const app = express();
 app.use(express.json()); // Para parsear JSON
 const bcrypt = require('bcrypt');
 const saltRounds = 10;  // Número de rondas de sal
+const crypto = require('crypto');
+
 
 const CLIENT_ID = '145523824957-hoi7fcgdfg6qep6i5shhc5qpg3b8mc2g.apps.googleusercontent.com'; // Reemplaza con tu CLIENT_ID
 const client = new OAuth2Client(CLIENT_ID);
@@ -62,23 +64,33 @@ async function createUser(userData) {
     });
 }
 
-app.post('/register', async (req, res) => {
-    const { nombre, apellido, correo, fecha_nacimiento, telefono, password } = req.body;
 
-    try {
-        // Verificar si el usuario ya existe
-        const existingUser = await checkIfUserExists(correo);
-        if (existingUser.length > 0) {
-            return res.status(400).json({ success: false, message: "El correo ya está registrado." });
-        }
+app.post('/registro', (req, res) => {
+    const { nombre, apellido, fecha_nacimiento, telefono, correo, contrasena } = req.body;
 
-        // Crear el nuevo usuario
-        await createUser({ nombre, apellido, correo, fecha_nacimiento, telefono, contrasena: password });
-        res.status(200).json({ success: true, message: "Usuario registrado exitosamente. Revisa tu correo para verificar la cuenta." });
-    } catch (error) {
-        res.status(500).json({ success: false, error: "Error al registrar el usuario." });
+    if (!nombre || !apellido || !fecha_nacimiento || !telefono || !correo || !contrasena) {
+        return res.status(400).json({ success: false, message: "Faltan campos requeridos." });
     }
+
+    // Encriptar la contraseña usando SHA1 (como en tu tabla)
+    const contrasenaEncriptada = crypto.createHash('sha1').update(contrasena).digest('hex');
+
+    const query = `
+        INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(query, [nombre, apellido, fecha_nacimiento, telefono, correo, contrasenaEncriptada], (err, result) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ success: false, message: "El correo ya está registrado." });
+            }
+            return res.status(500).json({ success: false, error: err });
+        }
+        res.status(200).json({ success: true, message: "Usuario registrado correctamente." });
+    });
 });
+
 
 
 // Endpoint para recibir el token de Google

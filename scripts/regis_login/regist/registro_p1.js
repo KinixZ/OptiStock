@@ -26,11 +26,34 @@ document.getElementById('registerForm').addEventListener('submit', function(even
     let valid = true;
 
     if (validateForm(nombre, apellido, nacimiento, telefono, email, password, confirmPassword)) {
-        // Aquí enviarías el correo de verificación (simulamos esta parte)
-        sendVerificationEmail(email);
-
-        // Redirigir a la página intermedia de verificación
-        window.location.href = `regist_inter.html?email=${encodeURIComponent(email)}`;
+        fetch('http://localhost:3000/registro', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombre,
+                apellido,
+                fecha_nacimiento: nacimiento,
+                telefono,
+                correo: email,
+                contrasena: password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                sendVerificationEmail(email);
+                window.location.href = `regist_inter.html?email=${encodeURIComponent(email)}`;
+            } else {
+                alert(data.message || "Error al registrar.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error de conexión con el servidor.");
+        });
+        
     } else {
         alert("Por favor, completa correctamente todos los campos.");
     }
