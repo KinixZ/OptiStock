@@ -5,15 +5,15 @@ $apellido = $_POST['apellido'] ?? null;
 $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? null;
 $telefono = $_POST['telefono'] ?? null;
 $correo   = $_POST['correo']   ?? null;
-$contrasena_plana = $_POST['contrasena'] ?? null;  // contraseña en texto plano del form
+$contrasena = $_POST['contrasena'] ?? null;  // contraseña en texto plano del form
 
 // 2. Validar datos mínimos
-if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$contrasena_plana) {
+if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$contrasena) {
     die("Datos incompletos");
 }
 
 // 3. Cifrar la contraseña con SHA1 (40 caracteres hex) antes de guardar
-$contrasena_hash = sha1($contrasena_plana);
+$contrasena_hash = sha1($contrasena);
 
 // 4. Conectarse a la base de datos MySQL
 $server = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
