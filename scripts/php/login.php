@@ -4,6 +4,9 @@ $data = json_decode(file_get_contents("php://input"));
 $correo = $data->correo;
 $contrasena = $data->contrasena;
 
+error_log("Correo recibido: " . $correo); // Verifica si el correo es correcto
+error_log("Contraseña recibida: " . $contrasena); // Verifica si la contraseña es correcta
+
 $servername = "localhost";  // Host de la BD (Hostinger usa 'localhost' para MySQL)
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
 $db_pass    = "4Dmin123o"; // Contraseña de la base de datos
