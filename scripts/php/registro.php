@@ -1,6 +1,20 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 // Mostrar los datos recibidos en el formulario para depurar
 var_dump($_POST); // Esto imprimirá los datos recibidos desde el formulario
+
+// 4. Conectarse a la base de datos MySQL
+$server = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
+$database   = "u296155119_OptiStock";   // Nombre de la base de datos
+$db_user    = "u296155119_Admin";  // Usuario de la base de datos
+$db_pass    = "Admin1290"; // Contraseña de la base de datos
+
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    die("Error de conexión: " . mysqli_connect_error());
+}
 
 // 1. Datos del formulario (asumiendo método POST estándar)
 $nombre   = $_POST['nombre']   ?? null;
@@ -17,17 +31,6 @@ if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$
 
 // 3. Cifrar la contraseña con SHA1 (40 caracteres hex) antes de guardar
 $contrasena_hash = sha1($contrasena);
-
-// 4. Conectarse a la base de datos MySQL
-$server = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
-$database   = "u296155119_OptiStock";   // Nombre de la base de datos
-$db_user    = "u296155119_Admin";  // Usuario de la base de datos
-$db_pass    = "Admin1290"; // Contraseña de la base de datos
-
-$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
-if (!$conn) {
-    die("Error de conexión: " . mysqli_connect_error());
-}
 
 // 5. Preparar la consulta de inserción SQL
 $sql = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena)
