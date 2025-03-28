@@ -54,7 +54,7 @@ document.getElementById('registerForm').addEventListener('submit', function(even
         body: JSON.stringify({
             nombre,
             apellido,
-            nacimiento,
+            fecha_nacimiento,
             telefono,
             correo,
             contrasena: password
