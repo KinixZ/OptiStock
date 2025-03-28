@@ -15,7 +15,8 @@ $contrasena = $_POST['contrasena'] ?? null;  // contraseña en texto plano del f
 
 // 3. Validar datos mínimos
 if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$contrasena) {
-    die("Datos incompletos");
+    echo json_encode(["success" => false, "message" => "Datos incompletos"]);
+    exit;
 }
 
 // 1. Conectarse a la base de datos MySQL
