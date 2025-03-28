@@ -1,9 +1,9 @@
 <?php
+header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // Mostrar los datos recibidos en el formulario para depurar
-var_dump($_POST); // Esto imprimirá los datos recibidos desde el formulario
 
 // 2. Datos del formulario (asumiendo método POST estándar)
 $nombre   = $_POST['nombre']   ?? null;
