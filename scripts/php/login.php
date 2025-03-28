@@ -26,16 +26,15 @@ $user = mysqli_fetch_assoc($result);
 
 if ($user) {
     // Verificar si la contraseña coincide (usando sha1 en la comparación)
-    if (sha1($contrasena) == $user['contrasena']) {
-        // Si la contraseña es correcta, verificar si la cuenta está verificada
-        if ($user['verificacion_cuenta'] == 0) {
-            // Si la cuenta no está verificada, enviar el estado de verificación
-            echo json_encode(["success" => false, "verificacion_cuenta" => 0]);
-        } else {
-            // Si la cuenta está verificada, devolver el estado de éxito
-            echo json_encode(["success" => true, "verificacion_cuenta" => 1, "user" => $user]);
-        }
-    } else {
+    // Verificar si la contraseña coincide (usando sha1 en la comparación)
+if ($user && sha1($contrasena) == $user['contrasena']) {
+    echo json_encode([
+        'success' => true,
+        'verificacion_cuenta' => $user['verificacion_cuenta'] // Retornar el estado de verificación
+    ]);
+} else {
+    echo json_encode(['success' => false]);
+} else {
         // Contraseña incorrecta
         echo json_encode(["success" => false]);
     }
