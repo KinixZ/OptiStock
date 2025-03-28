@@ -34,13 +34,13 @@
         document.getElementById("loginForm").addEventListener("submit", function(event) {
             event.preventDefault(); // Esto evitará que el formulario se envíe de forma tradicional
             console.log("Evento submit interceptado");
-
+        
             const correo = document.getElementById('email').value;
             const contrasena = document.getElementById('password').value;
         
             console.log("Correo:", correo);
             console.log("Contraseña:", contrasena);
-            
+        
             // Crear los datos en formato application/x-www-form-urlencoded
             const formData = new URLSearchParams();
             formData.append('correo', correo);
@@ -54,13 +54,11 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log(data); // Ver el contenido de la respuesta
+                console.log("Respuesta del servidor:", data);
                 if (data.success) {
                     if (data.verificacion_cuenta === 1) {
-                        // Redirigir al menú principal si la cuenta está verificada
                         window.location.href = '../../main_menu/main_menu.html';
                     } else {
-                        // Redirigir a la página de verificación si la cuenta no está verificada
                         window.location.href = '../regist/regist_inter.html';
                     }
                 } else {
@@ -69,4 +67,3 @@
             })
             .catch(err => console.error('Error en la verificación:', err));
         });
-        
