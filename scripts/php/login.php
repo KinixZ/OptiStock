@@ -1,21 +1,19 @@
 <?php
-// Obtener los datos del frontend
-$data = json_decode(file_get_contents("php://input"));
+// Obtener los datos del formulario
 $correo = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
 
 if (empty($correo) || empty($contrasena)) {
-    echo json_encode(["success" => false, "error" => "Correo o contrasena vacios"]);
+    // Redirigir a una página de error si los campos están vacíos
+    header("Location: ../../pages/error.html");
     exit;
 }
 
-// Depuración: Verificar los datos recibidos
-var_dump($correo, $contrasena);
-
-$servername = "localhost"; // Host de la BD
-$db_user    = "u296155119_Admin";  // Usuario de la base de datos
-$db_pass    = "4Dmin123o"; // Contraseña de la base de datos
-$database   = "u296155119_OptiStock";   // Nombre de la base de datos
+// Conexión a la base de datos
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
 
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
 if (!$conn) {
@@ -37,17 +35,19 @@ if ($user) {
     if (sha1($contrasena) == $user['contrasena']) {
         // Si la contraseña es correcta, verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
-            // Si la cuenta no está verificada, devolver el estado de verificación
-            echo json_encode(["success" => false, "verificacion_cuenta" => 0]);
+            // Redirigir a la página de verificación
+            header("Location: ../../pages/regis_login/regist/regist_inter.html");
         } else {
-            // Si la cuenta está verificada, devolver los datos del usuario
-            echo json_encode(["success" => true, "verificacion_cuenta" => 1, "user" => $user]);
+            // Redirigir al menú principal
+            header("Location: ../../pages/main_menu/main_menu.html");
         }
     } else {
-        echo json_encode(["success" => false]); // Contraseña incorrecta
+        // Redirigir a una página de error si la contraseña es incorrecta
+        header("Location: ../../pages/error.html");
     }
 } else {
-    echo json_encode(["success" => false]); // Usuario no encontrado
+    // Redirigir a una página de error si el usuario no existe
+    header("Location: ../../pages/error.html");
 }
 
 // Cerrar la conexión
