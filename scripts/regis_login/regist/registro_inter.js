@@ -1,13 +1,12 @@
 document.addEventListener("DOMContentLoaded", function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const email = urlParams.get('email');
-    
-    if (email) {
-        document.getElementById('email').textContent = email;
+    const email = urlParams.get('correo');
 
-        // Simula que la verificación es exitosa después de que el usuario haga clic en el enlace
+    if (email) {
+        document.getElementById('correo').textContent = email;
+
         setTimeout(() => {
-            // Simula el proceso de verificación en el backend (en un caso real, sería una verificación de token en el servidor)
+            // Aquí simula la verificación real, puedes hacer una llamada al backend para realizar la verificación
             console.log("Correo verificado correctamente");
 
             // Redirigir al siguiente paso de registro

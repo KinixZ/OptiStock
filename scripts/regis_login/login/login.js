@@ -29,39 +29,24 @@
                 document.getElementById("google-login"),
                 { theme: "outline", size: "large" }
             );
-        
-            // Configuración de Facebook
-            window.fbAsyncInit = function () {
-                FB.init({
-                    appId: "TU_FACEBOOK_APP_ID", // 🔴 Reemplazar con tu Facebook App ID
-                    cookie: true,
-                    xfbml: true,
-                    version: "v12.0"
-                });
-            };
-        
-            document.getElementById("facebook-login").addEventListener("click", function () {
-                FB.login(function (response) {
-                    if (response.authResponse) {
-                        console.log("Facebook Access Token:", response.authResponse.accessToken);
-        
-                        // Enviar el token al backend para validación
-                        fetch("http://localhost:3000/auth/facebook", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ token: response.authResponse.accessToken })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                window.location.href = "dashboard.html"; // Redirigir tras login exitoso
-                            } else {
-                                alert("Error en autenticación con Facebook.");
-                            }
-                        })
-                        .catch(error => console.error("Error:", error));
+
+            fetch('../../php/login.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ correo: correo, contrasena: contrasena })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.verificacion_cuenta === 1) {
+                        window.location.href = '../../main_menu/main_menu.html';  // Si la cuenta está verificada
+                    } else {
+                        window.location.href = '../regist/regist_inter.html';  // Si no está verificada
                     }
-                }, { scope: "public_profile,email" });
-            });
+                } else {
+                    alert('Datos incorrectos');
+                }
+            })
+            .catch(err => console.error('Error en la verificación:', err));
         });
         

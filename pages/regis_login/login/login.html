@@ -13,8 +13,8 @@
 <body class="d-flex justify-content-center align-items-center vh-100">
     <div class="nav-links">
         <a href="../../../index.html">Inicio</a>
-        <a href="about.html">Nosotros</a>
-        <a href="help.html">Ayuda</a>
+        <a href="../../../about.html">Nosotros</a>
+        <a href="../../../help.html">Ayuda</a>
         <a>Eng</a>
     </div>
     <div class="d-flex flex-column align-items-center">
@@ -22,18 +22,16 @@
             <h3 class="mb-4">INICIA SESIÓN CON TU CUENTA</h3>
             <form id="loginForm">
                 <div class="mb-3">
-                    <input type="email" id="email" class="form-control" placeholder="Correo" required>
+                    <input type="email" id="email" name="correo" class="form-control" placeholder="Correo" required>
                 </div>
                 <div class="mb-3">
-                    <input type="password" id="password" class="form-control" placeholder="Contraseña" required>
+                    <input type="password" id="password" name="contrasena" class="form-control" placeholder="Contraseña" required>
                 </div>
                 <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
             </form>
             <hr>
             <!-- Botón de Google -->
             <button class="btn btn-danger w-100" id="google-login">Acceder con Google</button>
-            <!-- Botón de Facebook -->
-            <button class="btn btn-primary btn-facebook mt-2" id="facebook-login">Login with Facebook</button>
         </div>
         <div class="register-section mt-3">
             <p>¿NO TIENES UNA CUENTA? REGÍSTRALA AQUÍ</p>
