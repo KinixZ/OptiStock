@@ -32,20 +32,38 @@
         });
         
         document.getElementById("loginForm").addEventListener("submit", function(event) {
-            event.preventDefault(); // Evitar el envío tradicional del formulario
+            event.preventDefault(); // Esto evitará que el formulario se envíe de forma tradicional
+            console.log("Evento submit interceptado");
         
             const correo = document.getElementById('email').value;
             const contrasena = document.getElementById('password').value;
         
+            console.log("Correo:", correo);
+            console.log("Contraseña:", contrasena);
+        
+            // Crear los datos en formato application/x-www-form-urlencoded
             const formData = new URLSearchParams();
             formData.append('correo', correo);
             formData.append('contrasena', contrasena);
         
-            // Enviar los datos al servidor
+            // Realizar la solicitud al servidor para validar el login
             fetch('../../../scripts/php/login.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString()
             })
-            .catch(err => console.error('Error en la solicitud:', err));
+            .then(response => response.json())
+            .then(data => {
+                console.log("Respuesta del servidor:", data);
+                if (data.success) {
+                    if (data.verificacion_cuenta === 1) {
+                        window.location.href = '../../main_menu/main_menu.html';
+                    } else {
+                        window.location.href = '../regist/regist_inter.html';
+                    }
+                } else {
+                    alert('Datos incorrectos');
+                }
+            })
+            .catch(err => console.error('Error en la verificación:', err));
         });
