@@ -32,7 +32,7 @@
         });
         
         document.getElementById("loginForm").addEventListener("submit", function(event) {
-            event.preventDefault(); // Evita que el formulario se envíe de la manera tradicional
+            event.preventDefault(); // Esto evitará que el formulario se envíe de forma tradicional
         
             const correo = document.getElementById('email').value;
             const contrasena = document.getElementById('password').value;
@@ -48,9 +48,11 @@
                 console.log(data); // Ver el contenido de la respuesta
                 if (data.success) {
                     if (data.verificacion_cuenta === 1) {
-                        window.location.href = '../../main_menu/main_menu.html';  // Redirigir si la cuenta está verificada
+                        // Redirigir al menú principal si la cuenta está verificada
+                        window.location.href = '../../main_menu/main_menu.html';
                     } else {
-                        window.location.href = '../regist/regist_inter.html';  // Redirigir si la cuenta no está verificada
+                        // Redirigir a la página de verificación si la cuenta no está verificada
+                        window.location.href = '../regist/regist_inter.html';
                     }
                 } else {
                     alert('Datos incorrectos');

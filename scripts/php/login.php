@@ -1,13 +1,10 @@
 <?php
-// Obtener los datos JSON del cliente
+// Obtener los datos del frontend
 $data = json_decode(file_get_contents("php://input"));
 $correo = $data->correo;
 $contrasena = $data->contrasena;
 
-error_log("Correo recibido: " . $correo); // Verifica si el correo es correcto
-error_log("Contraseña recibida: " . $contrasena); // Verifica si la contraseña es correcta
-
-$servername = "localhost";  // Host de la BD (Hostinger usa 'localhost' para MySQL)
+$servername = "localhost"; // Host de la BD
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
 $db_pass    = "4Dmin123o"; // Contraseña de la base de datos
 $database   = "u296155119_OptiStock";   // Nombre de la base de datos
@@ -17,7 +14,7 @@ if (!$conn) {
     die("Error de conexión: " . mysqli_connect_error());
 }
 
-// Consulta para verificar si el usuario existe
+// Consulta SQL para verificar el correo
 $sql = "SELECT * FROM usuario WHERE correo = ?";
 $stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "s", $correo);
@@ -28,19 +25,21 @@ $result = mysqli_stmt_get_result($stmt);
 $user = mysqli_fetch_assoc($result);
 
 if ($user) {
-    // Verificar si la contraseña coincide (usando sha1 en la comparación)
-    // Verificar si la contraseña coincide (usando sha1 en la comparación)
-if ($user && sha1($contrasena) == $user['contrasena']) {
-    echo json_encode([
-        'success' => true,
-        'verificacion_cuenta' => $user['verificacion_cuenta'] // Retornar el estado de verificación
-    ]);
+    // Verificar la contraseña
+    if (sha1($contrasena) == $user['contrasena']) {
+        // Si la contraseña es correcta, verificar si la cuenta está verificada
+        if ($user['verificacion_cuenta'] == 0) {
+            // Si la cuenta no está verificada, devolver el estado de verificación
+            echo json_encode(["success" => false, "verificacion_cuenta" => 0]);
+        } else {
+            // Si la cuenta está verificada, devolver los datos del usuario
+            echo json_encode(["success" => true, "verificacion_cuenta" => 1, "user" => $user]);
+        }
+    } else {
+        echo json_encode(["success" => false]); // Contraseña incorrecta
+    }
 } else {
-    echo json_encode(['success' => false]);
-} 
-} else {
-    // Usuario no encontrado
-    echo json_encode(["success" => false]);
+    echo json_encode(["success" => false]); // Usuario no encontrado
 }
 
 // Cerrar la conexión
