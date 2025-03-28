@@ -5,13 +5,15 @@ error_reporting(E_ALL);
 
 // Mostrar los datos recibidos en el formulario para depurar
 
-// 2. Datos del formulario (asumiendo método POST estándar)
-$nombre   = $_POST['nombre']   ?? null;
-$apellido = $_POST['apellido'] ?? null;
-$fecha_nacimiento = $_POST['fecha_nacimiento'] ?? null;
-$telefono = $_POST['telefono'] ?? null;
-$correo   = $_POST['correo']   ?? null;
-$contrasena = $_POST['contrasena'] ?? null;  // contraseña en texto plano del form
+// 2. Datos del formulario
+$data = json_decode(file_get_contents("php://input"), true);
+
+$nombre = $data['nombre'] ?? null;
+$apellido = $data['apellido'] ?? null;
+$fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
+$telefono = $data['telefono'] ?? null;
+$correo = $data['correo'] ?? null;
+$contrasena = $data['contrasena'] ?? null;
 
 // 3. Validar datos mínimos
 if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$contrasena) {
