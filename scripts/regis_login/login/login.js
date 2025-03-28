@@ -27,7 +27,13 @@
         
             google.accounts.id.renderButton(
                 document.getElementById("google-login"),
-                { theme: "outline", size: "large" }
+                { 
+                    theme: "outline", // Opciones: "outline" o "filled"
+                    size: "large",    // Opciones: "small", "medium", "large"
+                    text: "signin_with", // Opciones: "signin_with", "signup_with", "continue_with"
+                    shape: "rectangular", // Opciones: "rectangular", "pill"
+                    logo_alignment: "left", // Opciones: "left", "center"
+                }
             );
         });
         
