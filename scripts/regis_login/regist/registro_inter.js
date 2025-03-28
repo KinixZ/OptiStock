@@ -14,6 +14,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 3000); // Simula un retraso de 3 segundos para la verificación
     } else {
         alert("No se pudo verificar el correo. Intenta nuevamente.");
-        window.location.href = "registro_p1.html"; // Si no hay correo en la URL, redirigir a la página anterior
+        window.location.href = "login.html"; // Si no hay correo en la URL, redirigir a la página anterior
     }
 });
