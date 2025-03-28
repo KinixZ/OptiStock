@@ -1,4 +1,7 @@
 <?php
+// Mostrar los datos recibidos en el formulario para depurar
+var_dump($_POST); // Esto imprimirá los datos recibidos desde el formulario
+
 // 1. Datos del formulario (asumiendo método POST estándar)
 $nombre   = $_POST['nombre']   ?? null;
 $apellido = $_POST['apellido'] ?? null;
