@@ -19,7 +19,7 @@ if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$
 }
 
 // 1. Conectarse a la base de datos MySQL
-$servername = "optistock.site";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
+$servername = "localhost"; // Host de la BD (Hostinger usa 'localhost' para MySQL)
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
 $db_pass    = "Admin123"; // Contraseña de la base de datos
 $database   = "u296155119_OptiStock";   // Nombre de la base de datos
