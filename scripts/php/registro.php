@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 var_dump($_POST); // Esto imprimirá los datos recibidos desde el formulario
 
 // 1. Conectarse a la base de datos MySQL
-$servername = "127.0.0.1";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
+$servername = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
 $db_pass    = "Admin123"; // Contraseña de la base de datos
 $database   = "u296155119_OptiStock";   // Nombre de la base de datos
