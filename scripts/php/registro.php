@@ -42,7 +42,7 @@ mysqli_stmt_bind_param($stmt, "ssssss", $nombre, $apellido, $fecha_nacimiento, $
 
 // 6. Ejecutar la consulta e indicar resultado
 if (mysqli_stmt_execute($stmt)) {
-    echo "OK";  // Podrías devolver un JSON o redirigir a otra página de confirmación
+    header("Location: regist_inter.html?email=" . urlencode($correo));
 } else {
     echo "ERROR: " . mysqli_error($conn);
 }
