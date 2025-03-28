@@ -52,11 +52,11 @@ document.getElementById('registerForm').addEventListener('submit', function(even
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            nombre: nombre,
-            apellido: apellido,
+            nombre,
+            apellido,
             fecha_nacimiento: nacimiento,
-            telefono: telefono,
-            correo: correo,
+            telefono,
+            correo,
             contrasena: password
         })
     })
