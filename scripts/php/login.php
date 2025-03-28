@@ -35,9 +35,9 @@ if ($user) {
     if (sha1($contrasena) == $user['contrasena']) {
         // Si la contraseña es correcta, verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
-            echo json_encode(["success" => true, "redirect" => "../regis_login/regist/regist_inter.html"]);
+            echo json_encode(["success" => true, "redirect" => "../regist/regist_inter.html"]);
         } else {
-            echo json_encode(["success" => true, "redirect" => "../main_menu/main_menu.html"]);
+            echo json_encode(["success" => true, "redirect" => "../../main_menu/main_menu.html"]);
         }
     } else {
         echo json_encode(["success" => false, "message" => "La contraseña es incorrecta."]);
