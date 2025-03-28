@@ -48,15 +48,15 @@ document.getElementById('registerForm').addEventListener('submit', function(even
     if (!valid) return;
 
     // Enviar datos al backend PHP
-    fetch('../../php/registro.php', {
+    fetch('../../../scripts/php/registro.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            nombre,
-            apellido,
+            nombre: nombre,
+            apellido: apellido,
             fecha_nacimiento: nacimiento,
-            telefono,
-            correo,
+            telefono: telefono,
+            correo: correo,
             contrasena: password
         })
     })
