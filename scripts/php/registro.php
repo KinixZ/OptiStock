@@ -9,9 +9,9 @@ var_dump($_POST); // Esto imprimirá los datos recibidos desde el formulario
 $server = "localhost";      // Host de la BD (Hostinger usa 'localhost' para MySQL)
 $database   = "u296155119_OptiStock";   // Nombre de la base de datos
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
-$db_pass    = "Admin1290"; // Contraseña de la base de datos
+$db_pass    = "Admin123"; // Contraseña de la base de datos
 
-$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+$conn = mysqli_connect($server, $db_user, $db_pass, $database);
 if (!$conn) {
     die("Error de conexión: " . mysqli_connect_error());
 }
