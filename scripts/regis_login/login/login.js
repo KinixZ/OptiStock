@@ -33,10 +33,14 @@
         
         document.getElementById("loginForm").addEventListener("submit", function(event) {
             event.preventDefault(); // Esto evitará que el formulario se envíe de forma tradicional
-        
+            console.log("Evento submit interceptado");
+
             const correo = document.getElementById('email').value;
             const contrasena = document.getElementById('password').value;
         
+            console.log("Correo:", correo);
+            console.log("Contraseña:", contrasena);
+            
             // Crear los datos en formato application/x-www-form-urlencoded
             const formData = new URLSearchParams();
             formData.append('correo', correo);
