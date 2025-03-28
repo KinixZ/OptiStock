@@ -1,11 +1,11 @@
 <?php
 // Obtener los datos del frontend
 $data = json_decode(file_get_contents("php://input"));
-$correo = $_POST['correo'] ?? null;
-$contrasena = $_POST['contrasena'] ?? null;
+$correo = $_POST['correo'];
+$contrasena = $_POST['contrasena'];
 
 if (empty($correo) || empty($contrasena)) {
-    echo json_encode(["success" => false, "error" => "Correo o contraseña vacíos"]);
+    echo json_encode(["success" => false, "error" => "Correo o contrasena vacios"]);
     exit;
 }
 
