@@ -1,8 +1,16 @@
 <?php
 // Obtener los datos del frontend
 $data = json_decode(file_get_contents("php://input"));
-$correo = $data->correo;
-$contrasena = $data->contrasena;
+$correo = $_POST['correo'];
+$contrasena = $_POST['contrasena'];
+
+if (empty($correo) || empty($contrasena)) {
+    echo json_encode(["success" => false, "error" => "Correo o contraseña vacíos"]);
+    exit;
+}
+
+// Depuración: Verificar los datos recibidos
+var_dump($correo, $contrasena);
 
 $servername = "localhost"; // Host de la BD
 $db_user    = "u296155119_Admin";  // Usuario de la base de datos
