@@ -37,11 +37,16 @@
             const correo = document.getElementById('email').value;
             const contrasena = document.getElementById('password').value;
         
+            // Crear los datos en formato application/x-www-form-urlencoded
+            const formData = new URLSearchParams();
+            formData.append('correo', correo);
+            formData.append('contrasena', contrasena);
+        
             // Realizar la solicitud al servidor para validar el login
             fetch('../../../scripts/php/login.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ correo: correo, contrasena: contrasena })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
             })
             .then(response => response.json())
             .then(data => {
