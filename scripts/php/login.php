@@ -34,10 +34,7 @@ if ($user && sha1($contrasena) == $user['contrasena']) {
     ]);
 } else {
     echo json_encode(['success' => false]);
-} else {
-        // Contraseña incorrecta
-        echo json_encode(["success" => false]);
-    }
+} 
 } else {
     // Usuario no encontrado
     echo json_encode(["success" => false]);

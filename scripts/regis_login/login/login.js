@@ -37,16 +37,18 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log(data); // Ver el contenido de la respuesta
                 if (data.success) {
                     if (data.verificacion_cuenta === 1) {
-                        window.location.href = '../../main_menu/main_menu.html';  // Si la cuenta está verificada
+                        window.location.href = '../../main_menu/main_menu.html';  // Redirigir si la cuenta está verificada
                     } else {
-                        window.location.href = '../regist/regist_inter.html';  // Si no está verificada
+                        window.location.href = '../regist/regist_inter.html';  // Redirigir si la cuenta no está verificada
                     }
                 } else {
                     alert('Datos incorrectos');
                 }
             })
             .catch(err => console.error('Error en la verificación:', err));
+            
         });
         
