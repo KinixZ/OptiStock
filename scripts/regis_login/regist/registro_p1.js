@@ -66,7 +66,7 @@ document.getElementById('registerForm').addEventListener('submit', function(even
             console.log("Usuario registrado correctamente.");
             window.location.href = `regist_inter.html?email=${encodeURIComponent(correo)}`;
         } else {
-            alert("Error en el registro: " + (data.message || "Intenta más tarde."));
+            alert("Error en el registro: " + (data.message || "Vuelva a intentarlo."));
         }
     })
     .catch(error => {

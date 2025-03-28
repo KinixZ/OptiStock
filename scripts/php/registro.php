@@ -42,11 +42,11 @@ mysqli_stmt_bind_param($stmt, "ssssss", $nombre, $apellido, $fecha_nacimiento, $
 
 // 6. Ejecutar la consulta e indicar resultado
 if (mysqli_stmt_execute($stmt)) {
-    // Si el registro es exitoso, redirigir a la página de verificación (regist_inter.html)
-    header("Location: ../../pages/regis_login/regist/regist_inter.html?email=" . urlencode($correo));
-    exit;
+    // Si el registro es exitoso, devolver éxito
+    echo json_encode(["success" => true, "message" => "Usuario registrado correctamente."]);
 } else {
-    echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+    // Si ocurre un error, devolver el mensaje de error
+    echo json_encode(["success" => false, "message" => "Error al registrar el usuario: " . mysqli_error($conn)]);
 }
 
 // Cerrar la conexión
