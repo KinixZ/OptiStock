@@ -47,5 +47,5 @@ if ($user) {
 }
 
 // Cerrar la conexión
-mysqli_close($conn);
+mysqli_close($conn);//
 ?>
