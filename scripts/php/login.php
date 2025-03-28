@@ -4,8 +4,7 @@ $correo = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
 
 if (empty($correo) || empty($contrasena)) {
-    // Redirigir a una página de error si los campos están vacíos
-    header("Location: ../../pages/error.html");
+    echo json_encode(["success" => false, "message" => "Por favor, completa todos los campos."]);
     exit;
 }
 
@@ -17,7 +16,8 @@ $database   = "u296155119_OptiStock";
 
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
 if (!$conn) {
-    die("Error de conexión: " . mysqli_connect_error());
+    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
+    exit;
 }
 
 // Consulta SQL para verificar el correo
@@ -35,19 +35,15 @@ if ($user) {
     if (sha1($contrasena) == $user['contrasena']) {
         // Si la contraseña es correcta, verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
-            // Redirigir a la página de verificación
-            header("Location: ../../pages/regis_login/regist/regist_inter.html");
+            echo json_encode(["success" => true, "redirect" => "../regis_login/regist/regist_inter.html"]);
         } else {
-            // Redirigir al menú principal
-            header("Location: ../../pages/main_menu/main_menu.html");
+            echo json_encode(["success" => true, "redirect" => "../main_menu/main_menu.html"]);
         }
     } else {
-        // Redirigir a una página de error si la contraseña es incorrecta
-        header("Location: ../../pages/error.html");
+        echo json_encode(["success" => false, "message" => "La contraseña es incorrecta."]);
     }
 } else {
-    // Redirigir a una página de error si el usuario no existe
-    header("Location: ../../pages/error.html");
+    echo json_encode(["success" => false, "message" => "El usuario no existe."]);
 }
 
 // Cerrar la conexión

@@ -32,7 +32,7 @@
         });
         
         document.getElementById("loginForm").addEventListener("submit", function(event) {
-            event.preventDefault(); // Esto evitará que el formulario se envíe de forma tradicional
+            event.preventDefault(); // Evitar el envío tradicional del formulario
             console.log("Evento submit interceptado");
         
             const correo = document.getElementById('email').value;
@@ -54,16 +54,15 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log("Respuesta del servidor:", data);
+                const errorMessage = document.getElementById('error-message');
                 if (data.success) {
-                    if (data.verificacion_cuenta === 1) {
-                        window.location.href = '../../main_menu/main_menu.html';
-                    } else {
-                        window.location.href = '../regist/regist_inter.html';
-                    }
+                    // Redirigir al usuario según la respuesta del servidor
+                    console.log("Redirigiendo a:", data.redirect);
+                    window.location.href = data.redirect;
                 } else {
-                    alert('Datos incorrectos');
+                    // Mostrar el mensaje de error devuelto por el servidor
+                    errorMessage.textContent = data.message;
                 }
             })
-            .catch(err => console.error('Error en la verificación:', err));
+            .catch(err => console.error('Error en la solicitud:', err));
         });
