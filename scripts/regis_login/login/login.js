@@ -28,7 +28,7 @@
             google.accounts.id.renderButton(
                 document.getElementById("google-login"),
                 { 
-                    theme: "outline", size: "large", text: "signin_with", logo_alignment: "center"
+                    theme: "outline", size: "large"
                 }
             );
         });
