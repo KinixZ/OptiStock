@@ -13,7 +13,7 @@ if (!$conn) {
 }
 
 if (isset($_GET['token'])) {
-    $token = $_GET['token'];  // Recuperamos el token de la URL
+    $token = $_GET['token'];  // Recuperamos el correo del parámetro de la URL
 
     // Validar el token en la base de datos (comprobamos que el correo no esté ya verificado)
     $sql = "SELECT * FROM usuario WHERE correo = ? AND verificacion_cuenta = 0";
@@ -29,7 +29,8 @@ if (isset($_GET['token'])) {
         mysqli_stmt_bind_param($updateStmt, "s", $token);
         mysqli_stmt_execute($updateStmt);
 
-        echo "Tu cuenta ha sido verificada exitosamente. Ahora puedes iniciar sesión.";
+        // Responder con un mensaje de éxito
+        echo "Tu cuenta ha sido verificada exitosamente.";
     } else {
         echo "El enlace de verificación no es válido o ya ha sido utilizado.";
     }
