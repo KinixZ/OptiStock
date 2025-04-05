@@ -1,11 +1,9 @@
 <?php
-// Conexión a la base de datos utilizando mysqli
+// Conexión a la base de datos
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
 $database   = "u296155119_OptiStock";
-
-// Crear conexión
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
 
 // Verificar conexión
@@ -14,37 +12,38 @@ if (!$conn) {
     exit;
 }
 
-if (isset($_GET['token'])) {
-    $token = $_GET['token'];
+// Obtener datos del formulario
+$nombre = $_POST['nombre'];
+$apellido = $_POST['apellido'];
+$correo = $_POST['correo'];
+$contrasena = hash('sha1', $_POST['contrasena']); // Contraseña encriptada con SHA1
 
-    // Validar el token en la base de datos
-    $sql = "SELECT * FROM usuario WHERE correo = ?";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "s", $token);  // Usamos "s" para indicar que es una cadena de texto (string)
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
+// Generar un token único para la verificación (usaremos el correo como token)
+$token = $correo;  // O puedes generar un token aleatorio con bin2hex(random_bytes(16))
 
-    if (mysqli_num_rows($result) > 0) {
-        // El token es válido, activar la cuenta
-        $usuario = mysqli_fetch_assoc($result);
-        if ($usuario['verificacion_cuenta'] == 1) {
-            echo "Tu cuenta ya está verificada.";
-        } else {
-            // Actualizar el estado de verificación a TRUE
-            $updateSql = "UPDATE usuario SET verificacion_cuenta = 1 WHERE correo = ?";
-            $updateStmt = mysqli_prepare($conn, $updateSql);
-            mysqli_stmt_bind_param($updateStmt, "s", $token);
-            mysqli_stmt_execute($updateStmt);
+// Insertar el nuevo usuario en la base de datos
+$sql = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, verificacion_cuenta) 
+        VALUES (?, ?, ?, ?, ?, ?, 0)";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, 'ssssss', $nombre, $apellido, $_POST['fecha_nacimiento'], $_POST['telefono'], $correo, $contrasena);
+mysqli_stmt_execute($stmt);
 
-            echo "Tu cuenta ha sido verificada exitosamente. Ahora puedes iniciar sesión.";
-        }
-    } else {
-        echo "El enlace de verificación no es válido o ya ha expirado.";
-    }
+// Enviar correo de verificación
+$to = $correo;
+$subject = "Verificación de correo";
+$message = "Hola $nombre, por favor verifica tu correo haciendo clic en el siguiente enlace: \n\n";
+$message .= "http://tu-dominio.com/verificacion.php?token=$token";  // URL de verificación en tu dominio
+
+$headers = 'From: no-reply@tu-dominio.com' . "\r\n" .
+           'Reply-To: no-reply@tu-dominio.com' . "\r\n" .
+           'X-Mailer: PHP/' . phpversion();
+
+if (mail($to, $subject, $message, $headers)) {
+    echo "Se ha enviado un correo de verificación a $correo.";
 } else {
-    echo "No se ha proporcionado un token de verificación.";
+    echo "Hubo un problema al enviar el correo de verificación.";
 }
 
-// Cerrar conexión a la base de datos
+// Cerrar la conexión a la base de datos
 mysqli_close($conn);
 ?>
