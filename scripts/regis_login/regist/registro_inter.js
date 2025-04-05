@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function verifyEmail(email) {
     // Hacemos una solicitud POST a PHP para verificar la cuenta
-    fetch('verificacion.php?token=' + encodeURIComponent(email), {
+    fetch('../../../scripts/php/verificacion.php?token=' + encodeURIComponent(email), {
         method: 'GET',
     })
     .then(response => response.text()) // Esperamos la respuesta del servidor
