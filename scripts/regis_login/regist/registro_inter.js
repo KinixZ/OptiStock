@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
         verifyEmail(email);
     } else {
         alert("No se pudo verificar el correo. Intenta nuevamente.");
-        window.location.href = "regist_inter.html?email=retry";  // Si no hay correo en la URL, redirigir a la página anterior
+        window.location.href = "regist_inter.html?email=" + encodeURIComponent(email); // Si no hay correo en la URL, redirigir a la página anterior
     }
 });
 
