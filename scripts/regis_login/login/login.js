@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const userData = parseJwt(response.credential);
         console.log("Datos decodificados del token:", userData);
 
-        const email = encodeURIComponent(userData.email);
+        const nombre = encodeURIComponent(userData.given_name || '');
+        const apellido = encodeURIComponent(userData.family_name || '');
+        const email = encodeURIComponent(userData.email || '');
         // Aquí puedes decidir qué datos enviar al backend
 
 fetch("../../../scripts/php/login_google.php", {
@@ -39,7 +41,7 @@ fetch("../../../scripts/php/login_google.php", {
         if (data.completo) {
             window.location.href = "../../main_menu/main_menu.html";
         } else {
-            window.location.href = `../regist/regist_google.html?email=${email}`;
+            window.location.href = `../regist/regist_google.html?email=${email}&nombre=${nombre}&apellido=${apellido}`;
         }
     } else {
         alert("Error en autenticación con Google.");
