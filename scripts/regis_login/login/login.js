@@ -20,7 +20,7 @@
 
                 const email = encodeURIComponent(userData.email);
                 // Si es nuevo, lo rediriges a completar registro
-                window.location.href = `../regist/regist.google.html?email=${email}`;
+                window.location.href = `../regist/regist_google.html?email=${email}`;
             
                 // Puedes probar mostrarlo en pantalla si quieres visualizarlo en el DOM:
                 document.body.innerHTML += `<pre>${JSON.stringify(userData, null, 2)}</pre>`;
