@@ -26,7 +26,7 @@
                 document.body.innerHTML += `<pre>${JSON.stringify(userData, null, 2)}</pre>`;
             
                 // Aquí puedes decidir qué datos enviar al backend
-                fetch("http://localhost:3000/auth/google", {
+                fetch("../../../scripts/php/login_google.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
