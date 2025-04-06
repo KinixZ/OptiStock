@@ -20,9 +20,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // Redirigir a completar registro
         window.location.href = `../regist/regist_google.html?email=${email}`;
 
-        // (opcional) mostrar los datos visualmente
-        document.body.innerHTML += `<pre>${JSON.stringify(userData, null, 2)}</pre>`;
-
         // Enviar al backend
         fetch("../../../scripts/php/login_google.php", {
             method: "POST",
