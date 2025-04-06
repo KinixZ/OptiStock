@@ -12,6 +12,9 @@ if (!$conn) {
     exit;
 }
 
+// Obtener los datos del formulario
+$nombre = $_POST['nombre'];
+$apellido = $_POST['apellido'];
 $correo = $_POST['correo'];
 $fecha_nacimiento = $_POST['fecha_nacimiento'];
 $telefono = $_POST['telefono'];
@@ -21,8 +24,8 @@ if (!$correo || !$fecha_nacimiento || !$telefono) {
     die("Faltan datos");
 }
 
-$stmt = $conn->prepare("UPDATE usuario SET fecha_nacimiento = ?, telefono = ? WHERE correo = ?");
-$stmt->bind_param("sss", $fecha_nacimiento, $telefono, $correo);
+$stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, fecha_nacimiento = ?, telefono = ? WHERE correo = ?");
+$stmt->bind_param("sssss",$nombre, $apellido $fecha_nacimiento, $telefono, $correo);
 
 if ($stmt->execute()) {
     echo "Datos actualizados correctamente. Puedes usar <a href='../../main_menu/main_menu.html'>tu cuenta</a>";
