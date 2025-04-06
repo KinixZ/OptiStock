@@ -33,17 +33,20 @@ fetch("../../../scripts/php/login_google.php", {
 })
 .then(res => res.json())
 .then(data => {
+    console.log("Respuesta del backend:", data); // 👈 esto es clave
+
     if (data.success) {
         if (data.completo) {
-            window.location.href = `../../main_menu/main_menu.html?email=${email}`;
+            window.location.href = "../../main_menu/main_menu.html";
         } else {
             window.location.href = `../regist/regist_google.html?email=${email}`;
         }
     } else {
         alert("Error en autenticación con Google.");
-        console.error("Backend error:", data.message || data.error);
+        console.error("Mensaje backend:", data.message || data.error);
     }
 });
+
 
     }
 
