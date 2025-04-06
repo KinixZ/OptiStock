@@ -24,7 +24,7 @@ if (!$correo || !$fecha_nacimiento || !$telefono) {
     die("Faltan datos");
 }
 
-$stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, fecha_nacimiento = ?, telefono = ?, verificacion_cuenta = '1' WHERE correo = ?");
+$stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, fecha_nacimiento = ?, telefono = ? WHERE correo = ?");
 $stmt->bind_param("sssss",$nombre, $apellido $fecha_nacimiento, $telefono, $correo);
 
 if ($stmt->execute()) {
