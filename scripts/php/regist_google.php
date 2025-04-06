@@ -20,7 +20,7 @@ $fecha_nacimiento = $_POST['fecha_nacimiento'];
 $telefono = $_POST['telefono'];
 
 // Validación simple
-if (!$correo || !$fecha_nacimiento || !$telefono) {
+if (!$correo || !$fecha_nacimiento || !$telefono || !$nombre || !$apellido) {
     die("Faltan datos");
 }
 
