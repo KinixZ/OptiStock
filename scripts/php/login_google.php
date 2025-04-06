@@ -17,8 +17,8 @@ header("Content-Type: application/json");
 $data = json_decode(file_get_contents("php://input"));
 
 $correo = $data->email ?? '';
-$nombre = $data->nombre ?? '';
-$apellido = $data->apellido ?? '';
+$nombre = $data->nombre ?? 'Nombre';
+$apellido = $data->apellido ?? 'Apellido';
 $google_id = $data->google_id ?? '';
 
 if (!$correo || !$nombre || !$apellido || !$google_id) {
