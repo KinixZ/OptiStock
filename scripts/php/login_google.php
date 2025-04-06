@@ -12,34 +12,46 @@ if (!$conn) {
     exit;
 }
 
+header("Content-Type: application/json");
+
 $data = json_decode(file_get_contents("php://input"));
 
-$nombre = $data->nombre;
-$apellido = $data->apellido;
-$correo = $data->email;
-$google_id = $data->google_id;
+$correo = $data->email ?? '';
+$nombre = $data->nombre ?? '';
+$apellido = $data->apellido ?? '';
+$google_id = $data->google_id ?? '';
 
-// Verificar si ya existe
-$query = $conn->prepare("SELECT * FROM usuario WHERE correo = ?");
-$query->bind_param("s", $correo);
-$query->execute();
-$result = $query->get_result();
+if (!$correo || !$nombre || !$apellido || !$google_id) {
+    echo json_encode(["success" => false, "message" => "Datos incompletos"]);
+    exit;
+}
 
-if ($result->num_rows > 0) {
-    echo json_encode(["success" => true, "message" => "Login exitoso"]);
+// Verificar si el usuario ya existe
+$check = $conn->prepare("SELECT id_usuario, fecha_nacimiento, telefono FROM usuario WHERE correo = ?");
+$check->bind_param("s", $correo);
+$check->execute();
+$check->store_result();
+
+if ($check->num_rows > 0) {
+    $check->bind_result($id, $fecha, $tel);
+    $check->fetch();
+
+    $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
+
+    echo json_encode(["success" => true, "completo" => $completo]);
 } else {
-    // Crear usuario con datos mínimos y contraseña falsa segura
-    $fakePass = sha1("GOOGLE-" . $google_id); // Algo que no se pueda usar para login normal
+    // Registrar usuario nuevo
+    $fecha = "0000-00-00";
+    $tel = "0000000000";
+    $pass_fake = sha1("GOOGLE-" . $google_id);
 
     $insert = $conn->prepare("INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, verificacion_cuenta) VALUES (?, ?, ?, ?, ?, ?, 1)");
-    $defaultFecha = "2000-01-01"; // por defecto
-    $defaultTel = "0000000000"; // por defecto
-    $insert->bind_param("ssssss", $nombre, $apellido, $defaultFecha, $defaultTel, $correo, $fakePass);
+    $insert->bind_param("ssssss", $nombre, $apellido, $fecha, $tel, $correo, $pass_fake);
 
     if ($insert->execute()) {
-        echo json_encode(["success" => true, "message" => "Usuario creado con Google"]);
+        echo json_encode(["success" => true, "completo" => false]);
     } else {
-        echo json_encode(["success" => false, "message" => "Error al crear el usuario"]);
+        echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);
     }
 }
 ?>
