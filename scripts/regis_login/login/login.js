@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const email = encodeURIComponent(userData.email);
         // Aquí puedes decidir qué datos enviar al backend
-        
+
 fetch("../../../scripts/php/login_google.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,7 +35,7 @@ fetch("../../../scripts/php/login_google.php", {
 .then(data => {
     if (data.success) {
         if (data.completo) {
-            window.location.href = "../../main_menu/main_menu.html";
+            window.location.href = `../../main_menu/main_menu.html?email=${email}`;
         } else {
             window.location.href = `../regist/regist_google.html?email=${email}`;
         }
