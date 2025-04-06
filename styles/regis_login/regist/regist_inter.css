@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+
+body {
+    background: linear-gradient(to left, rgba(46, 60, 118, 1.2), rgba(46, 60, 118, 0.4)),
+                url("https://altertecnia.com/wp-content/uploads/almacenes-inteligentes-portada.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 500px;
+    background-color: rgba(255, 183, 77, 0.95);
+    margin: 100px auto;
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+}
+
+h3 {
+    color: #1a1a1a;
+    font-weight: 700;
+}
+
+p {
+    color: #1a1a1a;
+    margin-top: 15px;
+    font-size: 16px;
+}
