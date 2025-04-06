@@ -17,31 +17,34 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("Datos decodificados del token:", userData);
 
         const email = encodeURIComponent(userData.email);
-        // Redirigir a completar registro
-        window.location.href = `../regist/regist_google.html?email=${email}`;
+        // Aquí puedes decidir qué datos enviar al backend
+        
+fetch("../../../scripts/php/login_google.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        token: response.credential,
+        email: userData.email,
+        nombre: userData.given_name,
+        apellido: userData.family_name,
+        picture: userData.picture,
+        google_id: userData.sub
+    })
+})
+.then(res => res.json())
+.then(data => {
+    if (data.success) {
+        if (data.completo) {
+            window.location.href = "../../main_menu/main_menu.html";
+        } else {
+            window.location.href = `../regist/regist_google.html?email=${email}`;
+        }
+    } else {
+        alert("Error en autenticación con Google.");
+        console.error("Backend error:", data.message || data.error);
+    }
+});
 
-        // Enviar al backend
-        fetch("../../../scripts/php/login_google.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                token: response.credential,
-                email: userData.email,
-                nombre: userData.given_name,
-                apellido: userData.family_name,
-                picture: userData.picture,
-                google_id: userData.sub
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = "../../main_menu/main_menu.html";
-            } else {
-                alert("Error en autenticación con Google.");
-            }
-        })
-        .catch(error => console.error("Error:", error));
     }
 
     // Esperar a que Google esté listo antes de usarlo
