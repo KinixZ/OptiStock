@@ -5,31 +5,41 @@ document.addEventListener("DOMContentLoaded", function () {
     if (email) {
         // Si hay un correo en la URL, lo mostramos en la página
         document.getElementById('email').textContent = email;
-
-        // Hacemos una solicitud para verificar el correo en la base de datos
-        verifyEmail(email);
     } else {
         alert("No se pudo verificar el correo. Intenta nuevamente.");
         window.location.href = "regist_inter.html?email=retry";  // Si no hay correo en la URL, redirigir a la página anterior
     }
+
+    // Manejar el formulario de verificación
+    document.getElementById('verificationForm').addEventListener('submit', function (e) {
+        e.preventDefault(); // Prevenir el envío del formulario
+
+        const verificationCode = document.getElementById('verificationCode').value;
+
+        // Hacemos una solicitud para verificar el código
+        verifyCode(email, verificationCode);
+    });
 });
 
-function verifyEmail(email) {
-    // Hacemos una solicitud POST a PHP para verificar la cuenta
-    fetch('../../../scripts/php/verificacion.php?token=' + encodeURIComponent(email), {
-        method: 'GET',
+function verifyCode(email, code) {
+    fetch('../../php/verificacion.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email, code: code })
     })
-    .then(response => response.text()) // Esperamos la respuesta del servidor
+    .then(response => response.json())
     .then(data => {
-        if (data.includes("Tu cuenta ha sido verificada exitosamente")) {
+        if (data.success) {
             // Si la verificación fue exitosa, redirigir al siguiente paso
             window.location.href = `registro_p2.html?email=${encodeURIComponent(email)}`;
         } else {
-            alert(data);  // Si hubo un error, mostramos el mensaje de error
+            alert(data.message);  // Si hubo un error, mostramos el mensaje de error
         }
     })
     .catch(error => {
         console.error("Error en la verificación:", error);
-        alert("Ocurrió un error al verificar el correo.");
+        alert("Ocurrió un error al verificar el código.");
     });
 }

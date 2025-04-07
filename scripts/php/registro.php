@@ -52,6 +52,25 @@ if (mysqli_stmt_execute($stmt)) {
     echo json_encode(["success" => false, "message" => "Error al registrar el usuario: " . mysqli_error($conn)]);
 }
 
+// Recoger correo del formulario
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['correo'])) {
+    $correo = $_POST['correo'];
+
+    // Generar un código de 6 dígitos
+    $codigo_verificacion = mt_rand(100000, 999999);
+
+    // Almacenar el código en la sesión
+    $_SESSION['codigo_verificacion'] = $codigo_verificacion;
+    $_SESSION['correo'] = $correo;
+
+    // Enviar el código por correo
+    mail($correo, "Código de Verificación", "Tu código de verificación es: $codigo_verificacion", "From: no-reply@tudominio.com");
+
+    echo json_encode(["success" => true, "message" => "El código de verificación ha sido enviado a tu correo."]);
+} else {
+    echo json_encode(["success" => false, "message" => "Correo no proporcionado."]);
+}
+
 // Cerrar la conexión
 mysqli_close($conn);
 ?>

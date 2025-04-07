@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 // Conexión a la base de datos
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
@@ -12,32 +14,28 @@ if (!$conn) {
     exit;
 }
 
-if (isset($_GET['token'])) {
-    $token = $_GET['token'];  // Recuperamos el correo del parámetro de la URL
+// Verificar si el código es correcto
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['correo']) && isset($_POST['codigo'])) {
+    $correo = $_POST['correo'];
+    $codigo_ingresado = $_POST['codigo'];
 
-    // Validar el token en la base de datos (comprobamos que el correo no esté ya verificado)
-    $sql = "SELECT * FROM usuario WHERE correo = ? AND verificacion_cuenta = 0";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "s", $token);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
+    // Comparar el código ingresado con el código almacenado en la sesión
+    if (isset($_SESSION['codigo_verificacion']) && $_SESSION['codigo_verificacion'] == $codigo_ingresado) {
+        // Código correcto, actualizar la cuenta como verificada
+        $sql = "UPDATE usuario SET verificacion_cuenta = 1 WHERE correo = ?";
+        $stmt = mysqli_prepare($conn, $sql);
+        mysqli_stmt_bind_param($stmt, "s", $correo);
+        mysqli_stmt_execute($stmt);
 
-    if (mysqli_num_rows($result) > 0) {
-        // El correo no está verificado, proceder con la verificación
-        $updateSql = "UPDATE usuario SET verificacion_cuenta = 1 WHERE correo = ?";
-        $updateStmt = mysqli_prepare($conn, $updateSql);
-        mysqli_stmt_bind_param($updateStmt, "s", $token);
-        mysqli_stmt_execute($updateStmt);
-
-        // Responder con un mensaje de éxito
-        echo "Tu cuenta ha sido verificada exitosamente.";
+        echo json_encode(["success" => true, "message" => "Tu cuenta ha sido verificada exitosamente."]);
+        
+        // Limpiar la sesión después de la verificación
+        unset($_SESSION['codigo_verificacion']);
+        unset($_SESSION['correo']);
     } else {
-        echo "El enlace de verificación no es válido o ya ha sido utilizado.";
+        echo json_encode(["success" => false, "message" => "El código de verificación es incorrecto."]);
     }
-} else {
-    echo "No se ha proporcionado un token de verificación.";
 }
 
-// Cerrar la conexión
 mysqli_close($conn);
 ?>
