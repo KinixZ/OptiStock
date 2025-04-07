@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function verifyCode(email, code) {
-    fetch('../../php/verificacion.php', {
+    fetch('../../../scripts/php/verificacion.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

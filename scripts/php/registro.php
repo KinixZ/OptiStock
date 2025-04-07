@@ -52,23 +52,23 @@ if (mysqli_stmt_execute($stmt)) {
     echo json_encode(["success" => false, "message" => "Error al registrar el usuario: " . mysqli_error($conn)]);
 }
 
-// Recoger correo del formulario
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['correo'])) {
-    $correo = $_POST['correo'];
+// 7. Generar un código de verificación de 6 dígitos
+$codigo_verificacion = mt_rand(100000, 999999); // Código de 6 dígitos
 
-    // Generar un código de 6 dígitos
-    $codigo_verificacion = mt_rand(100000, 999999);
+// Guardar el código en la sesión para que se pueda validar más tarde
+session_start();
+$_SESSION['codigo_verificacion'] = $codigo_verificacion;
+$_SESSION['correo_verificacion'] = $correo; // Guardar el correo para asociarlo con el código
 
-    // Almacenar el código en la sesión
-    $_SESSION['codigo_verificacion'] = $codigo_verificacion;
-    $_SESSION['correo'] = $correo;
+// 8. Enviar el código por correo
+$mail_subject = "OPTISTOCK - Codigo de Verificación";
+$mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
+$mail_headers = "From: optistockproject@gmail.com";
 
-    // Enviar el código por correo
-    mail($correo, "Código de Verificación", "Tu código de verificación es: $codigo_verificacion", "From: no-reply@tudominio.com");
-
-    echo json_encode(["success" => true, "message" => "El código de verificación ha sido enviado a tu correo."]);
+if (mail($correo, $mail_subject, $mail_message, $mail_headers)) {
+    echo json_encode(["success" => true, "message" => "Usuario registrado correctamente. Se ha enviado un código de verificación a tu correo."]);
 } else {
-    echo json_encode(["success" => false, "message" => "Correo no proporcionado."]);
+    echo json_encode(["success" => false, "message" => "Error al enviar el correo de verificación."]);
 }
 
 // Cerrar la conexión
