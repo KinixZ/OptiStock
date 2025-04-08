@@ -15,8 +15,7 @@
             <input type="text" id="verificationCode" placeholder="Código de 6 dígitos" required>
             <button type="submit">Verificar</button>
         </form>
-        <p>Si no recibiste el código, <a href="regist_inter.html?email=retry">haz clic aquí para reenviarlo</a>.</p>
-    </div>
+        <p>¿No has recibido el codigo? <a href="#" onclick="resendVerificationEmail(sessionStorage.getItem('email'))">Reenviar codigo de verificacion</a>.</p>    </div>
 
     <script src="../../../scripts/regis_login/regist/registro_inter.js"></script>
 </body>
