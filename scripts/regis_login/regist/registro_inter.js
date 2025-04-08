@@ -53,7 +53,7 @@ function verifyCode(email, code) {
 }
 
 function resendVerificationEmail(email) {
-    fetch('../../php/resend_verificacion.php', {
+    fetch('../../../scripts/php/resend_verificacion.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
