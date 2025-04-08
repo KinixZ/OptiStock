@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('email').textContent = email;
     } else {
         alert("No se pudo verificar el correo. Intenta nuevamente.");
-        window.location.href = "registro.html"; // Redirigir al registro si no hay correo
+        window.location.href = "../login/login.html"; // Redirigir al registro si no hay correo
     }
 
     // Manejar el formulario de verificación
