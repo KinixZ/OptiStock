@@ -60,7 +60,12 @@ document.getElementById('registerForm').addEventListener('submit', function(even
             contrasena: password
         })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            throw new Error(`HTTP error! Status: ${res.status}`);
+        }
+        return res.json();
+    })
     .then(data => {
         if (data.success) {
             console.log("Usuario registrado correctamente.");
