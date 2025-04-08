@@ -63,7 +63,7 @@ $_SESSION['correo_verificacion'] = $correo; // Guardar el correo para asociarlo 
 // 8. Enviar el código por correo
 $mail_subject = "OPTISTOCK - Codigo de Verificación";
 $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
-$mail_headers = "From: optistockproject@gmail.com";
+$mail_headers = "From: no-reply@optistock.site";
 
 if (mail($correo, $mail_subject, $mail_message, $mail_headers)) {
     echo json_encode(["success" => true, "message" => "Usuario registrado correctamente. Se ha enviado un código de verificación a tu correo."]);
