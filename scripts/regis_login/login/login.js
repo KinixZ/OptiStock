@@ -112,6 +112,6 @@ document.getElementById("loginForm").addEventListener("submit", function (event)
         })
         .catch(err => {
             console.error('Error en la solicitud:', err);
-            alert("Ocurrió un error al procesar la solicitud. Por favor, intenta nuevamente.");
+            alert("Parece que hubo un error a la hora de iniciar sesion. Revisa tus datos e intentelo de nuevo.");
         });
 });
