@@ -35,7 +35,7 @@ fetch("../../../scripts/php/login_google.php", {
 })
 .then(res => res.json())
 .then(data => {
-    console.log("Respuesta del backend:", data); // 👈 esto es clave
+    console.log("Respuesta del backend:", data);
 
     if (data.success) {
         if (data.completo) {
@@ -95,14 +95,23 @@ document.getElementById("loginForm").addEventListener("submit", function (event)
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
     })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             const errorMessage = document.getElementById('error-message');
             if (data.success) {
                 window.location.href = data.redirect;
             } else {
-                errorMessage.textContent = data.message;
+                errorMessage.textContent = data.message; // Mostrar mensaje del backend
+                errorMessage.style.color = "red"; // Opcional: Cambiar color del mensaje
             }
         })
-        .catch(err => console.error('Error en la solicitud:', err));
+        .catch(err => {
+            console.error('Error en la solicitud:', err);
+            alert("Ocurrió un error al procesar la solicitud. Por favor, intenta nuevamente.");
+        });
 });
