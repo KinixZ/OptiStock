@@ -32,7 +32,7 @@ $user = mysqli_fetch_assoc($result);
 
 if ($user) {
     $failedAttempts = $user['intentos_fallidos'];
-    $lastFailedAttempt = strtotime($user['ultimo_intento_fallido']);
+    $lastFailedAttempt = strtotime($user['ultimo_intento']);
     $currentTime = time();
 
     // Bloqueo de 5 minutos
@@ -74,8 +74,6 @@ if ($user) {
                 "success" => false,
                 "message" => "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."
             ]);
-        } else {
-            echo json_encode(["success" => false, "message" => "La contraseña es incorrecta."]);
         }
     }
 } else {
@@ -88,7 +86,7 @@ mysqli_close($conn);
 // Función para enviar correos
 function sendEmail($to, $subject, $body) {
     // Configuración del correo (puedes usar PHPMailer u otra biblioteca)
-    $headers = "From: no-reply@optistock.com\r\n";
+    $headers = "From: no-reply@optistock.site\r\n";
     $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
     mail($to, $subject, $body, $headers);
 }
