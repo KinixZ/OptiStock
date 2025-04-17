@@ -47,7 +47,7 @@ if ($user) {
     // Verificar la contraseña
     if (sha1($contrasena) == $user['contrasena']) {
         // Restablecer intentos fallidos en caso de éxito
-        $resetAttemptsSql = "UPDATE usuario SET intentos_fallidos = 0 WHERE correo = ?";
+        $resetAttemptsSql = "UPDATE usuario SET intentos_fallidos = 0, ultimo_intento = NULL WHERE correo = ?";
         $resetStmt = mysqli_prepare($conn, $resetAttemptsSql);
         mysqli_stmt_bind_param($resetStmt, "s", $correo);
         mysqli_stmt_execute($resetStmt);
@@ -61,18 +61,30 @@ if ($user) {
     } else {
         // Incrementar intentos fallidos
         $failedAttempts++;
-        $updateAttemptsSql = "UPDATE usuario SET intentos_fallidos = ?, ultimo_intento_fallido = NOW() WHERE correo = ?";
+        $updateAttemptsSql = "UPDATE usuario SET intentos_fallidos = ?, ultimo_intento = NOW() WHERE correo = ?";
         $updateStmt = mysqli_prepare($conn, $updateAttemptsSql);
         mysqli_stmt_bind_param($updateStmt, "is", $failedAttempts, $correo);
-        mysqli_stmt_execute($updateStmt);
 
-        if ($failedAttempts >= 4) {
-            // Enviar correo de notificación
-            sendEmail($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.");
+        // Verificar si la consulta se ejecutó correctamente
+        if (mysqli_stmt_execute($updateStmt)) {
+            if ($failedAttempts >= 4) {
+                // Enviar correo de notificación
+                sendEmail($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.");
 
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."
+                ]);
+            } else {
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Contraseña incorrecta. Intentos fallidos: $failedAttempts."
+                ]);
+            }
+        } else {
             echo json_encode([
                 "success" => false,
-                "message" => "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."
+                "message" => "Error al actualizar los intentos fallidos en la base de datos."
             ]);
         }
     }
