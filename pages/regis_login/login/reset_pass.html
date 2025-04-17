@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restablecer Contraseña</title>
+    <link rel="stylesheet" href="../../../styles/regis_login/login/login.css"> <!-- Ajusta el path si es necesario -->
+</head>
+<body>
+    <div class="container">
+        <h2>Restablecer Contraseña</h2>
+        <form id="resetForm">
+            <input type="hidden" id="token" name="token" value="">
+            <label for="new-password">Nueva Contraseña:</label>
+            <input type="password" id="new-password" name="new-password" placeholder="Ingresa tu nueva contraseña" required>
+            <label for="confirm-password">Confirmar Contraseña:</label>
+            <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirma tu nueva contraseña" required>
+            <button type="submit">Restablecer Contraseña</button>
+        </form>
+        <p id="reset-message"></p>
+    </div>
+    <script src="../../../scripts/regis_login/login/reset_pass.js"></script>
+</body>
+</html>
