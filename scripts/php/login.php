@@ -31,21 +31,65 @@ $result = mysqli_stmt_get_result($stmt);
 $user = mysqli_fetch_assoc($result);
 
 if ($user) {
+    $failedAttempts = $user['intentos_fallidos'];
+    $lastFailedAttempt = strtotime($user['ultimo_intento_fallido']);
+    $currentTime = time();
+
+    // Bloqueo de 5 minutos
+    if ($failedAttempts >= 4 && ($currentTime - $lastFailedAttempt) < 300) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Tu cuenta está bloqueada. Intenta nuevamente en 5 minutos."
+        ]);
+        exit;
+    }
+
     // Verificar la contraseña
     if (sha1($contrasena) == $user['contrasena']) {
-        // Si la contraseña es correcta, verificar si la cuenta está verificada
+        // Restablecer intentos fallidos en caso de éxito
+        $resetAttemptsSql = "UPDATE usuario SET intentos_fallidos = 0 WHERE correo = ?";
+        $resetStmt = mysqli_prepare($conn, $resetAttemptsSql);
+        mysqli_stmt_bind_param($resetStmt, "s", $correo);
+        mysqli_stmt_execute($resetStmt);
+
+        // Verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
             echo json_encode(["success" => true, "redirect" => "../regist/regist_inter.html?email=" . urlencode($correo)]);
         } else {
             echo json_encode(["success" => true, "redirect" => "../../main_menu/main_menu.html"]);
         }
     } else {
-        echo json_encode(["success" => false, "message" => "La contraseña es incorrecta."]);
+        // Incrementar intentos fallidos
+        $failedAttempts++;
+        $updateAttemptsSql = "UPDATE usuario SET intentos_fallidos = ?, ultimo_intento_fallido = NOW() WHERE correo = ?";
+        $updateStmt = mysqli_prepare($conn, $updateAttemptsSql);
+        mysqli_stmt_bind_param($updateStmt, "is", $failedAttempts, $correo);
+        mysqli_stmt_execute($updateStmt);
+
+        if ($failedAttempts >= 4) {
+            // Enviar correo de notificación
+            sendEmail($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.");
+
+            echo json_encode([
+                "success" => false,
+                "message" => "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."
+            ]);
+        } else {
+            echo json_encode(["success" => false, "message" => "La contraseña es incorrecta."]);
+        }
     }
 } else {
     echo json_encode(["success" => false, "message" => "El usuario no existe."]);
 }
 
 // Cerrar la conexión
-mysqli_close($conn);//
+mysqli_close($conn);
+
+// Función para enviar correos
+function sendEmail($to, $subject, $body) {
+    // Configuración del correo (puedes usar PHPMailer u otra biblioteca)
+    $headers = "From: no-reply@optistock.com\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    mail($to, $subject, $body, $headers);
+}
 ?>

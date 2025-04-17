@@ -41,7 +41,7 @@ function verifyCode(email, code) {
     .then(data => {
         if (data.success) {
             // Si la verificación fue exitosa, redirigir al siguiente paso
-            window.location.href = `registro_p2.html?email=${encodeURIComponent(email)}`;
+            window.location.href = `../../main_menu/main_menu.html?email=${encodeURIComponent(email)}`;
         } else {
             alert(data.message);  // Si hubo un error, mostramos el mensaje de error
         }
