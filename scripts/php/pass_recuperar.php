@@ -1,6 +1,4 @@
 <?php
-// filepath: c:\Users\Em1l1\OneDrive\Escritorio\OptiStock\scripts\php\pass_recuperar.php
-
 header('Content-Type: application/json');
 // Conexión a la base de datos
 $servername = "localhost";

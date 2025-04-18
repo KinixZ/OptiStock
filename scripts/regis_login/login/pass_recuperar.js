@@ -1,7 +1,7 @@
 document.getElementById("recoveryForm").addEventListener("submit", function (event) {
     event.preventDefault();
 
-    const email = document.getElementById("recovery-email").value;
+    const email = document.getElementById("email").value;
     const recoveryMessage = document.getElementById("recovery-message");
 
     fetch('../../../scripts/php/pass_recuperar.php', {
