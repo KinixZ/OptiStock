@@ -78,8 +78,8 @@ try {
     $mail->isSMTP();
     $mail->Host = 'smtp.gmail.com';
     $mail->SMTPAuth = true;
-    $mail->Username = 'tu_correo@gmail.com';
-    $mail->Password = 'tu_contraseña';
+    $mail->Username = 'optistockproject@gmail.com';
+    $mail->Password = '0pt1st0ck';
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port = 587;
 
