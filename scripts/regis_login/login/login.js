@@ -36,6 +36,11 @@ fetch("../../../scripts/php/login_google.php", {
 .then(res => res.json())
 .then(data => {
     console.log("Respuesta del backend:", data);
+    const errorMessage = document.getElementById('error-message');
+
+    localStorage.setItem('usuario_id', data.usuario.id);
+    localStorage.setItem('usuario_nombre', userData.given_name);
+    localStorage.setItem('usuario_email', userData.email);
 
     if (data.success) {
         if (data.completo) {
@@ -45,7 +50,6 @@ fetch("../../../scripts/php/login_google.php", {
         }
     } else {
         alert("Error en autenticación con Google.");
-        console.error("Mensaje backend:", data.message || data.error);
     }
 });
 
@@ -83,9 +87,6 @@ document.getElementById("loginForm").addEventListener("submit", function (event)
     const correo = document.getElementById('email').value;
     const contrasena = document.getElementById('password').value;
 
-    console.log("Correo:", correo);
-    console.log("Contraseña:", contrasena);
-
     const formData = new URLSearchParams();
     formData.append('correo', correo);
     formData.append('contrasena', contrasena);
@@ -104,6 +105,9 @@ document.getElementById("loginForm").addEventListener("submit", function (event)
         .then(data => {
             const errorMessage = document.getElementById('error-message');
             if (data.success) {
+                localStorage.setItem('usuario_id', data.usuario.id);
+                localStorage.setItem('usuario_nombre', data.usuario.nombre);
+                
                 window.location.href = data.redirect;
             } else {
                 errorMessage.textContent = data.message; // Mostrar mensaje del backend
