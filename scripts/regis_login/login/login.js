@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+    // Función para manejar la respuesta del login con Google
     function handleCredentialResponse(response) {
         function parseJwt(token) {
             const base64Url = token.split('.')[1];
@@ -19,40 +20,42 @@ document.addEventListener("DOMContentLoaded", function () {
         const nombre = encodeURIComponent(userData.given_name || '');
         const apellido = encodeURIComponent(userData.family_name || '');
         const email = encodeURIComponent(userData.email || '');
-        // Aquí puedes decidir qué datos enviar al backend
 
-fetch("../../../scripts/php/login_google.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-        token: response.credential,
-        email: userData.email,
-        nombre: userData.given_name,
-        apellido: userData.family_name,
-        picture: userData.picture,
-        google_id: userData.sub
-    })
-})
-.then(res => res.json())
-.then(data => {
-    console.log("Respuesta del backend:", data);
+        fetch("../../../scripts/php/login_google.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token: response.credential,
+                email: userData.email,
+                nombre: userData.given_name,
+                apellido: userData.family_name,
+                picture: userData.picture,
+                google_id: userData.sub
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("Respuesta del backend:", data);
 
-    if (data.success) {
-        if (data.completo) {
-            window.location.href = "../../main_menu/main_menu.html";
-        } else {
-            window.location.href = `../regist/regist_google.html?email=${email}&nombre=${nombre}&apellido=${apellido}`;
-        }
-    } else {
-        alert("Error en autenticación con Google.");
-        console.error("Mensaje backend:", data.message || data.error);
+            if (data.success) {
+                // Guardar la sesión en localStorage
+                localStorage.setItem('usuario_id', data.id);
+                localStorage.setItem('usuario_nombre', userData.given_name);
+                localStorage.setItem('usuario_email', userData.email);
+
+                if (data.completo) {
+                    window.location.href = "../../main_menu/main_menu.html";
+                } else {
+                    window.location.href = `../regist/regist_google.html?email=${email}&nombre=${nombre}&apellido=${apellido}`;
+                }
+            } else {
+                alert("Error en autenticación con Google.");
+                console.error("Mensaje backend:", data.message || data.error);
+            }
+        });
     }
-});
 
-
-    }
-
-    // Esperar a que Google esté listo antes de usarlo
+    // Inicialización del login con Google
     function initGoogleLogin() {
         if (window.google && google.accounts && google.accounts.id) {
             google.accounts.id.initialize({
@@ -68,33 +71,31 @@ fetch("../../../scripts/php/login_google.php", {
                 }
             );
         } else {
-            // Reintentar cada 100ms hasta que esté listo
             setTimeout(initGoogleLogin, 100);
         }
     }
 
     initGoogleLogin();
-});
 
-// Login normal
-document.getElementById("loginForm").addEventListener("submit", function (event) {
-    event.preventDefault();
+    // Login tradicional (correo y contraseña)
+    document.getElementById("loginForm").addEventListener("submit", function (event) {
+        event.preventDefault();
 
-    const correo = document.getElementById('email').value;
-    const contrasena = document.getElementById('password').value;
+        const correo = document.getElementById('email').value;
+        const contrasena = document.getElementById('password').value;
 
-    console.log("Correo:", correo);
-    console.log("Contraseña:", contrasena);
+        console.log("Correo:", correo);
+        console.log("Contraseña:", contrasena);
 
-    const formData = new URLSearchParams();
-    formData.append('correo', correo);
-    formData.append('contrasena', contrasena);
+        const formData = new URLSearchParams();
+        formData.append('correo', correo);
+        formData.append('contrasena', contrasena);
 
-    fetch('../../../scripts/php/login.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-    })
+        fetch('../../../scripts/php/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        })
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -104,14 +105,33 @@ document.getElementById("loginForm").addEventListener("submit", function (event)
         .then(data => {
             const errorMessage = document.getElementById('error-message');
             if (data.success) {
+                // Guardar la sesión en localStorage
+                localStorage.setItem('usuario_id', data.id_usuario);
+                localStorage.setItem('usuario_nombre', data.nombre);
+                localStorage.setItem('usuario_email', data.correo);
+
                 window.location.href = data.redirect;
             } else {
-                errorMessage.textContent = data.message; // Mostrar mensaje del backend
-                errorMessage.style.color = "red"; // Opcional: Cambiar color del mensaje
+                errorMessage.textContent = data.message;
+                errorMessage.style.color = "red";
             }
         })
         .catch(err => {
             console.error('Error en la solicitud:', err);
-            alert("Parece que hubo un error a la hora de iniciar sesion. Revisa tus datos e intentelo de nuevo.");
+            alert("Parece que hubo un error a la hora de iniciar sesión. Revisa tus datos e intentelo de nuevo.");
         });
+    });
+
+    // Verificar si hay sesión activa en localStorage al cargar la página
+    if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
+        // Si ya está logueado, puedes redirigirlo o mostrar su nombre, por ejemplo:
+        console.log("Usuario logueado:", localStorage.getItem('usuario_nombre'));
+        // Redirigir a la página principal si es necesario
+        // window.location.href = "../../main_menu/main_menu.html";
+    } else {
+        // Si no está logueado, redirigirlo al login
+        if (window.location.pathname !== "/login.html") {
+            window.location.href = "../../../login.html"; // Cambia la ruta según sea necesario
+        }
+    }
 });

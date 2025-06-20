@@ -1,4 +1,5 @@
 <?php
+session_start();
 // Conexión a la base de datos
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
@@ -38,6 +39,10 @@ if ($check->num_rows > 0) {
 
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
 
+    $_SESSION['usuario_id'] = $id;
+    $_SESSION['usuario_nombre'] = $nombre;
+    $_SESSION['usuario_correo'] = $correo;
+
     echo json_encode(["success" => true, "completo" => $completo]);
 } else {
     // Registrar usuario nuevo
@@ -49,6 +54,10 @@ if ($check->num_rows > 0) {
     $insert->bind_param("ssssss", $nombre, $apellido, $fecha, $tel, $correo, $pass_fake);
 
     if ($insert->execute()) {
+        $_SESSION['usuario_id'] = $insert->insert_id;
+        $_SESSION['usuario_nombre'] = $nombre;
+        $_SESSION['usuario_correo'] = $correo;
+        
         echo json_encode(["success" => true, "completo" => false]);
     } else {
         echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);

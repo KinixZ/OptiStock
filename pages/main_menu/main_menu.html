@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Menu - OptiStock</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Estilo para el menú lateral */
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            background-color: #343a40;
+            color: white;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 0;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        .sidebar a:hover {
+            background-color: #495057;
+        }
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        .panel {
+            margin-bottom: 20px;
+        }
+        .panel-title {
+            font-weight: bold;
+        }
+        .alert-box {
+            display: none;
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .btn-custom {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .btn-custom:hover {
+            background-color: #138496;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar (Menú lateral) -->
+    <div class="sidebar">
+        <h3>OptiStock</h3>
+        <a href="#" id="menu_dashboard">Dashboard</a>
+        <a href="#" id="menu_reportes">Reportes</a>
+        <a href="#" id="menu_metrica">Métricas</a>
+        <a href="#" id="menu_configuracion">Configuración</a>
+        <a href="#" id="menu_logout">Cerrar sesión</a>
+    </div>
+
+    <!-- Main content area -->
+    <div class="content">
+        <h1 id="main-title">Bienvenido a OptiStock</h1>
+
+        <!-- Panel de métricas -->
+        <div class="panel">
+            <h4 class="panel-title">Métricas de Productos con Bajo Stock</h4>
+            <div id="low-stock-metrics">
+                <!-- Aquí van las métricas de bajo stock -->
+                <p>No hay datos disponibles</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h4 class="panel-title">Métricas de Productos con Mayor Rotación (últimas 24 horas)</h4>
+            <div id="high-rotation-metrics">
+                <!-- Aquí van las métricas de productos con mayor rotación -->
+                <p>No hay datos disponibles</p>
+            </div>
+        </div>
+
+        <!-- Alerta -->
+        <div class="alert-box" id="alert-low-capacity">
+            ¡Alerta! Una zona está alcanzando su capacidad máxima.
+        </div>
+
+        <!-- Notificaciones -->
+        <div class="panel">
+            <h4 class="panel-title">Notificaciones</h4>
+            <ul id="notifications-list">
+                <!-- Lista de notificaciones -->
+                <li>No hay notificaciones nuevas.</li>
+            </ul>
+        </div>
+
+        <!-- Panel de Movimientos -->
+        <div class="panel">
+            <h4 class="panel-title">Últimos Movimientos</h4>
+            <div id="recent-movements">
+                <!-- Aquí van los movimientos recientes -->
+                <p>No hay movimientos recientes</p>
+            </div>
+        </div>
+
+        <!-- Botón para abrir tutorial -->
+        <button class="btn btn-custom" id="btn-tutorial">Ver Tutorial</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Simulamos el rol del usuario desde el localStorage (esto normalmente lo obtienes de tu backend)
+            const userRole = localStorage.getItem("usuario_rol") || "admin"; // Si no existe, asumimos que es admin para prueba.
+
+            // Mostrar tutorial si es la primera vez
+            if (!localStorage.getItem("tutorial_seen")) {
+                document.getElementById("btn-tutorial").style.display = "block";
+            }
+
+            // Cargar datos dependiendo del rol
+            loadMenuByRole(userRole);
+
+            // Función para cargar el menú basado en el rol
+            function loadMenuByRole(role) {
+                // Menú básico
+                $('#menu_dashboard').show();
+                $('#menu_reportes').show();
+                $('#menu_metrica').show();
+                $('#menu_configuracion').show();
+
+                if (role === 'admin') {
+                    // Admin: mostrar todos los módulos
+                    $('#menu_dashboard').text('Dashboard (Admin)');
+                } else if (role === 'supervisor') {
+                    // Supervisor: cargar métricas específicas
+                    $('#menu_metrica').text('Métricas Supervisor');
+                } else if (role === 'almacenista') {
+                    // Almacenista: funciones de gestión de inventario
+                    $('#menu_reportes').text('Gestión de Inventarios');
+                }
+            }
+
+            // Mostrar tutorial
+            document.getElementById("btn-tutorial").addEventListener("click", function () {
+                alert("Bienvenido al tutorial, te explicaremos las funciones principales.");
+                localStorage.setItem("tutorial_seen", true);
+                document.getElementById("btn-tutorial").style.display = "none";
+            });
+
+            // Logout
+            document.getElementById("menu_logout").addEventListener("click", function () {
+                localStorage.clear();
+                window.location.href = "../../../login.html"; // Redirige al login
+            });
+
+            // Cargar alertas y métricas por ejemplo
+            setTimeout(() => {
+                document.getElementById("alert-low-capacity").style.display = "block";
+                document.getElementById("low-stock-metrics").innerHTML = "<p>Producto A - 5 unidades</p>";
+                document.getElementById("high-rotation-metrics").innerHTML = "<p>Producto B - 500 unidades vendidas</p>";
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

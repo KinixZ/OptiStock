@@ -1,4 +1,5 @@
 <?php
+session_start();
 // Obtener los datos del formulario
 $correo = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
@@ -51,6 +52,10 @@ if ($user) {
         $resetStmt = mysqli_prepare($conn, $resetAttemptsSql);
         mysqli_stmt_bind_param($resetStmt, "s", $correo);
         mysqli_stmt_execute($resetStmt);
+
+        $_SESSION['usuario_id'] = $user['id_usuario'];
+        $_SESSION['usuario_nombre'] = $user['nombre'];
+        $_SESSION['usuario_correo'] = $user['correo'];
 
         // Verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
