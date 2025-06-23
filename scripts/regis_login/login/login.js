@@ -127,11 +127,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // Si ya está logueado, puedes redirigirlo o mostrar su nombre, por ejemplo:
         console.log("Usuario logueado:", localStorage.getItem('usuario_nombre'));
         // Redirigir a la página principal si es necesario
-        // window.location.href = "../../main_menu/main_menu.html";
+        window.location.href = "../../main_menu/main_menu.html";
     } else {
         // Si no está logueado, redirigirlo al login
-        if (window.location.pathname !== "../../../login.html") {
-            window.location.href = "../../../login.html"; // Cambia la ruta según sea necesario
+        if (window.location.pathname !== "login.html") {
+            window.location.href = "login.html"; // Cambia la ruta según sea necesario
         }
     }
 });
