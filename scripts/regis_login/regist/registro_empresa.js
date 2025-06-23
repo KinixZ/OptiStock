@@ -9,12 +9,13 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
     formData.append('usuario_creador', localStorage.getItem('usuario_id')); // Obtener el ID del usuario desde localStorage
 
     // Enviar los datos del formulario al archivo PHP mediante AJAX
-    fetch('../../../scripts/php/registro_empresa.php', {
+    fetch('../../../scripts/php/register_empresa.php', {
         method: 'POST',
         body: formData
     })
     .then(response => response.json())
     .then(data => {
+        console.log(data); // Ver el contenido de la respuesta JSON en la consola
         if (data.success) {
             alert('Empresa registrada con éxito');
             window.location.href = '../../main_menu/main_menu.html'; // Redirigir al menú principal
