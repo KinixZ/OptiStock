@@ -1,13 +1,4 @@
 <?php
-
-header("Access-Control-Allow-Origin: *"); // Permitir acceso desde cualquier origen
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS"); // Permitir los métodos necesarios
-header("Access-Control-Allow-Headers: Content-Type"); // Permitir el encabezado Content-Type
-
-// Habilitar reporte de errores
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
 // Establecer la conexión a la base de datos
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
@@ -29,7 +20,10 @@ $usuario_creador = $_POST['usuario_creador'];
 // Subir el logo de la empresa
 $logo_empresa = null;
 if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
+    // Definir la ruta de la imagen
     $logo_empresa = 'images/logos/' . basename($_FILES['logo_empresa']['name']);
+    
+    // Mover el archivo cargado a la carpeta /images/logos
     if (!move_uploaded_file($_FILES['logo_empresa']['tmp_name'], '../../../images/logos/' . basename($_FILES['logo_empresa']['name']))) {
         echo json_encode(["success" => false, "message" => "Error al subir el logo de la empresa."]);
         exit;
@@ -43,10 +37,8 @@ $stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "sssi", $nombre_empresa, $logo_empresa, $sector_empresa, $usuario_creador);
 
 if (mysqli_stmt_execute($stmt)) {
-    // Enviar respuesta JSON si la empresa se registra correctamente
     echo json_encode(["success" => true, "message" => "Empresa registrada con éxito"]);
 } else {
-    // Enviar respuesta JSON si hubo un error al insertar la empresa
     echo json_encode(["success" => false, "message" => "Error al registrar la empresa: " . mysqli_error($conn)]);
 }
 
