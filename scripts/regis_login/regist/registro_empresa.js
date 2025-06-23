@@ -9,7 +9,7 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
     formData.append('usuario_creador', localStorage.getItem('usuario_id')); // Obtener el ID del usuario desde localStorage
 
     // Enviar los datos del formulario al archivo PHP mediante AJAX
-    fetch('../../../scripts/php/register_empresa.php', {
+    fetch('../../../scripts/php/registro_empresa.php', {
         method: 'POST',
         body: formData
     })
