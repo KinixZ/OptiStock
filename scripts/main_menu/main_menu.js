@@ -241,8 +241,8 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// Mostrar el nombre y rol del usuario desde localStorage
 document.addEventListener("DOMContentLoaded", function () {
-    // Mostrar el nombre y rol del usuario desde localStorage
     if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
         const userName = localStorage.getItem('usuario_nombre');
         const userRole = localStorage.getItem('usuario_rol'); // Si lo tienes almacenado
@@ -278,27 +278,4 @@ document.addEventListener("DOMContentLoaded", function () {
             userMenu.style.display = "none";
         }
     });
-});
-
-
-function checkFirstVisit() {
-    if (!localStorage.getItem('optistock_visited')) {
-        startTutorial();
-        localStorage.setItem('optistock_visited', 'true');
-    }
-}
-
-// Llamada al iniciar la página
-document.addEventListener('DOMContentLoaded', checkFirstVisit);
-
-document.addEventListener("DOMContentLoaded", function () {
-    const userRole = localStorage.getItem('usuario_rol');
-    if (userRole) {
-        console.log('Rol del usuario:', userRole); // Verificar el rol guardado
-
-        // Mostrar el rol en algún lugar de la interfaz si es necesario
-        document.querySelector('.user-role').textContent = userRole;
-    } else {
-        console.log('No hay rol guardado en localStorage');
-    }
 });
