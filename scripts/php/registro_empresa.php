@@ -1,4 +1,8 @@
 <?php
+// Habilitar reporte de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 // Establecer la conexión a la base de datos
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
@@ -8,7 +12,6 @@ $database   = "u296155119_OptiStock";
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
 
 if (!$conn) {
-    // Enviar un mensaje de error si no se puede conectar a la base de datos
     echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
     exit;
 }
