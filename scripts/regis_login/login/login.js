@@ -1,5 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+    // Verificar si la sesión está activa
+    if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
+        // Si ya está logueado, redirigir directamente al menú principal
+        window.location.href = "../../main_menu/main_menu.html";
+        return;  // Salir de la función para evitar más redirecciones
+    } 
+
     // Función para manejar la respuesta del login con Google
     function handleCredentialResponse(response) {
         function parseJwt(token) {
@@ -122,16 +129,4 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Verificar si hay sesión activa en localStorage al cargar la página
-    if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
-        // Si ya está logueado, puedes redirigirlo o mostrar su nombre, por ejemplo:
-        console.log("Usuario logueado:", localStorage.getItem('usuario_nombre'));
-        // Redirigir a la página principal si es necesario
-        window.location.href = "../../main_menu/main_menu.html";
-    } else {
-        // Si no está logueado, redirigirlo al login
-        if (window.location.pathname !== "login.html") {
-            window.location.href = "login.html"; // Cambia la ruta según sea necesario
-        }
-    }
 });
