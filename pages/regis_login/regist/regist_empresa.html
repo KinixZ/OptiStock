@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Empresa - OPTISTOCK</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../../styles/main_menu/main_menu.css">
+</head>
+<body>
+    <div class="content">
+        <h1>Registrar Empresa</h1>
+        <form id="registerForm" enctype="multipart/form-data">
+            <label for="nombre_empresa">Nombre de la Empresa:</label>
+            <input type="text" id="nombre_empresa" name="nombre_empresa" required><br><br>
+
+            <label for="logo_empresa">Logo de la Empresa:</label>
+            <input type="file" id="logo_empresa" name="logo_empresa" accept="image/*"><br><br>
+
+            <label for="sector_empresa">Sector:</label>
+            <select id="sector_empresa" name="sector_empresa" required>
+                <option value="Industrial">Industrial</option>
+                <option value="Comercial">Comercial</option>
+                <option value="Servicios">Servicios</option>
+                <option value="Agropecuario">Agropecuario</option>
+                <option value="Tecnológico">Tecnológico</option>
+                <option value="Financiero">Financiero</option>
+                <option value="Construcción">Construcción</option>
+            </select><br><br>
+
+            <button type="submit">Registrar Empresa</button>
+        </form>
+    </div>
+
+    <!-- Referencia al script externo -->
+    <script src="../../scripts/registro_empresa.js"></script>
+</body>
+</html>

@@ -279,3 +279,50 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Verificar si el usuario tiene una empresa registrada
+    fetch('../../../scripts/php/check_empresa.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            usuario_id: localStorage.getItem('usuario_id') // Obtener el ID del usuario desde localStorage
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Si la empresa está registrada, desbloqueamos los elementos
+            console.log('Empresa registrada:', data.empresa_nombre);
+            document.querySelector('.empresa-info').textContent = `Empresa: ${data.empresa_nombre}`;
+            
+            // Mostrar los elementos desbloqueados
+            document.querySelectorAll('.empresa-elements').forEach(element => {
+                element.style.display = 'block'; // Mostrar las secciones relacionadas con la empresa
+            });
+
+            // Ocultar mensaje de registro de empresa
+            document.getElementById('message').style.display = 'none';
+            
+            // Mostrar el tutorial una vez que los elementos están desbloqueados
+            startTutorial();
+        } else {
+            // Si no hay empresa registrada, mostramos el mensaje y bloqueamos los elementos
+            alert('No tienes una empresa registrada. Por favor, regístrala para continuar.');
+            window.location.href = 'regist_empresa.html'; // Redirigimos a la página para registrar empresa
+
+            // Ocultar los elementos relacionados con la empresa
+            document.querySelectorAll('.empresa-elements').forEach(element => {
+                element.style.display = 'none'; // Ocultar secciones que requieren empresa
+            });
+            
+            // Mostrar el mensaje de registro de empresa
+            document.getElementById('message').style.display = 'block';
+        }
+    })
+    .catch(error => {
+        console.error('Error al verificar la empresa:', error);
+    });
+});
