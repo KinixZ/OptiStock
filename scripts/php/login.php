@@ -60,9 +60,23 @@ if ($user) {
 
         // Verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
-            echo json_encode(["success" => true, "redirect" => "../regist/regist_inter.html?email=" . urlencode($correo)]);
+            echo json_encode([
+                "success" => true,
+                "redirect" => "../regist/regist_inter.html?email=" . urlencode($correo),
+                "id" => $user['id_usuario'],
+                "nombre" => $user['nombre'],
+                "correo" => $user['correo'],
+                "rol" => $user['rol'] // Enviar el rol aquí
+            ]);
         } else {
-            echo json_encode(["success" => true, "redirect" => "../../main_menu/main_menu.html"]);
+            echo json_encode([
+                "success" => true,
+                "redirect" => "../../main_menu/main_menu.html",
+                "id" => $user['id_usuario'],
+                "nombre" => $user['nombre'],
+                "correo" => $user['correo'],
+                "rol" => $user['rol'] // Enviar el rol aquí
+            ]);
         }
     } else {
         // Incrementar intentos fallidos
