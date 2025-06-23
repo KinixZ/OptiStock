@@ -1,4 +1,9 @@
 <?php
+
+header("Access-Control-Allow-Origin: *"); // Permitir acceso desde cualquier origen
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS"); // Permitir los métodos necesarios
+header("Access-Control-Allow-Headers: Content-Type"); // Permitir el encabezado Content-Type
+
 // Habilitar reporte de errores
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
