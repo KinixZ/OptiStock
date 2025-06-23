@@ -130,7 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // window.location.href = "../../main_menu/main_menu.html";
     } else {
         // Si no está logueado, redirigirlo al login
-        if (window.location.pathname !== "/login.html") {
+        if (window.location.pathname !== "../../../login.html") {
             window.location.href = "../../../login.html"; // Cambia la ruta según sea necesario
         }
     }
