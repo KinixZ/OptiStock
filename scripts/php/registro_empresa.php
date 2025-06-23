@@ -17,10 +17,10 @@ $nombre_empresa = $_POST['nombre_empresa'];
 $sector_empresa = $_POST['sector_empresa'];
 $usuario_creador = $_POST['usuario_creador'];
 
-// Subir el logo de la empresa
-$logo_empresa = null;
+// Subir el logo de la empresa (opcional)
+$logo_empresa = null; // Inicia con null en caso de que no se suba un logo
 if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
-    // Definir la ruta de la imagen
+    // Generar la ruta donde se almacenará la imagen en el servidor
     $logo_empresa = 'images/logos/' . basename($_FILES['logo_empresa']['name']);
     
     // Mover el archivo cargado a la carpeta /images/logos
