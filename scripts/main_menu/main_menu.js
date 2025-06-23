@@ -240,3 +240,65 @@ document.addEventListener('keydown', function(e) {
         startTutorial();
     }
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Mostrar el nombre y rol del usuario desde localStorage
+    if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
+        const userName = localStorage.getItem('usuario_nombre');
+        const userRole = localStorage.getItem('usuario_rol'); // Si lo tienes almacenado
+
+        document.querySelector('.user-name').textContent = userName;
+        document.querySelector('.user-role').textContent = userRole || 'Administrador';
+    }
+
+    // Funcionalidad para el submenú desplegable
+    const dropdownButton = document.getElementById("dropdownMenuButton");
+    const userMenu = document.getElementById("userMenu");
+
+    // Mostrar u ocultar el submenú
+    dropdownButton.addEventListener("click", function () {
+        userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
+    });
+
+    // Cerrar sesión
+    document.getElementById("logoutBtn").addEventListener("click", function () {
+        // Eliminar datos del localStorage
+        localStorage.removeItem('usuario_id');
+        localStorage.removeItem('usuario_nombre');
+        localStorage.removeItem('usuario_email');
+        localStorage.removeItem('usuario_rol'); // Si lo tienes almacenado
+
+        // Redirigir al login
+        window.location.href = "../regis_login/login/login.html";
+    });
+
+    // Cerrar el submenú si el usuario hace clic fuera de él
+    document.addEventListener("click", function (event) {
+        if (!userMenu.contains(event.target) && !dropdownButton.contains(event.target)) {
+            userMenu.style.display = "none";
+        }
+    });
+});
+
+
+function checkFirstVisit() {
+    if (!localStorage.getItem('optistock_visited')) {
+        startTutorial();
+        localStorage.setItem('optistock_visited', 'true');
+    }
+}
+
+// Llamada al iniciar la página
+document.addEventListener('DOMContentLoaded', checkFirstVisit);
+
+document.addEventListener("DOMContentLoaded", function () {
+    const userRole = localStorage.getItem('usuario_rol');
+    if (userRole) {
+        console.log('Rol del usuario:', userRole); // Verificar el rol guardado
+
+        // Mostrar el rol en algún lugar de la interfaz si es necesario
+        document.querySelector('.user-role').textContent = userRole;
+    } else {
+        console.log('No hay rol guardado en localStorage');
+    }
+});
