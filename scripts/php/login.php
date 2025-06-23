@@ -56,6 +56,7 @@ if ($user) {
         $_SESSION['usuario_id'] = $user['id_usuario'];
         $_SESSION['usuario_nombre'] = $user['nombre'];
         $_SESSION['usuario_correo'] = $user['correo'];
+        $_SESSION['usuario_rol'] = $user['rol'];
 
         // Verificar si la cuenta está verificada
         if ($user['verificacion_cuenta'] == 0) {
