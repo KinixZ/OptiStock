@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return response.json();
         })
         .then(data => {
+            console.log("Respuesta del backend:", data);
             const errorMessage = document.getElementById('error-message');
             if (data.success) {
                 // Guardar la sesión en localStorage
