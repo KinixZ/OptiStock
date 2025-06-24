@@ -268,6 +268,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (logoutBtn) {
         logoutBtn.addEventListener("click", function () {
+            console.log("click logoutBtn");
             fetch("../../../scripts/php/logout.php", {
                 method: "POST",
                 credentials: "include"
