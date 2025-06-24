@@ -268,7 +268,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (logoutBtn) {
         logoutBtn.addEventListener("click", function () {
-            fetch("/scripts/php/logout.php", {
+            fetch("../../../scripts/php/logout.php", {
                 method: "POST",
                 credentials: "include"
             })
@@ -306,7 +306,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
     // Verificar si el usuario tiene una empresa registrada
-    fetch('/scripts/php/check_empresa.php', {
+    fetch('../../../scripts/php/check_empresa.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
