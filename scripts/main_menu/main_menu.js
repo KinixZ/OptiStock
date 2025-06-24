@@ -302,7 +302,10 @@ document.addEventListener("DOMContentLoaded", function () {
     .then(data => {
         console.log("🔍 check_empresa.php:", data);
         if (data.success) {
-            document.querySelector('.empresa-info').textContent = `Empresa: ${data.empresa_nombre}`;
+            const tituloEmpresa = document.getElementById('empresaTitulo');
+            if (tituloEmpresa) {
+                tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
+            }
             document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
             const msg = document.getElementById('message');
             if (msg) msg.style.display = 'none';
