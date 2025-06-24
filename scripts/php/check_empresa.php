@@ -36,7 +36,6 @@ echo json_encode([
     "usuario_id" => $usuario_id,
     "query" => "SELECT nombre_empresa FROM empresa WHERE usuario_creador = $usuario_id"
 ]);
-exit;
 
 // Verificar si el usuario tiene una empresa
 if ($empresa = mysqli_fetch_assoc($result)) {
