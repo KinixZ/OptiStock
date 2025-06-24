@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (data.success) {
                 // Guardar la sesión en localStorage
                 localStorage.setItem('usuario_id', data.id);
-                localStorage.setItem('usuario_nombre', userData.given_name);
+                localStorage.setItem('usuario_nombre', data.nombre);
                 localStorage.setItem('usuario_email', userData.email);
                 localStorage.setItem('usuario_rol', data.rol);
 
