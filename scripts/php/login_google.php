@@ -28,19 +28,19 @@ if (!$correo || !$nombre || !$apellido || !$google_id) {
 }
 
 // Verificar si el usuario ya existe
-$check = $conn->prepare("SELECT id_usuario, fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
+$check = $conn->prepare("SELECT id_usuario, nombre fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
 $check->bind_param("s", $correo);
 $check->execute();
 $check->store_result();
 
 if ($check->num_rows > 0) {
-    $check->bind_result($id, $fecha, $tel, $rol);
+    $check->bind_result($id, $nom, $fecha, $tel, $rol);
     $check->fetch();
 
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
 
     $_SESSION['usuario_id'] = $id;
-    $_SESSION['usuario_nombre'] = $nombre;
+    $_SESSION['usuario_nombre'] = $nom;
     $_SESSION['usuario_correo'] = $correo;
     $_SESSION['usuario_rol'] = $rol;
 
