@@ -6,7 +6,7 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
     formData.append('nombre_empresa', document.getElementById('nombre_empresa').value);
     formData.append('logo_empresa', document.getElementById('logo_empresa').files[0]);
     formData.append('sector_empresa', document.getElementById('sector_empresa').value);
-    formData.append('usuario_creador', usuario_id); // Obtener el ID del usuario desde localStorage
+    formData.append('usuario_creador', localStorage.getItem('usuario_id')); // Obtener el ID del usuario desde localStorage
 
     fetch('../../../scripts/php/registro_empresa.php', {
     method: 'POST',
