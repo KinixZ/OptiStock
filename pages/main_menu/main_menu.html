@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,127 +10,302 @@
     <link rel="stylesheet" href="../../styles/main_menu/main_menu.css">
 </head>
 <body>
-    <!-- Contenido visible solo si tiene empresa -->
-    <div id="contenido-con-empresa" style="display: none;">
-        <!-- Sidebar Navigation -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h2><i class="fas fa-warehouse"></i> OPTISTOCK</h2>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-warehouse"></i> OPTISTOCK</h2>
+        </div>
+        <div class="sidebar-menu">
+            <a href="#" class="active">
+                <i class="fas fa-home"></i> <span>Inicio</span>
+            </a>
+            <a href="../area_almac/areas_zonas.html">
+                <i class="fas fa-map-marked-alt"></i> <span>Áreas y Zonas</span>
+            </a>
+            <a href="../gest_inve/gestion_inventario.html">
+                <i class="fas fa-boxes"></i> <span>Gestión de Inventario</span>
+            </a>
+            <a href="../admin_usuar/administracion_usuarios.html">
+                <i class="fas fa-users-cog"></i> <span>Administración</span>
+            </a>
+            <a href="../account_suscrip/suscripciones.html">
+                <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+            </a>
+            <a href="../reports/reportes.html">
+                <i class="fas fa-file-alt"></i> <span>Reportes</span>
+            </a>
+            <a href="../control_log/log.html">
+                <i class="fas fa-clipboard-list"></i> <span>Registro de Actividades</span>
+            </a>
+            <a href="../cuenta/configuracion.html">
+                <i class="fas fa-user-cog"></i> <span>Cuenta y Suscripción</span>
+            </a>
+        </div>
+        <div class="sidebar-footer">
+            <button class="btn btn-warning" style="width: 100%;">
+                <i class="fas fa-palette"></i> <span>Personalizar</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Topbar -->
+    <div class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-title">Panel de Control Principal</div>
+        <div class="topbar-actions">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Buscar productos, órdenes...">
             </div>
-            <div class="sidebar-menu">
-                <a href="#" class="active">
-                    <i class="fas fa-home"></i> <span>Inicio</span>
-                </a>
-                <a href="../area_almac/areas_zonas.html">
-                    <i class="fas fa-map-marked-alt"></i> <span>Áreas y Zonas</span>
-                </a>
-                <a href="../gest_inve/gestion_inventario.html">
-                    <i class="fas fa-boxes"></i> <span>Gestión de Inventario</span>
-                </a>
-                <a href="../admin_usuar/administracion_usuarios.html">
-                    <i class="fas fa-users-cog"></i> <span>Administración</span>
-                </a>
-                <a href="../account_suscrip/suscripciones.html">
-                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
-                </a>
-                <a href="../reports/reportes.html">
-                    <i class="fas fa-file-alt"></i> <span>Reportes</span>
-                </a>
-                <a href="../control_log/log.html">
-                    <i class="fas fa-clipboard-list"></i> <span>Registro de Actividades</span>
-                </a>
-                <a href="../cuenta/configuracion.html">
-                    <i class="fas fa-user-cog"></i> <span>Cuenta y Suscripción</span>
-                </a>
+            <div class="notification-bell">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge">3</span>
             </div>
-            <div class="sidebar-footer">
-                <button class="btn btn-warning" style="width: 100%;">
-                    <i class="fas fa-palette"></i> <span>Personalizar</span>
+            <!-- Usuario en la topbar -->
+<div class="user-profile">
+    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Usuario">
+    <div class="user-info">
+        <span class="user-name">Usuario</span>
+        <span class="user-role">Rol</span>
+    </div>
+    <!-- Submenú desplegable -->
+    <div class="dropdown">
+        <button class="dropdown-toggle" id="dropdownMenuButton">
+            <i class="fas fa-caret-down"></i>
+        </button>
+        <div class="dropdown-menu" id="userMenu">
+            <a href="#" class="dropdown-item" id="logoutBtn">Cerrar sesión</a>
+        </div>
+    </div>
+</div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="content">
+        <!-- Welcome Card -->
+        <div class="welcome-card">
+            <h1 class="welcome-title">Bienvenido a OPTISTOCK</h1>
+            <p class="welcome-text">Sistema de Gestión y Administración de Almacenes. Desde aquí puedes controlar todas las operaciones de tu almacén, gestionar inventarios, áreas de almacenamiento y generar reportes detallados.</p>
+            
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="btn btn-success" id="ingresoFlashBtn">
+                    <i class="fas fa-bolt"></i> Ingreso Flash
+                </button>
+                <button class="btn btn-danger" id="egresoFlashBtn">
+                    <i class="fas fa-bolt"></i> Egreso Flash
+                </button>
+                <button class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Registrar Entrada
+                </button>
+                <button class="btn btn-primary">
+                    <i class="fas fa-sign-out-alt"></i> Registrar Salida
                 </button>
             </div>
         </div>
-
-        <!-- Topbar -->
-        <div class="topbar">
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
-            <div class="topbar-title">Panel de Control Principal</div>
-            <div class="topbar-actions">
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar productos, órdenes...">
-                </div>
-                <div class="notification-bell">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-badge">3</span>
-                </div>
-                <div class="user-profile">
-                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Usuario">
-                    <div class="user-info">
-                        <span class="user-name">Usuario</span>
-                        <span class="user-role">Rol</span>
+        
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Stock Alerts Card -->
+            <div class="dashboard-card" id="stockAlertsCard">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo</h3>
+                    <div class="card-actions">
+                        <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
+                        <button class="card-action-btn"><i class="fas fa-ellipsis-v"></i></button>
                     </div>
-                    <div class="dropdown">
-                        <button class="dropdown-toggle" id="dropdownMenuButton">
-                            <i class="fas fa-caret-down"></i>
-                        </button>
-                        <div class="dropdown-menu" id="userMenu">
-                            <a href="#" class="dropdown-item" id="logoutBtn">Cerrar sesión</a>
+                </div>
+                <ul class="stock-alert-list">
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Baterías AA</div>
+                                <div class="stock-alert-detail">Zona A1 - Estante 3</div>
+                            </div>
                         </div>
+                        <div class="stock-alert-stock">5 unidades</div>
+                    </li>
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Mouse Inalámbrico</div>
+                                <div class="stock-alert-detail">Zona B2 - Estante 1</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">3 unidades</div>
+                    </li>
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Teclados</div>
+                                <div class="stock-alert-detail">Zona C3 - Estante 2</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">2 unidades</div>
+                    </li>
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Monitor 24"</div>
+                                <div class="stock-alert-detail">Zona D4 - Estante 5</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">1 unidad</div>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Recent Activity Card -->
+            <div class="dashboard-card" id="recentActivityCard">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-history"></i> Movimientos Recientes</h3>
+                    <div class="card-actions">
+                        <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
                 </div>
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Ingreso de 50 unidades de Baterías AA</div>
+                            <div class="activity-time">Hace 15 minutos</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Egreso de 2 unidades de Teclados</div>
+                            <div class="activity-time">Hace 1 hora</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Transferencia de 10 Monitores a Zona D4</div>
+                            <div class="activity-time">Hace 3 horas</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Ingreso de 25 Mouse Inalámbricos</div>
+                            <div class="activity-time">Hace 5 horas</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Usuario María García inició sesión</div>
+                            <div class="activity-time">Hace 6 horas</div>
+                        </div>
+                    </li>
+                </ul>
             </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="content">
-            <!-- Welcome Card -->
-            <div class="welcome-card">
-                <h1 class="welcome-title">Bienvenido a OPTISTOCK</h1>
-                <p class="welcome-text">Sistema de Gestión y Administración de Almacenes. Desde aquí puedes controlar todas las operaciones de tu almacén, gestionar inventarios, áreas de almacenamiento y generar reportes detallados.</p>
-                <div class="quick-actions">
-                    <button class="btn btn-success" id="ingresoFlashBtn">
-                        <i class="fas fa-bolt"></i> Ingreso Flash
-                    </button>
-                    <button class="btn btn-danger" id="egresoFlashBtn">
-                        <i class="fas fa-bolt"></i> Egreso Flash
-                    </button>
-                    <button class="btn btn-primary">
-                        <i class="fas fa-sign-in-alt"></i> Registrar Entrada
-                    </button>
-                    <button class="btn btn-primary">
-                        <i class="fas fa-sign-out-alt"></i> Registrar Salida
-                    </button>
+            
+            <!-- Space Optimization Card -->
+            <div class="dashboard-card" id="spaceOptimizationCard">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-warehouse"></i> Optimización de Espacio</h3>
+                    <div class="card-actions">
+                        <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
+                <div class="empty-state">
+                    <i class="fas fa-info-circle"></i>
+                    <p>No hay sugerencias de optimización disponibles actualmente</p>
                 </div>
             </div>
-
-            <!-- Dashboard Grid -->
-            <div class="dashboard-grid">
-                <!-- Todas tus tarjetas del dashboard van aquí como ya estaban -->
+            
+            <!-- Employee Access Card -->
+            <div class="dashboard-card" id="employeeAccessCard">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-user-clock"></i> Accesos Recientes</h3>
+                    <div class="card-actions">
+                        <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Carlos López - Entrada</div>
+                            <div class="activity-time">Hoy, 08:15 AM</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Ana Martínez - Entrada</div>
+                            <div class="activity-time">Hoy, 08:30 AM</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Luis Rodríguez - Entrada</div>
+                            <div class="activity-time">Hoy, 08:45 AM</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Pedro Sánchez - Salida</div>
+                            <div class="activity-time">Ayer, 06:30 PM</div>
+                        </div>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
-
-    <!-- Sección si NO tiene empresa -->
-    <div id="mensaje-sin-empresa" style="display: none; text-align: center; padding: 80px;">
-        <h2>¡Aún no has registrado una empresa!</h2>
-        <p>Para comenzar a usar OPTISTOCK, primero necesitas registrar tu empresa.</p>
-        <button class="btn btn-primary" onclick="location.href='../regis_login/regist/regist_empresa.html'">
-            Registrar Empresa
-        </button>
-    </div>
-
+    
     <!-- Tutorial Elements -->
     <div class="tutorial-overlay-bg" id="tutorialOverlayBg" style="display: none;"></div>
+    
     <div class="tutorial-card-container" id="tutorialCardContainer" style="display: none;">
         <div class="tutorial-card" id="tutorialCard">
             <div class="tutorial-header">
                 <h3 class="tutorial-title" id="tutorialTitle">Bienvenido a OPTISTOCK</h3>
                 <button class="tutorial-close" id="closeTutorial">&times;</button>
             </div>
-            <div class="tutorial-content" id="tutorialContent"></div>
-            <div class="tutorial-indicator" id="tutorialIndicator">Paso 1 de 8</div>
+            <div class="tutorial-content" id="tutorialContent">
+                <!-- Content will be dynamically updated by JavaScript -->
+            </div>
+            <div class="tutorial-indicator" id="tutorialIndicator">
+                Paso 1 de 8
+            </div>
             <div class="tutorial-actions">
                 <button class="tutorial-btn tutorial-skip" id="skipTutorial">Omitir Tutorial</button>
                 <button class="tutorial-btn tutorial-next" id="nextTutorial">Siguiente</button>
