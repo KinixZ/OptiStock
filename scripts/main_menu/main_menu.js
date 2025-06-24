@@ -262,30 +262,37 @@ document.addEventListener("DOMContentLoaded", function () {
         userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
     });
 
-    // Cerrar sesión
-    document.getElementById("logoutBtn").addEventListener("click", function () {
-    fetch("../../../scripts/php/logout.php", {
-        method: "POST",
-        credentials: "include" // Enviar cookies si usas sesiones PHP
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data.message); // Opcional: puedes mostrarlo como toast si quieres
+    // Submenu de deslogueo
+    document.addEventListener("DOMContentLoaded", function () {
+    const logoutBtn = document.getElementById("logoutBtn");
 
-        // Limpia el localStorage también por si se usó
-        localStorage.removeItem('usuario_id');
-        localStorage.removeItem('usuario_nombre');
-        localStorage.removeItem('usuario_email');
-        localStorage.removeItem('usuario_rol');
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", function () {
+            fetch("/scripts/php/logout.php", {
+                method: "POST",
+                credentials: "include"
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.message);
 
-        // Redirigir al login
-        window.location.href = "../regis_login/login/login.html";
-    })
-    .catch(error => {
-        console.error("Error al cerrar sesión:", error);
-        alert("Error cerrando sesión.");
-    });
+                localStorage.removeItem('usuario_id');
+                localStorage.removeItem('usuario_nombre');
+                localStorage.removeItem('usuario_email');
+                localStorage.removeItem('usuario_rol');
+
+                window.location.href = "../regis_login/login/login.html";
+            })
+            .catch(error => {
+                console.error("Error al cerrar sesión:", error);
+                alert("Error al cerrar sesión.");
+            });
+        });
+    } else {
+        console.warn("⚠️ No se encontró el botón #logoutBtn al cargar el DOM.");
+    }
 });
+
 
 
     // Cerrar el submenú si el usuario hace clic fuera de él
@@ -299,7 +306,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
     // Verificar si el usuario tiene una empresa registrada
-    fetch('../../../scripts/php/check_empresa.php', {
+    fetch('/scripts/php/check_empresa.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
