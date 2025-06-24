@@ -241,115 +241,78 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Mostrar el nombre y rol del usuario desde localStorage
 document.addEventListener("DOMContentLoaded", function () {
-    // Verificar si los datos del usuario están en localStorage
-    if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
-        const userName = localStorage.getItem('usuario_nombre');
-        const userRole = localStorage.getItem('usuario_rol'); // Si lo tienes almacenado
+    // 1. Mostrar nombre y rol
+    const nombre = localStorage.getItem('usuario_nombre');
+    const rol = localStorage.getItem('usuario_rol');
+    const userNameEl = document.querySelector('.user-name');
+    const userRoleEl = document.querySelector('.user-role');
 
-        // Asignar el nombre y rol a los elementos correspondientes
-        document.querySelector('.user-name').textContent = userName;
-        document.querySelector('.user-role').textContent = userRole || 'Administrador';
-    }
+    if (nombre && userNameEl) userNameEl.textContent = nombre;
+    if (rol && userRoleEl) userRoleEl.textContent = rol;
 
-    // Funcionalidad para el submenú desplegable
+    // 2. Submenú
     const dropdownButton = document.getElementById("dropdownMenuButton");
     const userMenu = document.getElementById("userMenu");
 
-    // Mostrar u ocultar el submenú
-    dropdownButton.addEventListener("click", function () {
-        userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
-    });
+    if (dropdownButton && userMenu) {
+        dropdownButton.addEventListener("click", function () {
+            userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
+        });
+    }
 
-    // Submenu de deslogueo
-    document.addEventListener("DOMContentLoaded", function () {
+    // 3. Cerrar sesión
     const logoutBtn = document.getElementById("logoutBtn");
 
     if (logoutBtn) {
-        logoutBtn.addEventListener("click", function () {
-            console.log("click logoutBtn");
+        logoutBtn.addEventListener("click", function (e) {
+            e.preventDefault();
             fetch("/scripts/php/logout.php", {
                 method: "POST",
                 credentials: "include"
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
-                console.log(data.message);
-
-                localStorage.removeItem('usuario_id');
-                localStorage.removeItem('usuario_nombre');
-                localStorage.removeItem('usuario_email');
-                localStorage.removeItem('usuario_rol');
-
+                console.log("✅ Logout:", data.message || data);
+                localStorage.clear();
                 window.location.href = "/pages/regis_login/login/login.html";
             })
-            .catch(error => {
-                console.error("Error al cerrar sesión:", error);
+            .catch(err => {
+                console.error("❌ Error cerrando sesión:", err);
                 alert("Error al cerrar sesión.");
             });
         });
-    } else {
-        console.warn("⚠️ No se encontró el botón #logoutBtn al cargar el DOM.");
     }
-});
 
+    // 4. Verificar empresa
+    const userId = localStorage.getItem('usuario_id');
 
+    if (!userId) {
+        alert("No hay sesión activa.");
+        window.location.href = "/pages/regis_login/login/login.html";
+        return;
+    }
 
-    // Cerrar el submenú si el usuario hace clic fuera de él
-    document.addEventListener("click", function (event) {
-        if (!userMenu.contains(event.target) && !dropdownButton.contains(event.target)) {
-            userMenu.style.display = "none";
-        }
-    });
-});
-
-
-document.addEventListener("DOMContentLoaded", function () {
-    // Verificar si el usuario tiene una empresa registrada
     fetch('/scripts/php/check_empresa.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            usuario_id: localStorage.getItem('usuario_id') // Obtener el ID del usuario desde localStorage
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario_id: userId })
     })
     .then(response => response.json())
     .then(data => {
-        // Manejar la respuesta del servidor
-        console.log("Respuesta de check_empresa.php:", data);
+        console.log("🔍 check_empresa.php:", data);
         if (data.success) {
-            // Si la empresa está registrada, desbloqueamos los elementos
-            console.log('Empresa registrada:', data.empresa_nombre);
             document.querySelector('.empresa-info').textContent = `Empresa: ${data.empresa_nombre}`;
-            
-            // Mostrar los elementos desbloqueados
-            document.querySelectorAll('.empresa-elements').forEach(element => {
-                element.style.display = 'block'; // Mostrar las secciones relacionadas con la empresa
-            });
-
-            // Ocultar mensaje de registro de empresa
-            document.getElementById('message').style.display = 'none';
-            
-            // Mostrar el tutorial una vez que los elementos están desbloqueados
+            document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
+            const msg = document.getElementById('message');
+            if (msg) msg.style.display = 'none';
             startTutorial();
         } else {
-            // Si no hay empresa registrada, mostramos el mensaje y bloqueamos los elementos
-            alert('No tienes una empresa registrada. Por favor, regístrala para continuar.');
-            window.location.href = 'regist_empresa.html'; // Redirigimos a la página para registrar empresa
-
-            // Ocultar los elementos relacionados con la empresa
-            document.querySelectorAll('.empresa-elements').forEach(element => {
-                element.style.display = 'none'; // Ocultar secciones que requieren empresa
-            });
-            
-            // Mostrar el mensaje de registro de empresa
-            document.getElementById('message').style.display = 'block';
+            alert('No tienes una empresa registrada.');
+            window.location.href = 'regist_empresa.html';
         }
     })
-    .catch(error => {
-        console.error('Error al verificar la empresa:', error);
+    .catch(err => {
+        console.error("❌ Error consultando empresa:", err);
     });
 });
