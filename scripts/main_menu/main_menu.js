@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(data => {
                 console.log("✅ Logout:", data.message || data);
                 localStorage.clear();
-                window.location.href = "/pages/regis_login/login/login.html";
+                window.location.href = "../../pages/regis_login/login/login.html";
             })
             .catch(err => {
                 console.error("❌ Error cerrando sesión:", err);
@@ -289,7 +289,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!userId) {
         alert("No hay sesión activa.");
-        window.location.href = "/pages/regis_login/login/login.html";
+        window.location.href = "../../pages/regis_login/login/login.html";
         return;
     }
 
@@ -309,7 +309,7 @@ document.addEventListener("DOMContentLoaded", function () {
             startTutorial();
         } else {
             alert('No tienes una empresa registrada.');
-            window.location.href = 'regist_empresa.html';
+            window.location.href = '../regis_login/regist/regist_empresa.html';
         }
     })
     .catch(err => {
