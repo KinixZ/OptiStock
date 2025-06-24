@@ -58,7 +58,7 @@ if ($user) {
         $_SESSION['usuario_correo'] = $user['correo'];
         $_SESSION['usuario_rol'] = $user['rol'];
 
-        // Verificar si la cuenta está verificada
+        // Verificar si la cuenta se verifico
         if ($user['verificacion_cuenta'] == 0) {
             echo json_encode([
                 "success" => true,
