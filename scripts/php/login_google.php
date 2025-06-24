@@ -28,13 +28,13 @@ if (!$correo || !$nombre || !$apellido || !$google_id) {
 }
 
 // Verificar si el usuario ya existe
-$check = $conn->prepare("SELECT id_usuario, fecha_nacimiento, telefono FROM usuario WHERE correo = ?");
+$check = $conn->prepare("SELECT id_usuario, fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
 $check->bind_param("s", $correo);
 $check->execute();
 $check->store_result();
 
 if ($check->num_rows > 0) {
-    $check->bind_result($id, $fecha, $tel);
+    $check->bind_result($id, $fecha, $tel, $rol);
     $check->fetch();
 
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
@@ -42,10 +42,16 @@ if ($check->num_rows > 0) {
     $_SESSION['usuario_id'] = $id;
     $_SESSION['usuario_nombre'] = $nombre;
     $_SESSION['usuario_correo'] = $correo;
+    $_SESSION['usuario_rol'] = $rol;
 
-    echo json_encode(["success" => true, "completo" => $completo]);
+    echo json_encode([
+        "success" => true,
+        "completo" => $completo,
+        "id" => $id,
+        "rol" => $rol
+    ]);
 } else {
-    // Registrar usuario nuevo
+    // Registrar usuario nuevo (el rol se asigna automáticamente por defecto)
     $fecha = "0000-00-00";
     $tel = "0000000000";
     $pass_fake = sha1("GOOGLE-" . $google_id);
@@ -54,11 +60,27 @@ if ($check->num_rows > 0) {
     $insert->bind_param("ssssss", $nombre, $apellido, $fecha, $tel, $correo, $pass_fake);
 
     if ($insert->execute()) {
-        $_SESSION['usuario_id'] = $insert->insert_id;
+        $id = $insert->insert_id;
+
+        // Obtener el rol después del insert
+        $getRol = $conn->prepare("SELECT rol FROM usuario WHERE id_usuario = ?");
+        $getRol->bind_param("i", $id);
+        $getRol->execute();
+        $getRol->bind_result($rol);
+        $getRol->fetch();
+        $getRol->close();
+
+        $_SESSION['usuario_id'] = $id;
         $_SESSION['usuario_nombre'] = $nombre;
         $_SESSION['usuario_correo'] = $correo;
-        
-        echo json_encode(["success" => true, "completo" => false]);
+        $_SESSION['usuario_rol'] = $rol;
+
+        echo json_encode([
+            "success" => true,
+            "completo" => false,
+            "id" => $id,
+            "rol" => $rol
+        ]);
     } else {
         echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);
     }
