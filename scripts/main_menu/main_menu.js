@@ -264,15 +264,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Cerrar sesión
     document.getElementById("logoutBtn").addEventListener("click", function () {
-        // Eliminar datos del localStorage
+    fetch("../../../scripts/php/logout.php", {
+        method: "POST",
+        credentials: "include" // Enviar cookies si usas sesiones PHP
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data.message); // Opcional: puedes mostrarlo como toast si quieres
+
+        // Limpia el localStorage también por si se usó
         localStorage.removeItem('usuario_id');
         localStorage.removeItem('usuario_nombre');
         localStorage.removeItem('usuario_email');
-        localStorage.removeItem('usuario_rol'); // Si lo tienes almacenado
+        localStorage.removeItem('usuario_rol');
 
         // Redirigir al login
         window.location.href = "../regis_login/login/login.html";
+    })
+    .catch(error => {
+        console.error("Error al cerrar sesión:", error);
+        alert("Error cerrando sesión.");
     });
+});
+
 
     // Cerrar el submenú si el usuario hace clic fuera de él
     document.addEventListener("click", function (event) {
@@ -296,6 +310,8 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .then(response => response.json())
     .then(data => {
+        // Manejar la respuesta del servidor
+        console.log("Respuesta de check_empresa.php:", data);
         if (data.success) {
             // Si la empresa está registrada, desbloqueamos los elementos
             console.log('Empresa registrada:', data.empresa_nombre);
