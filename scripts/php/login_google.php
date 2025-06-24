@@ -18,29 +18,29 @@ header("Content-Type: application/json");
 $data = json_decode(file_get_contents("php://input"));
 
 $correo = $data->email ?? '';
-$nombreGoogle = $data->nombre ?? '';
-$apellidoGoogle = $data->apellido ?? '';
+$nombre = $data->nombre ?? 'Nombre';
+$apellido = $data->apellido ?? 'Apellido';
 $google_id = $data->google_id ?? '';
 
-if (!$correo || !$nombreGoogle || !$apellidoGoogle || !$google_id) {
+if (!$correo || !$nombre || !$apellido || !$google_id) {
     echo json_encode(["success" => false, "message" => "Datos incompletos"]);
     exit;
 }
 
 // Verificar si el usuario ya existe
-$check = $conn->prepare("SELECT id_usuario, nombre, apellido, fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
+$check = $conn->prepare("SELECT id_usuario, fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
 $check->bind_param("s", $correo);
 $check->execute();
 $check->store_result();
 
 if ($check->num_rows > 0) {
-    $check->bind_result($id, $nombreDB, $apellidoDB, $fecha, $tel, $rol);
+    $check->bind_result($id, $fecha, $tel, $rol);
     $check->fetch();
 
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
 
     $_SESSION['usuario_id'] = $id;
-    $_SESSION['usuario_nombre'] = $nombreDB . ' ' . $apellidoDB;
+    $_SESSION['usuario_nombre'] = $nombre;
     $_SESSION['usuario_correo'] = $correo;
     $_SESSION['usuario_rol'] = $rol;
 
@@ -48,22 +48,21 @@ if ($check->num_rows > 0) {
         "success" => true,
         "completo" => $completo,
         "id" => $id,
-        "rol" => $rol,
-        "nombre" => $nombreDB . ' ' . $apellidoDB
+        "rol" => $rol
     ]);
 } else {
-    // Registrar usuario nuevo
+    // Registrar usuario nuevo (el rol se asigna automáticamente por defecto)
     $fecha = "0000-00-00";
     $tel = "0000000000";
     $pass_fake = sha1("GOOGLE-" . $google_id);
 
     $insert = $conn->prepare("INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, verificacion_cuenta) VALUES (?, ?, ?, ?, ?, ?, 1)");
-    $insert->bind_param("ssssss", $nombreGoogle, $apellidoGoogle, $fecha, $tel, $correo, $pass_fake);
+    $insert->bind_param("ssssss", $nombre, $apellido, $fecha, $tel, $correo, $pass_fake);
 
     if ($insert->execute()) {
         $id = $insert->insert_id;
 
-        // Obtener rol desde la DB
+        // Obtener el rol después del insert
         $getRol = $conn->prepare("SELECT rol FROM usuario WHERE id_usuario = ?");
         $getRol->bind_param("i", $id);
         $getRol->execute();
@@ -72,7 +71,7 @@ if ($check->num_rows > 0) {
         $getRol->close();
 
         $_SESSION['usuario_id'] = $id;
-        $_SESSION['usuario_nombre'] = $nombreGoogle . ' ' . $apellidoGoogle;
+        $_SESSION['usuario_nombre'] = $nombre;
         $_SESSION['usuario_correo'] = $correo;
         $_SESSION['usuario_rol'] = $rol;
 
@@ -80,8 +79,7 @@ if ($check->num_rows > 0) {
             "success" => true,
             "completo" => false,
             "id" => $id,
-            "rol" => $rol,
-            "nombre" => $nombreGoogle . ' ' . $apellidoGoogle
+            "rol" => $rol
         ]);
     } else {
         echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);
