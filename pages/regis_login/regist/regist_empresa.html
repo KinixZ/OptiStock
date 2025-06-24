@@ -9,14 +9,14 @@
     <link rel="stylesheet" href="../../../styles/regis_login/regist/registro_empresa.css">
 </head>
 <body>
-    <div class="content">
+    <div class="container">
         <h1>Registrar Empresa</h1>
         <form id="registerForm" enctype="multipart/form-data">
             <label for="nombre_empresa">Nombre de la Empresa:</label>
-            <input type="text" id="nombre_empresa" name="nombre_empresa" required><br><br>
+            <input type="text" id="nombre_empresa" name="nombre_empresa" required>
 
             <label for="logo_empresa">Logo de la Empresa (opcional):</label>
-            <input type="file" id="logo_empresa" name="logo_empresa" accept="image/*"><br><br>
+            <input type="file" id="logo_empresa" name="logo_empresa" accept="image/*">
 
             <label for="sector_empresa">Sector:</label>
             <select id="sector_empresa" name="sector_empresa" required>
@@ -27,7 +27,7 @@
                 <option value="Tecnológico">Tecnológico</option>
                 <option value="Financiero">Financiero</option>
                 <option value="Construcción">Construcción</option>
-            </select><br><br>
+            </select>
 
             <button type="submit">Registrar Empresa</button>
         </form>
