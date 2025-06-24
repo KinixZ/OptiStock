@@ -243,10 +243,12 @@ document.addEventListener('keydown', function(e) {
 
 // Mostrar el nombre y rol del usuario desde localStorage
 document.addEventListener("DOMContentLoaded", function () {
+    // Verificar si los datos del usuario están en localStorage
     if (localStorage.getItem('usuario_id') && localStorage.getItem('usuario_nombre')) {
         const userName = localStorage.getItem('usuario_nombre');
         const userRole = localStorage.getItem('usuario_rol'); // Si lo tienes almacenado
 
+        // Asignar el nombre y rol a los elementos correspondientes
         document.querySelector('.user-name').textContent = userName;
         document.querySelector('.user-role').textContent = userRole || 'Administrador';
     }
@@ -279,6 +281,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
+
 
 document.addEventListener("DOMContentLoaded", function () {
     // Verificar si el usuario tiene una empresa registrada
