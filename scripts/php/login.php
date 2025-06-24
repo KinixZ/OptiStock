@@ -63,7 +63,7 @@ if ($user) {
             echo json_encode([
                 "success" => true,
                 "redirect" => "../regist/regist_inter.html?email=" . urlencode($correo),
-                "id" => $user['id_usuario'],
+                "id_usuario" => $user['id_usuario'],
                 "nombre" => $user['nombre'],
                 "correo" => $user['correo'],
                 "rol" => $user['rol'] // Enviar el rol aquí
@@ -72,7 +72,7 @@ if ($user) {
             echo json_encode([
                 "success" => true,
                 "redirect" => "../../main_menu/main_menu.html",
-                "id" => $user['id_usuario'],
+                "id_usuario" => $user['id_usuario'],
                 "nombre" => $user['nombre'],
                 "correo" => $user['correo'],
                 "rol" => $user['rol'] // Enviar el rol aquí
