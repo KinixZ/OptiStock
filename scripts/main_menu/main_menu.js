@@ -269,7 +269,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", function () {
             console.log("click logoutBtn");
-            fetch("../../../scripts/php/logout.php", {
+            fetch("/scripts/php/logout.php", {
                 method: "POST",
                 credentials: "include"
             })
@@ -282,7 +282,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.removeItem('usuario_email');
                 localStorage.removeItem('usuario_rol');
 
-                window.location.href = "../regis_login/login/login.html";
+                window.location.href = "/pages/regis_login/login/login.html";
             })
             .catch(error => {
                 console.error("Error al cerrar sesión:", error);
@@ -307,7 +307,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
     // Verificar si el usuario tiene una empresa registrada
-    fetch('../../../scripts/php/check_empresa.php', {
+    fetch('/scripts/php/check_empresa.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
