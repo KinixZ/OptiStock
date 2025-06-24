@@ -48,6 +48,8 @@ if ($check->num_rows > 0) {
         "success" => true,
         "completo" => $completo,
         "id" => $id,
+        "nombre" => $nom,
+        "correo" => $correo,
         "rol" => $rol
     ]);
 } else {
@@ -79,6 +81,8 @@ if ($check->num_rows > 0) {
             "success" => true,
             "completo" => false,
             "id" => $id,
+            "nombre" => $nombre,
+            "correo" => $correo,
             "rol" => $rol
         ]);
     } else {
