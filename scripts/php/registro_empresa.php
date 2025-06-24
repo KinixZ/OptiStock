@@ -22,9 +22,6 @@ $nombre_empresa = $_POST['nombre_empresa'];
 $sector_empresa = $_POST['sector_empresa'];
 $usuario_creador = $_POST['usuario_creador'];
 
-// Depuración: Verifica que los datos se recibieron correctamente
-var_dump($_POST);
-
 // Subir el logo de la empresa
 $logo_empresa = null; // Si no se sube el logo, se asigna null
 if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
@@ -45,7 +42,7 @@ $sql = "INSERT INTO empresa (nombre_empresa, logo_empresa, sector_empresa, usuar
 $stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "sssi", $nombre_empresa, $logo_empresa, $sector_empresa, $usuario_creador);
 
-// Depuración: Verificar si la consulta se ejecutó correctamente
+// Verificar si la consulta se ejecutó correctamente
 if (mysqli_stmt_execute($stmt)) {
     echo json_encode(["success" => true, "message" => "Empresa registrada con éxito"]);
 } else {
