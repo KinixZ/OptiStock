@@ -308,8 +308,16 @@ document.addEventListener("DOMContentLoaded", function () {
             if (msg) msg.style.display = 'none';
             startTutorial();
         } else {
-            alert('No tienes una empresa registrada.');
-            window.location.href = '../regis_login/regist/regist_empresa.html';
+            const modal = document.getElementById("modalEmpresa");
+const goToRegistro = document.getElementById("goToRegistroEmpresa");
+
+if (modal && goToRegistro) {
+    modal.style.display = "flex";
+    goToRegistro.addEventListener("click", () => {
+        window.location.href = '../regis_login/regist/regist_empresa.html';
+    });
+}
+
         }
     })
     .catch(err => {
