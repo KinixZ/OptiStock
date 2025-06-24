@@ -28,7 +28,7 @@ if (!$correo || !$nombre || !$apellido || !$google_id) {
 }
 
 // Verificar si el usuario ya existe
-$check = $conn->prepare("SELECT id_usuario, nombre fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
+$check = $conn->prepare("SELECT id_usuario, nombre, fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
 $check->bind_param("s", $correo);
 $check->execute();
 $check->store_result();
