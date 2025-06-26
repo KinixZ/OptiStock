@@ -242,7 +242,10 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. Mostrar nombre y rol
+    const mainContent = document.getElementById('mainContent');
+    let contenidoInicial = mainContent.innerHTML;
+
+    // Mostrar nombre y rol del usuario
     const nombre = localStorage.getItem('usuario_nombre');
     const rol = localStorage.getItem('usuario_rol');
     const userNameEl = document.querySelector('.user-name');
@@ -251,19 +254,17 @@ document.addEventListener("DOMContentLoaded", function () {
     if (nombre && userNameEl) userNameEl.textContent = nombre;
     if (rol && userRoleEl) userRoleEl.textContent = rol;
 
-    // 2. Submenú
+    // Submenú usuario
     const dropdownButton = document.getElementById("dropdownMenuButton");
     const userMenu = document.getElementById("userMenu");
-
     if (dropdownButton && userMenu) {
         dropdownButton.addEventListener("click", function () {
             userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
         });
     }
 
-    // 3. Cerrar sesión
+    // Botón cerrar sesión
     const logoutBtn = document.getElementById("logoutBtn");
-
     if (logoutBtn) {
         logoutBtn.addEventListener("click", function (e) {
             e.preventDefault();
@@ -284,9 +285,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 4. Verificar empresa
+    // Verificación empresa
     const userId = localStorage.getItem('usuario_id');
-
     if (!userId) {
         alert("No hay sesión activa.");
         window.location.href = "../../pages/regis_login/login/login.html";
@@ -312,43 +312,62 @@ document.addEventListener("DOMContentLoaded", function () {
             startTutorial();
         } else {
             const modal = document.getElementById("modalEmpresa");
-const goToRegistro = document.getElementById("goToRegistroEmpresa");
-
-if (modal && goToRegistro) {
-    modal.style.display = "flex";
-    goToRegistro.addEventListener("click", () => {
-        window.location.href = '../regis_login/regist/regist_empresa.html';
-    });
-}
-
+            const goToRegistro = document.getElementById("goToRegistroEmpresa");
+            if (modal && goToRegistro) {
+                modal.style.display = "flex";
+                goToRegistro.addEventListener("click", () => {
+                    window.location.href = '../regis_login/regist/regist_empresa.html';
+                });
+            }
         }
     })
     .catch(err => {
         console.error("❌ Error consultando empresa:", err);
     });
 
-    document.querySelectorAll('.sidebar-menu a[data-page]').forEach(link => {
-    link.addEventListener('click', function (e) {
-        e.preventDefault();
+    // Sidebar: navegación SPA
+    const menuItems = document.querySelectorAll('.sidebar-menu a[data-page]');
+    menuItems.forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
 
-        // Activar visualmente el menú seleccionado
-        document.querySelectorAll('.sidebar-menu a').forEach(i => i.classList.remove('active'));
-        this.classList.add('active');
+            // Marcar activo
+            menuItems.forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
 
-        // Cambiar el título en el topbar
-        const titulo = this.textContent.trim();
-        document.querySelector('.topbar-title').textContent = titulo;
+            // Cambiar título topbar
+            const titulo = this.textContent.trim();
+            document.querySelector('.topbar-title').textContent = titulo;
 
-        // Cargar el contenido dinámico
-        const pageUrl = this.getAttribute('data-page');
-        fetch(`../${pageUrl}`)
-            .then(res => res.text())
-            .then(html => {
-                document.getElementById('mainContent').innerHTML = html;
-            })
-            .catch(err => {
-                document.getElementById('mainContent').innerHTML = `<p>Error cargando la página: ${err}</p>`;
-            });
+            const pageUrl = this.getAttribute('data-page');
+
+            // Si es "inicio", restaurar dashboard original
+            if (pageUrl === 'inicio') {
+                mainContent.innerHTML = contenidoInicial;
+                return;
+            }
+
+            // Cargar HTML externo en content
+            fetch(`../${pageUrl}`)
+                .then(res => res.text())
+                .then(html => {
+                    mainContent.innerHTML = html;
+
+                    // Ejecutar scripts internos si los hay
+                    const scripts = mainContent.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        if (script.src) {
+                            newScript.src = script.src;
+                        } else {
+                            newScript.textContent = script.textContent;
+                        }
+                        document.body.appendChild(newScript);
+                    });
+                })
+                .catch(err => {
+                    mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
+                });
+        });
     });
-});
 });
