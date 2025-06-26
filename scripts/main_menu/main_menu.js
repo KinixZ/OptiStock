@@ -326,4 +326,29 @@ if (modal && goToRegistro) {
     .catch(err => {
         console.error("❌ Error consultando empresa:", err);
     });
+
+    document.querySelectorAll('.sidebar-menu a[data-page]').forEach(link => {
+    link.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        // Activar visualmente el menú seleccionado
+        document.querySelectorAll('.sidebar-menu a').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+
+        // Cambiar el título en el topbar
+        const titulo = this.textContent.trim();
+        document.querySelector('.topbar-title').textContent = titulo;
+
+        // Cargar el contenido dinámico
+        const pageUrl = this.getAttribute('data-page');
+        fetch(`../${pageUrl}`)
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('mainContent').innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('mainContent').innerHTML = `<p>Error cargando la página: ${err}</p>`;
+            });
+    });
+});
 });
