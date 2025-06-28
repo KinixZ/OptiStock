@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registrar Usuario - OptiStock</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles/regis_login/regist/registro_p1.css">
+</head>
+<body class="d-flex justify-content-center align-items-center vh-100">
+
+    <div class="d-flex flex-column align-items-center">
+        <div class="login-container text-center">
+            <h3 class="mb-4">REGISTRO DE USUARIO</h3>
+            <form id="registerForm">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="nombre" placeholder="Nombre(s)" required>
+                </div>
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="apellido" placeholder="Apellido(s)" required>
+                </div>
+                <div class="mb-3">
+                    <p class="mb-1">Fecha de nacimiento</p>
+                    <input type="date" id="nacimiento" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="tel" placeholder="Teléfono" required>
+                </div>
+                <div class="mb-3">
+                    <input type="email" class="form-control" id="email" placeholder="Correo" required>
+                </div>
+                <div class="mb-3">
+                    <input type="password" id="password" class="form-control" placeholder="Contraseña" required>
+                    <p id="passwordError" class="error-text">Debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.</p>
+                    <p id="passwordValid" class="valid-text">Contraseña válida ✅</p>
+                </div>
+                <div class="mb-3">
+                    <input type="password" id="confirmPassword" class="form-control" placeholder="Confirmar contraseña" required>
+                    <p id="confirmPasswordError" class="error-text">Las contraseñas no coinciden</p>
+                </div>
+                <button type="submit" class="btn btn-dark w-100">Registrar usuario</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../scripts/regis_login/regist/registro_usuario_empresa.js"></script>
+</body>
+</html>

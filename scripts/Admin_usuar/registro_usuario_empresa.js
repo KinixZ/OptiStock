@@ -1,0 +1,33 @@
+document.getElementById('registerForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const id_empresa = localStorage.getItem('id_empresa'); // que lo guardes al hacer login
+    const data = {
+        nombre: document.getElementById('nombre').value,
+        apellido: document.getElementById('apellido').value,
+        fecha_nacimiento: document.getElementById('nacimiento').value,
+        telefono: document.getElementById('tel').value,
+        correo: document.getElementById('email').value,
+        contrasena: document.getElementById('password').value,
+        id_empresa: id_empresa
+    };
+
+    fetch('/scripts/php/registro_usuario_empresa.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.success) {
+            alert("Usuario registrado correctamente");
+            window.location.href = "administracion_usuarios.html";
+        } else {
+            alert("Error: " + response.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Ocurrió un error en el registro.");
+    });
+});
