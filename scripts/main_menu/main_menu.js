@@ -314,33 +314,63 @@ document.addEventListener("DOMContentLoaded", function () {
     cargarConfiguracionVisual(data.empresa_id);
 
     // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
-    document.querySelector('.sidebar-footer button').addEventListener('click', () => {
-        const colorSidebar = prompt("Color de fondo del menú lateral (hex)", "#1e1e2f");
-        const colorTopbar = prompt("Color de fondo del topbar (hex)", "#282c34");
+    let colorSidebarSeleccionado = null;
+let colorTopbarSeleccionado = null;
 
-        const menuItems = Array.from(document.querySelectorAll('.sidebar-menu a'));
-        const ordenSidebar = menuItems.map(el => el.dataset.page);
+document.querySelector('.sidebar-footer button').addEventListener('click', () => {
+    document.getElementById('modalConfigVisual').style.display = 'flex';
+});
 
-        fetch('/scripts/php/guardar_configuracion_empresa.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_empresa: parseInt(data.empresa_id),
-                color_sidebar: colorSidebar,
-                color_topbar: colorTopbar,
-                orden_sidebar: ordenSidebar
-            })
-        })
-        .then(res => res.json())
-        .then(response => {
-            if (response.success) {
-                alert("✅ Configuración guardada. Se actualizará la interfaz.");
-                window.location.reload();
-            } else {
-                alert("❌ No se pudo guardar.");
-            }
-        });
+// Selección de colores
+document.querySelectorAll('#sidebarColors button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        colorSidebarSeleccionado = btn.dataset.color;
+        document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
+        btn.style.border = '3px solid black';
     });
+});
+
+document.querySelectorAll('#topbarColors button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        colorTopbarSeleccionado = btn.dataset.color;
+        document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
+        btn.style.border = '3px solid black';
+    });
+});
+
+document.getElementById('guardarConfigVisual').addEventListener('click', () => {
+    const empresaId = data.empresa_id;
+    const menuItems = Array.from(document.querySelectorAll('.sidebar-menu a'));
+    const ordenSidebar = menuItems.map(el => el.dataset.page);
+
+    if (!colorSidebarSeleccionado || !colorTopbarSeleccionado) {
+        alert("⚠️ Selecciona ambos colores.");
+        return;
+    }
+
+    fetch('/scripts/php/guardar_configuracion_empresa.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id_empresa: parseInt(empresaId),
+            color_sidebar: colorSidebarSeleccionado,
+            color_topbar: colorTopbarSeleccionado,
+            orden_sidebar: ordenSidebar
+        })
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.success) {
+            alert("✅ Configuración guardada.");
+            location.reload();
+        } else {
+            alert("❌ No se pudo guardar.");
+        }
+    });
+
+    document.getElementById('modalConfigVisual').style.display = 'none';
+});
+
 }
  else {
             const modal = document.getElementById("modalEmpresa");
