@@ -29,11 +29,18 @@ $query = "INSERT INTO configuracion_empresa (id_empresa, color_sidebar, color_to
           orden_sidebar = VALUES(orden_sidebar)";
 
 $stmt = $conn->prepare($query);
+
+if (!$stmt) {
+    echo json_encode(["success" => false, "message" => "Error en prepare: " . $conn->error]);
+    exit;
+}
+
 $stmt->bind_param("isss", $id_empresa, $colorSidebar, $colorTopbar, $ordenSidebar);
 
 if ($stmt->execute()) {
     echo json_encode(["success" => true]);
 } else {
-    echo json_encode(["success" => false, "message" => "No se pudo guardar la configuración."]);
+    echo json_encode(["success" => false, "message" => "Error al ejecutar: " . $stmt->error]);
 }
+
 ?>
