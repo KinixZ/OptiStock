@@ -302,15 +302,47 @@ document.addEventListener("DOMContentLoaded", function () {
     .then(data => {
         console.log("🔍 check_empresa.php:", data);
         if (data.success) {
-            const tituloEmpresa = document.getElementById('empresaTitulo');
-            if (tituloEmpresa) {
-                tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
+    const tituloEmpresa = document.getElementById('empresaTitulo');
+    if (tituloEmpresa) {
+        tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
+    }
+    document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
+    const msg = document.getElementById('message');
+    if (msg) msg.style.display = 'none';
+
+    // 🟢 LLAMAMOS A CONFIGURACIÓN VISUAL
+    cargarConfiguracionVisual(data.empresa_id);
+
+    // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
+    document.querySelector('.sidebar-footer button').addEventListener('click', () => {
+        const colorSidebar = prompt("Color de fondo del menú lateral (hex)", "#1e1e2f");
+        const colorTopbar = prompt("Color de fondo del topbar (hex)", "#282c34");
+
+        const menuItems = Array.from(document.querySelectorAll('.sidebar-menu a'));
+        const ordenSidebar = menuItems.map(el => el.dataset.page);
+
+        fetch('/scripts/php/guardar_configuracion_empresa.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_empresa: parseInt(data.empresa_id),
+                color_sidebar: colorSidebar,
+                color_topbar: colorTopbar,
+                orden_sidebar: ordenSidebar
+            })
+        })
+        .then(res => res.json())
+        .then(response => {
+            if (response.success) {
+                alert("✅ Configuración guardada. Se actualizará la interfaz.");
+                window.location.reload();
+            } else {
+                alert("❌ No se pudo guardar.");
             }
-            document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
-            const msg = document.getElementById('message');
-            if (msg) msg.style.display = 'none';
-            startTutorial();
-        } else {
+        });
+    });
+}
+ else {
             const modal = document.getElementById("modalEmpresa");
             const goToRegistro = document.getElementById("goToRegistroEmpresa");
             if (modal && goToRegistro) {
@@ -371,3 +403,32 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
+function cargarConfiguracionVisual(idEmpresa) {
+    fetch('/scripts/php/get_configuracion_empresa.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_empresa: idEmpresa })
+    })
+    .then(res => res.json())
+    .then(({ success, config }) => {
+        if (success && config) {
+            if (config.color_sidebar) {
+                document.querySelector('.sidebar').style.backgroundColor = config.color_sidebar;
+            }
+            if (config.color_topbar) {
+                document.querySelector('.topbar').style.backgroundColor = config.color_topbar;
+            }
+
+            if (config.orden_sidebar) {
+                const orden = JSON.parse(config.orden_sidebar);
+                const menu = document.querySelector('.sidebar-menu');
+                const items = Array.from(menu.children);
+                orden.forEach(page => {
+                    const item = items.find(i => i.dataset.page === page);
+                    if (item) menu.appendChild(item);
+                });
+            }
+        }
+    });
+}
