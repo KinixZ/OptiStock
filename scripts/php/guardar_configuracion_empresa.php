@@ -1,5 +1,9 @@
 <?php
 header("Content-Type: application/json");
+
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
