@@ -307,8 +307,8 @@ document.addEventListener("DOMContentLoaded", function () {
         tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
     }
     document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
-    ocalStorage.setItem('id_empresa', data.empresa_id); // 🟢 GUARDAMOS EL ID
-    
+    localStorage.setItem('id_empresa', data.empresa_id); // 🟢 GUARDAMOS EL ID
+
     const msg = document.getElementById('message');
     if (msg) msg.style.display = 'none';
 
