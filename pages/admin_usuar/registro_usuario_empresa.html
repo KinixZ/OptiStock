@@ -38,6 +38,15 @@
                     <input type="password" id="confirmPassword" class="form-control" placeholder="Confirmar contraseña" required>
                     <p id="confirmPasswordError" class="error-text">Las contraseñas no coinciden</p>
                 </div>
+                <div class="mb-3">
+    <select id="rol" class="form-select" required>
+        <option value="">Selecciona un rol</option>
+        <option value="Supervisor">Supervisor</option>
+        <option value="Almacenista">Almacenista</option>
+        <option value="Mantenimiento">Mantenimiento</option>
+        <option value="Etiquetador">Etiquetador</option>
+    </select>
+</div>
                 <button type="submit" class="btn btn-dark w-100">Registrar usuario</button>
             </form>
         </div>

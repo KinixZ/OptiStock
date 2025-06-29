@@ -1,7 +1,9 @@
 document.getElementById('registerForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
-    const id_empresa = localStorage.getItem('id_empresa'); // que lo guardes al hacer login
+const rol = document.getElementById('rol').value;
+const id_empresa = localStorage.getItem('id_empresa');
+
     const data = {
         nombre: document.getElementById('nombre').value,
         apellido: document.getElementById('apellido').value,
