@@ -24,7 +24,7 @@ if (!$usuario_id) {
 }
 
 // Consultar si el usuario tiene una empresa registrada
-$sql = "SELECT nombre_empresa FROM empresa WHERE usuario_creador = ?";
+$sql = "SELECT id_empresa, nombre_empresa FROM empresa WHERE usuario_creador = ?";
 $stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "i", $usuario_id);
 mysqli_stmt_execute($stmt);
