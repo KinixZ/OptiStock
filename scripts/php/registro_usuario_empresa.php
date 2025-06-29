@@ -19,13 +19,14 @@ $apellido = $data['apellido'];
 $nacimiento = $data['fecha_nacimiento'];
 $telefono = $data['telefono'];
 $correo = $data['correo'];
+$rol = $data['rol']; // Aunque no se usa en la inserción, se puede guardar si es necesario
 $contrasena = sha1($data['contrasena']);
 $id_empresa = intval($data['id_empresa']);
 
 $query1 = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, rol, verificacion_cuenta)
-           VALUES (?, ?, ?, ?, ?, ?, 'Empleado', 1)";
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
 $stmt1 = $conn->prepare($query1);
-$stmt1->bind_param("ssssss", $nombre, $apellido, $nacimiento, $telefono, $correo, $contrasena);
+$stmt1->bind_param("ssssss", $nombre, $apellido, $nacimiento, $telefono, $correo, $contrasena, $rol);
 
 if ($stmt1->execute()) {
     $id_usuario = $stmt1->insert_id;

@@ -1,7 +1,6 @@
 document.getElementById('registerForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
-const rol = document.getElementById('rol').value;
 const id_empresa = localStorage.getItem('id_empresa');
 
     const data = {
@@ -11,6 +10,7 @@ const id_empresa = localStorage.getItem('id_empresa');
         telefono: document.getElementById('tel').value,
         correo: document.getElementById('email').value,
         contrasena: document.getElementById('password').value,
+        rol: document.getElementById('rol').value,
         id_empresa: id_empresa
     };
 
