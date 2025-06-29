@@ -34,7 +34,8 @@ $result = mysqli_stmt_get_result($stmt);
 if ($empresa = mysqli_fetch_assoc($result)) {
     echo json_encode([
         "success" => true,
-        "empresa_nombre" => $empresa['nombre_empresa']
+        "empresa_nombre" => $empresa['nombre_empresa'],
+        'empresa_id' => $idEmpresa
     ]);
 } else {
     echo json_encode([
