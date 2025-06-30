@@ -418,16 +418,21 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                     mainContent.innerHTML = html;
 
                     // Ejecutar scripts internos si los hay
-                    const scripts = mainContent.querySelectorAll('script');
-                    scripts.forEach(script => {
-                        const newScript = document.createElement('script');
-                        if (script.src) {
-                            newScript.src = script.src;
-                        } else {
-                            newScript.textContent = script.textContent;
-                        }
-                        document.body.appendChild(newScript);
-                    });
+                    const scripts = mainContent.querySelectorAll("script");
+scripts.forEach(oldScript => {
+    const newScript = document.createElement("script");
+
+    // Copiar atributos como src, type, etc.
+    Array.from(oldScript.attributes).forEach(attr => {
+        newScript.setAttribute(attr.name, attr.value);
+    });
+
+    // Si es inline
+    newScript.textContent = oldScript.textContent;
+
+    document.body.appendChild(newScript);
+});
+
                 })
                 .catch(err => {
                     mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
@@ -462,6 +467,44 @@ if (params.has("load")) {
         })
         .catch(err => {
             document.getElementById("mainContent").innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+        });
+    }
+
+    // 🟢 Si se solicitó cargar una vista desde el registro, hazlo ahora
+const vistaPendiente = localStorage.getItem('cargarVista');
+if (vistaPendiente) {
+    localStorage.removeItem('cargarVista'); // limpiamos
+
+    // Cargar HTML en mainContent
+    fetch(`../${vistaPendiente}`)
+        .then(res => res.text())
+        .then(html => {
+            const mainContent = document.getElementById("mainContent");
+            mainContent.innerHTML = html;
+
+            // Ejecutar los scripts externos/internos del HTML cargado
+            const scripts = mainContent.querySelectorAll("script");
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement("script");
+                Array.from(oldScript.attributes).forEach(attr => {
+                    newScript.setAttribute(attr.name, attr.value);
+                });
+                newScript.textContent = oldScript.textContent;
+                document.body.appendChild(newScript);
+            });
+
+            // Actualizar topbar (opcional)
+            const titulo = vistaPendiente.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+            const topbarTitle = document.querySelector('.topbar-title');
+            if (topbarTitle) {
+                topbarTitle.textContent = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+            }
+        })
+        .catch(err => {
+            const mainContent = document.getElementById("mainContent");
+            if (mainContent) {
+                mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+            }
         });
     }
 });
