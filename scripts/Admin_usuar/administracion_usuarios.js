@@ -133,12 +133,21 @@ function exportarExcel() {
 }
 
 async function exportarPDF() {
-  const doc = new jspdf.jsPDF(); // usar el namespace correcto
-  doc.text("Usuarios de la Empresa", 14, 16);
+  const { jsPDF } = window.jspdf;
+
+  const doc = new jsPDF();
+
+  // 👇👇 IMPORTANTE: asegúrate de que autoTable esté enlazada al objeto doc
+  if (typeof doc.autoTable !== 'function') {
+    alert("❌ Error: jsPDF-AutoTable no está disponible.");
+    return;
+  }
 
   const tabla = document.getElementById("tablaUsuariosEmpresa");
   const rows = [...tabla.rows].map(row => [...row.cells].map(cell => cell.innerText));
   const [header, ...body] = rows;
+
+  doc.text("Usuarios de la Empresa", 14, 16);
 
   doc.autoTable({
     head: [header],
