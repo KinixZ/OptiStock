@@ -434,6 +434,36 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 });
         });
     });
+
+    // Si viene ?load en la URL, cargar la página solicitada automáticamente
+const params = new URLSearchParams(window.location.search);
+if (params.has("load")) {
+    const page = params.get("load");
+
+    // Cambiar el título en la topbar
+    const name = page.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+    document.querySelector('.topbar-title').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+
+    // Cargar el contenido en el mainContent
+    fetch(`../${page}`)
+        .then(res => res.text())
+        .then(html => {
+            const mainContent = document.getElementById("mainContent");
+            mainContent.innerHTML = html;
+
+            // Ejecutar scripts embebidos si los hay
+            const scripts = mainContent.querySelectorAll("script");
+            scripts.forEach(script => {
+                const newScript = document.createElement("script");
+                if (script.src) newScript.src = script.src;
+                else newScript.textContent = script.textContent;
+                document.body.appendChild(newScript);
+            });
+        })
+        .catch(err => {
+            document.getElementById("mainContent").innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+        });
+    }
 });
 
 function cargarConfiguracionVisual(idEmpresa) {

@@ -23,7 +23,7 @@ const id_empresa = localStorage.getItem('id_empresa');
     .then(response => {
         if (response.success) {
             alert("Usuario registrado correctamente");
-            window.location.href = "administracion_usuarios.html";
+            window.location.href = "../../main_menu.html?load=pages/admin_usuar/administracion_usuarios.html";
         } else {
             alert("Error: " + response.message);
         }
