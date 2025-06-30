@@ -133,8 +133,7 @@ function exportarExcel() {
 }
 
 async function exportarPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = new jspdf.jsPDF(); // usar el namespace correcto
   doc.text("Usuarios de la Empresa", 14, 16);
 
   const tabla = document.getElementById("tablaUsuariosEmpresa");
