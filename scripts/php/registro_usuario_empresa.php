@@ -26,7 +26,7 @@ $id_empresa = intval($data['id_empresa']);
 $query1 = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, rol, verificacion_cuenta)
            VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
 $stmt1 = $conn->prepare($query1);
-$stmt1->bind_param("ssssss", $nombre, $apellido, $nacimiento, $telefono, $correo, $contrasena, $rol);
+$stmt1->bind_param("sssssss", $nombre, $apellido, $nacimiento, $telefono, $correo, $contrasena, $rol);
 
 if ($stmt1->execute()) {
     $id_usuario = $stmt1->insert_id;
