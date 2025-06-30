@@ -1,5 +1,7 @@
 function cargarUsuariosEmpresa() {
   const id_empresa = localStorage.getItem('id_empresa');
+  if (!id_empresa) return;
+
   fetch('/scripts/php/obtener_usuarios_empresa.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -7,30 +9,60 @@ function cargarUsuariosEmpresa() {
   })
     .then(res => res.json())
     .then(data => {
-      if (data.success) {
-        const tbody = document.querySelector('#tablaUsuariosEmpresa tbody');
-        tbody.innerHTML = ''; // limpiar tabla
-        data.usuarios.forEach(u => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${u.nombre}</td>
-            <td>${u.apellido}</td>
-            <td>${u.correo}</td>
-            <td>${u.rol}</td>
-            <td style="text-align:center;">
-              <button class="btn-editar" onclick='editarUsuario(${JSON.stringify(u)})'>✏️</button>
-              <button class="btn-eliminar" onclick="confirmarEliminacion('${u.correo}')">🗑️</button>
-            </td>
+      if (!data.success) return;
+
+      const tbody = document.querySelector('#tablaUsuariosEmpresa tbody');
+      tbody.innerHTML = ''; // limpiar tabla
+      const conteoPorRol = {};
+
+      data.usuarios.forEach(u => {
+        conteoPorRol[u.rol] = (conteoPorRol[u.rol] || 0) + 1;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u.nombre}</td>
+          <td>${u.apellido}</td>
+          <td>${u.correo}</td>
+          <td>${u.rol}</td>
+          <td style="text-align:center;">
+            <button class="btn-editar" onclick='editarUsuario(${JSON.stringify(u)})'>✏️</button>
+            <button class="btn-eliminar" onclick="confirmarEliminacion('${u.correo}')">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Mostrar métricas
+      const metricas = document.getElementById('metricasUsuarios');
+      if (metricas) {
+        metricas.innerHTML = '';
+        for (const rol in conteoPorRol) {
+          metricas.innerHTML += `
+            <div class="col-md-3">
+              <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                  <h5 class="card-title">${rol}</h5>
+                  <p class="card-text fs-4 fw-bold">${conteoPorRol[rol]}</p>
+                </div>
+              </div>
+            </div>
           `;
-          tbody.appendChild(tr);
-        });
+        }
       }
     });
 }
 
-function editarUsuario(correo) {
-  alert(`Editar usuario: ${correo}`);
-  // Aquí puedes abrir un modal con el form ya llenado para editar
+function editarUsuario(usuario) {
+  document.getElementById('editar_id_usuario').value = usuario.id_usuario;
+  document.getElementById('editar_nombre').value = usuario.nombre;
+  document.getElementById('editar_apellido').value = usuario.apellido;
+  document.getElementById('editar_telefono').value = usuario.telefono || '';
+  document.getElementById('editar_nacimiento').value = usuario.fecha_nacimiento || '';
+  document.getElementById('editar_correo').value = usuario.correo;
+  document.getElementById('editar_rol').value = usuario.rol;
+
+  const modal = new bootstrap.Modal(document.getElementById('modalEditarUsuario'));
+  modal.show();
 }
 
 function confirmarEliminacion(correo) {
@@ -50,7 +82,6 @@ function eliminarUsuario(correo) {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert("✅ Usuario eliminado correctamente");
         cargarUsuariosEmpresa();
       } else {
         alert("❌ No se pudo eliminar: " + data.message);
@@ -61,21 +92,6 @@ function eliminarUsuario(correo) {
       alert("❌ Error al eliminar usuario.");
     });
 }
-
-function editarUsuario(usuario) {
-  document.getElementById('editar_id_usuario').value = usuario.id_usuario;
-  document.getElementById('editar_nombre').value = usuario.nombre;
-  document.getElementById('editar_apellido').value = usuario.apellido;
-  document.getElementById('editar_telefono').value = usuario.telefono || '';
-  document.getElementById('editar_nacimiento').value = usuario.fecha_nacimiento || '';
-  document.getElementById('editar_correo').value = usuario.correo;
-  document.getElementById('editar_rol').value = usuario.rol;
-
-  // Mostrar modal (Bootstrap)
-  const modal = new bootstrap.Modal(document.getElementById('modalEditarUsuario'));
-  modal.show();
-}
-
 
 document.getElementById('formEditarUsuario').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -97,7 +113,6 @@ document.getElementById('formEditarUsuario').addEventListener('submit', function
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert("✅ Cambios guardados");
         const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario'));
         modal.hide();
         cargarUsuariosEmpresa();
@@ -110,41 +125,6 @@ document.getElementById('formEditarUsuario').addEventListener('submit', function
       alert("❌ Error al guardar");
     });
 });
-
-const conteoPorRol = {};
-
-data.usuarios.forEach(u => {
-  conteoPorRol[u.rol] = (conteoPorRol[u.rol] || 0) + 1;
-
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td>${u.nombre}</td>
-    <td>${u.apellido}</td>
-    <td>${u.correo}</td>
-    <td>${u.rol}</td>
-    <td style="text-align:center;">
-      <button class="btn-editar" onclick='editarUsuario(${JSON.stringify(u)})'>✏️</button>
-      <button class="btn-eliminar" onclick="confirmarEliminacion('${u.correo}')">🗑️</button>
-    </td>
-  `;
-  tbody.appendChild(tr);
-});
-
-// Mostrar métricas
-const metricas = document.getElementById('metricasUsuarios');
-metricas.innerHTML = '';
-for (const rol in conteoPorRol) {
-  metricas.innerHTML += `
-    <div class="col-md-3">
-      <div class="card text-center shadow-sm border-0">
-        <div class="card-body">
-          <h5 class="card-title">${rol}</h5>
-          <p class="card-text fs-4 fw-bold">${conteoPorRol[rol]}</p>
-        </div>
-      </div>
-    </div>
-  `;
-}
 
 function exportarExcel() {
   const tabla = document.getElementById('tablaUsuariosEmpresa');
@@ -171,10 +151,9 @@ async function exportarPDF() {
   doc.save("usuarios_empresa.pdf");
 }
 
-
-// Ejecutarla directamente si ya cargó el DOM
+// Cargar usuarios al iniciar
 if (document.readyState !== 'loading') {
-    cargarUsuariosEmpresa();
+  cargarUsuariosEmpresa();
 } else {
-    document.addEventListener("DOMContentLoaded", cargarUsuariosEmpresa);
+  document.addEventListener("DOMContentLoaded", cargarUsuariosEmpresa);
 }
