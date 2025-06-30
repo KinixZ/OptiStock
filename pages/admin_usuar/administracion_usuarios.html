@@ -27,4 +27,55 @@
     </tbody>
 </table>
 
+<!-- MODAL EDITAR USUARIO -->
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formEditarUsuario">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar usuario</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editar_id_usuario">
+          <div class="mb-2">
+            <label>Nombre</label>
+            <input type="text" class="form-control" id="editar_nombre" required>
+          </div>
+          <div class="mb-2">
+            <label>Apellido</label>
+            <input type="text" class="form-control" id="editar_apellido" required>
+          </div>
+          <div class="mb-2">
+            <label>Teléfono</label>
+            <input type="text" class="form-control" id="editar_telefono">
+          </div>
+          <div class="mb-2">
+            <label>Fecha de nacimiento</label>
+            <input type="date" class="form-control" id="editar_nacimiento">
+          </div>
+          <div class="mb-2">
+            <label>Correo</label>
+            <input type="email" class="form-control" id="editar_correo" disabled>
+          </div>
+          <div class="mb-2">
+            <label>Rol</label>
+            <select class="form-select" id="editar_rol" required>
+              <option value="Supervisor">Supervisor</option>
+              <option value="Almacenista">Almacenista</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Etiquetador">Etiquetador</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
 <script src="../../scripts/Admin_usuar/administracion_usuarios.js"></script>
