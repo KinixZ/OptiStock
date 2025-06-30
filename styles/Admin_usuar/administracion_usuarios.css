@@ -1,0 +1,89 @@
+.module-wrapper {
+    margin-bottom: 20px;
+}
+
+.module-wrapper h2 {
+    font-size: 26px;
+    font-weight: bold;
+    color: #333;
+}
+
+.module-wrapper p {
+    font-size: 15px;
+    color: #666;
+}
+
+/* Botón "Crear nuevo usuario" */
+.text-end .btn-success {
+    background-color: #28a745;
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+}
+
+.text-end .btn-success:hover {
+    background-color: #218838;
+}
+
+/* Tabla de usuarios */
+#tablaUsuariosEmpresa {
+    width: 100%;
+    background-color: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    border-collapse: collapse;
+}
+
+#tablaUsuariosEmpresa thead {
+    background-color: #f7f7f7;
+    font-weight: bold;
+}
+
+#tablaUsuariosEmpresa th,
+#tablaUsuariosEmpresa td {
+    padding: 12px 16px;
+    font-size: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+#tablaUsuariosEmpresa td:last-child {
+    text-align: center;
+}
+
+#tablaUsuariosEmpresa tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Botones de acción */
+.btn-editar,
+.btn-eliminar {
+    border: none;
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 14px;
+    margin: 0 2px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.btn-editar {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-editar:hover {
+    background-color: #0056b3;
+}
+
+.btn-eliminar {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-eliminar:hover {
+    background-color: #a71d2a;
+}
