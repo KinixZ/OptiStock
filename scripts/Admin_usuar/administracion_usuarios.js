@@ -134,11 +134,11 @@ function exportarExcel() {
 
 async function exportarPDF() {
   const { jsPDF } = window.jspdf;
-
   const doc = new jsPDF();
 
-  // 👇👇 IMPORTANTE: asegúrate de que autoTable esté enlazada al objeto doc
+  // Importante: forzar la integración de autoTable
   if (typeof doc.autoTable !== 'function') {
+    console.error("❌ AutoTable no está disponible en jsPDF.");
     alert("❌ Error: jsPDF-AutoTable no está disponible.");
     return;
   }
@@ -148,7 +148,6 @@ async function exportarPDF() {
   const [header, ...body] = rows;
 
   doc.text("Usuarios de la Empresa", 14, 16);
-
   doc.autoTable({
     head: [header],
     body: body,
@@ -158,6 +157,7 @@ async function exportarPDF() {
 
   doc.save("usuarios_empresa.pdf");
 }
+
 
 // Cargar usuarios al iniciar
 if (document.readyState !== 'loading') {
