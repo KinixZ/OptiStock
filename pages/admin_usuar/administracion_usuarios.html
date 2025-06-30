@@ -29,37 +29,44 @@
 
 <!-- MODAL EDITAR USUARIO -->
 <div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="formEditarUsuario">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <form id="formEditarUsuario" class="p-3">
         <div class="modal-header">
-          <h5 class="modal-title">Editar usuario</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title fw-bold">Editar usuario</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
+
         <div class="modal-body">
           <input type="hidden" id="editar_id_usuario">
-          <div class="mb-2">
-            <label>Nombre</label>
+
+          <div class="mb-3">
+            <label for="editar_nombre" class="form-label">Nombre</label>
             <input type="text" class="form-control" id="editar_nombre" required>
           </div>
-          <div class="mb-2">
-            <label>Apellido</label>
+
+          <div class="mb-3">
+            <label for="editar_apellido" class="form-label">Apellido</label>
             <input type="text" class="form-control" id="editar_apellido" required>
           </div>
-          <div class="mb-2">
-            <label>Teléfono</label>
+
+          <div class="mb-3">
+            <label for="editar_telefono" class="form-label">Teléfono</label>
             <input type="text" class="form-control" id="editar_telefono">
           </div>
-          <div class="mb-2">
-            <label>Fecha de nacimiento</label>
+
+          <div class="mb-3">
+            <label for="editar_nacimiento" class="form-label">Fecha de nacimiento</label>
             <input type="date" class="form-control" id="editar_nacimiento">
           </div>
-          <div class="mb-2">
-            <label>Correo</label>
+
+          <div class="mb-3">
+            <label for="editar_correo" class="form-label">Correo</label>
             <input type="email" class="form-control" id="editar_correo" disabled>
           </div>
-          <div class="mb-2">
-            <label>Rol</label>
+
+          <div class="mb-3">
+            <label for="editar_rol" class="form-label">Rol</label>
             <select class="form-select" id="editar_rol" required>
               <option value="Supervisor">Supervisor</option>
               <option value="Almacenista">Almacenista</option>
@@ -68,9 +75,10 @@
             </select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Guardar cambios</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="submit" class="btn btn-primary w-50 me-1">Guardar cambios</button>
+          <button type="button" class="btn btn-secondary w-50 ms-1" data-bs-dismiss="modal">Cancelar</button>
         </div>
       </form>
     </div>
