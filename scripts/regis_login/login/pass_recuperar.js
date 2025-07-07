@@ -63,7 +63,7 @@ passwordForm.addEventListener("submit", function (event) {
         return;
     }
 
-    fetch('../../../scripts/php/cambiar_contrasena.php', {
+    fetch('../../../scripts/php/cambiar_contraseña.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nueva: pass1 })
