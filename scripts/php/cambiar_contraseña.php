@@ -18,7 +18,7 @@ try {
     if (!$nueva) throw new Exception("Contraseña nueva no proporcionada.");
 
     // Hashear la contraseña (puedes usar sha1 si así está el sistema actual, pero bcrypt es mejor)
-    $hashed = password_hash($nueva, PASSWORD_BCRYPT);
+    $hashed = sha1($nueva);
     $correo = $_SESSION['correo_recuperacion'];
 
     // Conectar a la base de datos
