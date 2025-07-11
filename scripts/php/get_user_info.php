@@ -10,20 +10,20 @@ if (!isset($_SESSION['id_usuario'])) {
 
 $id_usuario = $_SESSION['id_usuario'];
 
-// Conexión a DB (modifica con tus datos)
+// Conexión a la base de datos
 $servername = "localhost";
-$db_user = "tu_usuario";
-$db_pass = "tu_contraseña";
-$database = "tu_basededatos";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
 
-$conn = new mysqli($servername, $db_user, $db_pass, $database);
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Error de conexión']);
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
     exit;
 }
 
 // Consulta para obtener datos del usuario actual
-$sql = "SELECT nombre, apellido, correo, telefono, rol, suscripcion FROM usuario WHERE id_usuario = ?";
+$sql = "SELECT nombre, apellido, correo, telefono, rol, suscripcion, foto_perfil FROM usuario WHERE id_usuario = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id_usuario);
 $stmt->execute();
