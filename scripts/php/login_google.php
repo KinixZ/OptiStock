@@ -37,6 +37,14 @@ if ($check->num_rows > 0) {
     $check->bind_result($id, $nom, $fecha, $tel, $rol, $suscripcion);
     $check->fetch();
 
+    $foto_perfil = '';
+    $fotoStmt = $conn->prepare("SELECT foto_perfil FROM usuario WHERE id_usuario = ?");
+    $fotoStmt->bind_param("i", $id);
+    $fotoStmt->execute();
+    $fotoStmt->bind_result($foto_perfil);
+    $fotoStmt->fetch();
+    $fotoStmt->close();
+
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
 
     $_SESSION['usuario_id'] = $id;
@@ -52,7 +60,8 @@ if ($check->num_rows > 0) {
         "nombre" => $nom,
         "correo" => $correo,
         "rol" => $rol,
-        "suscripcion" => $suscripcion
+        "suscripcion" => $suscripcion,
+        "foto_perfil" => $foto_perfil
     ]);
 } else {
     // Registrar usuario nuevo (el rol se asigna automáticamente por defecto)
@@ -85,7 +94,8 @@ if ($check->num_rows > 0) {
             "id" => $id,
             "nombre" => $nombre,
             "correo" => $correo,
-            "rol" => $rol
+            "rol" => $rol,
+            "foto_perfil" => $foto_perfil
         ]);
     } else {
         echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);

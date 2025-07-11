@@ -51,6 +51,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem('usuario_email', userData.email);
                 localStorage.setItem('usuario_rol', data.rol);
                 localStorage.setItem('usuario_suscripcion', data.suscripcion);
+                
+                // Normaliza la ruta antes de guardar en localStorage
+                let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
+                if (fotoPerfil && !fotoPerfil.startsWith('/')) {
+                    fotoPerfil = '/' + fotoPerfil;
+                }
+                localStorage.setItem('foto_perfil', fotoPerfil);
 
                 if (data.completo) {
                     window.location.href = "../../main_menu/main_menu.html";
@@ -121,6 +128,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem('usuario_email', data.correo);
                 localStorage.setItem('usuario_rol', data.rol);
                 localStorage.setItem('usuario_suscripcion', data.suscripcion);
+
+                // Normaliza la ruta antes de guardar en localStorage
+                let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
+                if (fotoPerfil && !fotoPerfil.startsWith('/')) {
+                    fotoPerfil = '/' + fotoPerfil;
+                }
+                localStorage.setItem('foto_perfil', fotoPerfil);
 
                 window.location.href = data.redirect;
             } else {
