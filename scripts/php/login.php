@@ -57,6 +57,7 @@ if ($user) {
         $_SESSION['usuario_nombre'] = $user['nombre'];
         $_SESSION['usuario_correo'] = $user['correo'];
         $_SESSION['usuario_rol'] = $user['rol'];
+        $_SESSION['usuario_suscripcion'] = $user['suscripcion'];
 
         // Verificar si la cuenta se verifico
         if ($user['verificacion_cuenta'] == 0) {
@@ -66,7 +67,8 @@ if ($user) {
                 "id_usuario" => $user['id_usuario'],
                 "nombre" => $user['nombre'],
                 "correo" => $user['correo'],
-                "rol" => $user['rol'] // Enviar el rol aquí
+                "rol" => $user['rol'],
+                "suscripcion" => $user['suscripcion']
             ]);
         } else {
             echo json_encode([
@@ -75,7 +77,8 @@ if ($user) {
                 "id_usuario" => $user['id_usuario'],
                 "nombre" => $user['nombre'],
                 "correo" => $user['correo'],
-                "rol" => $user['rol'] // Enviar el rol aquí
+                "rol" => $user['rol'],
+                "suscripcion" => $user['suscripcion']
             ]);
         }
     } else {

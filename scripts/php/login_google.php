@@ -28,13 +28,13 @@ if (!$correo || !$nombre || !$apellido || !$google_id) {
 }
 
 // Verificar si el usuario ya existe
-$check = $conn->prepare("SELECT id_usuario, nombre, fecha_nacimiento, telefono, rol FROM usuario WHERE correo = ?");
+$check = $conn->prepare("SELECT id_usuario, nombre, fecha_nacimiento, telefono, rol, suscripcion FROM usuario WHERE correo = ?");
 $check->bind_param("s", $correo);
 $check->execute();
 $check->store_result();
 
 if ($check->num_rows > 0) {
-    $check->bind_result($id, $nom, $fecha, $tel, $rol);
+    $check->bind_result($id, $nom, $fecha, $tel, $rol, $suscripcion);
     $check->fetch();
 
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
@@ -43,6 +43,7 @@ if ($check->num_rows > 0) {
     $_SESSION['usuario_nombre'] = $nom;
     $_SESSION['usuario_correo'] = $correo;
     $_SESSION['usuario_rol'] = $rol;
+    $_SESSION['usuario_suscripcion'] = $suscripcion;
 
     echo json_encode([
         "success" => true,
@@ -50,7 +51,8 @@ if ($check->num_rows > 0) {
         "id" => $id,
         "nombre" => $nom,
         "correo" => $correo,
-        "rol" => $rol
+        "rol" => $rol,
+        "suscripcion" => $suscripcion
     ]);
 } else {
     // Registrar usuario nuevo (el rol se asigna automáticamente por defecto)
