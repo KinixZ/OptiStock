@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem('usuario_nombre', data.nombre);
                 localStorage.setItem('usuario_email', userData.email);
                 localStorage.setItem('usuario_rol', data.rol);
+                localStorage.setItem('usuario_suscripcion', data.suscripcion);
 
                 if (data.completo) {
                     window.location.href = "../../main_menu/main_menu.html";
@@ -119,6 +120,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem('usuario_nombre', data.nombre);
                 localStorage.setItem('usuario_email', data.correo);
                 localStorage.setItem('usuario_rol', data.rol);
+                localStorage.setItem('usuario_suscripcion', data.suscripcion);
 
                 window.location.href = data.redirect;
             } else {
