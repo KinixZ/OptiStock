@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
       if (!data.success) throw new Error(data.message);
       const user = data.data;
+      console.log('Foto perfil desde backend:', user.foto_perfil);
       const fotoPerfil = user.foto_perfil ? '/' + user.foto_perfil.replace(/^\/?/, '') : '/images/profile.jpg';
+      console.log('Ruta final asignada al src:', fotoPerfil);
 
       if (fotoPerfilPreview) {
         fotoPerfilPreview.src = fotoPerfil;
