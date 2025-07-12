@@ -5,10 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const fotoInput = document.getElementById('fotoPerfil');
 
   // Mostrar foto de perfil SIEMPRE desde localStorage
-  const fotoPerfilLS = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
-  if (fotoPerfilPreview) {
-    fotoPerfilPreview.src = fotoPerfilLS;
-  }
+  const fotoPerfilLS = localStorage.getItem('foto_perfil');
+if (fotoPerfilPreview) {
+  fotoPerfilPreview.src = fotoPerfilLS;
+}
 
   // Cargar datos reales del usuario (sin tocar la foto de perfil)
   fetch('/scripts/php/get_user_info.php')
