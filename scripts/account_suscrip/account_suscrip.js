@@ -4,18 +4,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
   const fotoInput = document.getElementById('fotoPerfil');
 
-  // Cargar datos reales del usuario
+  // 1. Mostrar foto de perfil desde localStorage primero
+  const fotoPerfilLS = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
+  if (fotoPerfilPreview) {
+    fotoPerfilPreview.src = fotoPerfilLS;
+  }
+
+  // 2. Luego, cargar datos reales del usuario y actualizar si es necesario
   fetch('/scripts/php/get_user_info.php')
     .then(res => res.json())
     .then(data => {
       if (!data.success) throw new Error(data.message);
       const user = data.data;
-      console.log('Foto perfil desde backend:', user.foto_perfil);
       const fotoPerfil = user.foto_perfil ? '/' + user.foto_perfil.replace(/^\/?/, '') : '/images/profile.jpg';
-      console.log('Ruta final asignada al src:', fotoPerfil);
-
-      console.log('Asignando src a fotoPerfilPreview:', fotoPerfil);
-      if (fotoPerfilPreview) {
+      if (fotoPerfilPreview && fotoPerfil !== fotoPerfilLS) {
         fotoPerfilPreview.src = fotoPerfil;
       }
 
