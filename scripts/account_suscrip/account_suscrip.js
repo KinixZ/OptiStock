@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const fotoPerfil = user.foto_perfil ? '/' + user.foto_perfil.replace(/^\/?/, '') : '/images/profile.jpg';
       console.log('Ruta final asignada al src:', fotoPerfil);
 
+      console.log('Asignando src a fotoPerfilPreview:', fotoPerfil);
       if (fotoPerfilPreview) {
         fotoPerfilPreview.src = fotoPerfil;
       }
