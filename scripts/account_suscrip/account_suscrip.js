@@ -4,29 +4,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
   const fotoInput = document.getElementById('fotoPerfil');
 
-  // 1. Mostrar foto de perfil desde localStorage primero
+  // Mostrar foto de perfil SIEMPRE desde localStorage
   const fotoPerfilLS = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
   if (fotoPerfilPreview) {
     fotoPerfilPreview.src = fotoPerfilLS;
   }
 
-  // 2. Luego, cargar datos reales del usuario y actualizar si es necesario
+  // Cargar datos reales del usuario (sin tocar la foto de perfil)
   fetch('/scripts/php/get_user_info.php')
     .then(res => res.json())
     .then(data => {
       if (!data.success) throw new Error(data.message);
       const user = data.data;
-      const fotoPerfil = user.foto_perfil ? '/' + user.foto_perfil.replace(/^\/?/, '') : '/images/profile.jpg';
-      if (fotoPerfilPreview && fotoPerfil !== fotoPerfilLS) {
-        fotoPerfilPreview.src = fotoPerfil;
-      }
-
       document.getElementById('nombreCompleto').textContent = user.nombre + ' ' + user.apellido;
       document.getElementById('correoUsuario').textContent = user.correo;
       if(document.getElementById('telefonoUsuario')) {
         document.getElementById('telefonoUsuario').textContent = user.telefono;
       }
-
       document.getElementById('nombre').value = user.nombre;
       document.getElementById('apellido').value = user.apellido;
       document.getElementById('correo').value = user.correo;
