@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
   const fotoInput = document.getElementById('fotoPerfil');
 
-  // Mostrar foto de perfil SIEMPRE desde localStorage
   const fotoPerfilLS = localStorage.getItem('foto_perfil');
-if (fotoPerfilPreview) {
+
+if (fotoPerfilPreview && fotoPerfilLS) {
   fotoPerfilPreview.src = fotoPerfilLS;
 }
 
