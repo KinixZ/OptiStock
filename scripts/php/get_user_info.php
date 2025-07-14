@@ -1,30 +1,30 @@
 <?php
+session_start();
+header('Content-Type: application/json');
 
-// Conexión a la base de datos
-$servername = "localhost";
-$db_user    = "u296155119_Admin";
-$db_pass    = "4Dmin123o";
-$database   = "u296155119_OptiStock";
+if (!isset($_SESSION['usuario_id'])) {
+    echo json_encode(['success'=>false,'message'=>'Sesión no válida']); exit;
+}
+$id_usuario = intval($_SESSION['usuario_id']);
 
-$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+$conn = mysqli_connect("localhost","u296155119_Admin","4Dmin123o","u296155119_OptiStock");
 if (!$conn) {
-    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
-    exit;
+    echo json_encode(['success'=>false,'message'=>'Error de conexión a la base de datos']); exit;
 }
 
-$sql = "SELECT nombre, apellido, correo, telefono FROM usuario WHERE id_usuario = ?";
+$sql = "SELECT nombre, apellido, correo, telefono, foto_perfil, suscripcion
+        FROM usuario WHERE id_usuario = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id_usuario);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows === 0) {
-    echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
-    exit;
+if ($user = $result->fetch_assoc()) {
+    echo json_encode(['success'=>true,'data'=>$user]);
+} else {
+    echo json_encode(['success'=>false,'message'=>'Usuario no encontrado']);
 }
 
-$user = $result->fetch_assoc();
-echo json_encode(['success' => true, 'data' => $user]);
 $stmt->close();
 $conn->close();
 ?>
