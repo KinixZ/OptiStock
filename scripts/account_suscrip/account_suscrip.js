@@ -1,11 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
   const userForm = document.getElementById('userForm');
   const userMessage = document.getElementById('userMessage');
-  const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
   const fotoInput = document.getElementById('fotoPerfil');
 
+  const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
   const fotoPerfilLS = localStorage.getItem('foto_perfil');
 
+console.log('Foto perfil localStorage:', fotoPerfilLS);
 if (fotoPerfilPreview && fotoPerfilLS) {
   fotoPerfilPreview.src = fotoPerfilLS;
 }
