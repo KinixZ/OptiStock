@@ -2,16 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const userForm = document.getElementById('userForm');
   const userMessage = document.getElementById('userMessage');
   const fotoInput = document.getElementById('fotoPerfil');
-
   const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
+
+  // Mostrar SIEMPRE la foto de perfil desde localStorage
   const fotoPerfilLS = localStorage.getItem('foto_perfil');
+  if (fotoPerfilPreview && fotoPerfilLS) {
+    fotoPerfilPreview.src = fotoPerfilLS;
+  }
 
-console.log('Foto perfil localStorage:', fotoPerfilLS);
-if (fotoPerfilPreview && fotoPerfilLS) {
-  fotoPerfilPreview.src = fotoPerfilLS;
-}
-
-  // Cargar datos reales del usuario (sin tocar la foto de perfil)
+  // Autollenar datos del usuario (excepto foto)
   fetch('/scripts/php/get_user_info.php')
     .then(res => res.json())
     .then(data => {
@@ -19,20 +18,16 @@ if (fotoPerfilPreview && fotoPerfilLS) {
       const user = data.data;
       document.getElementById('nombreCompleto').textContent = user.nombre + ' ' + user.apellido;
       document.getElementById('correoUsuario').textContent = user.correo;
-      if(document.getElementById('telefonoUsuario')) {
-        document.getElementById('telefonoUsuario').textContent = user.telefono;
-      }
       document.getElementById('nombre').value = user.nombre;
       document.getElementById('apellido').value = user.apellido;
       document.getElementById('correo').value = user.correo;
       document.getElementById('telefono').value = user.telefono;
-      // Puedes cargar más campos aquí si los tienes
     })
     .catch(e => {
       userMessage.textContent = 'Error cargando datos: ' + e.message;
     });
 
-  // Vista previa de la foto de perfil seleccionada
+  // Vista previa de la foto seleccionada
   if (fotoInput && fotoPerfilPreview) {
     fotoInput.addEventListener('change', function (e) {
       const file = e.target.files[0];
@@ -50,7 +45,7 @@ if (fotoPerfilPreview && fotoPerfilLS) {
   userForm.addEventListener('submit', e => {
     e.preventDefault();
 
-    // Si hay foto seleccionada, usar FormData para enviar todo
+    // Si hay foto seleccionada, subirla
     if (fotoInput && fotoInput.files[0]) {
       const formData = new FormData(userForm);
       fetch('/scripts/php/upload_foto_perfil.php', {

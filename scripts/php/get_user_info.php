@@ -1,14 +1,4 @@
 <?php
-session_start();
-header('Content-Type: application/json');
-
-// Validar si el usuario está autenticado y tiene id_usuario en sesión
-if (!isset($_SESSION['id_usuario'])) {
-    echo json_encode(['success' => false, 'message' => 'No autenticado']);
-    exit;
-}
-
-$id_usuario = $_SESSION['id_usuario'];
 
 // Conexión a la base de datos
 $servername = "localhost";
@@ -22,8 +12,7 @@ if (!$conn) {
     exit;
 }
 
-// Consulta para obtener datos del usuario actual
-$sql = "SELECT nombre, apellido, correo, telefono, rol, suscripcion, foto_perfil FROM usuario WHERE id_usuario = ?";
+$sql = "SELECT nombre, apellido, correo, telefono FROM usuario WHERE id_usuario = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id_usuario);
 $stmt->execute();
@@ -35,9 +24,7 @@ if ($result->num_rows === 0) {
 }
 
 $user = $result->fetch_assoc();
-
 echo json_encode(['success' => true, 'data' => $user]);
-
 $stmt->close();
 $conn->close();
 ?>
