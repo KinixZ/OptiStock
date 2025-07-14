@@ -51,6 +51,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem('usuario_email', userData.email);
                 localStorage.setItem('usuario_rol', data.rol);
                 localStorage.setItem('usuario_suscripcion', data.suscripcion);
+
+                localStorage.setItem('id_empresa', data.id_empresa);
+                localStorage.setItem('empresa_nombre', data.empresa_nombre);
                 
                 // Normaliza la ruta antes de guardar en localStorage
                 let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
@@ -128,6 +131,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem('usuario_email', data.correo);
                 localStorage.setItem('usuario_rol', data.rol);
                 localStorage.setItem('usuario_suscripcion', data.suscripcion);
+
+                localStorage.setItem('id_empresa',      data.id_empresa     ?? '');
+                localStorage.setItem('empresa_nombre',  data.empresa_nombre ?? '');
 
                 // Normaliza la ruta antes de guardar en localStorage
                 let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
