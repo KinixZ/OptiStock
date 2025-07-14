@@ -4,16 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const fotoInput = document.getElementById('fotoPerfil');
   const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
 
-  // Mostrar SIEMPRE la foto de perfil desde localStorage
+  // 1. Mostrar SIEMPRE la foto de perfil desde localStorage
   const fotoPerfilLS = localStorage.getItem('foto_perfil');
+  console.log('foto_perfil en localStorage:', fotoPerfilLS);
   if (fotoPerfilPreview && fotoPerfilLS) {
     fotoPerfilPreview.src = fotoPerfilLS;
   }
 
-  // Autollenar datos del usuario (excepto foto)
+  // 2. Autollenar datos del usuario (excepto foto)
   fetch('/scripts/php/get_user_info.php')
     .then(res => res.json())
     .then(data => {
+      console.log('Respuesta get_user_info.php:', data);
       if (!data.success) throw new Error(data.message);
       const user = data.data;
       document.getElementById('nombreCompleto').textContent = user.nombre + ' ' + user.apellido;
@@ -25,9 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(e => {
       userMessage.textContent = 'Error cargando datos: ' + e.message;
+      console.error(e);
     });
 
-  // Vista previa de la foto seleccionada
+  // 3. Vista previa de la foto seleccionada
   if (fotoInput && fotoPerfilPreview) {
     fotoInput.addEventListener('change', function (e) {
       const file = e.target.files[0];
@@ -41,11 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Guardar cambios (datos y foto)
+  // 4. Guardar cambios (datos y foto)
   userForm.addEventListener('submit', e => {
     e.preventDefault();
-
-    // Si hay foto seleccionada, subirla
+    console.log('Submit detectado');
     if (fotoInput && fotoInput.files[0]) {
       const formData = new FormData(userForm);
       fetch('/scripts/php/upload_foto_perfil.php', {
@@ -54,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .then(res => res.json())
       .then(data => {
+        console.log('Respuesta upload_foto_perfil.php:', data);
         if (data.success) {
           userMessage.textContent = data.message || 'Datos actualizados correctamente';
           if (data.foto_perfil) {
@@ -68,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .catch(err => {
         userMessage.textContent = 'Error al guardar: ' + err.message;
+        console.error(err);
       });
     } else {
       // Si no hay foto, solo actualiza datos
@@ -84,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .then(res => res.json())
       .then(data => {
+        console.log('Respuesta update_user_info.php:', data);
         if(data.success) {
           userMessage.textContent = data.message;
           userForm.contrasena.value = '';
@@ -94,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .catch(err => {
         userMessage.textContent = 'Error al guardar: ' + err.message;
+        console.error(err);
       });
     }
   });
