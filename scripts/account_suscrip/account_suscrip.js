@@ -10,11 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const idEmpresa = localStorage.getItem('id_empresa');
 
   // Mostrar datos básicos en pantalla
-  document.getElementById('usuario_nombre').textContent = usuarioNombre || '';
-  document.getElementById('usuario_email').textContent = usuarioEmail || '';
-  document.getElementById('empresa_nombre').textContent = empresaNombre || '';
+  document.getElementById('nombreCompleto').textContent = usuarioNombre || '';
+  document.getElementById('correoUsuario').textContent = usuarioEmail || '';
+  document.getElementById('nombreEmpresa').textContent = empresaNombre || '';
   if(fotoPerfil){
-    document.getElementById('profile_img').src = fotoPerfil;
+    document.getElementById('fotoPerfil').src = fotoPerfil;
   }
 
   // Cargar datos completos del backend para mostrar detalles y sincronizar UI
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
   // Abrir modal con datos para editar info personal
-  document.getElementById('editUserBtn').addEventListener('click', () => {
+  document.getElementById('btnEditarUsuario').addEventListener('click', () => {
     // Llenar formulario con datos actuales del usuario
     fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
       .then(res => res.json())
