@@ -1,106 +1,136 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const userForm = document.getElementById('userForm');
-  const userMessage = document.getElementById('userMessage');
-  const fotoInput = document.getElementById('fotoPerfil');
-  const fotoPerfilPreview = document.getElementById('fotoPerfilPreview');
+  // Obtener datos de localStorage
+  const usuarioId = localStorage.getItem('usuario_id');
+  const usuarioEmail = localStorage.getItem('usuario_email');
+  const usuarioNombre = localStorage.getItem('usuario_nombre');
+  const usuarioRol = localStorage.getItem('usuario_rol');
+  const usuarioSuscripcion = localStorage.getItem('usuario_suscripcion');
+  const empresaNombre = localStorage.getItem('empresa_nombre');
+  const fotoPerfil = localStorage.getItem('foto_perfil');
+  const idEmpresa = localStorage.getItem('id_empresa');
 
-  // 1. Mostrar SIEMPRE la foto de perfil desde localStorage
-  const fotoPerfilLS = localStorage.getItem('foto_perfil');
-  console.log('foto_perfil en localStorage:', fotoPerfilLS);
-  if (fotoPerfilPreview && fotoPerfilLS) {
-    fotoPerfilPreview.src = fotoPerfilLS;
+  // Mostrar datos básicos en pantalla
+  document.getElementById('usuario_nombre').textContent = usuarioNombre || '';
+  document.getElementById('usuario_email').textContent = usuarioEmail || '';
+  document.getElementById('empresa_nombre').textContent = empresaNombre || '';
+  if(fotoPerfil){
+    document.getElementById('profile_img').src = fotoPerfil;
   }
 
-  // 2. Autollenar datos del usuario (excepto foto)
-  fetch('/scripts/php/get_user_info.php')
+  // Cargar datos completos del backend para mostrar detalles y sincronizar UI
+  fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
     .then(res => res.json())
     .then(data => {
-      console.log('Respuesta get_user_info.php:', data);
-      if (!data.success) throw new Error(data.message);
-      const user = data.data;
-      document.getElementById('nombreCompleto').textContent = user.nombre + ' ' + user.apellido;
-      document.getElementById('correoUsuario').textContent = user.correo;
-      document.getElementById('nombre').value = user.nombre;
-      document.getElementById('apellido').value = user.apellido;
-      document.getElementById('correo').value = user.correo;
-      document.getElementById('telefono').value = user.telefono;
-    })
-    .catch(e => {
-      userMessage.textContent = 'Error cargando datos: ' + e.message;
-      console.error(e);
-    });
+      if(data.success){
+        // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
+        document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
+        document.getElementById('usuario_email').textContent = data.usuario.correo;
+        if(data.usuario.foto_perfil){
+          document.getElementById('profile_img').src = data.usuario.foto_perfil;
+          localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
+        }
+        document.getElementById('empresa_nombre').textContent = data.empresa.nombre_empresa;
+        localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
+        localStorage.setItem('id_empresa', data.empresa.id_empresa);
 
-  // 3. Vista previa de la foto seleccionada
-  if (fotoInput && fotoPerfilPreview) {
-    fotoInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (evt) {
-          fotoPerfilPreview.src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
+        // Aquí muestra más detalles: suscripción, colores, etc (según data)
+        // Por ejemplo:
+        document.getElementById('subscription_plan').textContent = data.suscripcion.plan || 'Sin plan';
+        document.getElementById('subscription_renewal').textContent = data.suscripcion.fecha_renovacion || 'N/A';
+        document.getElementById('subscription_cost').textContent = data.suscripcion.costo || 'N/A';
+        document.getElementById('payment_method').textContent = data.suscripcion.metodo_pago || 'N/A';
+
+        // ...más código para colores y configuraciones visuales si quieres
+      } else {
+        alert('Error al cargar datos de la cuenta.');
       }
+    })
+    .catch(err => {
+      console.error('Error al obtener datos:', err);
     });
-  }
 
-  // 4. Guardar cambios (datos y foto)
-  userForm.addEventListener('submit', e => {
+  // Abrir modal con datos para editar info personal
+  document.getElementById('editUserBtn').addEventListener('click', () => {
+    // Llenar formulario con datos actuales del usuario
+    fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
+      .then(res => res.json())
+      .then(data => {
+        if(data.success){
+          const user = data.usuario;
+          const empresa = data.empresa;
+          // Campos usuario
+          document.getElementById('edit_nombre').value = user.nombre;
+          document.getElementById('edit_apellidos').value = user.apellido;
+          document.getElementById('edit_email').value = user.correo;
+          document.getElementById('edit_telefono').value = user.telefono;
+          // Nota: contraseña se deja vacía para cambiar solo si quiere
+          document.getElementById('edit_password').value = '';
+
+          // Campos empresa
+          document.getElementById('edit_empresa_nombre').value = empresa.nombre_empresa;
+          document.getElementById('edit_sector').value = empresa.sector_empresa || '';
+
+          // Mostrar modal
+          const modal = new bootstrap.Modal(document.getElementById('editModal'));
+          modal.show();
+        } else {
+          alert('No se pudo cargar datos para edición');
+        }
+      });
+  });
+
+  // Enviar formulario de edición
+  document.getElementById('editForm').addEventListener('submit', e => {
     e.preventDefault();
-    console.log('Submit detectado');
-    if (fotoInput && fotoInput.files[0]) {
-      const formData = new FormData(userForm);
-      fetch('/scripts/php/upload_foto_perfil.php', {
-        method: 'POST',
-        body: formData
-      })
-      .then(res => res.json())
-      .then(data => {
-        console.log('Respuesta upload_foto_perfil.php:', data);
-        if (data.success) {
-          userMessage.textContent = data.message || 'Datos actualizados correctamente';
-          if (data.foto_perfil) {
-            fotoPerfilPreview.src = data.foto_perfil;
-            localStorage.setItem('foto_perfil', data.foto_perfil);
+
+    const formDataUser = new FormData();
+    formDataUser.append('usuario_id', usuarioId);
+    formDataUser.append('nombre', document.getElementById('edit_nombre').value);
+    formDataUser.append('apellido', document.getElementById('edit_apellidos').value);
+    formDataUser.append('correo', document.getElementById('edit_email').value);
+    formDataUser.append('telefono', document.getElementById('edit_telefono').value);
+    const password = document.getElementById('edit_password').value;
+    if(password) formDataUser.append('contrasena', password);
+
+    // Primero actualizar usuario
+    fetch('/scripts/php/update_user_info.php', {
+      method: 'POST',
+      body: formDataUser
+    })
+    .then(res => res.json())
+    .then(respUser => {
+      if(respUser.success){
+        // Luego actualizar empresa
+        const formDataEmpresa = new FormData();
+        formDataEmpresa.append('id_empresa', localStorage.getItem('id_empresa'));
+        formDataEmpresa.append('nombre_empresa', document.getElementById('edit_empresa_nombre').value);
+        formDataEmpresa.append('sector_empresa', document.getElementById('edit_sector').value);
+
+        fetch('/scripts/php/update_empresa_info.php', {
+          method: 'POST',
+          body: formDataEmpresa
+        })
+        .then(res => res.json())
+        .then(respEmpresa => {
+          if(respEmpresa.success){
+            // Actualizar localStorage con nuevos datos
+            localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
+            localStorage.setItem('usuario_email', formDataUser.get('correo'));
+            localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
+            // Puedes actualizar otros datos si quieres
+
+            // Refrescar página para aplicar cambios
+            location.reload();
+          } else {
+            alert('Error al actualizar información de empresa.');
           }
-          userForm.contrasena.value = '';
-        } else {
-          userMessage.textContent = 'Error: ' + data.message;
-        }
-        setTimeout(() => userMessage.textContent = '', 3000);
-      })
-      .catch(err => {
-        userMessage.textContent = 'Error al guardar: ' + err.message;
-        console.error(err);
-      });
-    } else {
-      // Si no hay foto, solo actualiza datos
-      const payload = {
-        nombre: userForm.nombre.value.trim(),
-        apellido: userForm.apellido.value.trim(),
-        telefono: userForm.telefono.value.trim(),
-        contrasena: userForm.contrasena ? userForm.contrasena.value : ''
-      };
-      fetch('/scripts/php/update_user_info.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(data => {
-        console.log('Respuesta update_user_info.php:', data);
-        if(data.success) {
-          userMessage.textContent = data.message;
-          userForm.contrasena.value = '';
-        } else {
-          userMessage.textContent = 'Error: ' + data.message;
-        }
-        setTimeout(() => userMessage.textContent = '', 3000);
-      })
-      .catch(err => {
-        userMessage.textContent = 'Error al guardar: ' + err.message;
-        console.error(err);
-      });
-    }
+        });
+      } else {
+        alert('Error al actualizar información del usuario.');
+      }
+    })
+    .catch(err => {
+      console.error('Error al actualizar:', err);
+    });
   });
 });
