@@ -1,5 +1,18 @@
+console.log('Script cargado'); 
+
 document.addEventListener('DOMContentLoaded', () => {
   // Obtener datos de localStorage
+  console.log('DOM listo');
+  const el = document.getElementById('nombreCompleto');
+  if (el) {
+    el.textContent = 'Prueba de carga JS correcta';
+    console.log('Elemento nombreCompleto actualizado');
+  } else {
+    console.error('Elemento nombreCompleto NO encontrado');
+  }
+
+  alert('JS ejecutado');
+  
   const usuarioId = localStorage.getItem('usuario_id');
   const usuarioEmail = localStorage.getItem('usuario_email');
   const usuarioNombre = localStorage.getItem('usuario_nombre');
