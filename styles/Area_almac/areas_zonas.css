@@ -1,0 +1,291 @@
+/* Contenedor principal */
+.warehouse-management {
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Encabezado */
+.warehouse-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.warehouse-title {
+    font-size: 1.8rem;
+    color: var(--dark-color);
+    font-weight: 500;
+    margin: 0;
+}
+
+.warehouse-actions {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.warehouse-search {
+    width: 300px;
+}
+
+/* Mapa del almacén */
+.warehouse-map-container {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.map-toolbar {
+    background-color: var(--light-color);
+    padding: 10px 15px;
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.map-tool {
+    background: none;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--dark-color);
+    transition: all var(--transition-speed) ease;
+}
+
+.map-tool:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--secondary-color);
+}
+
+.map-tool.active {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.measurement-unit select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: white;
+    margin-left: auto;
+    font-size: 0.9rem;
+}
+
+.warehouse-map {
+    height: 500px;
+    position: relative;
+    background-color: #f9f9f9;
+    overflow: hidden;
+}
+
+/* Brújula */
+.compass {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background-color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 10;
+    color: var(--secondary-color);
+}
+
+/* Listado de zonas */
+.zones-list {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+}
+
+.zones-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.zones-list-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.zones-table {
+    overflow-x: auto;
+}
+
+.zones-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.zones-table th, 
+.zones-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.zones-table th {
+    font-weight: 500;
+    color: var(--dark-color);
+    background-color: #f9f9f9;
+}
+
+.zones-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Indicadores de capacidad */
+.capacity-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.capacity-low {
+    background-color: var(--accent-color);
+}
+
+.capacity-medium {
+    background-color: var(--warning-color);
+}
+
+.capacity-high {
+    background-color: var(--success-color);
+}
+
+/* Botones de acción */
+.btn-icon {
+    background: none;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--dark-color);
+    transition: all var(--transition-speed) ease;
+}
+
+.btn-icon:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.edit-zone:hover {
+    color: var(--secondary-color);
+}
+
+.delete-zone:hover {
+    color: var(--accent-color);
+}
+
+/* Formularios modales */
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.modal-form h3 {
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.form-group input {
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .warehouse-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .warehouse-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    
+    .warehouse-search {
+        width: 100%;
+    }
+    
+    .warehouse-map {
+        height: 400px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
