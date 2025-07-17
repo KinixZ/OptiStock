@@ -1,0 +1,108 @@
+<div class="container py-4">
+  <link rel="stylesheet" href="../../styles/account_suscrip/account_suscrip.css">
+  <h2 class="mb-3">Tu cuenta</h2>
+  <p class="text-muted">Gestiona tus datos personales, configuración empresarial y suscripción.</p>
+
+  <!-- Información de usuario -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Información personal</span>
+      <button class="btn btn-outline-primary btn-sm" id="btnEditarUsuario">Editar</button>
+    </div>
+    <div class="card-body" id="usuarioInfo">
+      <div class="row">
+        <div class="col-md-3 text-center">
+          <img id="fotoPerfil" class="img-thumbnail rounded-circle mb-2" width="120" height="120">
+        </div>
+        <div class="col-md-9">
+          <p><strong>Nombre:</strong> <span id="nombreCompleto"></span></p>
+          <p><strong>Correo:</strong> <span id="correoUsuario"></span></p>
+          <p><strong>Teléfono:</strong> <span id="telefonoUsuario"></span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Información empresarial -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Información empresarial</span>
+      <button class="btn btn-outline-primary btn-sm" id="btnEditarEmpresa">Editar</button>
+    </div>
+    <div class="card-body" id="empresaInfo">
+      <p><strong>Nombre de empresa:</strong> <span id="nombreEmpresa"></span></p>
+      <p><strong>Sector:</strong> <span id="sectorEmpresa"></span></p>
+      <p><strong>Logo:</strong><br> <img id="logoEmpresa" height="60"></p>
+    </div>
+  </div>
+
+  <!-- Personalización visual -->
+  <div class="card mb-4">
+    <div class="card-header">Personalización visual</div>
+    <div class="card-body">
+      <label>Color Sidebar: <input type="color" id="colorSidebar" disabled></label>
+      <label class="ms-3">Color Topbar: <input type="color" id="colorTopbar" disabled></label>
+      <button class="btn btn-sm btn-primary ms-3" id="btnGuardarColores">Guardar</button>
+    </div>
+  </div>
+
+  <!-- Información de suscripción -->
+  <div class="card mb-4">
+    <div class="card-header">Suscripción actual</div>
+    <div class="card-body">
+      <p><strong>Plan:</strong> <span id="planActual">Gratuito</span></p>
+      <p><strong>Renovación:</strong> <span id="fechaRenovacion">-</span></p>
+      <p><strong>Método de pago:</strong> <span id="metodoPago">-</span></p>
+      <button class="btn btn-outline-success btn-sm" id="btnActualizarPlan">Actualizar plan</button>
+      <button class="btn btn-outline-danger btn-sm" id="btnCancelarSuscripcion">Cancelar suscripción</button>
+    </div>
+  </div>
+
+  <!-- Modal editar usuario -->
+  <div class="modal fade" id="modalEditarUsuario" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Información Personal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditarUsuario">
+            <input type="hidden" id="usuarioId">
+            <div class="mb-2">
+              <label>Nombre:</label>
+              <input type="text" class="form-control" id="inputNombre">
+            </div>
+            <div class="mb-2">
+              <label>Apellido:</label>
+              <input type="text" class="form-control" id="inputApellido">
+            </div>
+            <div class="mb-2">
+              <label>Correo:</label>
+              <input type="email" class="form-control" id="inputCorreo" disabled>
+            </div>
+            <div class="mb-2">
+              <label>Teléfono:</label>
+              <input type="text" class="form-control" id="inputTelefono">
+            </div>
+            <div class="mb-2">
+              <label>Foto de perfil:</label>
+              <input type="file" class="form-control" id="inputFoto">
+            </div>
+            <div class="mb-2">
+              <label>Nueva Contraseña (opcional):</label>
+              <input type="password" class="form-control" id="inputContrasena">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" id="btnGuardarCambiosUsuario">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../../scripts/account_suscrip/account_suscrip.js"></script>

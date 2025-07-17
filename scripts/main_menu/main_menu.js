@@ -254,6 +254,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (nombre && userNameEl) userNameEl.textContent = nombre;
     if (rol && userRoleEl) userRoleEl.textContent = rol;
 
+    const fotoPerfil = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
+    const userImgEl = document.querySelector('.user-profile img');
+    if (userImgEl) userImgEl.src = fotoPerfil;
+
     // Submenú usuario
     const dropdownButton = document.getElementById("dropdownMenuButton");
     const userMenu = document.getElementById("userMenu");

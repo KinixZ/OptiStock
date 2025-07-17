@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+
+body {
+    background: linear-gradient(to left, rgba(46, 60, 118, 0.9), rgba(46, 60, 118, 0.6)),
+                url("https://altertecnia.com/wp-content/uploads/almacenes-inteligentes-portada.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+}
+
+.container {
+    max-width: 480px;
+    background-color: rgba(255, 183, 77, 0.97);
+    margin: 80px auto;
+    padding: 40px 30px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+    color: #1a1a1a;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+label {
+    color: #1a1a1a;
+    font-size: 14px;
+    text-align: left;
+}
+
+input {
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    outline: none;
+}
+
+button {
+    background-color: #2e3c76;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+button:hover {
+    background-color: #1a2750;
+}
+
+#recovery-message {
+    margin-top: 20px;
+    color: #1a1a1a;
+    font-weight: bold;
+}
+
+a {
+    display: block;
+    margin-top: 20px;
+    color: #2e3c76;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+a:hover {
+    text-decoration: underline;
+}
