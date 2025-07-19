@@ -1,7 +1,17 @@
-// Manejo dinámico de subniveles
+// Elementos del DOM
 const sublevelsCountInput = document.getElementById('sublevelsCount');
 const sublevelsContainer = document.getElementById('sublevelsContainer');
+const areaForm = document.querySelector('#areaForm.formulario');
+const zoneForm = document.querySelector('#zoneForm.formulario');
+const registroLista = document.getElementById('registroLista');
 
+// Estado local simulado (en el futuro se reemplazará con datos del backend)
+let registros = {
+  areas: [],
+  zonas: []
+};
+
+// Renderizar subniveles según cantidad
 function renderSublevels(count) {
   sublevelsContainer.innerHTML = '';
   if (count > 0) {
@@ -24,78 +34,95 @@ function renderSublevels(count) {
   }
 }
 
+// Mostrar u ocultar formularios
 function mostrarFormulario(tipo) {
-  document.getElementById('areaForm').style.display = (tipo === 'area') ? 'block' : 'none';
-  document.getElementById('zoneForm').style.display = (tipo === 'zona') ? 'block' : 'none';
+  areaForm.style.display = (tipo === 'area') ? 'block' : 'none';
+  zoneForm.style.display = (tipo === 'zona') ? 'block' : 'none';
 }
 
-// Ejemplo de añadir área al panel resumen (ya conectado con submit del form)
+// Actualizar el resumen de áreas y zonas registradas
 function actualizarResumen() {
-  const panel = document.getElementById('registroLista');
-  panel.innerHTML = `
-    <ul>
-      <li>Área: Oficina Central</li>
-      <li>Zona: Estantería A</li>
-    </ul>
+  if (registros.areas.length === 0 && registros.zonas.length === 0) {
+    registroLista.innerHTML = `
+      <p class="vacio">No hay áreas ni zonas registradas.</p>
+      <button onclick="mostrarFormulario('area')">Registrar nueva Área</button>
+      <button onclick="mostrarFormulario('zona')">Registrar nueva Zona</button>
+    `;
+    return;
+  }
+
+  let html = '<ul>';
+  registros.areas.forEach(area => {
+    html += `<li><strong>Área:</strong> ${area}</li>`;
+  });
+  registros.zonas.forEach(zona => {
+    html += `<li><strong>Zona:</strong> ${zona}</li>`;
+  });
+  html += '</ul>';
+
+  html += `
     <button onclick="mostrarFormulario('area')">Registrar otra Área</button>
     <button onclick="mostrarFormulario('zona')">Registrar otra Zona</button>
   `;
+
+  registroLista.innerHTML = html;
 }
 
+// Escucha el cambio de cantidad de subniveles
 sublevelsCountInput.addEventListener('change', (e) => {
   const count = parseInt(e.target.value) || 0;
   renderSublevels(count);
 });
 
-// Validaciones básicas y manejo de submit para Área
-document.getElementById('areaForm').addEventListener('submit', (e) => {
+// Submit Área
+areaForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const areaName = e.target.areaName.value.trim();
-  if (!areaName) {
+  const nombre = e.target.areaName.value.trim();
+  if (!nombre) {
     alert('El nombre del área es obligatorio');
     return;
   }
 
-  // Aquí puedes conectar con el backend para guardar el área
-  alert(`Área "${areaName}" guardada correctamente.`);
+  registros.areas.push(nombre);
+  actualizarResumen();
+  areaForm.reset();
+  areaForm.style.display = 'none';
+  alert(`Área "${nombre}" guardada correctamente.`);
 });
 
-// Validaciones básicas y manejo de submit para Zona
-document.getElementById('zoneForm').addEventListener('submit', (e) => {
+// Submit Zona
+zoneForm.addEventListener('submit', (e) => {
   e.preventDefault();
 
   const zoneName = e.target.zoneName.value.trim();
-  if (!zoneName) {
-    alert('El nombre de la zona es obligatorio');
-    return;
-  }
-
   const width = parseFloat(e.target.zoneWidth.value);
   const height = parseFloat(e.target.zoneHeight.value);
   const length = parseFloat(e.target.zoneLength.value);
+  const tipo = e.target.storageType.value;
+  const sublevelsCount = parseInt(e.target.sublevelsCount.value) || 0;
 
-  if (!(width > 0 && height > 0 && length > 0)) {
-    alert('Dimensiones físicas deben ser números positivos.');
+  if (!zoneName || !tipo || !(width > 0 && height > 0 && length > 0)) {
+    alert('Debe completar todos los campos obligatorios con valores válidos.');
     return;
   }
 
-  const sublevelsCount = parseInt(e.target.sublevelsCount.value) || 0;
   for (let i = 1; i <= sublevelsCount; i++) {
     const w = parseFloat(e.target[`sublevelWidth${i}`].value);
     const h = parseFloat(e.target[`sublevelHeight${i}`].value);
     const l = parseFloat(e.target[`sublevelLength${i}`].value);
-
     if (!(w > 0 && h > 0 && l > 0)) {
-      alert(`Dimensiones del subnivel ${i} deben ser números positivos.`);
+      alert(`Dimensiones del subnivel ${i} deben ser válidas.`);
       return;
     }
   }
 
-  if (!e.target.storageType.value) {
-    alert('Seleccione un tipo de almacenamiento.');
-    return;
-  }
-
-  // Aquí puedes conectar con el backend para guardar la zona
+  registros.zonas.push(zoneName);
+  actualizarResumen();
+  zoneForm.reset();
+  renderSublevels(0);
+  zoneForm.style.display = 'none';
   alert(`Zona "${zoneName}" guardada correctamente.`);
 });
+
+// Inicializar estado al cargar
+actualizarResumen();
