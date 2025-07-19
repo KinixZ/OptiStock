@@ -24,6 +24,24 @@ function renderSublevels(count) {
   }
 }
 
+function mostrarFormulario(tipo) {
+  document.getElementById('areaForm').style.display = (tipo === 'area') ? 'block' : 'none';
+  document.getElementById('zoneForm').style.display = (tipo === 'zona') ? 'block' : 'none';
+}
+
+// Ejemplo de añadir área al panel resumen (ya conectado con submit del form)
+function actualizarResumen() {
+  const panel = document.getElementById('registroLista');
+  panel.innerHTML = `
+    <ul>
+      <li>Área: Oficina Central</li>
+      <li>Zona: Estantería A</li>
+    </ul>
+    <button onclick="mostrarFormulario('area')">Registrar otra Área</button>
+    <button onclick="mostrarFormulario('zona')">Registrar otra Zona</button>
+  `;
+}
+
 sublevelsCountInput.addEventListener('change', (e) => {
   const count = parseInt(e.target.value) || 0;
   renderSublevels(count);
