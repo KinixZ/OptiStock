@@ -12,33 +12,48 @@ const areaForm = document.getElementById('areaForm');
 const zoneForm = document.getElementById('zoneForm');
 const registroLista = document.getElementById('registroLista');
 const zoneAreaSelect = document.getElementById('zoneArea');
+const errorContainer = document.getElementById('error-message');
 
-// Función para llamadas API
+// Función para llamadas API mejorada
 async function fetchAPI(endpoint, method = 'GET', data = null) {
-  const options = {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-    },
-    credentials: 'include'
-  };
-  
-  if (data) {
-    options.body = JSON.stringify(data);
-  }
-  
   try {
-    const response = await fetch(endpoint, options);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include'
+    };
+    
+    if (data) {
+      options.body = JSON.stringify(data);
     }
+    
+    const response = await fetch(endpoint, options);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error en fetchAPI:', error);
     mostrarError(error.message || 'Error de conexión con el servidor');
     throw error;
+  }
+}
+
+// Función para mostrar errores
+function mostrarError(mensaje) {
+  if (errorContainer) {
+    errorContainer.textContent = mensaje;
+    errorContainer.style.display = 'block';
+    setTimeout(() => {
+      errorContainer.style.display = 'none';
+    }, 5000);
+  } else {
+    alert(mensaje);
   }
 }
 
@@ -48,7 +63,7 @@ function renderSublevels(count) {
   if (count > 0) {
     for (let i = 1; i <= count; i++) {
       const div = document.createElement('div');
-      div.classList.add('sublevel-dimensions');
+      div.className = 'sublevel-dimensions';
       div.innerHTML = `
         <strong>Subnivel ${i}</strong>
         <label>Ancho (m)</label>
@@ -65,29 +80,19 @@ function renderSublevels(count) {
   }
 }
 
-// Mostrar mensajes de error
-function mostrarError(mensaje) {
-  const errorContainer = document.getElementById('error-message');
-  if (errorContainer) {
-    errorContainer.textContent = mensaje;
-    errorContainer.style.display = 'block';
-    setTimeout(() => errorContainer.style.display = 'none', 5000);
-  } else {
-    alert(mensaje);
-  }
-}
-
 // Cargar áreas para el select
 async function cargarAreas() {
   try {
     const areas = await fetchAPI(API_ENDPOINTS.areas);
     zoneAreaSelect.innerHTML = '<option value="">Seleccione un área</option>';
+    
     areas.forEach(area => {
       const option = document.createElement('option');
       option.value = area.id;
       option.textContent = area.nombre;
       zoneAreaSelect.appendChild(option);
     });
+    
     return areas;
   } catch (error) {
     console.error('Error cargando áreas:', error);
@@ -97,49 +102,60 @@ async function cargarAreas() {
 
 // Mostrar formularios
 async function mostrarFormulario(tipo, datos = null) {
-  if (tipo === 'area') {
-    areaForm.style.display = 'block';
-    zoneForm.style.display = 'none';
-    
-    if (datos) {
-      areaForm.areaName.value = datos.nombre;
-      areaForm.dataset.id = datos.id;
-    } else {
-      areaForm.reset();
-      delete areaForm.dataset.id;
-    }
-    
-  } else if (tipo === 'zona') {
-    zoneForm.style.display = 'block';
-    areaForm.style.display = 'none';
-    
-    await cargarAreas();
-    
-    if (datos) {
-      zoneForm.zoneName.value = datos.nombre;
-      zoneForm.zoneWidth.value = datos.ancho;
-      zoneForm.zoneHeight.value = datos.alto;
-      zoneForm.zoneLength.value = datos.largo;
-      zoneForm.storageType.value = datos.tipo_almacenamiento;
-      zoneForm.sublevelsCount.value = datos.subniveles?.length || 0;
-      zoneForm.zoneArea.value = datos.area_id || '';
-      zoneForm.dataset.id = datos.id;
+  try {
+    if (tipo === 'area') {
+      areaForm.style.display = 'block';
+      zoneForm.style.display = 'none';
       
-      renderSublevels(datos.subniveles?.length || 0);
-      if (datos.subniveles) {
-        datos.subniveles.forEach((sub, i) => {
-          const idx = i + 1;
-          zoneForm[`sublevelWidth${idx}`].value = sub.ancho;
-          zoneForm[`sublevelHeight${idx}`].value = sub.alto;
-          zoneForm[`sublevelLength${idx}`].value = sub.largo;
-          zoneForm[`sublevelDistance${idx}`].value = sub.distancia;
-        });
+      if (datos) {
+        areaForm.areaName.value = datos.nombre;
+        areaForm.dataset.id = datos.id;
+      } else {
+        areaForm.reset();
+        delete areaForm.dataset.id;
       }
-    } else {
-      zoneForm.reset();
-      renderSublevels(0);
-      delete zoneForm.dataset.id;
+      
+    } else if (tipo === 'zona') {
+      zoneForm.style.display = 'block';
+      areaForm.style.display = 'none';
+      
+      await cargarAreas();
+      
+      if (datos) {
+        zoneForm.zoneName.value = datos.nombre;
+        zoneForm.zoneWidth.value = datos.ancho;
+        zoneForm.zoneHeight.value = datos.alto;
+        zoneForm.zoneLength.value = datos.largo;
+        zoneForm.storageType.value = datos.tipo_almacenamiento;
+        zoneForm.sublevelsCount.value = datos.subniveles?.length || 0;
+        zoneForm.zoneArea.value = datos.area_id || '';
+        zoneForm.dataset.id = datos.id;
+        
+        renderSublevels(datos.subniveles?.length || 0);
+        
+        if (datos.subniveles) {
+          datos.subniveles.forEach((sub, i) => {
+            const idx = i + 1;
+            const widthInput = zoneForm.querySelector(`[name="sublevelWidth${idx}"]`);
+            const heightInput = zoneForm.querySelector(`[name="sublevelHeight${idx}"]`);
+            const lengthInput = zoneForm.querySelector(`[name="sublevelLength${idx}"]`);
+            const distanceInput = zoneForm.querySelector(`[name="sublevelDistance${idx}"]`);
+            
+            if (widthInput) widthInput.value = sub.ancho;
+            if (heightInput) heightInput.value = sub.alto;
+            if (lengthInput) lengthInput.value = sub.largo;
+            if (distanceInput) distanceInput.value = sub.distancia;
+          });
+        }
+      } else {
+        zoneForm.reset();
+        renderSublevels(0);
+        delete zoneForm.dataset.id;
+      }
     }
+  } catch (error) {
+    console.error('Error mostrando formulario:', error);
+    mostrarError('Error al cargar el formulario');
   }
 }
 
@@ -162,7 +178,7 @@ async function cargarYMostrarRegistros() {
 function mostrarResumen(data) {
   const { areas, zonas } = data;
   
-  if (areas.length === 0 && zonas.length === 0) {
+  if (!areas.length && !zonas.length) {
     registroLista.innerHTML = `
       <p class="vacio">No hay áreas ni zonas registradas.</p>
       <button onclick="mostrarFormulario('area')">Registrar nueva Área</button>
@@ -182,8 +198,8 @@ function mostrarResumen(data) {
         <div class="area-header">
           <h4>${area.nombre}</h4>
           <div class="area-actions">
-            <button onclick="editarArea('${area.id}')">✏️</button>
-            <button onclick="eliminarArea('${area.id}')">🗑️</button>
+            <button onclick="editarArea(${area.id})">✏️</button>
+            <button onclick="eliminarArea(${area.id})">🗑️</button>
           </div>
         </div>
         
@@ -193,7 +209,7 @@ function mostrarResumen(data) {
               <div class="zona-item">
                 <span>${zona.nombre} (${zona.tipo_almacenamiento}) - ${zona.ancho}m × ${zona.alto}m × ${zona.largo}m</span>
                 <div class="zona-actions">
-                  <button onclick="editarZona('${zona.id}')">✏️</button>
+                  <button onclick="editarZona(${zona.id})">✏️</button>
                 </div>
               </div>
             `).join('') : 
@@ -213,8 +229,8 @@ function mostrarResumen(data) {
           <div class="zona-item">
             <span>${zona.nombre} (${zona.tipo_almacenamiento}) - ${zona.ancho}m × ${zona.alto}m × ${zona.largo}m</span>
             <div class="zona-actions">
-              <button onclick="editarZona('${zona.id}')">✏️</button>
-              <button onclick="eliminarZona('${zona.id}')">🗑️</button>
+              <button onclick="editarZona(${zona.id})">✏️</button>
+              <button onclick="eliminarZona(${zona.id})">🗑️</button>
             </div>
           </div>
         `).join('')}
@@ -236,7 +252,7 @@ function mostrarResumen(data) {
 // Manejar formulario de área
 areaForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const nombre = e.target.areaName.value.trim();
+  const nombre = areaForm.areaName.value.trim();
   const id = areaForm.dataset.id;
   
   if (!nombre) {
@@ -247,7 +263,7 @@ areaForm.addEventListener('submit', async (e) => {
   try {
     if (id) {
       // Edición
-      await fetchAPI(API_ENDPOINTS.areas, 'PUT', { id, nombre });
+      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'PUT', { nombre });
     } else {
       // Creación
       await fetchAPI(API_ENDPOINTS.areas, 'POST', { nombre });
@@ -266,16 +282,16 @@ zoneForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const id = zoneForm.dataset.id;
-  const nombre = e.target.zoneName.value.trim();
-  const ancho = parseFloat(e.target.zoneWidth.value);
-  const alto = parseFloat(e.target.zoneHeight.value);
-  const largo = parseFloat(e.target.zoneLength.value);
-  const tipo = e.target.storageType.value;
-  const area_id = e.target.zoneArea.value || null;
-  const sublevelsCount = parseInt(e.target.sublevelsCount.value) || 0;
+  const nombre = zoneForm.zoneName.value.trim();
+  const ancho = parseFloat(zoneForm.zoneWidth.value);
+  const alto = parseFloat(zoneForm.zoneHeight.value);
+  const largo = parseFloat(zoneForm.zoneLength.value);
+  const tipo = zoneForm.storageType.value;
+  const area_id = zoneForm.zoneArea.value || null;
+  const sublevelsCount = parseInt(zoneForm.sublevelsCount.value) || 0;
 
   // Validaciones
-  if (!nombre || !tipo || !(ancho > 0 && alto > 0 && largo > 0)) {
+  if (!nombre || !tipo || isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
     mostrarError('Debe completar todos los campos obligatorios con valores válidos.');
     return;
   }
@@ -283,12 +299,12 @@ zoneForm.addEventListener('submit', async (e) => {
   // Recolectar subniveles
   const subniveles = [];
   for (let i = 1; i <= sublevelsCount; i++) {
-    const ancho = parseFloat(e.target[`sublevelWidth${i}`]?.value);
-    const alto = parseFloat(e.target[`sublevelHeight${i}`]?.value);
-    const largo = parseFloat(e.target[`sublevelLength${i}`]?.value);
-    const distancia = parseFloat(e.target[`sublevelDistance${i}`]?.value || 0);
+    const ancho = parseFloat(zoneForm.querySelector(`[name="sublevelWidth${i}"]`)?.value);
+    const alto = parseFloat(zoneForm.querySelector(`[name="sublevelHeight${i}"]`)?.value);
+    const largo = parseFloat(zoneForm.querySelector(`[name="sublevelLength${i}"]`)?.value);
+    const distancia = parseFloat(zoneForm.querySelector(`[name="sublevelDistance${i}"]`)?.value || 0);
     
-    if (!(ancho > 0 && alto > 0 && largo > 0)) {
+    if (isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
       mostrarError(`Dimensiones del subnivel ${i} deben ser válidas.`);
       return;
     }
@@ -303,29 +319,22 @@ zoneForm.addEventListener('submit', async (e) => {
   }
 
   try {
+    const zonaData = {
+      nombre,
+      ancho,
+      alto,
+      largo,
+      tipo_almacenamiento: tipo,
+      area_id,
+      subniveles
+    };
+
     if (id) {
       // Edición
-      await fetchAPI(API_ENDPOINTS.zonas, 'PUT', {
-        id,
-        nombre,
-        ancho,
-        alto,
-        largo,
-        tipo_almacenamiento: tipo,
-        area_id,
-        subniveles
-      });
+      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}`, 'PUT', zonaData);
     } else {
       // Creación
-      await fetchAPI(API_ENDPOINTS.zonas, 'POST', {
-        nombre,
-        ancho,
-        alto,
-        largo,
-        tipo_almacenamiento: tipo,
-        area_id,
-        subniveles
-      });
+      await fetchAPI(API_ENDPOINTS.zonas, 'POST', zonaData);
     }
     
     await cargarYMostrarRegistros();
@@ -379,10 +388,12 @@ async function eliminarZona(id) {
 }
 
 // Event listeners
-sublevelsCountInput?.addEventListener('change', (e) => {
-  const count = parseInt(e.target.value) || 0;
-  renderSublevels(count);
-});
+if (sublevelsCountInput) {
+  sublevelsCountInput.addEventListener('change', (e) => {
+    const count = parseInt(e.target.value) || 0;
+    renderSublevels(count);
+  });
+}
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
@@ -392,6 +403,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Configurar eventos de formularios
+  if (areaForm) {
+    areaForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = e.target.areaName.value.trim();
+      const id = e.target.dataset.id;
+      
+      if (!nombre) {
+        mostrarError('El nombre del área es obligatorio');
+        return;
+      }
+
+      try {
+        if (id) {
+          await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'PUT', { nombre });
+        } else {
+          await fetchAPI(API_ENDPOINTS.areas, 'POST', { nombre });
+        }
+        
+        await cargarYMostrarRegistros();
+        e.target.reset();
+        e.target.style.display = 'none';
+      } catch (error) {
+        console.error('Error guardando área:', error);
+      }
+    });
+  }
+
+  // Cargar datos iniciales
   await cargarYMostrarRegistros();
   
   // Hacer funciones disponibles globalmente
