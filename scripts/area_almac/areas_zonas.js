@@ -5,6 +5,11 @@ const areaForm = document.getElementById('areaForm');
 const zoneForm = document.getElementById('zoneForm');
 const registroLista = document.getElementById('registroLista');
 const zoneAreaSelect = document.getElementById('zoneArea');
+const API_BASE_URL = window.location.origin;
+const API_ENDPOINTS = {
+  areas: `${API_BASE_URL}/scripts/php/almacen/areas.php`,
+  zonas: `${API_BASE_URL}/scripts/php/almacen/zonas.php`
+};
 
 // Estado local con localStorage
 let registros = {
