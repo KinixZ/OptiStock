@@ -126,3 +126,4 @@ zoneForm.addEventListener('submit', (e) => {
 
 // Inicializar estado al cargar
 actualizarResumen();
+window.mostrarFormulario = mostrarFormulario;
