@@ -1,8 +1,8 @@
 // Elementos del DOM
 const sublevelsCountInput = document.getElementById('sublevelsCount');
 const sublevelsContainer = document.getElementById('sublevelsContainer');
-const areaForm = document.querySelector('#areaForm.formulario');
-const zoneForm = document.querySelector('#zoneForm.formulario');
+const areaForm = document.getElementById('areaForm');
+const zoneForm = document.getElementById('zoneForm');
 const registroLista = document.getElementById('registroLista');
 
 // Estado local simulado (en el futuro se reemplazará con datos del backend)
@@ -69,30 +69,35 @@ function actualizarResumen() {
 }
 
 // Escucha el cambio de cantidad de subniveles
-sublevelsCountInput.addEventListener('change', (e) => {
-  const count = parseInt(e.target.value) || 0;
-  renderSublevels(count);
-});
+if (sublevelsCountInput) {
+  sublevelsCountInput.addEventListener('change', (e) => {
+    const count = parseInt(e.target.value) || 0;
+    renderSublevels(count);
+  });
+}
 
 // Submit Área
-areaForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const nombre = e.target.areaName.value.trim();
-  if (!nombre) {
-    alert('El nombre del área es obligatorio');
-    return;
-  }
+if (areaForm) {
+  areaForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nombre = e.target.areaName.value.trim();
+    if (!nombre) {
+      alert('El nombre del área es obligatorio');
+      return;
+    }
 
-  registros.areas.push(nombre);
-  actualizarResumen();
-  areaForm.reset();
-  areaForm.style.display = 'none';
-  alert(`Área "${nombre}" guardada correctamente.`);
-});
+    registros.areas.push(nombre);
+    actualizarResumen();
+    areaForm.reset();
+    areaForm.style.display = 'none';
+    alert(`Área "${nombre}" guardada correctamente.`);
+  });
+}
 
 // Submit Zona
-zoneForm.addEventListener('submit', (e) => {
-  e.preventDefault();
+if (zoneForm) {
+  zoneForm.addEventListener('submit', (e) => {
+    e.preventDefault();
 
   const zoneName = e.target.zoneName.value.trim();
   const width = parseFloat(e.target.zoneWidth.value);
