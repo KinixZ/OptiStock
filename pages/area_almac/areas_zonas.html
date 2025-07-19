@@ -1,4 +1,3 @@
-<!-- /pages/area_almac/areas_zonas.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,7 +5,7 @@
   <title>Áreas y Zonas de Almacén</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- JS -->
-  <script src="../../js/area_almac/areas_zonas.js"></script>
+  <script src="../../scripts/area_almac/areas_zonas.js" defer></script>
   <!-- Estilos -->
   <style>
     .areas-zonas-wrapper {
@@ -114,6 +113,71 @@
     .sublevel-dimensions label {
       font-size: 0.9em;
     }
+
+    /* Nuevos estilos añadidos */
+    .resumen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .area-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .area-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .area-actions, .zona-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .zona-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .zona-item:last-child {
+      border-bottom: none;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .action-buttons button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    .vacio {
+      color: #666;
+      font-style: italic;
+    }
+
+    .resumen-contenedor {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -122,7 +186,7 @@
   <!-- Panel Resumen -->
   <section id="resumenPanel" class="resumen-panel">
     <h3>Resumen de Almacén</h3>
-    <div id="registroLista">
+    <div id="registroLista" class="resumen-contenedor">
       <p class="vacio">No hay áreas ni zonas registradas.</p>
       <button onclick="mostrarFormulario('area')">Registrar nueva Área</button>
       <button onclick="mostrarFormulario('zona')">Registrar nueva Zona</button>
@@ -146,6 +210,12 @@
 
       <label for="zoneName">Nombre de la Zona</label>
       <input type="text" id="zoneName" name="zoneName" required />
+
+      <label for="zoneArea">Área asociada</label>
+      <select name="zoneArea" id="zoneArea" required>
+        <option value="">Seleccione un área</option>
+        <!-- Las opciones se llenarán dinámicamente con JavaScript -->
+      </select>
 
       <label>Dimensiones físicas (m)</label>
       <input type="number" id="zoneWidth" name="zoneWidth" placeholder="Ancho" min="0.01" step="0.01" required />
