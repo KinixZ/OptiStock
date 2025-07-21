@@ -2,7 +2,7 @@
 // Configuración de la base de datos
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u296155119_Admin');
-define('DB_PASS', 'Admin123');
+define('DB_PASS', '4Dmin123o');
 define('DB_NAME', 'u296155119_OptiStock');
 
 // Headers para API
