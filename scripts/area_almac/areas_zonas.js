@@ -1,8 +1,7 @@
 // Configuración de la API
-const API_BASE_URL = window.location.origin;
 const API_ENDPOINTS = {
-  areas: `${API_BASE_URL}/scripts/php/almacen/areas.php`,
-  zonas: `${API_BASE_URL}/scripts/php/almacen/zonas.php`
+  areas: `/scripts/php/almacen/areas.php`,
+  zonas: `/scripts/php/almacen/zonas.php`
 };
 
 // Elementos del DOM
