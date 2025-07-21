@@ -1,5 +1,14 @@
 <?php
-require_once __DIR__ . '/../connection.php';
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
+
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    echo json_encode(["success" => false, "message" => "Error de conexión"]);
+    exit;
+}
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
