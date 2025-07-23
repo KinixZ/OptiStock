@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Inventario</title>
+    <link rel="stylesheet" href="../../styles/gest_inve/inventario.css">
+    <script src="../../scripts/gest_inve/inventario.js" defer></script>
+</head>
+<body>
+<div class="inventory-wrapper">
+    <h2>Gestión de Inventario</h2>
+
+    <section class="categorias-section">
+        <h3>Categorías</h3>
+        <form id="categoriaForm" autocomplete="off">
+            <input type="hidden" id="categoriaId">
+            <input type="text" id="categoriaNombre" placeholder="Nombre" required>
+            <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
+            <button type="submit">Guardar</button>
+        </form>
+        <ul id="categoriasLista"></ul>
+    </section>
+
+    <section class="subcategorias-section">
+        <h3>Subcategorías</h3>
+        <form id="subcategoriaForm" autocomplete="off">
+            <input type="hidden" id="subcategoriaId">
+            <select id="subcategoriaCategoria" required></select>
+            <input type="text" id="subcategoriaNombre" placeholder="Nombre" required>
+            <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
+            <button type="submit">Guardar</button>
+        </form>
+        <ul id="subcategoriasLista"></ul>
+    </section>
+
+    <section class="productos-section">
+        <h3>Productos</h3>
+        <form id="productoForm" autocomplete="off">
+            <input type="hidden" id="productoId">
+            <input type="text" id="productoNombre" placeholder="Nombre" required>
+            <textarea id="productoDesc" placeholder="Descripción"></textarea>
+            <select id="productoCategoria" required></select>
+            <select id="productoSubcategoria" required></select>
+            <input type="number" id="productoStock" placeholder="Stock" min="0" value="0">
+            <input type="number" id="productoPrecio" placeholder="Precio compra" min="0" step="0.01" value="0">
+            <button type="submit">Guardar</button>
+        </form>
+        <ul id="productosLista"></ul>
+    </section>
+</div>
+</body>
+</html>
