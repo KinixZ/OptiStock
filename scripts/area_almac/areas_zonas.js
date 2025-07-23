@@ -13,6 +13,24 @@ const registroLista = document.getElementById('registroLista');
 const zoneAreaSelect = document.getElementById('zoneArea');
 const errorContainer = document.getElementById('error-message');
 
+// Utilidades de caché en localStorage
+function getCache(key) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    /* ignore */
+  }
+}
+
 // Función para llamadas API mejorada
 async function fetchAPI(endpoint, method = 'GET', data = null) {
   try {
@@ -166,11 +184,14 @@ async function cargarYMostrarRegistros() {
       fetchAPI(API_ENDPOINTS.areas),
       fetchAPI(API_ENDPOINTS.zonas)
     ]);
-    
+    setCache('areas', areas);
+    setCache('zonas', zonas);
     mostrarResumen({ areas, zonas });
   } catch (error) {
     console.error('Error cargando registros:', error);
-    mostrarResumen({ areas: [], zonas: [] });
+    const areas = getCache('areas') || [];
+    const zonas = getCache('zonas') || [];
+    mostrarResumen({ areas, zonas });
   }
 }
 
@@ -411,8 +432,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // No additional listeners: se configuran arriba
 
-  // Cargar datos iniciales
+  // Mostrar datos en caché si existen
+  const cachedAreas = getCache('areas');
+  const cachedZonas = getCache('zonas');
+  if (cachedAreas || cachedZonas) {
+    mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [] });
+  }
+  // Cargar datos iniciales desde el servidor
   await cargarYMostrarRegistros();
+
+  // Actualizar cuando la vista vuelva a mostrarse
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      cargarYMostrarRegistros();
+    }
+  });
   
   // Hacer funciones disponibles globalmente
   window.mostrarFormulario = mostrarFormulario;
