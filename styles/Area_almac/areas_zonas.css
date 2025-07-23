@@ -1,291 +1,229 @@
-/* Contenedor principal */
-.warehouse-management {
-    padding: 20px;
-    animation: fadeIn 0.3s ease;
+/* Variables de color y fuente */
+:root {
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-bg: #f4f7fc;
+  --color-panel: #fff;
+  --color-border: #e5e7eb;
+  --color-title: #22223b;
+  --color-text: #3a3a3a;
+  --color-error: #e11d48;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(59,130,246,0.08);
+  --font-main: 'Segoe UI', Arial, sans-serif;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+/* Reset básico */
+body, h1, h2, h3, h4, p, ul, li, form, input, select, button {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-main);
 }
 
-/* Encabezado */
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* Header */
 .warehouse-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-    gap: 15px;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 1.5rem 0 1rem 0;
+  text-align: center;
+  box-shadow: var(--shadow);
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
 }
 
 .warehouse-title {
-    font-size: 1.8rem;
-    color: var(--dark-color);
-    font-weight: 500;
-    margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
 }
 
 .warehouse-actions {
-    display: flex;
-    gap: 15px;
-    align-items: center;
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
 }
 
-.warehouse-search {
-    width: 300px;
+/* Botones */
+.btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--color-border);
+  color: var(--color-title);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  font-weight: 500;
 }
 
-/* Mapa del almacén */
-.warehouse-map-container {
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    margin-bottom: 30px;
-    overflow: hidden;
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: var(--shadow);
 }
 
-.map-toolbar {
-    background-color: var(--light-color);
-    padding: 10px 15px;
-    display: flex;
-    gap: 10px;
-    border-bottom: 1px solid #eee;
+.btn-primary:hover {
+  background: var(--color-primary-hover);
 }
 
-.map-tool {
-    background: none;
-    border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--dark-color);
-    transition: all var(--transition-speed) ease;
+/* Layout principal */
+.warehouse-management {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
 
-.map-tool:hover {
-    background-color: rgba(52, 152, 219, 0.1);
-    color: var(--secondary-color);
+.areas-zonas-wrapper {
+  display: flex;
+  gap: 2.5rem;
+  margin-top: 2rem;
+  align-items: flex-start;
 }
 
-.map-tool.active {
-    background-color: var(--secondary-color);
-    color: white;
-}
-
-.measurement-unit select {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background-color: white;
-    margin-left: auto;
-    font-size: 0.9rem;
-}
-
-.warehouse-map {
-    height: 500px;
-    position: relative;
-    background-color: #f9f9f9;
-    overflow: hidden;
-}
-
-/* Brújula */
-.compass {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background-color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    z-index: 10;
-    color: var(--secondary-color);
-}
-
-/* Listado de zonas */
-.zones-list {
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    padding: 20px;
-}
-
-.zones-list-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-.zones-list-title {
-    font-size: 1.2rem;
-    font-weight: 500;
-    color: var(--dark-color);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.zones-table {
-    overflow-x: auto;
-}
-
-.zones-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.zones-table th, 
-.zones-table td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.zones-table th {
-    font-weight: 500;
-    color: var(--dark-color);
-    background-color: #f9f9f9;
-}
-
-.zones-table tr:hover {
-    background-color: #f5f5f5;
-}
-
-/* Indicadores de capacidad */
-.capacity-indicator {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 8px;
-}
-
-.capacity-low {
-    background-color: var(--accent-color);
-}
-
-.capacity-medium {
-    background-color: var(--warning-color);
-}
-
-.capacity-high {
-    background-color: var(--success-color);
-}
-
-/* Botones de acción */
-.btn-icon {
-    background: none;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--dark-color);
-    transition: all var(--transition-speed) ease;
-}
-
-.btn-icon:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-.edit-zone:hover {
-    color: var(--secondary-color);
-}
-
-.delete-zone:hover {
-    color: var(--accent-color);
-}
-
-/* Formularios modales */
-.modal-form {
-    display: flex;
+@media (max-width: 900px) {
+  .areas-zonas-wrapper {
     flex-direction: column;
-    gap: 20px;
+    gap: 1.5rem;
+  }
 }
 
-.modal-form h3 {
-    margin: 0 0 10px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+/* Panel resumen */
+.resumen-panel {
+  background: var(--color-panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem 1.5rem;
+  min-width: 320px;
+  flex: 1;
 }
 
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.resumen-panel h3 {
+  color: var(--color-title);
+  font-size: 1.3rem;
+  margin-bottom: 1.2rem;
 }
 
-.form-group label {
-    font-weight: 500;
-    color: var(--dark-color);
+.resumen-contenedor {
+  min-height: 80px;
 }
 
-.form-group input {
-    padding: 10px 15px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 1rem;
+.vacio {
+  color: #888;
+  font-style: italic;
+  margin-top: 1rem;
 }
 
-.form-group input:focus {
-    outline: none;
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+/* Panel formularios */
+.formularios {
+  background: var(--color-panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem 1.5rem;
+  min-width: 340px;
+  flex: 1;
 }
 
-.form-row {
-    display: flex;
-    gap: 15px;
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  animation: fadeIn 0.3s;
 }
 
-.form-row .form-group {
-    flex: 1;
+.formulario h4 {
+  color: var(--color-title);
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
 }
 
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
+label {
+  font-weight: 500;
+  margin-bottom: 0.2rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .warehouse-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .warehouse-actions {
-        width: 100%;
-        flex-wrap: wrap;
-    }
-    
-    .warehouse-search {
-        width: 100%;
-    }
-    
-    .warehouse-map {
-        height: 400px;
-    }
-    
-    .form-row {
-        flex-direction: column;
-        gap: 15px;
-    }
+input[type="text"],
+input[type="number"],
+select {
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  font-size: 1rem;
+  background: #f8fafc;
+  transition: border 0.2s;
 }
+
+input:focus,
+select:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+#sublevelsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+#error-message {
+  color: var(--color-error);
+  font-weight: bold;
+  margin-bottom: 1rem;
+  display: none;
+}
+
+/* Animación de aparición */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+
+/* Mejoras responsivas */
+@media (max-width: 600px) {
+  .warehouse-management {
+    padding: 0 0.3rem;
+  }
+  .resumen-panel, .formularios {
+    padding: 1rem 0.5rem;
+    min-width: unset;
+  }
+  .warehouse-title {
+    font-size: 1.3rem;
+  }
+}
+
+/* Listas de áreas y zonas (si las agregas dinámicamente) */
+.lista-area, .lista-zona {
+  margin-bottom: 1.2rem;
+  padding: 0.7rem 1rem;
+  background: #f8fafc;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 4px rgba(59,130,246,0.04);
+}
+
+.lista-area h4, .lista-zona h4 {
+  margin-bottom: 0.3rem;
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.lista-zona {
+  margin-left: 1rem;
+  background: #eef2ff;
+}
+
+/* Scroll en paneles si hay mucho contenido */
+.resumen-contenedor, .formularios {
+  max-height: 400px;
+  overflow-y: auto;
