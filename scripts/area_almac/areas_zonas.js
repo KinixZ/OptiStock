@@ -438,7 +438,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (cachedAreas || cachedZonas) {
     mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [] });
   }
-
   // Cargar datos iniciales desde el servidor
   await cargarYMostrarRegistros();
 
