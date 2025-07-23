@@ -16,25 +16,23 @@ const errorContainer = document.getElementById('error-message');
 // Función para llamadas API mejorada
 async function fetchAPI(endpoint, method = 'GET', data = null) {
   try {
-    const options = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include'
-    };
-    
-    if (data) {
-      options.body = JSON.stringify(data);
+    const options = { method, credentials: 'include' };
+
+    if (data && method !== 'GET') {
+      const formData = new FormData();
+      for (let key in data) {
+        formData.append(key, data[key]);
+      }
+      options.body = formData;
     }
-    
+
     const response = await fetch(endpoint, options);
-    
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+      const text = await response.text();
+      throw new Error(`Error ${response.status}: ${text}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error en fetchAPI:', error);
@@ -42,6 +40,7 @@ async function fetchAPI(endpoint, method = 'GET', data = null) {
     throw error;
   }
 }
+
 
 // Función para mostrar errores
 function mostrarError(mensaje) {

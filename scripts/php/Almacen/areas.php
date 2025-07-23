@@ -1,35 +1,49 @@
 <?php
-require_once __DIR__.'/../connection.php';
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
 
-try {
-    $method = $_SERVER['REQUEST_METHOD'];
-    $input = json_decode(file_get_contents('php://input'), true);
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    echo json_encode(["success" => false, "message" => "Error de conexión"]);
+    exit;
+}
+
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
+header("Access-Control-Allow-Headers: Content-Type");
+
+session_start();
+if (!isset($_SESSION['usuario_id'])) {
+    die(json_encode(['error' => 'No autenticado']));
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+$data = json_decode(file_get_contents("php://input"), true);
 
     switch ($method) {
         case 'GET':
-            // Listar todas las áreas
-            $stmt = $conn->prepare("SELECT * FROM areas ORDER BY nombre ASC");
+            // Obtener todas las áreas
+            $stmt = $conn->prepare("SELECT * FROM areas ORDER BY nombre");
             $stmt->execute();
             $areas = $stmt->fetchAll();
-
-            echo json_encode([
-                'success' => true,
-                'data' => $areas,
-                'message' => count($areas) . ' áreas encontradas'
-            ]);
+            echo json_encode($areas);
             break;
 
         case 'POST':
             // Crear nueva área
-            if (empty($input['nombre'])) {
-                throw new Exception("El nombre del área es requerido");
+            $nombre = $data['nombre'] ?? '';
+            if (empty($nombre)) {
+                throw new Exception("El nombre del área es obligatorio");
             }
 
             $stmt = $conn->prepare("INSERT INTO areas (nombre) VALUES (:nombre)");
             $stmt->bindParam(':nombre', $input['nombre'], PDO::PARAM_STR);
             $stmt->execute();
-
-            $nuevaArea = [
+            
+            echo json_encode([
                 'id' => $conn->lastInsertId(),
                 'nombre' => $input['nombre']
             ];
@@ -43,8 +57,11 @@ try {
 
         case 'PUT':
             // Actualizar área
-            if (empty($_GET['id']) || empty($input['nombre'])) {
-                throw new Exception("ID y nombre son requeridos");
+            $id = $_GET['id'] ?? null;
+            $nombre = $data['nombre'] ?? '';
+            
+            if (empty($id) || empty($nombre)) {
+                throw new Exception("ID y nombre son obligatorios");
             }
 
             $stmt = $conn->prepare("UPDATE areas SET nombre = :nombre WHERE id = :id");
@@ -60,16 +77,25 @@ try {
 
         case 'DELETE':
             // Eliminar área
-            if (empty($_GET['id'])) {
-                throw new Exception("ID del área es requerido");
+            $id = $_GET['id'] ?? null;
+            if (empty($id)) {
+                throw new Exception("ID es obligatorio");
             }
-
-            // Primero desvincular zonas asociadas
-            $stmt = $conn->prepare("UPDATE zonas SET area_id = NULL WHERE area_id = :id");
-            $stmt->bindParam(':id', $_GET['id'], PDO::PARAM_INT);
+            
+            // Verificar si hay zonas asociadas
+            $stmt = $conn->prepare("SELECT COUNT(*) as count FROM zonas WHERE area_id = :id");
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
-
-            // Luego eliminar el área
+            $result = $stmt->fetch();
+            
+            if ($result['count'] > 0) {
+                // Desvincular zonas en lugar de eliminar
+                $stmt = $conn->prepare("UPDATE zonas SET area_id = NULL WHERE area_id = :id");
+                $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+                $stmt->execute();
+            }
+            
+            // Eliminar área
             $stmt = $conn->prepare("DELETE FROM areas WHERE id = :id");
             $stmt->bindParam(':id', $_GET['id'], PDO::PARAM_INT);
             $stmt->execute();
