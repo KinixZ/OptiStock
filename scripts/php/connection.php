@@ -17,24 +17,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Conexión a la base de datos
-try {
-    $conn = new PDO(
-        "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4", 
-        DB_USER, 
-        DB_PASS,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false
-        ]
-    );
-} catch (PDOException $e) {
+// Conexión a la base de datos con MySQLi
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+
+if ($conn->connect_error) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Error de conexión a la base de datos',
-        'error' => $e->getMessage()
+        'error' => $conn->connect_error
     ]);
     exit();
 }
