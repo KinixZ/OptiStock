@@ -227,3 +227,7 @@ select:focus {
 .resumen-contenedor, .formularios {
   max-height: 400px;
   overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+    -ms-overflow-style: none; /* IE 10+ */
+}
