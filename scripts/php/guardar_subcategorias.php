@@ -23,37 +23,34 @@ function getJsonInput() {
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     if ($id) {
-        $stmt = $conn->prepare('SELECT * FROM areas WHERE id = ?');
+        $stmt = $conn->prepare('SELECT * FROM subcategorias WHERE id = ?');
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $res = $stmt->get_result();
         echo json_encode($res->fetch_assoc() ?: []);
     } else {
-        $result = $conn->query('SELECT * FROM areas');
-        $areas = [];
+        $result = $conn->query('SELECT * FROM subcategorias');
+        $items = [];
         while ($row = $result->fetch_assoc()) {
-            $areas[] = $row;
+            $items[] = $row;
         }
-        echo json_encode($areas);
+        echo json_encode($items);
     }
     exit;
 }
 
 if ($method === 'POST') {
     $data = getJsonInput();
+    $categoria_id = isset($data['categoria_id']) ? intval($data['categoria_id']) : null;
     $nombre = $data['nombre'] ?? '';
     $descripcion = $data['descripcion'] ?? '';
-    $ancho = floatval($data['ancho'] ?? 0);
-    $alto = floatval($data['alto'] ?? 0);
-    $largo = floatval($data['largo'] ?? 0);
-    $volumen = $ancho * $alto * $largo;
     if (!$nombre) {
         http_response_code(400);
         echo json_encode(['error' => 'Nombre requerido']);
         exit;
     }
-    $stmt = $conn->prepare('INSERT INTO areas (nombre, descripcion, ancho, alto, largo, volumen) VALUES (?,?,?,?,?,?)');
-    $stmt->bind_param('ssdddd', $nombre, $descripcion, $ancho, $alto, $largo, $volumen);
+    $stmt = $conn->prepare('INSERT INTO subcategorias (categoria_id, nombre, descripcion) VALUES (?, ?, ?)');
+    $stmt->bind_param('iss', $categoria_id, $nombre, $descripcion);
     $stmt->execute();
     echo json_encode(['id' => $stmt->insert_id]);
     exit;
@@ -62,14 +59,11 @@ if ($method === 'POST') {
 if ($method === 'PUT') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $data = getJsonInput();
+    $categoria_id = isset($data['categoria_id']) ? intval($data['categoria_id']) : null;
     $nombre = $data['nombre'] ?? '';
     $descripcion = $data['descripcion'] ?? '';
-    $ancho = floatval($data['ancho'] ?? 0);
-    $alto = floatval($data['alto'] ?? 0);
-    $largo = floatval($data['largo'] ?? 0);
-    $volumen = $ancho * $alto * $largo;
-    $stmt = $conn->prepare('UPDATE areas SET nombre=?, descripcion=?, ancho=?, alto=?, largo=?, volumen=? WHERE id=?');
-    $stmt->bind_param('ssddddi', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $id);
+    $stmt = $conn->prepare('UPDATE subcategorias SET categoria_id=?, nombre=?, descripcion=? WHERE id=?');
+    $stmt->bind_param('issi', $categoria_id, $nombre, $descripcion, $id);
     $stmt->execute();
     echo json_encode(['success' => $stmt->affected_rows > 0]);
     exit;
@@ -77,7 +71,7 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    $stmt = $conn->prepare('DELETE FROM areas WHERE id=?');
+    $stmt = $conn->prepare('DELETE FROM subcategorias WHERE id=?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
     echo json_encode(['success' => true]);
@@ -86,7 +80,4 @@ if ($method === 'DELETE') {
 
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
-
-
-
-
+?>
