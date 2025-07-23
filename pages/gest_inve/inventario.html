@@ -10,6 +10,7 @@
 <div class="inventory-wrapper">
     <h2>Gestión de Inventario</h2>
 
+    <section class="categorias-section inventory-section">
     <section class="categorias-section">
         <h3>Categorías</h3>
         <form id="categoriaForm" autocomplete="off">
@@ -18,10 +19,17 @@
             <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
             <button type="submit">Guardar</button>
         </form>
+
+        <ul id="categoriasLista" class="item-list"></ul>
+    </section>
+
+    <section class="subcategorias-section inventory-section">
+
         <ul id="categoriasLista"></ul>
     </section>
 
     <section class="subcategorias-section">
+
         <h3>Subcategorías</h3>
         <form id="subcategoriaForm" autocomplete="off">
             <input type="hidden" id="subcategoriaId">
@@ -30,10 +38,17 @@
             <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
             <button type="submit">Guardar</button>
         </form>
+
+        <ul id="subcategoriasLista" class="item-list"></ul>
+    </section>
+
+    <section class="productos-section inventory-section">
+
         <ul id="subcategoriasLista"></ul>
     </section>
 
     <section class="productos-section">
+
         <h3>Productos</h3>
         <form id="productoForm" autocomplete="off">
             <input type="hidden" id="productoId">
@@ -45,6 +60,7 @@
             <input type="number" id="productoPrecio" placeholder="Precio compra" min="0" step="0.01" value="0">
             <button type="submit">Guardar</button>
         </form>
+        <ul id="productosLista" class="item-list"></ul>
         <ul id="productosLista"></ul>
     </section>
 </div>
