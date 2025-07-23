@@ -1,3 +1,4 @@
+
 /* Estilos para la gestión de inventario */
 .inventory-wrapper {
   max-width: 900px;
@@ -88,3 +89,10 @@
 .item-actions .delete-btn:hover {
   background-color: #c0392b;
 }
+
+.inventory-wrapper { padding: 1rem; }
+section { margin-bottom: 2rem; }
+form input, form textarea, form select { display:block; margin-bottom:0.5rem; }
+ul { list-style: none; padding-left: 0; }
+li { cursor: pointer; padding: 0.25rem 0; }
+

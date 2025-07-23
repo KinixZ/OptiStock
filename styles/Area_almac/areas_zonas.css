@@ -77,7 +77,8 @@ body {
 
 /* Layout principal */
 .warehouse-management {
-  max-width: 1100px;
+  width: 100%;
+  max-width: none;
   margin: 2rem auto;
   padding: 0 1rem;
 }
@@ -87,6 +88,7 @@ body {
   gap: 2.5rem;
   margin-top: 2rem;
   align-items: flex-start;
+  width: 100%;
 }
 
 @media (max-width: 900px) {
@@ -172,6 +174,8 @@ textarea {
   background: #f8fafc;
   transition: border 0.2s;
   resize: vertical;
+
+
 }
 
 textarea {
@@ -265,6 +269,11 @@ select:focus {
 
 .resumen-grid {
   display: grid;
+
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  width: 100%;
+
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
 }
@@ -317,3 +326,4 @@ select:focus {
   justify-content: flex-end;
   gap: 1rem;
 }
+
