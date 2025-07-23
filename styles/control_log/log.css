@@ -1,0 +1,24 @@
+/* Estilos para la interfaz del log de control */
+.module-wrapper {
+    margin-bottom: 20px;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 15px;
+}
+
+.filters select,
+.filters input {
+    padding: 0.4rem;
+}
+
+.table-responsive {
+    margin-top: 10px;
+}
+
+.btn-export {
+    margin-right: 10px;
+}
