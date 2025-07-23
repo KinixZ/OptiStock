@@ -1,7 +1,10 @@
 // Configuración de la API
+// Detectar la ruta base para que el módulo funcione si la aplicación
+// se aloja en la raíz o en un subdirectorio
+const BASE_URL = window.location.pathname.includes('pages/') ? '../../' : './';
 const API_ENDPOINTS = {
-  areas: `/scripts/php/guardar_areas.php`,
-  zonas: `/scripts/php/guardar_zonas.php`
+  areas: `${BASE_URL}scripts/php/guardar_areas.php`,
+  zonas: `${BASE_URL}scripts/php/guardar_zonas.php`
 };
 
 // Elementos del DOM
@@ -438,6 +441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (cachedAreas || cachedZonas) {
     mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [] });
   }
+
   // Cargar datos iniciales desde el servidor
   await cargarYMostrarRegistros();
 

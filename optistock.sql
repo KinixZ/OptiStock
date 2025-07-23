@@ -116,6 +116,11 @@ CREATE TABLE `zonas` (
   `alto` decimal(10,2) NOT NULL,
   `largo` decimal(10,2) NOT NULL,
   `volumen` decimal(15,2) NOT NULL,
+
+  `tipo_almacenamiento` varchar(50) DEFAULT NULL,
+  `subniveles` json DEFAULT NULL,
+
+
   `area_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `area_id` (`area_id`),

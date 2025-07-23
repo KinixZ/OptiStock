@@ -176,6 +176,7 @@ textarea {
   resize: vertical;
 
 
+
 }
 
 textarea {
@@ -186,6 +187,7 @@ textarea {
   background: #f8fafc;
   transition: border 0.2s;
   resize: vertical;
+
 }
 
 input:focus,
@@ -274,8 +276,14 @@ select:focus {
   gap: 1rem;
   width: 100%;
 
+
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  width: 100%;
+
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
+
 }
 
 .area-card {
