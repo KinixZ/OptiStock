@@ -1,6 +1,16 @@
 <?php
 header("Content-Type: application/json");
-require_once "../../config/conexion.php"; // ajusta si tu conexión está en otro lugar
+// Conexión a la base de datos
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
+
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    echo json_encode(["success" => false, "message" => "Error de conexión"]);
+    exit;
+}
 
 $data = json_decode(file_get_contents("php://input"));
 $nombre = $data->areaName ?? '';
@@ -10,7 +20,7 @@ if (!$nombre) {
     exit;
 }
 
-$stmt = $conn->prepare("INSERT INTO area (nombre) VALUES (?)");
+$stmt = $conn->prepare("INSERT INTO areas (nombre) VALUES (?)");
 $stmt->bind_param("s", $nombre);
 
 if ($stmt->execute()) {

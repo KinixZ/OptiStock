@@ -1,15 +1,27 @@
 <?php
 header("Content-Type: application/json");
-require_once "../../config/conexion.php";
+// Conexión a la base de datos (se usan las mismas credenciales que en otros scripts)
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
+
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    echo json_encode(["success" => false, "message" => "Error de conexión"]);
+    exit;
+}
 
 $resultado = [];
 
-$areas = $conn->query("SELECT * FROM area ORDER BY id_area DESC");
+// Obtener todas las áreas
+$areas = $conn->query("SELECT * FROM areas ORDER BY id DESC");
 while ($area = $areas->fetch_assoc()) {
-    $area_id = $area['id_area'];
+    $area_id = $area['id'];
     $zonas = [];
 
-    $zonas_query = $conn->prepare("SELECT * FROM zona WHERE id_area = ?");
+    // Obtener zonas asociadas a la área
+    $zonas_query = $conn->prepare("SELECT * FROM zonas WHERE area_id = ?");
     $zonas_query->bind_param("i", $area_id);
     $zonas_query->execute();
     $res = $zonas_query->get_result();
