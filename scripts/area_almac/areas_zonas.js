@@ -1,7 +1,7 @@
 // Configuración de la API
 const API_ENDPOINTS = {
-  areas: `/scripts/php/Almacen/areas.php`,
-  zonas: `/scripts/php/Almacen/zonas.php`
+  areas: `/scripts/php/guardar_areas.php`,
+  zonas: `/scripts/php/guardar_zonas.php`
 };
 
 // Elementos del DOM
