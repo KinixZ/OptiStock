@@ -1,9 +1,9 @@
 <?php
 // Configuración de la base de datos
-define('DB_HOST', 'localhost');
-define('DB_USER', 'u296155119_Admin');
-define('DB_PASS', '4Dmin123o');
-define('DB_NAME', 'u296155119_OptiStock');
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
 
 // Headers para API
 header("Content-Type: application/json; charset=UTF-8");
