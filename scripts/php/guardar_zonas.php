@@ -1,24 +1,22 @@
 <?php
-<?php
 header('Content-Type: application/json');
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
 $database   = "u296155119_OptiStock";
 
-$conn = new mysqli($servername, $db_user, $db_pass, $database);
-if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Error de conexión']);
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
+if (!$conn) {
+    echo json_encode(["success" => false, "message" => "Error de conexión"]);
     exit;
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $result = $conn->query("SELECT * FROM zonas");
+    $result = mysqli_query($conn, "SELECT * FROM zonas");
     $zonas = [];
-    while ($row = $result->fetch_assoc()) {
+    while ($row = mysqli_fetch_assoc($result)) {
         $row['subniveles'] = $row['subniveles'] ? json_decode($row['subniveles'], true) : [];
         $zonas[] = $row;
     }
