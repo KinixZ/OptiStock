@@ -13,17 +13,32 @@ const registroLista = document.getElementById('registroLista');
 const zoneAreaSelect = document.getElementById('zoneArea');
 const errorContainer = document.getElementById('error-message');
 
+// Utilidades de caché en localStorage
+function getCache(key) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    /* ignore */
+  }
+}
+
 // Función para llamadas API mejorada
 async function fetchAPI(endpoint, method = 'GET', data = null) {
   try {
-    const options = { method, credentials: 'include' };
+    const options = { method, credentials: 'include', headers: {} };
 
     if (data && method !== 'GET') {
-      const formData = new FormData();
-      for (let key in data) {
-        formData.append(key, data[key]);
-      }
-      options.body = formData;
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(data);
     }
 
     const response = await fetch(endpoint, options);
@@ -107,6 +122,10 @@ async function mostrarFormulario(tipo, datos = null) {
       
       if (datos) {
         areaForm.areaName.value = datos.nombre;
+        areaForm.areaDesc.value = datos.descripcion || '';
+        areaForm.areaWidth.value = datos.ancho;
+        areaForm.areaHeight.value = datos.alto;
+        areaForm.areaLength.value = datos.largo;
         areaForm.dataset.id = datos.id;
       } else {
         areaForm.reset();
@@ -121,6 +140,7 @@ async function mostrarFormulario(tipo, datos = null) {
       
       if (datos) {
         zoneForm.zoneName.value = datos.nombre;
+        zoneForm.zoneDesc.value = datos.descripcion || '';
         zoneForm.zoneWidth.value = datos.ancho;
         zoneForm.zoneHeight.value = datos.alto;
         zoneForm.zoneLength.value = datos.largo;
@@ -164,11 +184,14 @@ async function cargarYMostrarRegistros() {
       fetchAPI(API_ENDPOINTS.areas),
       fetchAPI(API_ENDPOINTS.zonas)
     ]);
-    
+    setCache('areas', areas);
+    setCache('zonas', zonas);
     mostrarResumen({ areas, zonas });
   } catch (error) {
     console.error('Error cargando registros:', error);
-    mostrarResumen({ areas: [], zonas: [] });
+    const areas = getCache('areas') || [];
+    const zonas = getCache('zonas') || [];
+    mostrarResumen({ areas, zonas });
   }
 }
 
@@ -251,20 +274,24 @@ function mostrarResumen(data) {
 areaForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const nombre = areaForm.areaName.value.trim();
+  const descripcion = areaForm.areaDesc.value.trim();
+  const ancho = parseFloat(areaForm.areaWidth.value);
+  const alto = parseFloat(areaForm.areaHeight.value);
+  const largo = parseFloat(areaForm.areaLength.value);
   const id = areaForm.dataset.id;
-  
-  if (!nombre) {
-    mostrarError('El nombre del área es obligatorio');
+
+  if (!nombre || isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
+    mostrarError('Debe completar todos los campos del área');
     return;
   }
 
+  const areaData = { nombre, descripcion, ancho, alto, largo };
+
   try {
     if (id) {
-      // Edición
-      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'PUT', { nombre });
+      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'PUT', areaData);
     } else {
-      // Creación
-      await fetchAPI(API_ENDPOINTS.areas, 'POST', { nombre });
+      await fetchAPI(API_ENDPOINTS.areas, 'POST', areaData);
     }
     
     await cargarYMostrarRegistros();
@@ -281,6 +308,7 @@ zoneForm.addEventListener('submit', async (e) => {
 
   const id = zoneForm.dataset.id;
   const nombre = zoneForm.zoneName.value.trim();
+  const descripcion = zoneForm.zoneDesc.value.trim();
   const ancho = parseFloat(zoneForm.zoneWidth.value);
   const alto = parseFloat(zoneForm.zoneHeight.value);
   const largo = parseFloat(zoneForm.zoneLength.value);
@@ -289,7 +317,7 @@ zoneForm.addEventListener('submit', async (e) => {
   const sublevelsCount = parseInt(zoneForm.sublevelsCount.value) || 0;
 
   // Validaciones
-  if (!nombre || !tipo || isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
+  if (!nombre || !descripcion || !tipo || isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
     mostrarError('Debe completar todos los campos obligatorios con valores válidos.');
     return;
   }
@@ -319,6 +347,7 @@ zoneForm.addEventListener('submit', async (e) => {
   try {
     const zonaData = {
       nombre,
+      descripcion,
       ancho,
       alto,
       largo,
@@ -355,7 +384,7 @@ async function editarArea(id) {
 }
 
 async function eliminarArea(id) {
-  if (confirm('¿Está seguro de eliminar esta área? Las zonas asociadas quedarán sin área asignada.')) {
+  if (confirm('¿Está seguro de eliminar esta área?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
     try {
       await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'DELETE');
       await cargarYMostrarRegistros();
@@ -375,7 +404,7 @@ async function editarZona(id) {
 }
 
 async function eliminarZona(id) {
-  if (confirm('¿Está seguro de eliminar esta zona?')) {
+  if (confirm('¿Está seguro de eliminar esta zona?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
     try {
       await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}`, 'DELETE');
       await cargarYMostrarRegistros();
@@ -401,36 +430,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Configurar eventos de formularios
-  if (areaForm) {
-    areaForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const nombre = e.target.areaName.value.trim();
-      const id = e.target.dataset.id;
-      
-      if (!nombre) {
-        mostrarError('El nombre del área es obligatorio');
-        return;
-      }
+  // No additional listeners: se configuran arriba
 
-      try {
-        if (id) {
-          await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'PUT', { nombre });
-        } else {
-          await fetchAPI(API_ENDPOINTS.areas, 'POST', { nombre });
-        }
-        
-        await cargarYMostrarRegistros();
-        e.target.reset();
-        e.target.style.display = 'none';
-      } catch (error) {
-        console.error('Error guardando área:', error);
-      }
-    });
+  // Mostrar datos en caché si existen
+  const cachedAreas = getCache('areas');
+  const cachedZonas = getCache('zonas');
+  if (cachedAreas || cachedZonas) {
+    mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [] });
   }
 
-  // Cargar datos iniciales
+  // Cargar datos iniciales desde el servidor
   await cargarYMostrarRegistros();
+
+  // Actualizar cuando la vista vuelva a mostrarse
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      cargarYMostrarRegistros();
+    }
+  });
   
   // Hacer funciones disponibles globalmente
   window.mostrarFormulario = mostrarFormulario;
