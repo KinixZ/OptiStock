@@ -65,7 +65,7 @@ const tutorialSteps = [
     {
         title: "Generación de Reportes",
         content: "Crea reportes detallados de inventario, movimientos y cualquier otra información relevante para la toma de decisiones.",
-        element: document.querySelector('.sidebar-menu a[href="pages/reportes/reportes.html"]')
+        element: document.querySelector('.sidebar-menu a[href="pages/reports/reportes.html"]')
     },
     {
         title: "Personalización",
