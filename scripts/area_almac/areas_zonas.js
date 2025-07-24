@@ -426,7 +426,7 @@ if (sublevelsCountInput) {
 }
 
 // Inicialización
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAreasZonas() {
   // Verificar sesión
   if (!localStorage.getItem('usuario_id')) {
     window.location.href = '../../pages/regis_login/login/login.html';
@@ -451,11 +451,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       cargarYMostrarRegistros();
     }
   });
-  
+
   // Hacer funciones disponibles globalmente
   window.mostrarFormulario = mostrarFormulario;
   window.editarArea = editarArea;
   window.eliminarArea = eliminarArea;
   window.editarZona = editarZona;
   window.eliminarZona = eliminarZona;
+
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAreasZonas);
+} else {
+  initAreasZonas();
+}
+
 });
+
