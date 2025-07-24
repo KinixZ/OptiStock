@@ -89,6 +89,41 @@ ALTER TABLE `empresa`
 ALTER TABLE `usuario`
   MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT;
 
+-- --------------------------------------------------------
+
+-- Estructura de tabla para la tabla `areas`
+
+CREATE TABLE `areas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `ancho` decimal(10,2) NOT NULL,
+  `alto` decimal(10,2) NOT NULL,
+  `largo` decimal(10,2) NOT NULL,
+  `volumen` decimal(15,2) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+-- Estructura de tabla para la tabla `zonas`
+
+CREATE TABLE `zonas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `ancho` decimal(10,2) NOT NULL,
+  `alto` decimal(10,2) NOT NULL,
+  `largo` decimal(10,2) NOT NULL,
+  `volumen` decimal(15,2) NOT NULL,
+  `tipo_almacenamiento` varchar(50) DEFAULT NULL,
+  `subniveles` json DEFAULT NULL,
+  `area_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `area_id` (`area_id`),
+  CONSTRAINT `zonas_ibfk_1` FOREIGN KEY (`area_id`) REFERENCES `areas`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Restricciones para tablas volcadas
 --
