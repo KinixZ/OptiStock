@@ -458,6 +458,7 @@ async function initAreasZonas() {
   window.eliminarArea = eliminarArea;
   window.editarZona = editarZona;
   window.eliminarZona = eliminarZona;
+
 }
 
 if (document.readyState === 'loading') {
@@ -465,3 +466,6 @@ if (document.readyState === 'loading') {
 } else {
   initAreasZonas();
 }
+
+});
+
