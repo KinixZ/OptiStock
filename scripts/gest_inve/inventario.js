@@ -57,7 +57,13 @@ function listarCategorias(lista) {
   lista.forEach(item => {
     const li = document.createElement('li');
 
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
     const name = document.createElement('span');
+
     name.textContent = item.nombre;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
@@ -74,8 +80,11 @@ function listarCategorias(lista) {
     li.appendChild(name);
     li.appendChild(actions);
 
+
+
     li.textContent = item.nombre;
     li.onclick = () => editarCategoria(item);
+
 
     ul.appendChild(li);
   });
@@ -87,7 +96,13 @@ function listarSubcategorias(lista) {
   lista.forEach(item => {
     const li = document.createElement('li');
 
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
     const name = document.createElement('span');
+
     name.textContent = item.nombre;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
@@ -104,8 +119,11 @@ function listarSubcategorias(lista) {
     li.appendChild(name);
     li.appendChild(actions);
 
+
+
     li.textContent = item.nombre;
     li.onclick = () => editarSubcategoria(item);
+
 
     ul.appendChild(li);
   });
@@ -117,7 +135,13 @@ function listarProductos(lista) {
   lista.forEach(item => {
     const li = document.createElement('li');
 
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
     const name = document.createElement('span');
+
     name.textContent = `${item.nombre} - Stock: ${item.stock}`;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
@@ -134,8 +158,11 @@ function listarProductos(lista) {
     li.appendChild(name);
     li.appendChild(actions);
 
+
+
     li.textContent = `${item.nombre} - Stock: ${item.stock}`;
     li.onclick = () => editarProducto(item);
+
 
     ul.appendChild(li);
   });
@@ -237,7 +264,6 @@ async function eliminarProducto(id) {
     await cargarProductos();
   }
 }
-
 
 
 // Inicializar
