@@ -6,158 +6,181 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- JS -->
   <script src="../../scripts/area_almac/areas_zonas.js" defer></script>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
   <!-- Estilos -->
   <link rel="stylesheet" href="../../styles/Area_almac/areas_zonas.css">
 </head>
 <body>
-<div class="warehouse-management">
-  <header class="warehouse-header">
-    <div class="header-content">
-      <h1 class="warehouse-title">Gestión de Áreas y Zonas</h1>
-      <p class="warehouse-subtitle">Administra las áreas y zonas de almacenamiento</p>
+<div class="dashboard-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Almacén</h2>
     </div>
-    <div class="warehouse-actions">
-      <button class="btn btn-primary" onclick="mostrarFormulario('area')">
-        <i class="icon-plus"></i> Nueva Área
-      </button>
-      <button class="btn btn-secondary" onclick="mostrarFormulario('zona')">
-        <i class="icon-plus"></i> Nueva Zona
-      </button>
-    </div>
-  </header>
-  
-  <main class="areas-zonas-wrapper">
-    <!-- Panel Resumen -->
-    <section id="resumenPanel" class="resumen-panel card">
-      <div class="card-header">
-        <h3><i class="icon-summary"></i> Resumen del Almacén</h3>
-        <div class="card-actions">
-          <button class="btn-icon" title="Actualizar">
-            <i class="icon-refresh"></i>
+    <nav class="sidebar-nav">
+      <ul>
+        <li class="active"><span>Áreas y Zonas</span></li>
+        <li><span>Inventario</span></li>
+        <li><span>Movimientos</span></li>
+        <li><span>Reportes</span></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="content-header">
+      <div class="header-title">
+        <h1>Áreas y Zonas</h1>
+        <p>Administra las áreas de almacenamiento y sus zonas</p>
+      </div>
+      <div class="header-actions">
+        <button class="action-btn primary" onclick="mostrarFormulario('area')">
+          <span>+ Área</span>
+        </button>
+        <button class="action-btn secondary" onclick="mostrarFormulario('zona')">
+          <span>+ Zona</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="content-grid">
+      <!-- Summary Panel -->
+      <section class="summary-panel">
+        <div class="panel-header">
+          <h3>Resumen</h3>
+          <button class="icon-btn refresh-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M23 4v6h-6M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
           </button>
         </div>
-      </div>
-      <div id="registroLista" class="resumen-contenedor card-body">
-        <div class="empty-state">
-          <i class="icon-folder"></i>
-          <p>No hay áreas ni zonas registradas.</p>
-          <p class="hint">Comienza agregando tu primera área o zona.</p>
-        </div>
-      </div>
-    </section>
-    
-    <!-- Panel Formularios -->
-    <section id="formularios" class="formularios card">
-      <div id="error-message" class="alert alert-error" style="display:none"></div>
-      
-      <!-- Formulario Área -->
-      <form id="areaForm" class="formulario" style="display:none" autocomplete="off">
-        <div class="form-header">
-          <h4><i class="icon-area"></i> Registrar Área de Almacén</h4>
-          <button type="button" class="btn-close" onclick="ocultarFormularios()">&times;</button>
-        </div>
-        
-        <div class="form-group">
-          <label for="areaName">Nombre del Área</label>
-          <input type="text" name="areaName" id="areaName" placeholder="Ej: Área de Refrigerados" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="areaDesc">Descripción</label>
-          <textarea id="areaDesc" name="areaDesc" rows="3" placeholder="Describe el propósito de esta área" required></textarea>
-        </div>
-        
-        <div class="form-group">
-          <label>Dimensiones físicas (metros)</label>
-          <div class="dimension-row">
-            <div class="dimension-input">
-              <input type="number" name="areaWidth" id="areaWidth" placeholder="Ancho" min="0.01" step="0.01" required />
-              <span class="dimension-label">Ancho</span>
-            </div>
-            <div class="dimension-input">
-              <input type="number" name="areaHeight" id="areaHeight" placeholder="Alto" min="0.01" step="0.01" required />
-              <span class="dimension-label">Alto</span>
-            </div>
-            <div class="dimension-input">
-              <input type="number" name="areaLength" id="areaLength" placeholder="Largo" min="0.01" step="0.01" required />
-              <span class="dimension-label">Largo</span>
-            </div>
+        <div id="registroLista" class="panel-content">
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M10 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v2"></path>
+              <rect x="14" y="17" width="8" height="5" rx="1"></rect>
+              <path d="M20 17v-2a1 1 0 0 0-1-1h-5"></path>
+            </svg>
+            <h4>No hay registros</h4>
+            <p>Comienza creando tu primera área o zona</p>
           </div>
         </div>
-        
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline" onclick="ocultarFormularios()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Área</button>
-        </div>
-      </form>
-      
-      <!-- Formulario Zona -->
-      <form id="zoneForm" class="formulario" style="display:none" autocomplete="off">
-        <div class="form-header">
-          <h4><i class="icon-zone"></i> Registrar Zona de Almacenamiento</h4>
-          <button type="button" class="btn-close" onclick="ocultarFormularios()">&times;</button>
-        </div>
-        
-        <div class="form-group">
-          <label for="zoneName">Nombre de la Zona</label>
-          <input type="text" id="zoneName" name="zoneName" placeholder="Ej: Zona de Palets" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="zoneDesc">Descripción</label>
-          <textarea id="zoneDesc" name="zoneDesc" rows="3" placeholder="Describe el propósito de esta zona" required></textarea>
-        </div>
-        
-        <div class="form-group">
-          <label for="zoneArea">Área asociada</label>
-          <select name="zoneArea" id="zoneArea" required>
-            <option value="">Seleccione un área</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Dimensiones físicas (metros)</label>
-          <div class="dimension-row">
-            <div class="dimension-input">
-              <input type="number" id="zoneWidth" name="zoneWidth" placeholder="Ancho" min="0.01" step="0.01" required />
-              <span class="dimension-label">Ancho</span>
+      </section>
+
+      <!-- Forms Panel -->
+      <section id="formularios" class="forms-panel">
+        <div id="error-message" class="alert error" style="display:none"></div>
+
+        <!-- Area Form -->
+        <form id="areaForm" class="form-card" style="display:none" autocomplete="off">
+          <div class="form-header">
+            <h3>Nueva Área</h3>
+            <button type="button" class="close-btn" onclick="ocultarFormularios()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="form-body">
+            <div class="form-group">
+              <label for="areaName">Nombre del Área</label>
+              <input type="text" id="areaName" name="areaName" placeholder="Ej: Área de Secos">
             </div>
-            <div class="dimension-input">
-              <input type="number" id="zoneHeight" name="zoneHeight" placeholder="Alto" min="0.01" step="0.01" required />
-              <span class="dimension-label">Alto</span>
+            <div class="form-group">
+              <label for="areaDesc">Descripción</label>
+              <textarea id="areaDesc" name="areaDesc" rows="3" placeholder="Descripción del área"></textarea>
             </div>
-            <div class="dimension-input">
-              <input type="number" id="zoneLength" name="zoneLength" placeholder="Largo" min="0.01" step="0.01" required />
-              <span class="dimension-label">Largo</span>
+            <div class="form-group">
+              <label>Dimensiones (metros)</label>
+              <div class="dimensions-grid">
+                <div class="dimension-input">
+                  <input type="number" id="areaWidth" name="areaWidth" placeholder="0.00" min="0.01" step="0.01">
+                  <span>Ancho</span>
+                </div>
+                <div class="dimension-input">
+                  <input type="number" id="areaHeight" name="areaHeight" placeholder="0.00" min="0.01" step="0.01">
+                  <span>Alto</span>
+                </div>
+                <div class="dimension-input">
+                  <input type="number" id="areaLength" name="areaLength" placeholder="0.00" min="0.01" step="0.01">
+                  <span>Largo</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="sublevelsCount">Cantidad de Subniveles</label>
-          <input type="number" name="sublevelsCount" id="sublevelsCount" min="0" step="1" value="0" />
-        </div>
-        
-        <div id="sublevelsContainer"></div>
-        
-        <div class="form-group">
-          <label for="storageType">Tipo de Almacenamiento</label>
-          <select name="storageType" id="storageType" required>
-            <option value="">Seleccione una opción</option>
-            <option value="estanteria">Estantería</option>
-            <option value="piso">Piso</option>
-            <option value="refrigeracion">Refrigeración</option>
-          </select>
-        </div>
-        
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline" onclick="ocultarFormularios()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Zona</button>
-        </div>
-      </form>
-    </section>
+          <div class="form-footer">
+            <button type="button" class="btn cancel" onclick="ocultarFormularios()">Cancelar</button>
+            <button type="submit" class="btn primary">Guardar Área</button>
+          </div>
+        </form>
+
+        <!-- Zone Form -->
+        <form id="zoneForm" class="form-card" style="display:none" autocomplete="off">
+          <div class="form-header">
+            <h3>Nueva Zona</h3>
+            <button type="button" class="close-btn" onclick="ocultarFormularios()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="form-body">
+            <div class="form-group">
+              <label for="zoneName">Nombre de la Zona</label>
+              <input type="text" id="zoneName" name="zoneName" placeholder="Ej: Zona de Palets">
+            </div>
+            <div class="form-group">
+              <label for="zoneDesc">Descripción</label>
+              <textarea id="zoneDesc" name="zoneDesc" rows="3" placeholder="Descripción de la zona"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="zoneArea">Área asociada</label>
+              <select id="zoneArea" name="zoneArea">
+                <option value="">Seleccione un área</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Dimensiones (metros)</label>
+              <div class="dimensions-grid">
+                <div class="dimension-input">
+                  <input type="number" id="zoneWidth" name="zoneWidth" placeholder="0.00" min="0.01" step="0.01">
+                  <span>Ancho</span>
+                </div>
+                <div class="dimension-input">
+                  <input type="number" id="zoneHeight" name="zoneHeight" placeholder="0.00" min="0.01" step="0.01">
+                  <span>Alto</span>
+                </div>
+                <div class="dimension-input">
+                  <input type="number" id="zoneLength" name="zoneLength" placeholder="0.00" min="0.01" step="0.01">
+                  <span>Largo</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="sublevelsCount">Subniveles</label>
+              <input type="number" id="sublevelsCount" name="sublevelsCount" min="0" value="0">
+            </div>
+            <div id="sublevelsContainer"></div>
+            <div class="form-group">
+              <label for="storageType">Tipo de Almacenamiento</label>
+              <select id="storageType" name="storageType">
+                <option value="">Seleccione tipo</option>
+                <option value="estanteria">Estantería</option>
+                <option value="piso">Piso</option>
+                <option value="refrigeracion">Refrigeración</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button type="button" class="btn cancel" onclick="ocultarFormularios()">Cancelar</button>
+            <button type="submit" class="btn primary">Guardar Zona</button>
+          </div>
+        </form>
+      </section>
+    </div>
   </main>
 </div>
 </body>
