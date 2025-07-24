@@ -122,4 +122,14 @@ form input, form textarea, form select { display:block; margin-bottom:0.5rem; }
 ul { list-style: none; padding-left: 0; }
 li { cursor: pointer; padding: 0.25rem 0; }
 
+@media (max-width: 768px) {
+  .inventory-wrapper {
+    margin: 1rem;
+    padding: 0.5rem;
+  }
+  .item-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 

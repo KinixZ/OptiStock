@@ -804,3 +804,15 @@ body {
     cursor: pointer;
     border-radius: 5px;
   }
+
+@media (max-width: 600px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+  .search-bar {
+    width: 150px;
+  }
+  .topbar-title {
+    font-size: 1rem;
+  }
+}
