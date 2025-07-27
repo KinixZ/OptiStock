@@ -87,11 +87,12 @@ const skipTutorial = document.getElementById('skipTutorial');
 const closeTutorial = document.getElementById('closeTutorial');
 let tutorialHole = null;
 
-// Show tutorial on first visit
+// Show tutorial only the first time each user logs in
 function checkFirstVisit() {
-    if (!localStorage.getItem('optistock_visited')) {
+    const userId = localStorage.getItem('usuario_id');
+    if (!userId) return;
+    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
         startTutorial();
-        localStorage.setItem('optistock_visited', 'true');
     }
 }
 
@@ -193,6 +194,10 @@ function endTutorial() {
         tutorialHole.remove();
         tutorialHole = null;
     }
+    const userId = localStorage.getItem('usuario_id');
+    if (userId) {
+        localStorage.setItem(`tutorialShown_${userId}`, 'true');
+    }
 }
 
 // Event Listeners
@@ -205,6 +210,19 @@ closeTutorial.addEventListener('click', endTutorial);
 
 // Check for first visit when page loads
 window.addEventListener('DOMContentLoaded', checkFirstVisit);
+
+// Reposition tutorial elements when the viewport changes
+window.addEventListener('resize', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+});
+
+window.addEventListener('scroll', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+}, true);
 
 // Menu item click handler
 const menuItems = document.querySelectorAll('.sidebar-menu a');
