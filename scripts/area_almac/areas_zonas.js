@@ -1,3 +1,4 @@
+(() => {
 // Configuración de la API
 // Detectar la ruta base para que el módulo funcione si la aplicación
 // se aloja en la raíz o en un subdirectorio
@@ -466,4 +467,6 @@ if (document.readyState === 'loading') {
 } else {
   initAreasZonas();
 }
+
+})();
 
