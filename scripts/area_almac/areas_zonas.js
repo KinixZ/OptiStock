@@ -1,7 +1,10 @@
 // Configuración de la API
+// Detectar la ruta base para que el módulo funcione si la aplicación
+// se aloja en la raíz o en un subdirectorio
+const BASE_URL = window.location.pathname.includes('pages/') ? '../../' : './';
 const API_ENDPOINTS = {
-  areas: `/scripts/php/guardar_areas.php`,
-  zonas: `/scripts/php/guardar_zonas.php`
+  areas: `${BASE_URL}scripts/php/guardar_areas.php`,
+  zonas: `${BASE_URL}scripts/php/guardar_zonas.php`
 };
 
 // Elementos del DOM
@@ -12,6 +15,24 @@ const zoneForm = document.getElementById('zoneForm');
 const registroLista = document.getElementById('registroLista');
 const zoneAreaSelect = document.getElementById('zoneArea');
 const errorContainer = document.getElementById('error-message');
+
+// Utilidades de caché en localStorage
+function getCache(key) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    /* ignore */
+  }
+}
 
 // Función para llamadas API mejorada
 async function fetchAPI(endpoint, method = 'GET', data = null) {
@@ -166,11 +187,14 @@ async function cargarYMostrarRegistros() {
       fetchAPI(API_ENDPOINTS.areas),
       fetchAPI(API_ENDPOINTS.zonas)
     ]);
-    
+    setCache('areas', areas);
+    setCache('zonas', zonas);
     mostrarResumen({ areas, zonas });
   } catch (error) {
     console.error('Error cargando registros:', error);
-    mostrarResumen({ areas: [], zonas: [] });
+    const areas = getCache('areas') || [];
+    const zonas = getCache('zonas') || [];
+    mostrarResumen({ areas, zonas });
   }
 }
 
@@ -402,7 +426,7 @@ if (sublevelsCountInput) {
 }
 
 // Inicialización
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAreasZonas() {
   // Verificar sesión
   if (!localStorage.getItem('usuario_id')) {
     window.location.href = '../../pages/regis_login/login/login.html';
@@ -411,13 +435,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // No additional listeners: se configuran arriba
 
-  // Cargar datos iniciales
+  // Mostrar datos en caché si existen
+  const cachedAreas = getCache('areas');
+  const cachedZonas = getCache('zonas');
+  if (cachedAreas || cachedZonas) {
+    mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [] });
+  }
+
+  // Cargar datos iniciales desde el servidor
   await cargarYMostrarRegistros();
-  
+
+  // Actualizar cuando la vista vuelva a mostrarse
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      cargarYMostrarRegistros();
+    }
+  });
+
   // Hacer funciones disponibles globalmente
   window.mostrarFormulario = mostrarFormulario;
   window.editarArea = editarArea;
   window.eliminarArea = eliminarArea;
   window.editarZona = editarZona;
   window.eliminarZona = eliminarZona;
-});
+
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAreasZonas);
+} else {
+  initAreasZonas();
+}
+

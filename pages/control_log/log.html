@@ -1,5 +1,45 @@
 <div class="module-wrapper">
-    <h2>Registro de actividad</h2>
-    <p>Aquí gestionas las áreas físicas del almacén...</p>
-    <!-- más contenido -->
+    <h2>Log de control</h2>
+    <p>Historial completo de movimientos del sistema</p>
+
+    <div class="filters">
+        <select id="filtroModulo" class="form-select">
+            <option value="">Todos los módulos</option>
+            <option value="Inventario">Inventario</option>
+            <option value="Usuarios">Usuarios</option>
+            <option value="Áreas">Áreas</option>
+            <option value="Zonas">Zonas</option>
+            <option value="Reportes">Reportes</option>
+        </select>
+        <input id="filtroUsuario" type="text" class="form-control" placeholder="ID de usuario">
+        <select id="filtroRol" class="form-select">
+            <option value="">Todos los roles</option>
+            <option value="Administrador">Administrador</option>
+            <option value="Empleado">Empleado</option>
+        </select>
+        <button id="exportPdf" class="btn btn-secondary btn-export">Exportar PDF</button>
+        <button id="exportExcel" class="btn btn-secondary">Exportar Excel</button>
+    </div>
+
+    <div class="table-responsive">
+        <table id="logTable" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Módulo</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+        </table>
+    </div>
 </div>
+
+<link rel="stylesheet" href="../../styles/control_log/log.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../../scripts/control_log/log.js"></script>

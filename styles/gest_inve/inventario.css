@@ -1,3 +1,4 @@
+
 /* Inventario - estilo inspirado en Canva */
 :root {
   --color-primary: #8c6dfd;
@@ -21,6 +22,15 @@ body {
   max-width: 1100px;
   margin: 2rem auto;
   padding: 1rem;
+
+
+/* Estilos para la gestión de inventario */
+.inventory-wrapper {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1rem;
+  font-family: 'Poppins', sans-serif;
+
 }
 
 .inventory-wrapper h2 {
@@ -29,10 +39,17 @@ body {
 }
 
 .inventory-section {
+
   background: var(--color-card);
   padding: 1.5rem;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
   margin-bottom: 2rem;
 }
 
@@ -45,6 +62,7 @@ body {
 .inventory-section form textarea,
 .inventory-section form select {
   width: 100%;
+
   padding: 0.6rem 0.8rem;
   margin-bottom: 0.8rem;
   border: 1px solid #ccc;
@@ -64,6 +82,25 @@ body {
 
 .inventory-section form button:hover {
   background-color: var(--color-secondary);
+
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.inventory-section form button {
+  background-color: #3498db;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.inventory-section form button:hover {
+  background-color: #2980b9;
+
 }
 
 
@@ -71,14 +108,24 @@ body {
   list-style: none;
   padding-left: 0;
   display: grid;
+
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+
   gap: 1rem;
 }
 
 .item-card {
+
   background: var(--color-card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -88,6 +135,7 @@ body {
 .item-name {
   font-weight: 600;
   margin-bottom: 0.5rem;
+
 }
 
 .item-actions button {
@@ -103,6 +151,38 @@ body {
 
 .item-actions .edit-btn {
   background-color: var(--color-secondary);
+
+
+.item-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.item-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.item-list li:last-child {
+  border-bottom: none;
+
+}
+
+.item-actions button {
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #fff;
+}
+
+.item-actions .edit-btn {
+  background-color: #27ae60;
+
 }
 
 .item-actions .delete-btn {
@@ -110,12 +190,17 @@ body {
 }
 
 .item-actions .edit-btn:hover {
+
   background-color: #19a2a9;
+
+  background-color: #1e8449;
+
 }
 
 .item-actions .delete-btn:hover {
   background-color: #c0392b;
 }
+
 
 /* Responsive improvements */
 @media (min-width: 768px) {
@@ -130,3 +215,22 @@ body {
     grid-column: span 2;
   }
 }
+
+
+
+.inventory-wrapper { padding: 1rem; }
+section { margin-bottom: 2rem; }
+form input, form textarea, form select { display:block; margin-bottom:0.5rem; }
+ul { list-style: none; padding-left: 0; }
+li { cursor: pointer; padding: 0.25rem 0; }
+
+@media (max-width: 768px) {
+  .inventory-wrapper {
+    margin: 1rem;
+    padding: 0.5rem;
+  }
+  .item-list {
+    grid-template-columns: 1fr;
+  }
+}
+
