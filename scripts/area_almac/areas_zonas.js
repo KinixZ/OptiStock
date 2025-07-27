@@ -467,5 +467,3 @@ if (document.readyState === 'loading') {
   initAreasZonas();
 }
 
-});
-
