@@ -62,7 +62,13 @@ function listarCategorias(lista) {
     name.className = 'item-name';
 
 
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
     const name = document.createElement('span');
+
 
     name.textContent = item.nombre;
     const actions = document.createElement('div');
@@ -82,8 +88,11 @@ function listarCategorias(lista) {
 
 
 
+
+
     li.textContent = item.nombre;
     li.onclick = () => editarCategoria(item);
+
 
 
     ul.appendChild(li);
@@ -101,7 +110,13 @@ function listarSubcategorias(lista) {
     name.className = 'item-name';
 
 
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
     const name = document.createElement('span');
+
 
     name.textContent = item.nombre;
     const actions = document.createElement('div');
@@ -121,8 +136,11 @@ function listarSubcategorias(lista) {
 
 
 
+
+
     li.textContent = item.nombre;
     li.onclick = () => editarSubcategoria(item);
+
 
 
     ul.appendChild(li);
@@ -140,7 +158,13 @@ function listarProductos(lista) {
     name.className = 'item-name';
 
 
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
     const name = document.createElement('span');
+
 
     name.textContent = `${item.nombre} - Stock: ${item.stock}`;
     const actions = document.createElement('div');
@@ -160,8 +184,11 @@ function listarProductos(lista) {
 
 
 
+
+
     li.textContent = `${item.nombre} - Stock: ${item.stock}`;
     li.onclick = () => editarProducto(item);
+
 
 
     ul.appendChild(li);
@@ -239,6 +266,9 @@ function editarProducto(item) {
   document.getElementById('productoStock').value = item.stock;
   document.getElementById('productoPrecio').value = item.precio_compra;
 }
+
+
+
 
 
 async function eliminarCategoria(id) {
