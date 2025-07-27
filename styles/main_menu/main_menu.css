@@ -815,4 +815,10 @@ body {
   .topbar-title {
     font-size: 1rem;
   }
+
+  .tutorial-card {
+    width: 95%;
+    max-width: none;
+    padding: 20px;
+  }
 }
