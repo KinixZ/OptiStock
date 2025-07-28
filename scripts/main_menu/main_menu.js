@@ -88,23 +88,13 @@ const skipTutorial = document.getElementById('skipTutorial');
 const closeTutorial = document.getElementById('closeTutorial');
 let tutorialHole = null;
 
-// Show tutorial only the first time each user logs in
+// Show the tutorial only on the user's first visit
 function checkFirstVisit() {
     const userId = localStorage.getItem('usuario_id');
     if (!userId) return;
 
-    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
-
-
+    // If the tutorial hasn't been completed yet, launch it
     if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
-
-
-    if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
-
-    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
-
-
-
         startTutorial();
     }
 }
@@ -212,19 +202,8 @@ function endTutorial() {
     }
     const userId = localStorage.getItem('usuario_id');
     if (userId) {
-
         localStorage.setItem(`tutorialShown_${userId}`, 'true');
-
-
         localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
-
-
-        localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
-
-        localStorage.setItem(`tutorialShown_${userId}`, 'true');
-
-
-
     }
 }
 
@@ -293,10 +272,7 @@ document.getElementById('egresoFlashBtn').addEventListener('click', function() {
 });
 
 
-document.addEventListener("DOMContentLoaded", function () {
-
-// Manual tutorial trigger for testing (remove in production)
-
+// Inicialización al cargar la página
 document.addEventListener("DOMContentLoaded", function () {
     checkFirstVisit();
 
@@ -594,7 +570,9 @@ function cargarConfiguracionVisual(idEmpresa) {
                 const items = Array.from(menu.children);
                 orden.forEach(page => {
                     const item = items.find(i => i.dataset.page === page);
-                    if (item) menu.appendChild(item);
+                    if (item) {
+                        menu.appendChild(item);
+                    }
                 });
             }
         }
