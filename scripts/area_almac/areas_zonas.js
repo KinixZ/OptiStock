@@ -473,9 +473,6 @@ if (document.readyState === 'loading') {
 })();
 
 
-})();
-
-
 
 
 
