@@ -91,7 +91,11 @@ let tutorialHole = null;
 function checkFirstVisit() {
     const userId = localStorage.getItem('usuario_id');
     if (!userId) return;
+
     if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
+
+    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
+
         startTutorial();
     }
 }
@@ -199,7 +203,11 @@ function endTutorial() {
     }
     const userId = localStorage.getItem('usuario_id');
     if (userId) {
+
         localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
+
+        localStorage.setItem(`tutorialShown_${userId}`, 'true');
+
     }
 }
 
