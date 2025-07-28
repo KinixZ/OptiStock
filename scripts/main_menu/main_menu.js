@@ -88,23 +88,13 @@ const skipTutorial = document.getElementById('skipTutorial');
 const closeTutorial = document.getElementById('closeTutorial');
 let tutorialHole = null;
 
-// Show tutorial only the first time each user logs in
+// Show the tutorial only on the user's first visit
 function checkFirstVisit() {
     const userId = localStorage.getItem('usuario_id');
     if (!userId) return;
 
-    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
-
-
+    // If the tutorial hasn't been completed yet, launch it
     if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
-
-
-    if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
-
-    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
-
-
-
         startTutorial();
     }
 }
@@ -212,19 +202,8 @@ function endTutorial() {
     }
     const userId = localStorage.getItem('usuario_id');
     if (userId) {
-
         localStorage.setItem(`tutorialShown_${userId}`, 'true');
-
-
         localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
-
-
-        localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
-
-        localStorage.setItem(`tutorialShown_${userId}`, 'true');
-
-
-
     }
 }
 
@@ -238,8 +217,8 @@ closeTutorial.addEventListener('click', endTutorial);
 
 
 
-// Check for first visit when page loads
-window.addEventListener('DOMContentLoaded', checkFirstVisit);
+// Initialize when the DOM is ready
+// We'll run checkFirstVisit inside the main initialization block
 
 
 // Reposition tutorial elements when the viewport changes
@@ -278,27 +257,35 @@ window.addEventListener('scroll', () => {
 }, true);
 
 
-// Notification bell click handler
-document.querySelector('.notification-bell').addEventListener('click', function() {
-    alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
-});
-
-// Quick actions buttons
-document.getElementById('ingresoFlashBtn').addEventListener('click', function() {
-    alert('Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
-});
-
-document.getElementById('egresoFlashBtn').addEventListener('click', function() {
-    alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
-});
 
 
+// Inicialización al cargar la página
 document.addEventListener("DOMContentLoaded", function () {
-
-// Manual tutorial trigger for testing (remove in production)
-
-document.addEventListener("DOMContentLoaded", function () {
+    // Run tutorial logic for new users
     checkFirstVisit();
+
+    // Notification bell click handler
+    const bell = document.querySelector('.notification-bell');
+    if (bell) {
+        bell.addEventListener('click', function () {
+            alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
+        });
+    }
+
+    // Quick actions buttons
+    const ingresoBtn = document.getElementById('ingresoFlashBtn');
+    if (ingresoBtn) {
+        ingresoBtn.addEventListener('click', function () {
+            alert('Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
+        });
+    }
+
+    const egresoBtn = document.getElementById('egresoFlashBtn');
+    if (egresoBtn) {
+        egresoBtn.addEventListener('click', function () {
+            alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
+        });
+    }
 
 
     const mainContent = document.getElementById('mainContent');
@@ -594,7 +581,9 @@ function cargarConfiguracionVisual(idEmpresa) {
                 const items = Array.from(menu.children);
                 orden.forEach(page => {
                     const item = items.find(i => i.dataset.page === page);
-                    if (item) menu.appendChild(item);
+                    if (item) {
+                        menu.appendChild(item);
+                    }
                 });
             }
         }
