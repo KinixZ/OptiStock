@@ -509,6 +509,7 @@ body {
     color: #bdc3c7;
 }
 
+
 /* Tutorial Styles */
 .tutorial-spotlight {
     position: relative;
@@ -738,6 +739,7 @@ body {
         margin: 0 auto;
     }
 }
+
 
 .modal-overlay {
     position: fixed;
