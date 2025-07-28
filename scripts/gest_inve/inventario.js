@@ -57,6 +57,9 @@ function listarCategorias(lista) {
   lista.forEach(item => {
     const li = document.createElement('li');
 
+    const name = document.createElement('span');
+
+
     li.className = 'item-card';
     const name = document.createElement('div');
     name.className = 'item-name';
@@ -90,8 +93,10 @@ function listarCategorias(lista) {
 
 
 
+
     li.textContent = item.nombre;
     li.onclick = () => editarCategoria(item);
+
 
 
 
@@ -105,6 +110,9 @@ function listarSubcategorias(lista) {
   lista.forEach(item => {
     const li = document.createElement('li');
 
+    const name = document.createElement('span');
+
+
     li.className = 'item-card';
     const name = document.createElement('div');
     name.className = 'item-name';
@@ -116,6 +124,7 @@ function listarSubcategorias(lista) {
 
 
     const name = document.createElement('span');
+
 
 
     name.textContent = item.nombre;
@@ -138,8 +147,10 @@ function listarSubcategorias(lista) {
 
 
 
+
     li.textContent = item.nombre;
     li.onclick = () => editarSubcategoria(item);
+
 
 
 
@@ -153,6 +164,9 @@ function listarProductos(lista) {
   lista.forEach(item => {
     const li = document.createElement('li');
 
+    const name = document.createElement('span');
+
+
     li.className = 'item-card';
     const name = document.createElement('div');
     name.className = 'item-name';
@@ -164,6 +178,7 @@ function listarProductos(lista) {
 
 
     const name = document.createElement('span');
+
 
 
     name.textContent = `${item.nombre} - Stock: ${item.stock}`;
@@ -181,6 +196,7 @@ function listarProductos(lista) {
     actions.appendChild(delBtn);
     li.appendChild(name);
     li.appendChild(actions);
+
 
 
 
@@ -266,6 +282,8 @@ function editarProducto(item) {
   document.getElementById('productoStock').value = item.stock;
   document.getElementById('productoPrecio').value = item.precio_compra;
 }
+
+
 
 
 

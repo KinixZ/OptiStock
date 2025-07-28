@@ -1,4 +1,5 @@
 
+
 /* Inventario - estilo inspirado en Canva */
 :root {
   --color-primary: #8c6dfd;
@@ -24,6 +25,7 @@ body {
   padding: 1rem;
 
 
+
 /* Estilos para la gestión de inventario */
 .inventory-wrapper {
   max-width: 900px;
@@ -39,6 +41,7 @@ body {
 }
 
 .inventory-section {
+
 
   background: var(--color-card);
   padding: 1.5rem;
@@ -63,6 +66,7 @@ body {
 .inventory-section form select {
   width: 100%;
 
+
   padding: 0.6rem 0.8rem;
   margin-bottom: 0.8rem;
   border: 1px solid #ccc;
@@ -83,6 +87,7 @@ body {
 .inventory-section form button:hover {
   background-color: var(--color-secondary);
 
+
   padding: 0.5rem;
   margin-bottom: 0.5rem;
   border: 1px solid #ccc;
@@ -100,6 +105,10 @@ body {
 
 .inventory-section form button:hover {
   background-color: #2980b9;
+
+}
+
+
 
 }
 
@@ -153,6 +162,7 @@ body {
   background-color: var(--color-secondary);
 
 
+
 .item-list {
   list-style: none;
   padding-left: 0;
@@ -191,15 +201,20 @@ body {
 
 .item-actions .edit-btn:hover {
 
+  background-color: #1e8449;
+
+
   background-color: #19a2a9;
 
   background-color: #1e8449;
+
 
 }
 
 .item-actions .delete-btn:hover {
   background-color: #c0392b;
 }
+
 
 
 /* Responsive improvements */
@@ -233,4 +248,5 @@ li { cursor: pointer; padding: 0.25rem 0; }
     grid-template-columns: 1fr;
   }
 }
+
 
