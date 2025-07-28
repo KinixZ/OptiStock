@@ -91,6 +91,19 @@ h2.h4 {
         margin-bottom: 20px;
     }
 
+    .content img {
+        max-width: 300px;
+    }
+
+    .btn-light {
+        padding: 10px 25px;
+        font-size: 1rem;
+    }
+
+    h2.h4 {
+        font-size: 1.5rem;
+    }
+
     .row {
         flex-direction: column;
     }
@@ -104,7 +117,26 @@ h2.h4 {
     h1 {
         font-size: 2rem;
     }
+
+
+    .lead {
+        font-size: 0.9rem;
+    }
+
+    .content img {
+        max-width: 200px;
+    }
+
+    .btn-light {
+        padding: 8px 20px;
+        font-size: 0.9rem;
+    }
+
+    h2.h4 {
+        font-size: 1.25rem;
+
     .lead {
         font-size: 1rem;
+
     }
 }
