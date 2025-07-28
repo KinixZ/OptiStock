@@ -530,6 +530,7 @@ body {
     bottom: 0;
     background: rgba(0, 0, 0, 0.7);
     z-index: 1000;
+    pointer-events: auto;
 }
 
 .tutorial-hole {
@@ -804,3 +805,21 @@ body {
     cursor: pointer;
     border-radius: 5px;
   }
+
+@media (max-width: 600px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+  .search-bar {
+    width: 150px;
+  }
+  .topbar-title {
+    font-size: 1rem;
+  }
+
+  .tutorial-card {
+    width: 95%;
+    max-width: none;
+    padding: 20px;
+  }
+}

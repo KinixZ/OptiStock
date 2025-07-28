@@ -56,7 +56,23 @@ function listarCategorias(lista) {
   ul.innerHTML = '';
   lista.forEach(item => {
     const li = document.createElement('li');
+
     const name = document.createElement('span');
+
+
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
+    const name = document.createElement('span');
+
+
     name.textContent = item.nombre;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
@@ -72,6 +88,18 @@ function listarCategorias(lista) {
     actions.appendChild(delBtn);
     li.appendChild(name);
     li.appendChild(actions);
+
+
+
+
+
+
+    li.textContent = item.nombre;
+    li.onclick = () => editarCategoria(item);
+
+
+
+
     ul.appendChild(li);
   });
 }
@@ -81,7 +109,24 @@ function listarSubcategorias(lista) {
   ul.innerHTML = '';
   lista.forEach(item => {
     const li = document.createElement('li');
+
     const name = document.createElement('span');
+
+
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
+    const name = document.createElement('span');
+
+
+
     name.textContent = item.nombre;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
@@ -97,6 +142,18 @@ function listarSubcategorias(lista) {
     actions.appendChild(delBtn);
     li.appendChild(name);
     li.appendChild(actions);
+
+
+
+
+
+
+    li.textContent = item.nombre;
+    li.onclick = () => editarSubcategoria(item);
+
+
+
+
     ul.appendChild(li);
   });
 }
@@ -106,7 +163,24 @@ function listarProductos(lista) {
   ul.innerHTML = '';
   lista.forEach(item => {
     const li = document.createElement('li');
+
     const name = document.createElement('span');
+
+
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
+    li.className = 'item-card';
+    const name = document.createElement('div');
+    name.className = 'item-name';
+
+
+    const name = document.createElement('span');
+
+
+
     name.textContent = `${item.nombre} - Stock: ${item.stock}`;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
@@ -122,6 +196,17 @@ function listarProductos(lista) {
     actions.appendChild(delBtn);
     li.appendChild(name);
     li.appendChild(actions);
+
+
+
+
+
+
+    li.textContent = `${item.nombre} - Stock: ${item.stock}`;
+    li.onclick = () => editarProducto(item);
+
+
+
     ul.appendChild(li);
   });
 }
@@ -198,6 +283,12 @@ function editarProducto(item) {
   document.getElementById('productoPrecio').value = item.precio_compra;
 }
 
+
+
+
+
+
+
 async function eliminarCategoria(id) {
   if (confirm('¿Seguro que desea eliminar la categoría?') && confirm('Confirme la eliminación')) {
     await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
@@ -221,6 +312,7 @@ async function eliminarProducto(id) {
     await cargarProductos();
   }
 }
+
 
 // Inicializar
 (async function(){

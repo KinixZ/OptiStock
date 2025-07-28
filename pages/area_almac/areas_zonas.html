@@ -37,11 +37,11 @@
         <label for="areaDesc">Descripción</label>
         <textarea id="areaDesc" name="areaDesc" rows="3" required></textarea>
         <label>Dimensiones físicas (m)</label>
-
         <div class="dimension-row">
-        <input type="number" name="areaWidth" id="areaWidth" placeholder="Ancho" min="0.01" step="0.01" required />
-        <input type="number" name="areaHeight" id="areaHeight" placeholder="Alto" min="0.01" step="0.01" required />
-        <input type="number" name="areaLength" id="areaLength" placeholder="Largo" min="0.01" step="0.01" required />
+          <input type="number" name="areaWidth" id="areaWidth" placeholder="Ancho" min="0.01" step="0.01" required />
+          <input type="number" name="areaHeight" id="areaHeight" placeholder="Alto" min="0.01" step="0.01" required />
+          <input type="number" name="areaLength" id="areaLength" placeholder="Largo" min="0.01" step="0.01" required />
+        </div>
         <button type="submit" class="btn btn-primary">Guardar Área</button>
       </form>
       <!-- Formulario Zona -->
@@ -71,7 +71,62 @@
           <option value="piso">Piso</option>
           <option value="refrigeracion">Refrigeración</option>
         </select>
+
         <button type="submit" class="btn btn-primary">Guardar Zona</button>
+
+
+      </form>
+
+    </div>
+
+    <!-- Forms Section -->
+    <div id="formularios">
+      <!-- Error Message -->
+      <div id="error-message" class="alert error" style="display:none"></div>
+
+      <!-- Area Form Card -->
+      <form id="areaForm" class="form-card" style="display:none" autocomplete="off">
+        <div class="form-header">
+          <h3>Registrar Área</h3>
+          <button type="button" class="close-btn" onclick="ocultarFormularios()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="form-body">
+          <div class="form-group">
+            <label for="areaName">Nombre del Área</label>
+            <input type="text" id="areaName" name="areaName" placeholder="Ej: Área de Refrigerados" required>
+          </div>
+          <div class="form-group">
+            <label for="areaDesc">Descripción</label>
+            <textarea id="areaDesc" name="areaDesc" rows="3" placeholder="Describe el propósito de esta área" required></textarea>
+          </div>
+          <div class="form-group">
+            <label>Dimensiones (metros)</label>
+            <div class="dimensions-grid">
+              <div class="dimension-input">
+                <input type="number" id="areaWidth" name="areaWidth" placeholder="0.00" min="0.01" step="0.01" required>
+                <span>Ancho</span>
+              </div>
+              <div class="dimension-input">
+                <input type="number" id="areaHeight" name="areaHeight" placeholder="0.00" min="0.01" step="0.01" required>
+                <span>Alto</span>
+              </div>
+              <div class="dimension-input">
+                <input type="number" id="areaLength" name="areaLength" placeholder="0.00" min="0.01" step="0.01" required>
+                <span>Largo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-outline" onclick="ocultarFormularios()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Área</button>
+        </div>
+
       </form>
     </section>
   </main>

@@ -77,7 +77,8 @@ body {
 
 /* Layout principal */
 .warehouse-management {
-  max-width: 1100px;
+  width: 100%;
+  max-width: none;
   margin: 2rem auto;
   padding: 0 1rem;
 }
@@ -87,6 +88,7 @@ body {
   gap: 2.5rem;
   margin-top: 2rem;
   align-items: flex-start;
+  width: 100%;
 }
 
 @media (max-width: 900px) {
@@ -162,16 +164,6 @@ select {
   background: #f8fafc;
   transition: border 0.2s;
   width: 100%;
-}
-
-textarea {
-  padding: 0.8rem 0.1rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--color-border);
-  font-size: 1.08rem;
-  background: #f8fafc;
-  transition: border 0.2s;
-  resize: vertical;
 }
 
 textarea {
@@ -265,8 +257,9 @@ select:focus {
 
 .resumen-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
+  width: 100%;
 }
 
 .area-card {
