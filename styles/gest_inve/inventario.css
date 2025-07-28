@@ -126,3 +126,19 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+.acciones-productos {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.alertas {
+  margin-top: 0.5rem;
+  color: #b20000;
+  font-weight: bold;
+}
+.stock-bajo {
+  background-color: #f8d7da;
+}
+

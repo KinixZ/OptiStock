@@ -12,11 +12,18 @@
 <body>
 <div class="inventory-wrapper">
     <h2>Gestión de Inventario</h2>
+
     <div class="top-sections">
         <section class="categorias-section inventory-section">
             <h3>Categorías</h3>
             <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar">
             <datalist id="sugerenciasCategoria"></datalist>
+
+
+    <section class="categorias-section inventory-section">
+        <h3>Categorías</h3>
+        <input type="text" id="buscarCategoria" placeholder="Buscar">
+
         <form id="categoriaForm" autocomplete="off">
             <input type="hidden" id="categoriaId">
             <input type="text" id="categoriaNombre" placeholder="Nombre" required>
@@ -24,12 +31,20 @@
             <button type="submit">Guardar</button>
         </form>
         <ul id="categoriasLista" class="item-list"></ul>
+
         </section>
 
         <section class="subcategorias-section inventory-section">
             <h3>Subcategorías</h3>
             <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar">
             <datalist id="sugerenciasSubcategoria"></datalist>
+
+    </section>
+
+    <section class="subcategorias-section inventory-section">
+        <h3>Subcategorías</h3>
+        <input type="text" id="buscarSubcategoria" placeholder="Buscar">
+
         <form id="subcategoriaForm" autocomplete="off">
             <input type="hidden" id="subcategoriaId">
             <select id="subcategoriaCategoria" required></select>
@@ -44,8 +59,12 @@
     <section class="productos-section inventory-section">
         <h3>Productos</h3>
         <div class="acciones-productos">
+
             <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar">
             <datalist id="sugerenciasProducto"></datalist>
+
+            <input type="text" id="buscarProducto" placeholder="Buscar">
+
             <button id="exportarPDF" type="button">Exportar PDF</button>
             <button id="exportarExcel" type="button">Exportar Excel</button>
         </div>
