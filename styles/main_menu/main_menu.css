@@ -166,6 +166,13 @@ body {
     font-size: 1.2rem;
 }
 
+.alert-settings {
+    cursor: pointer;
+    color: var(--dark-color);
+    font-size: 1.2rem;
+    margin-left: 15px;
+}
+
 .notification-badge {
     position: absolute;
     top: -5px;
