@@ -4,6 +4,21 @@ const API = {
   productos: '/scripts/php/guardar_productos.php'
 };
 
+let categorias = [];
+let subcategorias = [];
+let productos = [];
+
+function actualizarDatalist(id, items) {
+  const dl = document.getElementById(id);
+  if (!dl) return;
+  dl.innerHTML = '';
+  items.forEach(texto => {
+    const opt = document.createElement('option');
+    opt.value = texto;
+    dl.appendChild(opt);
+  });
+}
+
 async function fetchAPI(url, method = 'GET', data) {
   const options = { method };
   if (data) {
@@ -15,14 +30,13 @@ async function fetchAPI(url, method = 'GET', data) {
   return res.json();
 }
 
-// Cargar listas iniciales
 async function cargarCategorias() {
-  const data = await fetchAPI(API.categorias);
+  categorias = await fetchAPI(API.categorias);
   const selectCat = document.getElementById('subcategoriaCategoria');
   const prodCat = document.getElementById('productoCategoria');
   selectCat.innerHTML = '<option value="">Categoría</option>';
   prodCat.innerHTML = '<option value="">Categoría</option>';
-  data.forEach(c => {
+  categorias.forEach(c => {
     const opt1 = document.createElement('option');
     opt1.value = c.id;
     opt1.textContent = c.nombre;
@@ -30,169 +44,124 @@ async function cargarCategorias() {
     const opt2 = opt1.cloneNode(true);
     prodCat.appendChild(opt2);
   });
-  listarCategorias(data);
+  actualizarDatalist('sugerenciasCategoria', categorias.map(c => c.nombre));
+  renderCategorias();
 }
 
 async function cargarSubcategorias() {
-  const data = await fetchAPI(API.subcategorias);
+  subcategorias = await fetchAPI(API.subcategorias);
   const select = document.getElementById('productoSubcategoria');
   select.innerHTML = '<option value="">Subcategoría</option>';
-  data.forEach(s => {
+  subcategorias.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
     opt.textContent = s.nombre;
     select.appendChild(opt);
   });
-  listarSubcategorias(data);
+  actualizarDatalist('sugerenciasSubcategoria', subcategorias.map(s => s.nombre));
+  renderSubcategorias();
 }
 
 async function cargarProductos() {
-  const data = await fetchAPI(API.productos);
-  listarProductos(data);
+  productos = await fetchAPI(API.productos);
+  actualizarDatalist('sugerenciasProducto', productos.map(p => p.nombre));
+  renderProductos();
+  verificarStockCritico();
 }
 
-function listarCategorias(lista) {
+function filtrarLista(lista, texto, campos) {
+  if (!texto) return lista;
+  const t = texto.toLowerCase();
+  return lista.filter(item => campos.some(c => String(item[c]).toLowerCase().includes(t)));
+}
+
+function renderCategorias() {
+  const filtro = document.getElementById('buscarCategoria').value;
+  const lista = filtrarLista(categorias, filtro, ['nombre', 'descripcion']);
   const ul = document.getElementById('categoriasLista');
   ul.innerHTML = '';
   lista.forEach(item => {
     const li = document.createElement('li');
-
     li.className = 'item-card';
-    const name = document.createElement('div');
-    name.className = 'item-name';
-
-
-    li.className = 'item-card';
-    const name = document.createElement('div');
-    name.className = 'item-name';
-
-
-    const name = document.createElement('span');
-
-
-    name.textContent = item.nombre;
+    li.innerHTML = `<span class="item-name">${item.nombre}</span>`;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Editar';
-    editBtn.className = 'edit-btn';
-    editBtn.onclick = () => editarCategoria(item);
-    const delBtn = document.createElement('button');
-    delBtn.textContent = 'Eliminar';
-    delBtn.className = 'delete-btn';
-    delBtn.onclick = () => eliminarCategoria(item.id);
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    li.appendChild(name);
+    const e = document.createElement('button');
+    e.textContent = 'Editar';
+    e.className = 'edit-btn';
+    e.onclick = () => editarCategoria(item);
+    const d = document.createElement('button');
+    d.textContent = 'Eliminar';
+    d.className = 'delete-btn';
+    d.onclick = () => eliminarCategoria(item.id);
+    actions.appendChild(e);
+    actions.appendChild(d);
     li.appendChild(actions);
-
-
-
-
-
-    li.textContent = item.nombre;
-    li.onclick = () => editarCategoria(item);
-
-
-
     ul.appendChild(li);
   });
 }
 
-function listarSubcategorias(lista) {
+function renderSubcategorias() {
+  const filtro = document.getElementById('buscarSubcategoria').value;
+  const lista = filtrarLista(subcategorias, filtro, ['nombre', 'descripcion']);
   const ul = document.getElementById('subcategoriasLista');
   ul.innerHTML = '';
   lista.forEach(item => {
     const li = document.createElement('li');
-
     li.className = 'item-card';
-    const name = document.createElement('div');
-    name.className = 'item-name';
-
-
-    li.className = 'item-card';
-    const name = document.createElement('div');
-    name.className = 'item-name';
-
-
-    const name = document.createElement('span');
-
-
-    name.textContent = item.nombre;
+    li.innerHTML = `<span class="item-name">${item.nombre}</span>`;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Editar';
-    editBtn.className = 'edit-btn';
-    editBtn.onclick = () => editarSubcategoria(item);
-    const delBtn = document.createElement('button');
-    delBtn.textContent = 'Eliminar';
-    delBtn.className = 'delete-btn';
-    delBtn.onclick = () => eliminarSubcategoria(item.id);
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    li.appendChild(name);
+    const e = document.createElement('button');
+    e.textContent = 'Editar';
+    e.className = 'edit-btn';
+    e.onclick = () => editarSubcategoria(item);
+    const d = document.createElement('button');
+    d.textContent = 'Eliminar';
+    d.className = 'delete-btn';
+    d.onclick = () => eliminarSubcategoria(item.id);
+    actions.appendChild(e);
+    actions.appendChild(d);
     li.appendChild(actions);
-
-
-
-
-
-    li.textContent = item.nombre;
-    li.onclick = () => editarSubcategoria(item);
-
-
-
     ul.appendChild(li);
   });
 }
 
-function listarProductos(lista) {
+function renderProductos() {
+  const filtro = document.getElementById('buscarProducto').value;
+  const lista = filtrarLista(productos, filtro, ['nombre', 'descripcion']);
   const ul = document.getElementById('productosLista');
   ul.innerHTML = '';
-  lista.forEach(item => {
+  lista.forEach(p => {
     const li = document.createElement('li');
-
     li.className = 'item-card';
-    const name = document.createElement('div');
-    name.className = 'item-name';
-
-
-    li.className = 'item-card';
-    const name = document.createElement('div');
-    name.className = 'item-name';
-
-
-    const name = document.createElement('span');
-
-
-    name.textContent = `${item.nombre} - Stock: ${item.stock}`;
+    if (p.stock <= 5) li.classList.add('stock-bajo');
+    li.innerHTML = `<span class="item-name">${p.nombre} - Stock: ${p.stock}</span>`;
     const actions = document.createElement('div');
     actions.className = 'item-actions';
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Editar';
-    editBtn.className = 'edit-btn';
-    editBtn.onclick = () => editarProducto(item);
-    const delBtn = document.createElement('button');
-    delBtn.textContent = 'Eliminar';
-    delBtn.className = 'delete-btn';
-    delBtn.onclick = () => eliminarProducto(item.id);
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    li.appendChild(name);
+    const e = document.createElement('button');
+    e.textContent = 'Editar';
+    e.className = 'edit-btn';
+    e.onclick = () => editarProducto(p);
+    const d = document.createElement('button');
+    d.textContent = 'Eliminar';
+    d.className = 'delete-btn';
+    d.onclick = () => eliminarProducto(p.id);
+    actions.appendChild(e);
+    actions.appendChild(d);
     li.appendChild(actions);
-
-
-
-
-
-    li.textContent = `${item.nombre} - Stock: ${item.stock}`;
-    li.onclick = () => editarProducto(item);
-
-
-
     ul.appendChild(li);
   });
+}
+
+function verificarStockCritico() {
+  const alerta = document.getElementById('alertasStock');
+  const criticos = productos.filter(p => p.stock <= 5);
+  if (criticos.length) {
+    alerta.textContent = 'Productos con stock crítico: ' + criticos.map(p => p.nombre).join(', ');
+  } else {
+    alerta.textContent = '';
+  }
 }
 
 // Formularios
@@ -200,7 +169,7 @@ const categoriaForm = document.getElementById('categoriaForm');
 const subcategoriaForm = document.getElementById('subcategoriaForm');
 const productoForm = document.getElementById('productoForm');
 
-categoriaForm.addEventListener('submit', async (e) => {
+categoriaForm.addEventListener('submit', async e => {
   e.preventDefault();
   const id = document.getElementById('categoriaId').value;
   const data = {
@@ -213,7 +182,7 @@ categoriaForm.addEventListener('submit', async (e) => {
   await cargarCategorias();
 });
 
-subcategoriaForm.addEventListener('submit', async (e) => {
+subcategoriaForm.addEventListener('submit', async e => {
   e.preventDefault();
   const id = document.getElementById('subcategoriaId').value;
   const data = {
@@ -227,7 +196,7 @@ subcategoriaForm.addEventListener('submit', async (e) => {
   await cargarSubcategorias();
 });
 
-productoForm.addEventListener('submit', async (e) => {
+productoForm.addEventListener('submit', async e => {
   e.preventDefault();
   const id = document.getElementById('productoId').value;
   const data = {
@@ -267,10 +236,6 @@ function editarProducto(item) {
   document.getElementById('productoPrecio').value = item.precio_compra;
 }
 
-
-
-
-
 async function eliminarCategoria(id) {
   if (confirm('¿Seguro que desea eliminar la categoría?') && confirm('Confirme la eliminación')) {
     await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
@@ -295,8 +260,45 @@ async function eliminarProducto(id) {
   }
 }
 
+function exportarExcel() {
+  const tabla = document.createElement('table');
+  const header = ['Nombre', 'Stock', 'Precio'];
+  const thead = tabla.createTHead();
+  const hRow = thead.insertRow();
+  header.forEach(t => { const th = document.createElement('th'); th.textContent = t; hRow.appendChild(th); });
+  const tbody = tabla.createTBody();
+  productos.forEach(p => {
+    const r = tbody.insertRow();
+    r.insertCell().textContent = p.nombre;
+    r.insertCell().textContent = p.stock;
+    r.insertCell().textContent = p.precio_compra;
+  });
+  const wb = XLSX.utils.table_to_book(tabla, { sheet: 'Productos' });
+  XLSX.writeFile(wb, 'inventario.xlsx');
+}
 
-// Inicializar
+function exportarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const rows = productos.map(p => [p.nombre, p.stock, p.precio_compra]);
+  doc.text('Inventario', 14, 16);
+  doc.autoTable({ head: [['Nombre','Stock','Precio']], body: rows, startY: 22, styles: { fontSize: 10 } });
+  doc.save('inventario.pdf');
+}
+
+// Búsquedas y exportaciones
+['buscarCategoria','buscarSubcategoria','buscarProducto'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => {
+    renderCategorias();
+    renderSubcategorias();
+    renderProductos();
+  });
+});
+
+document.getElementById('exportarExcel').addEventListener('click', exportarExcel);
+document.getElementById('exportarPDF').addEventListener('click', exportarPDF);
+
 (async function(){
   await cargarCategorias();
   await cargarSubcategorias();
