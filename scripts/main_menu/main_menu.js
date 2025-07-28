@@ -30,6 +30,246 @@ window.addEventListener('resize', function() {
     }
 });
 
+
+// Tutorial configuration
+const tutorialSteps = [
+    {
+        title: 'Bienvenido a OPTISTOCK',
+        content: 'Este tutorial te guiar\u00e1 por las principales funciones del sistema. OPTISTOCK es una soluci\u00f3n completa para la gesti\u00f3n de almacenes que te ayudar\u00e1 a optimizar tus operaciones.',
+        selector: null
+    },
+    {
+        title: 'Funciones R\u00e1pidas Flash',
+        content: 'Los botones \u201cIngreso Flash\u201d y \u201cEgreso Flash\u201d permiten registrar movimientos de productos existentes de forma inmediata mediante escaneo de c\u00f3digos.',
+        selector: '.quick-actions'
+    },
+    {
+        title: '\u00c1reas y Zonas de Almac\u00e9n',
+        content: 'Desde este m\u00f3dulo puedes administrar las \u00e1reas de tu almac\u00e9n y asignar ubicaciones a tus productos.',
+        selector: '.sidebar-menu a[data-page="area_almac/areas_zonas.html"]'
+    },
+    {
+        title: 'Gesti\u00f3n de Inventario',
+        content: 'Registra nuevos productos, actualiza existencias y controla tu inventario de forma eficiente.',
+        selector: '.sidebar-menu a[data-page="gest_inve/inventario.html"]'
+    },
+    {
+        title: 'Administraci\u00f3n de Usuarios',
+        content: 'Gestiona permisos y roles de todos los usuarios del sistema.',
+        selector: '.sidebar-menu a[data-page="admin_usuar/administracion_usuarios.html"]'
+    },
+    {
+        title: 'Dashboard Principal',
+        content: 'Aqu\u00ed encontrar\u00e1s un resumen r\u00e1pido de tus indicadores clave.',
+        selector: '.dashboard-grid'
+    },
+    {
+        title: 'Generaci\u00f3n de Reportes',
+        content: 'Crea reportes detallados con la informaci\u00f3n de tu almac\u00e9n.',
+        selector: '.sidebar-menu a[data-page="reports/reportes.html"]'
+    },
+    {
+        title: 'Personalizaci\u00f3n',
+        content: 'Configura los colores de la interfaz y adapta el sistema a tus preferencias.',
+        selector: '.sidebar-footer .btn'
+    }
+];
+
+// Tutorial State
+let currentStep = 0;
+const tutorialOverlayBg = document.getElementById('tutorialOverlayBg');
+const tutorialCardContainer = document.getElementById('tutorialCardContainer');
+const tutorialCard = document.getElementById('tutorialCard');
+const tutorialTitle = document.getElementById('tutorialTitle');
+const tutorialContent = document.getElementById('tutorialContent');
+const tutorialIndicator = document.getElementById('tutorialIndicator');
+const nextTutorial = document.getElementById('nextTutorial');
+const skipTutorial = document.getElementById('skipTutorial');
+const closeTutorial = document.getElementById('closeTutorial');
+let tutorialHole = null;
+
+// Show tutorial only the first time each user logs in
+function checkFirstVisit() {
+    const userId = localStorage.getItem('usuario_id');
+    if (!userId) return;
+
+    if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
+
+
+    if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
+
+    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
+
+
+        startTutorial();
+    }
+}
+
+// Start the tutorial
+function startTutorial() {
+    currentStep = 0;
+    showTutorialStep(currentStep);
+    tutorialOverlayBg.style.display = 'block';
+    tutorialCardContainer.style.display = 'flex';
+}
+
+// Show specific tutorial step
+function showTutorialStep(step) {
+    if (step >= tutorialSteps.length) {
+        endTutorial();
+        return;
+    }
+
+    currentStep = step;
+    const stepData = tutorialSteps[step];
+    
+    // Update content
+    tutorialTitle.textContent = stepData.title;
+    tutorialContent.innerHTML = `<p>${stepData.content}</p>`;
+    tutorialIndicator.textContent = `Paso ${step + 1} de ${tutorialSteps.length}`;
+    
+    // Update next button text for last step
+    if (step === tutorialSteps.length - 1) {
+        nextTutorial.textContent = 'Finalizar';
+    } else {
+        nextTutorial.textContent = 'Siguiente';
+    }
+
+    // Remove previous spotlight
+    document.querySelectorAll('.tutorial-spotlight').forEach(el => {
+        el.classList.remove('tutorial-spotlight');
+    });
+
+    // Remove previous hole
+    if (tutorialHole) {
+        tutorialHole.remove();
+        tutorialHole = null;
+    }
+
+    // Highlight element if specified
+    if (stepData.selector) {
+        const target = document.querySelector(stepData.selector);
+        if (target) {
+            // Add spotlight class to element
+            target.classList.add('tutorial-spotlight');
+
+            // Create hole in overlay
+            const rect = target.getBoundingClientRect();
+            tutorialHole = document.createElement('div');
+            tutorialHole.className = 'tutorial-hole';
+            tutorialHole.style.width = `${rect.width}px`;
+            tutorialHole.style.height = `${rect.height}px`;
+            tutorialHole.style.left = `${rect.left}px`;
+            tutorialHole.style.top = `${rect.top}px`;
+            tutorialOverlayBg.appendChild(tutorialHole);
+
+            // Position card near the element
+        const cardWidth = 500;
+        const cardLeft = Math.min(
+            window.innerWidth - cardWidth - 20,
+            Math.max(20, rect.left + (rect.width / 2) - (cardWidth / 2))
+        );
+        
+            const cardTop = rect.bottom + 20;
+            if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
+                // If card doesn't fit below, position it above
+                tutorialCard.style.top = `${rect.top - tutorialCard.offsetHeight - 20}px`;
+            } else {
+                tutorialCard.style.top = `${cardTop}px`;
+            }
+            tutorialCard.style.left = `${cardLeft}px`;
+
+            // Scroll element into view if needed
+            setTimeout(() => {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 300);
+        }
+    } else {
+        // Center card for introductory steps
+        tutorialCard.style.top = '50%';
+        tutorialCard.style.left = '50%';
+        tutorialCard.style.transform = 'translate(-50%, -50%)';
+    }
+}
+
+// End tutorial
+function endTutorial() {
+    tutorialOverlayBg.style.display = 'none';
+    tutorialCardContainer.style.display = 'none';
+    document.querySelectorAll('.tutorial-spotlight').forEach(el => {
+        el.classList.remove('tutorial-spotlight');
+    });
+    if (tutorialHole) {
+        tutorialHole.remove();
+        tutorialHole = null;
+    }
+    const userId = localStorage.getItem('usuario_id');
+    if (userId) {
+
+        localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
+
+
+        localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
+
+        localStorage.setItem(`tutorialShown_${userId}`, 'true');
+
+
+    }
+}
+
+// Event Listeners
+nextTutorial.addEventListener('click', () => {
+    showTutorialStep(currentStep + 1);
+});
+
+skipTutorial.addEventListener('click', endTutorial);
+closeTutorial.addEventListener('click', endTutorial);
+
+
+
+// Check for first visit when page loads
+window.addEventListener('DOMContentLoaded', checkFirstVisit);
+
+
+// Reposition tutorial elements when the viewport changes
+window.addEventListener('resize', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+
+});
+
+window.addEventListener('scroll', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+}, true);
+
+// Menu item click handler
+const menuItems = document.querySelectorAll('.sidebar-menu a');
+menuItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        menuItems.forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+        
+        const pageTitle = this.textContent.trim();
+        document.querySelector('.topbar-title').textContent = pageTitle;
+    });
+
+});
+
+window.addEventListener('scroll', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+}, true);
+
+
 // Notification bell click handler
 document.querySelector('.notification-bell').addEventListener('click', function() {
     alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
@@ -44,7 +284,14 @@ document.getElementById('egresoFlashBtn').addEventListener('click', function() {
     alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
 });
 
+
 document.addEventListener("DOMContentLoaded", function () {
+
+// Manual tutorial trigger for testing (remove in production)
+
+document.addEventListener("DOMContentLoaded", function () {
+    checkFirstVisit();
+
 
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
