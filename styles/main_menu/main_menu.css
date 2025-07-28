@@ -509,6 +509,7 @@ body {
     color: #bdc3c7;
 }
 
+
 /* Tutorial Styles */
 .tutorial-spotlight {
     position: relative;
@@ -530,6 +531,7 @@ body {
     bottom: 0;
     background: rgba(0, 0, 0, 0.7);
     z-index: 1000;
+    pointer-events: auto;
 }
 
 .tutorial-hole {
@@ -738,6 +740,7 @@ body {
     }
 }
 
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -814,5 +817,11 @@ body {
   }
   .topbar-title {
     font-size: 1rem;
+  }
+
+  .tutorial-card {
+    width: 95%;
+    max-width: none;
+    padding: 20px;
   }
 }
