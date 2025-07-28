@@ -261,6 +261,7 @@ window.addEventListener('scroll', () => {
 
 // Inicialización al cargar la página
 document.addEventListener("DOMContentLoaded", function () {
+
     // Run tutorial logic for new users
     checkFirstVisit();
 
@@ -286,6 +287,9 @@ document.addEventListener("DOMContentLoaded", function () {
             alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
         });
     }
+
+    checkFirstVisit();
+
 
 
     const mainContent = document.getElementById('mainContent');
