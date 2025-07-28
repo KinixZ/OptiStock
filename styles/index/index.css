@@ -118,6 +118,7 @@ h2.h4 {
         font-size: 2rem;
     }
 
+
     .lead {
         font-size: 0.9rem;
     }
@@ -133,5 +134,9 @@ h2.h4 {
 
     h2.h4 {
         font-size: 1.25rem;
+
+    .lead {
+        font-size: 1rem;
+
     }
 }

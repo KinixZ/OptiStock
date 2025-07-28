@@ -3,5 +3,11 @@
     "bcrypt": "^5.1.1",
     "firebase": "^11.4.0",
     "google-auth-library": "^9.15.1"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }

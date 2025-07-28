@@ -30,6 +30,7 @@ window.addEventListener('resize', function() {
     }
 });
 
+
 // Tutorial configuration
 const tutorialSteps = [
     {
@@ -268,6 +269,7 @@ window.addEventListener('scroll', () => {
     }
 }, true);
 
+
 // Notification bell click handler
 document.querySelector('.notification-bell').addEventListener('click', function() {
     alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
@@ -282,10 +284,14 @@ document.getElementById('egresoFlashBtn').addEventListener('click', function() {
     alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
 });
 
+
+document.addEventListener("DOMContentLoaded", function () {
+
 // Manual tutorial trigger for testing (remove in production)
 
 document.addEventListener("DOMContentLoaded", function () {
     checkFirstVisit();
+
 
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
