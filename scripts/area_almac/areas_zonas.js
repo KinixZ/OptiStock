@@ -206,8 +206,6 @@ function mostrarResumen(data) {
   if (!areas.length && !zonas.length) {
     registroLista.innerHTML = `
       <p class="vacio">No hay áreas ni zonas registradas.</p>
-      <button onclick="mostrarFormulario('area')">Registrar nueva Área</button>
-      <button onclick="mostrarFormulario('zona')">Registrar nueva Zona</button>
     `;
     return;
   }
@@ -264,12 +262,6 @@ function mostrarResumen(data) {
   }
   
   html += '</div>';
-  html += `
-    <div class="action-buttons">
-      <button onclick="mostrarFormulario('area')">+ Nueva Área</button>
-      <button onclick="mostrarFormulario('zona')">+ Nueva Zona</button>
-    </div>
-  `;
 
   registroLista.innerHTML = html;
 }
