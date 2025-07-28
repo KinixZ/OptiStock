@@ -8,6 +8,19 @@ let categorias = [];
 let subcategorias = [];
 let productos = [];
 
+
+function actualizarDatalist(id, items) {
+  const dl = document.getElementById(id);
+  if (!dl) return;
+  dl.innerHTML = '';
+  items.forEach(texto => {
+    const opt = document.createElement('option');
+    opt.value = texto;
+    dl.appendChild(opt);
+  });
+}
+
+
 async function fetchAPI(url, method = 'GET', data) {
   const options = { method };
   if (data) {
@@ -33,6 +46,9 @@ async function cargarCategorias() {
     const opt2 = opt1.cloneNode(true);
     prodCat.appendChild(opt2);
   });
+
+  actualizarDatalist('sugerenciasCategoria', categorias.map(c => c.nombre));
+
   renderCategorias();
 }
 
@@ -46,11 +62,15 @@ async function cargarSubcategorias() {
     opt.textContent = s.nombre;
     select.appendChild(opt);
   });
+  actualizarDatalist('sugerenciasSubcategoria', subcategorias.map(s => s.nombre));
+
   renderSubcategorias();
 }
 
 async function cargarProductos() {
   productos = await fetchAPI(API.productos);
+
+  actualizarDatalist('sugerenciasProducto', productos.map(p => p.nombre));
   renderProductos();
   verificarStockCritico();
 }
@@ -60,6 +80,18 @@ function filtrarLista(lista, texto, campos) {
   const t = texto.toLowerCase();
   return lista.filter(item => campos.some(c => String(item[c]).toLowerCase().includes(t)));
 }
+
+
+  renderProductos();
+  verificarStockCritico();
+}
+
+function filtrarLista(lista, texto, campos) {
+  if (!texto) return lista;
+  const t = texto.toLowerCase();
+  return lista.filter(item => campos.some(c => String(item[c]).toLowerCase().includes(t)));
+}
+
 
 function renderCategorias() {
   const filtro = document.getElementById('buscarCategoria').value;
