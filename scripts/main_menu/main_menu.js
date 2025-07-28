@@ -30,47 +30,47 @@ window.addEventListener('resize', function() {
     }
 });
 
-// Tutorial Steps
+// Tutorial configuration
 const tutorialSteps = [
     {
-        title: "Bienvenido a OPTISTOCK",
-        content: "Este tutorial te guiará por las principales funciones del sistema. OPTISTOCK es una solución completa para la gestión de almacenes que te ayudará a optimizar tus operaciones.",
-        element: null
+        title: 'Bienvenido a OPTISTOCK',
+        content: 'Este tutorial te guiar\u00e1 por las principales funciones del sistema. OPTISTOCK es una soluci\u00f3n completa para la gesti\u00f3n de almacenes que te ayudar\u00e1 a optimizar tus operaciones.',
+        selector: null
     },
     {
-        title: "Funciones Rápidas Flash",
-        content: "Los botones 'Ingreso Flash' y 'Egreso Flash' te permiten registrar movimientos de productos ya existentes de manera rápida mediante escaneo de códigos QR o barras.",
-        element: document.querySelector('.quick-actions')
+        title: 'Funciones R\u00e1pidas Flash',
+        content: 'Los botones \u201cIngreso Flash\u201d y \u201cEgreso Flash\u201d permiten registrar movimientos de productos existentes de forma inmediata mediante escaneo de c\u00f3digos.',
+        selector: '.quick-actions'
     },
     {
-        title: "Áreas y Zonas de Almacén",
-        content: "Desde este módulo podrás gestionar todas las áreas y zonas de tu almacén, asignar ubicaciones y configurar la distribución física de tus productos.",
-        element: document.querySelector('.sidebar-menu a[href="pages/almacen/areas_zonas.html"]')
+        title: '\u00c1reas y Zonas de Almac\u00e9n',
+        content: 'Desde este m\u00f3dulo puedes administrar las \u00e1reas de tu almac\u00e9n y asignar ubicaciones a tus productos.',
+        selector: '.sidebar-menu a[data-page="area_almac/areas_zonas.html"]'
     },
     {
-        title: "Gestión de Inventario",
-        content: "El corazón del sistema. Aquí podrás registrar nuevos productos, actualizar existencias, realizar transferencias y gestionar todo tu inventario de manera eficiente.",
-        element: document.querySelector('.sidebar-menu a[href="pages/inventario/gestion_inventario.html"]')
+        title: 'Gesti\u00f3n de Inventario',
+        content: 'Registra nuevos productos, actualiza existencias y controla tu inventario de forma eficiente.',
+        selector: '.sidebar-menu a[data-page="gest_inve/inventario.html"]'
     },
     {
-        title: "Administración de Usuarios",
-        content: "Gestiona los accesos, permisos y roles de todos los usuarios del sistema. Asigna responsabilidades y controla quién puede realizar cada operación.",
-        element: document.querySelector('.sidebar-menu a[href="pages/usuarios/administracion_usuarios.html"]')
+        title: 'Administraci\u00f3n de Usuarios',
+        content: 'Gestiona permisos y roles de todos los usuarios del sistema.',
+        selector: '.sidebar-menu a[data-page="admin_usuar/administracion_usuarios.html"]'
     },
     {
-        title: "Dashboard Principal",
-        content: "Aquí encontrarás un resumen visual de las métricas más importantes: productos con stock bajo, movimientos recientes y accesos de empleados.",
-        element: document.querySelector('.dashboard-grid')
+        title: 'Dashboard Principal',
+        content: 'Aqu\u00ed encontrar\u00e1s un resumen r\u00e1pido de tus indicadores clave.',
+        selector: '.dashboard-grid'
     },
     {
-        title: "Generación de Reportes",
-        content: "Crea reportes detallados de inventario, movimientos y cualquier otra información relevante para la toma de decisiones.",
-        element: document.querySelector('.sidebar-menu a[href="pages/reports/reportes.html"]')
+        title: 'Generaci\u00f3n de Reportes',
+        content: 'Crea reportes detallados con la informaci\u00f3n de tu almac\u00e9n.',
+        selector: '.sidebar-menu a[data-page="reports/reportes.html"]'
     },
     {
-        title: "Personalización",
-        content: "Como administrador, puedes personalizar el sistema cambiando colores, reorganizando accesos rápidos y adaptando la interfaz a las necesidades de tu empresa.",
-        element: document.querySelector('.sidebar-footer .btn')
+        title: 'Personalizaci\u00f3n',
+        content: 'Configura los colores de la interfaz y adapta el sistema a tus preferencias.',
+        selector: '.sidebar-footer .btn'
     }
 ];
 
@@ -87,11 +87,12 @@ const skipTutorial = document.getElementById('skipTutorial');
 const closeTutorial = document.getElementById('closeTutorial');
 let tutorialHole = null;
 
-// Show tutorial on first visit
+// Show tutorial only the first time each user logs in
 function checkFirstVisit() {
-    if (!localStorage.getItem('optistock_visited')) {
+    const userId = localStorage.getItem('usuario_id');
+    if (!userId) return;
+    if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
         startTutorial();
-        localStorage.setItem('optistock_visited', 'true');
     }
 }
 
@@ -137,43 +138,46 @@ function showTutorialStep(step) {
     }
 
     // Highlight element if specified
-    if (stepData.element) {
-        // Add spotlight class to element
-        stepData.element.classList.add('tutorial-spotlight');
-        
-        // Create hole in overlay
-        const rect = stepData.element.getBoundingClientRect();
-        tutorialHole = document.createElement('div');
-        tutorialHole.className = 'tutorial-hole';
-        tutorialHole.style.width = `${rect.width}px`;
-        tutorialHole.style.height = `${rect.height}px`;
-        tutorialHole.style.left = `${rect.left}px`;
-        tutorialHole.style.top = `${rect.top}px`;
-        tutorialOverlayBg.appendChild(tutorialHole);
-        
-        // Position card near the element
+    if (stepData.selector) {
+        const target = document.querySelector(stepData.selector);
+        if (target) {
+            // Add spotlight class to element
+            target.classList.add('tutorial-spotlight');
+
+            // Create hole in overlay
+            const rect = target.getBoundingClientRect();
+            tutorialHole = document.createElement('div');
+            tutorialHole.className = 'tutorial-hole';
+            tutorialHole.style.width = `${rect.width}px`;
+            tutorialHole.style.height = `${rect.height}px`;
+            tutorialHole.style.left = `${rect.left}px`;
+            tutorialHole.style.top = `${rect.top}px`;
+            tutorialOverlayBg.appendChild(tutorialHole);
+
+            // Position card near the element
         const cardWidth = 500;
         const cardLeft = Math.min(
             window.innerWidth - cardWidth - 20,
             Math.max(20, rect.left + (rect.width / 2) - (cardWidth / 2))
         );
         
-        const cardTop = rect.bottom + 20;
-        if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
-            // If card doesn't fit below, position it above
-            tutorialCard.style.top = `${rect.top - tutorialCard.offsetHeight - 20}px`;
-        } else {
-            tutorialCard.style.top = `${cardTop}px`;
+            const cardTop = rect.bottom + 20;
+            if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
+                // If card doesn't fit below, position it above
+                tutorialCard.style.top = `${rect.top - tutorialCard.offsetHeight - 20}px`;
+            } else {
+                tutorialCard.style.top = `${cardTop}px`;
+            }
+            tutorialCard.style.left = `${cardLeft}px`;
+
+            // Scroll element into view if needed
+            setTimeout(() => {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 300);
         }
-        tutorialCard.style.left = `${cardLeft}px`;
-        
-        // Scroll element into view if needed
-        setTimeout(() => {
-            stepData.element.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }, 300);
     } else {
         // Center card for introductory steps
         tutorialCard.style.top = '50%';
@@ -193,6 +197,10 @@ function endTutorial() {
         tutorialHole.remove();
         tutorialHole = null;
     }
+    const userId = localStorage.getItem('usuario_id');
+    if (userId) {
+        localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
+    }
 }
 
 // Event Listeners
@@ -205,6 +213,19 @@ closeTutorial.addEventListener('click', endTutorial);
 
 // Check for first visit when page loads
 window.addEventListener('DOMContentLoaded', checkFirstVisit);
+
+// Reposition tutorial elements when the viewport changes
+window.addEventListener('resize', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+});
+
+window.addEventListener('scroll', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+}, true);
 
 // Menu item click handler
 const menuItems = document.querySelectorAll('.sidebar-menu a');
@@ -235,11 +256,6 @@ document.getElementById('egresoFlashBtn').addEventListener('click', function() {
 });
 
 // Manual tutorial trigger for testing (remove in production)
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'F2') {
-        startTutorial();
-    }
-});
 
 document.addEventListener("DOMContentLoaded", function () {
     const mainContent = document.getElementById('mainContent');
