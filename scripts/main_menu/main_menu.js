@@ -217,8 +217,8 @@ closeTutorial.addEventListener('click', endTutorial);
 
 
 
-// Check for first visit when page loads
-window.addEventListener('DOMContentLoaded', checkFirstVisit);
+// Initialize when the DOM is ready
+// We'll run checkFirstVisit inside the main initialization block
 
 
 // Reposition tutorial elements when the viewport changes
@@ -257,24 +257,39 @@ window.addEventListener('scroll', () => {
 }, true);
 
 
-// Notification bell click handler
-document.querySelector('.notification-bell').addEventListener('click', function() {
-    alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
-});
-
-// Quick actions buttons
-document.getElementById('ingresoFlashBtn').addEventListener('click', function() {
-    alert('Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
-});
-
-document.getElementById('egresoFlashBtn').addEventListener('click', function() {
-    alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
-});
 
 
 // Inicialización al cargar la página
 document.addEventListener("DOMContentLoaded", function () {
+
+    // Run tutorial logic for new users
     checkFirstVisit();
+
+    // Notification bell click handler
+    const bell = document.querySelector('.notification-bell');
+    if (bell) {
+        bell.addEventListener('click', function () {
+            alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
+        });
+    }
+
+    // Quick actions buttons
+    const ingresoBtn = document.getElementById('ingresoFlashBtn');
+    if (ingresoBtn) {
+        ingresoBtn.addEventListener('click', function () {
+            alert('Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
+        });
+    }
+
+    const egresoBtn = document.getElementById('egresoFlashBtn');
+    if (egresoBtn) {
+        egresoBtn.addEventListener('click', function () {
+            alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
+        });
+    }
+
+    checkFirstVisit();
+
 
 
     const mainContent = document.getElementById('mainContent');
