@@ -1,6 +1,57 @@
 // Toggle sidebar collapse/expand
 const menuToggle = document.getElementById('menuToggle');
 const sidebar = document.querySelector('.sidebar');
+const highRotationList = document.getElementById('highRotationList');
+const zoneCapacityList = document.getElementById('zoneCapacityList');
+const alertSettingsBtn = document.getElementById('alertSettingsBtn');
+const alertModal = document.getElementById('alertModal');
+const alertMovCriticos = document.getElementById('alertMovCriticos');
+const alertFallosInventario = document.getElementById('alertFallosInventario');
+const saveAlertSettings = document.getElementById('saveAlertSettings');
+const cancelAlertSettings = document.getElementById('cancelAlertSettings');
+
+const metricsData = {
+    highRotation: [
+        { producto: 'Baterías AA', cantidad: 120 },
+        { producto: 'Mouse Inalámbrico', cantidad: 75 },
+        { producto: 'Teclados', cantidad: 60 }
+    ],
+    zoneCapacity: [
+        { zona: 'A1', porcentaje: 95 },
+        { zona: 'B2', porcentaje: 90 }
+    ]
+};
+
+function renderHighRotation() {
+    if (!highRotationList) return;
+    highRotationList.innerHTML = '';
+    metricsData.highRotation.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'activity-item';
+        li.innerHTML = `<div class="activity-icon"><i class="fas fa-box"></i></div>
+            <div class="activity-details"><div class="activity-description">${item.producto}</div>
+            <div class="activity-time">${item.cantidad} mov.</div></div>`;
+        highRotationList.appendChild(li);
+    });
+}
+
+function renderZoneCapacity() {
+    if (!zoneCapacityList) return;
+    zoneCapacityList.innerHTML = '';
+    metricsData.zoneCapacity.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'activity-item';
+        li.innerHTML = `<div class="activity-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="activity-details"><div class="activity-description">Zona ${item.zona}</div>
+            <div class="activity-time">${item.porcentaje}% ocupación</div></div>`;
+        zoneCapacityList.appendChild(li);
+    });
+}
+
+function loadMetrics() {
+    renderHighRotation();
+    renderZoneCapacity();
+}
 
 // Toggle sidebar on button click
 menuToggle.addEventListener('click', function() {
@@ -259,9 +310,44 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// Alert settings handlers
+if (alertSettingsBtn) {
+    alertSettingsBtn.addEventListener('click', () => {
+        if (!alertModal) return;
+        alertMovCriticos.checked = JSON.parse(localStorage.getItem('alertMovCriticos') || 'true');
+        alertFallosInventario.checked = JSON.parse(localStorage.getItem('alertFallosInventario') || 'true');
+        alertModal.style.display = 'flex';
+    });
+}
+if (saveAlertSettings) {
+    saveAlertSettings.addEventListener('click', () => {
+        localStorage.setItem('alertMovCriticos', alertMovCriticos.checked);
+        localStorage.setItem('alertFallosInventario', alertFallosInventario.checked);
+        alertModal.style.display = 'none';
+    });
+}
+if (cancelAlertSettings) {
+    cancelAlertSettings.addEventListener('click', () => {
+        alertModal.style.display = 'none';
+    });
+}
+
+function notifyUnauthorizedMovement(msg) {
+    if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
+        alert(msg);
+    }
+}
+
+document.addEventListener('movimientoNoAutorizado', e => {
+    notifyUnauthorizedMovement(e.detail || 'Movimiento no autorizado detectado');
+});
+
 document.addEventListener("DOMContentLoaded", function () {
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
+
+    loadMetrics();
+    document.addEventListener('movimientoRegistrado', loadMetrics);
 
     // Mostrar nombre y rol del usuario
     const nombre = localStorage.getItem('usuario_nombre');

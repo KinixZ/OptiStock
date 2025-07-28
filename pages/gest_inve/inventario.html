@@ -4,56 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Inventario</title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
-
     <link rel="stylesheet" href="../../styles/gest_inve/inventario.css">
-    <script src="../../scripts/gest_inve/inventario.js" defer></script>
 </head>
 <body>
 <div class="inventory-wrapper">
     <h2>Gestión de Inventario</h2>
 
+    <div class="top-sections">
+        <section class="categorias-section inventory-section">
+            <h3>Categorías</h3>
+            <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar">
+            <datalist id="sugerenciasCategoria"></datalist>
+
+
     <section class="categorias-section inventory-section">
-
-
-
-
-    <section class="categorias-section">
-
-
         <h3>Categorías</h3>
+        <input type="text" id="buscarCategoria" placeholder="Buscar">
+
         <form id="categoriaForm" autocomplete="off">
             <input type="hidden" id="categoriaId">
             <input type="text" id="categoriaNombre" placeholder="Nombre" required>
             <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
             <button type="submit">Guardar</button>
         </form>
-
-
-
-
-
-
         <ul id="categoriasLista" class="item-list"></ul>
+
+        </section>
+
+        <section class="subcategorias-section inventory-section">
+            <h3>Subcategorías</h3>
+            <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar">
+            <datalist id="sugerenciasSubcategoria"></datalist>
+
     </section>
 
     <section class="subcategorias-section inventory-section">
-
-
-
-
-        <ul id="categoriasLista"></ul>
-    </section>
-
-    <section class="subcategorias-section">
-
-
-
         <h3>Subcategorías</h3>
+        <input type="text" id="buscarSubcategoria" placeholder="Buscar">
+
         <form id="subcategoriaForm" autocomplete="off">
             <input type="hidden" id="subcategoriaId">
             <select id="subcategoriaCategoria" required></select>
@@ -61,26 +52,22 @@
             <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
             <button type="submit">Guardar</button>
         </form>
-
-
-
-
         <ul id="subcategoriasLista" class="item-list"></ul>
-    </section>
+        </section>
+    </div>
 
     <section class="productos-section inventory-section">
-
-
-
-
-        <ul id="subcategoriasLista"></ul>
-    </section>
-
-    <section class="productos-section">
-
-
-
         <h3>Productos</h3>
+        <div class="acciones-productos">
+
+            <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar">
+            <datalist id="sugerenciasProducto"></datalist>
+
+            <input type="text" id="buscarProducto" placeholder="Buscar">
+
+            <button id="exportarPDF" type="button">Exportar PDF</button>
+            <button id="exportarExcel" type="button">Exportar Excel</button>
+        </div>
         <form id="productoForm" autocomplete="off">
             <input type="hidden" id="productoId">
             <input type="text" id="productoNombre" placeholder="Nombre" required>
@@ -91,9 +78,14 @@
             <input type="number" id="productoPrecio" placeholder="Precio compra" min="0" step="0.01" value="0">
             <button type="submit">Guardar</button>
         </form>
+        <div id="alertasStock" class="alertas"></div>
         <ul id="productosLista" class="item-list"></ul>
-        <ul id="productosLista"></ul>
     </section>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="../../scripts/gest_inve/inventario.js"></script>
 </body>
 </html>
