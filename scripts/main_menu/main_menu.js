@@ -94,7 +94,11 @@ function checkFirstVisit() {
 
     if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
 
+
+    if (!localStorage.getItem(`tutorialCompleted_${userId}`)) {
+
     if (!localStorage.getItem(`tutorialShown_${userId}`)) {
+
 
         startTutorial();
     }
@@ -206,7 +210,11 @@ function endTutorial() {
 
         localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
 
+
+        localStorage.setItem(`tutorialCompleted_${userId}`, 'true');
+
         localStorage.setItem(`tutorialShown_${userId}`, 'true');
+
 
     }
 }
@@ -219,14 +227,18 @@ nextTutorial.addEventListener('click', () => {
 skipTutorial.addEventListener('click', endTutorial);
 closeTutorial.addEventListener('click', endTutorial);
 
+
+
 // Check for first visit when page loads
 window.addEventListener('DOMContentLoaded', checkFirstVisit);
+
 
 // Reposition tutorial elements when the viewport changes
 window.addEventListener('resize', () => {
     if (tutorialOverlayBg.style.display === 'block') {
         showTutorialStep(currentStep);
     }
+
 });
 
 window.addEventListener('scroll', () => {
@@ -247,7 +259,14 @@ menuItems.forEach(item => {
         const pageTitle = this.textContent.trim();
         document.querySelector('.topbar-title').textContent = pageTitle;
     });
+
 });
+
+window.addEventListener('scroll', () => {
+    if (tutorialOverlayBg.style.display === 'block') {
+        showTutorialStep(currentStep);
+    }
+}, true);
 
 // Notification bell click handler
 document.querySelector('.notification-bell').addEventListener('click', function() {
@@ -266,6 +285,8 @@ document.getElementById('egresoFlashBtn').addEventListener('click', function() {
 // Manual tutorial trigger for testing (remove in production)
 
 document.addEventListener("DOMContentLoaded", function () {
+    checkFirstVisit();
+
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
 
