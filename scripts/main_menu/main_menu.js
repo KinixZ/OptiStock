@@ -10,6 +10,38 @@ const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
+
+// Request browser permission for push notifications
+function requestPushPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function sendPushNotification(title, message) {
+    if (!('Notification' in window)) {
+        alert(message);
+        return;
+    }
+
+    const notify = () => new Notification(title, {
+        body: message,
+        icon: '../../images/optistockLogo.png'
+    });
+
+    if (Notification.permission === 'granted') {
+        notify();
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(perm => {
+            if (perm === 'granted') notify();
+            else alert(message);
+        });
+    } else {
+        alert(message);
+    }
+}
+
+
 const metricsData = {
     highRotation: [
         { producto: 'Baterías AA', cantidad: 120 },
@@ -334,7 +366,10 @@ if (cancelAlertSettings) {
 
 function notifyUnauthorizedMovement(msg) {
     if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
+        sendPushNotification('Alerta de Seguridad', msg);
+
         alert(msg);
+
     }
 }
 
@@ -343,6 +378,7 @@ document.addEventListener('movimientoNoAutorizado', e => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+    requestPushPermission();
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
 
