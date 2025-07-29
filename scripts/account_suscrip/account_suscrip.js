@@ -16,11 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const usuarioId = localStorage.getItem('usuario_id');
   const usuarioEmail = localStorage.getItem('usuario_email');
   const usuarioNombre = localStorage.getItem('usuario_nombre');
-  const usuarioRol = localStorage.getItem('usuario_rol');
-  const usuarioSuscripcion = localStorage.getItem('usuario_suscripcion');
   const empresaNombre = localStorage.getItem('empresa_nombre');
   const fotoPerfil = localStorage.getItem('foto_perfil');
-  const idEmpresa = localStorage.getItem('id_empresa');
 
   // Mostrar datos básicos en pantalla
   document.getElementById('nombreCompleto').textContent = usuarioNombre || '';
