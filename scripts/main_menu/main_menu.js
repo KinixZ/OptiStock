@@ -133,7 +133,7 @@ const tutorialSteps = [
     {
         title: "Gestión de Inventario",
         content: "El corazón del sistema. Aquí podrás registrar nuevos productos, actualizar existencias, realizar transferencias y gestionar todo tu inventario de manera eficiente.",
-        element: document.querySelector('.sidebar-menu a[href="pages/inventario/gestion_inventario.html"]')
+        element: document.querySelector('.sidebar-menu a[data-page="gest_inve/inventario_basico.html"]')
     },
     {
         title: "Administración de Usuarios",
