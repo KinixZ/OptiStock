@@ -6,9 +6,10 @@
   const resumen = document.getElementById('resumen');
   const volumenSpan = document.getElementById('areaVolumen');
   const zonaVolumenSpan = document.getElementById('zonaVolumen');
+  const lista = document.getElementById('lista');
+  const volumenSpan = document.getElementById('areaVolumen');
   const tipoSelect = document.getElementById('zonaTipo');
   const areaSelect = document.getElementById('zonaArea');
-
   const tiposZona = [
     'Rack', 'Mostrador', 'Caja', 'Estantería', 'Refrigeración', 'Congelador',
     'Piso', 'Contenedor', 'Palet', 'Carro', 'Cajón', 'Jaula', 'Estiba',
@@ -37,8 +38,8 @@
         });
       });
   }
-
   function mostrarResumenAreas() {
+  function mostrarLista() {
     Promise.all([
       fetch('../../scripts/php/guardar_areas.php?empresa_id=' + localStorage.getItem('id_empresa')).then(r => r.json()),
       fetch('../../scripts/php/guardar_zonas.php?empresa_id=' + localStorage.getItem('id_empresa')).then(r => r.json())
@@ -51,6 +52,12 @@
           <p>${area.descripcion}</p>
           <p>Dimensiones: ${area.largo} x ${area.ancho} x ${area.alto} m</p>
           <p>Volumen: ${parseFloat(area.volumen).toFixed(2)} m³</p>`;
+
+      lista.innerHTML = '';
+      areas.forEach(area => {
+        const div = document.createElement('div');
+        div.innerHTML = `<h3>${area.nombre}</h3>`;
+
         const relacionadas = zonas.filter(z => z.area_id == area.id);
         if (relacionadas.length) {
           const ul = document.createElement('ul');
@@ -83,6 +90,8 @@
           <p>Volumen: ${volumen} m³</p>
           <p>Área: ${area ? area.nombre : 'Sin asignar'}</p>`;
         resumen.appendChild(div);
+
+        lista.appendChild(div);
       });
     });
   }
@@ -115,6 +124,17 @@
 
   formArea.addEventListener('input', calcularVolumen);
   formZona.addEventListener('input', calcularVolumenZona);
+  areaBtn.addEventListener('click', () => {
+    formArea.classList.toggle('hidden');
+    formZona.classList.add('hidden');
+  });
+  zonaBtn.addEventListener('click', () => {
+    formZona.classList.toggle('hidden');
+    formArea.classList.add('hidden');
+    cargarAreas();
+  });
+
+  formArea.addEventListener('input', calcularVolumen);
   formArea.addEventListener('submit', e => {
     e.preventDefault();
     const data = {
@@ -134,6 +154,7 @@
       calcularVolumen();
       formArea.classList.add('hidden');
       mostrarResumenAreas();
+      mostrarLista();
     });
   });
 
@@ -159,10 +180,12 @@
       formZona.reset();
       formZona.classList.add('hidden');
       mostrarResumenZonas();
+      mostrarLista();
     });
   });
 
   llenarTipos();
   formArea.classList.remove('hidden');
   mostrarResumenAreas();
+  mostrarLista();
 })();
