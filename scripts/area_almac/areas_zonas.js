@@ -7,6 +7,7 @@ const API_ENDPOINTS = {
   areas: `${BASE_URL}scripts/php/guardar_areas.php`,
   zonas: `${BASE_URL}scripts/php/guardar_zonas.php`
 };
+const empresaId = localStorage.getItem('id_empresa');
 
 // Elementos del DOM
 const sublevelsCountInput = document.getElementById('sublevelsCount');
@@ -100,7 +101,7 @@ function renderSublevels(count) {
 // Cargar áreas para el select
 async function cargarAreas() {
   try {
-    const areas = await fetchAPI(API_ENDPOINTS.areas);
+    const areas = await fetchAPI(`${API_ENDPOINTS.areas}?empresa_id=${empresaId}`);
     zoneAreaSelect.innerHTML = '<option value="">Seleccione un área</option>';
     
     areas.forEach(area => {
@@ -185,8 +186,8 @@ async function mostrarFormulario(tipo, datos = null) {
 async function cargarYMostrarRegistros() {
   try {
     const [areas, zonas] = await Promise.all([
-      fetchAPI(API_ENDPOINTS.areas),
-      fetchAPI(API_ENDPOINTS.zonas)
+      fetchAPI(`${API_ENDPOINTS.areas}?empresa_id=${empresaId}`),
+      fetchAPI(`${API_ENDPOINTS.zonas}?empresa_id=${empresaId}`)
     ]);
     setCache('areas', areas);
     setCache('zonas', zonas);
@@ -281,11 +282,11 @@ areaForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  const areaData = { nombre, descripcion, ancho, alto, largo };
+  const areaData = { nombre, descripcion, ancho, alto, largo, empresa_id: parseInt(empresaId) };
 
   try {
     if (id) {
-      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'PUT', areaData);
+      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'PUT', areaData);
     } else {
       await fetchAPI(API_ENDPOINTS.areas, 'POST', areaData);
     }
@@ -341,7 +342,7 @@ zoneForm.addEventListener('submit', async (e) => {
   }
 
   try {
-    const zonaData = {
+  const zonaData = {
       nombre,
       descripcion,
       ancho,
@@ -349,12 +350,13 @@ zoneForm.addEventListener('submit', async (e) => {
       largo,
       tipo_almacenamiento: tipo,
       area_id,
-      subniveles
+      subniveles,
+      empresa_id: parseInt(empresaId)
     };
 
     if (id) {
       // Edición
-      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}`, 'PUT', zonaData);
+      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'PUT', zonaData);
     } else {
       // Creación
       await fetchAPI(API_ENDPOINTS.zonas, 'POST', zonaData);
@@ -372,7 +374,7 @@ zoneForm.addEventListener('submit', async (e) => {
 // Funciones de edición/eliminación
 async function editarArea(id) {
   try {
-    const area = await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`);
+    const area = await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`);
     mostrarFormulario('area', area);
   } catch (error) {
     console.error('Error cargando área:', error);
@@ -382,7 +384,7 @@ async function editarArea(id) {
 async function eliminarArea(id) {
   if (confirm('¿Está seguro de eliminar esta área?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
     try {
-      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}`, 'DELETE');
+      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
       await cargarYMostrarRegistros();
     } catch (error) {
       console.error('Error eliminando área:', error);
@@ -392,7 +394,7 @@ async function eliminarArea(id) {
 
 async function editarZona(id) {
   try {
-    const zona = await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}`);
+    const zona = await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`);
     mostrarFormulario('zona', zona);
   } catch (error) {
     console.error('Error cargando zona:', error);
@@ -402,7 +404,7 @@ async function editarZona(id) {
 async function eliminarZona(id) {
   if (confirm('¿Está seguro de eliminar esta zona?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
     try {
-      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}`, 'DELETE');
+      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
       await cargarYMostrarRegistros();
     } catch (error) {
       console.error('Error eliminando zona:', error);
