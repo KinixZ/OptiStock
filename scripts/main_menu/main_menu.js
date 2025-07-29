@@ -10,6 +10,7 @@ const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
+
 // Request browser permission for push notifications
 function requestPushPermission() {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -39,6 +40,7 @@ function sendPushNotification(title, message) {
         alert(message);
     }
 }
+
 
 const metricsData = {
     highRotation: [
@@ -365,6 +367,9 @@ if (cancelAlertSettings) {
 function notifyUnauthorizedMovement(msg) {
     if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
         sendPushNotification('Alerta de Seguridad', msg);
+
+        alert(msg);
+
     }
 }
 
