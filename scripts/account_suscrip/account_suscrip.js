@@ -14,7 +14,6 @@ async function loadAccountData(id) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -169,4 +168,75 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error al actualizar:', err);
     });
   });
-});
+
+  // Cancelar suscripción con doble confirmación
+  const btnCancel = document.getElementById('btnCancelarSuscripcion');
+  if (btnCancel) {
+    btnCancel.addEventListener('click', () => {
+      if (confirm('¿Seguro que deseas cancelar la suscripción?') &&
+          confirm('Confirma nuevamente para cancelar')) {
+        const idEmpresa = localStorage.getItem('id_empresa');
+        const form = new URLSearchParams();
+        form.append('id_empresa', idEmpresa);
+        fetch('../../scripts/php/cancel_subscription.php', {
+          method: 'POST',
+          body: form
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              alert('Suscripción cancelada');
+              location.reload();
+            } else {
+              alert(data.message || 'Error al cancelar');
+            }
+          });
+      }
+    });
+  }
+
+  // Actualizar plan de suscripción
+  const btnUpgrade = document.getElementById('btnActualizarPlan');
+  if (btnUpgrade) {
+    btnUpgrade.addEventListener('click', () => {
+      const nuevoPlan = prompt('Ingresa el nuevo plan (por ejemplo: Pro)');
+      if (nuevoPlan) {
+        const idEmpresa = localStorage.getItem('id_empresa');
+        const form = new URLSearchParams();
+        form.append('id_empresa', idEmpresa);
+        form.append('plan', nuevoPlan);
+        fetch('../../scripts/php/update_subscription_plan.php', {
+          method: 'POST',
+          body: form
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              alert('Plan actualizado');
+              location.reload();
+            } else {
+              alert(data.message || 'Error al actualizar plan');
+            }
+          });
+      }
+    });
+  }
+  // Navegación de secciones
+  const menuItems = document.querySelectorAll(".account-menu li");
+  const sections = document.querySelectorAll(".account-section");
+  menuItems.forEach(item => {
+    item.addEventListener("click", () => {
+      menuItems.forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      const target = item.getAttribute("data-target");
+      sections.forEach(sec => {
+        if (sec.id === target) {
+          sec.classList.add("active");
+        } else {
+          sec.classList.remove("active");
+        }
+      });
+    });
+  });
+}); // cierre DOMContentLoaded
+
