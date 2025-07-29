@@ -49,6 +49,10 @@ async function cargarCategorias() {
 
   actualizarDatalist('sugerenciasCategoria', categorias.map(c => c.nombre));
 
+
+  actualizarDatalist('sugerenciasCategoria', categorias.map(c => c.nombre));
+
+
   renderCategorias();
 }
 
@@ -69,17 +73,31 @@ async function cargarSubcategorias() {
 
 async function cargarProductos() {
   productos = await fetchAPI(API.productos);
+  actualizarDatalist('sugerenciasProducto', productos.map(p => p.nombre));
+  renderProductos();
+  verificarStockCritico();
+}
+
+
+
+  renderSubcategorias();
+}
+
+async function cargarProductos() {
+  productos = await fetchAPI(API.productos);
 
   actualizarDatalist('sugerenciasProducto', productos.map(p => p.nombre));
   renderProductos();
   verificarStockCritico();
 }
 
+
 function filtrarLista(lista, texto, campos) {
   if (!texto) return lista;
   const t = texto.toLowerCase();
   return lista.filter(item => campos.some(c => String(item[c]).toLowerCase().includes(t)));
 }
+
 
 
   renderProductos();
@@ -91,6 +109,7 @@ function filtrarLista(lista, texto, campos) {
   const t = texto.toLowerCase();
   return lista.filter(item => campos.some(c => String(item[c]).toLowerCase().includes(t)));
 }
+
 
 
 function renderCategorias() {
