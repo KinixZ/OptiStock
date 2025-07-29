@@ -10,62 +10,137 @@
     <link rel="stylesheet" href="../../styles/gest_inve/inventario.css">
 </head>
 <body>
-    <div class="inventory-container">
-        <!-- Encabezado principal -->
-        <header class="inventory-header">
-            <h1>Gestión de Inventario</h1>
-            <div class="global-actions">
-                <button id="exportarPDF" type="button" class="btn-export">
-                    <i class="icon-pdf"></i> Exportar PDF
+    <div class="inventory-app">
+        <!-- Header compacto -->
+        <header class="app-header">
+            <h1 class="app-title">Inventario</h1>
+            <div class="app-actions">
+                <button id="exportarPDF" class="btn-icon" title="Exportar PDF">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
                 </button>
-                <button id="exportarExcel" type="button" class="btn-export">
-                    <i class="icon-excel"></i> Exportar Excel
+                <button id="exportarExcel" class="btn-icon" title="Exportar Excel">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <path d="M8 13h4"></path>
+                        <path d="M8 17h4"></path>
+                        <path d="M16 13h-4v4"></path>
+                    </svg>
                 </button>
             </div>
         </header>
 
-        <!-- Contenido principal en diseño de dos columnas -->
-        <main class="inventory-content">
-            <!-- Columna izquierda - Configuración -->
-            <div class="config-column">
-                <!-- Sección de Categorías -->
-                <section class="inventory-section category-section">
-                    <div class="section-header">
-                        <h2>Categorías</h2>
-                        <div class="search-box">
-                            <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar categoría...">
-                            <datalist id="sugerenciasCategoria"></datalist>
+        <!-- Contenido principal con tabs -->
+        <main class="app-content">
+            <div class="inventory-tabs">
+                <button class="tab-btn active" data-tab="productos">Productos</button>
+                <button class="tab-btn" data-tab="categorias">Categorías</button>
+                <button class="tab-btn" data-tab="subcategorias">Subcategorías</button>
+            </div>
+
+            <!-- Panel de Productos (visible por defecto) -->
+            <div id="productos" class="tab-panel active">
+                <div class="panel-header">
+                    <div class="search-box">
+                        <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar producto...">
+                        <datalist id="sugerenciasProducto"></datalist>
+                    </div>
+                    <button class="btn-add">+ Nuevo Producto</button>
+                </div>
+
+                <form id="productoForm" class="compact-form">
+                    <input type="hidden" id="productoId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="productoNombre" placeholder="Nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <select id="productoCategoria" required>
+                                <option value="">Categoría</option>
+                            </select>
                         </div>
                     </div>
-                    
-                    <form id="categoriaForm" class="item-form">
-                        <input type="hidden" id="categoriaId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <select id="productoSubcategoria" required>
+                                <option value="">Subcategoría</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" id="productoStock" placeholder="Stock" min="0" value="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="number" id="productoPrecio" placeholder="Precio" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <textarea id="productoDesc" placeholder="Descripción"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">Guardar</button>
+                        <button type="reset" class="btn-cancel">Cancelar</button>
+                    </div>
+                </form>
+
+                <div id="alertasStock" class="alertas"></div>
+
+                <div class="items-grid">
+                    <ul id="productosLista" class="item-list"></ul>
+                </div>
+            </div>
+
+            <!-- Panel de Categorías -->
+            <div id="categorias" class="tab-panel">
+                <div class="panel-header">
+                    <div class="search-box">
+                        <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar categoría...">
+                        <datalist id="sugerenciasCategoria"></datalist>
+                    </div>
+                    <button class="btn-add">+ Nueva Categoría</button>
+                </div>
+
+                <form id="categoriaForm" class="compact-form">
+                    <input type="hidden" id="categoriaId">
+                    <div class="form-row">
                         <div class="form-group">
                             <input type="text" id="categoriaNombre" placeholder="Nombre" required>
                         </div>
-                        <div class="form-group">
-                            <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
-                        </div>
-                        <button type="submit" class="btn-save">Guardar Categoría</button>
-                    </form>
-                    
-                    <div class="item-list-container">
-                        <ul id="categoriasLista" class="item-list"></ul>
                     </div>
-                </section>
+                    <div class="form-group">
+                        <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">Guardar</button>
+                        <button type="reset" class="btn-cancel">Cancelar</button>
+                    </div>
+                </form>
 
-                <!-- Sección de Subcategorías -->
-                <section class="inventory-section subcategory-section">
-                    <div class="section-header">
-                        <h2>Subcategorías</h2>
-                        <div class="search-box">
-                            <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar subcategoría...">
-                            <datalist id="sugerenciasSubcategoria"></datalist>
-                        </div>
+                <div class="items-grid">
+                    <ul id="categoriasLista" class="item-list"></ul>
+                </div>
+            </div>
+
+            <!-- Panel de Subcategorías -->
+            <div id="subcategorias" class="tab-panel">
+                <div class="panel-header">
+                    <div class="search-box">
+                        <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar subcategoría...">
+                        <datalist id="sugerenciasSubcategoria"></datalist>
                     </div>
-                    
-                    <form id="subcategoriaForm" class="item-form">
-                        <input type="hidden" id="subcategoriaId">
+                    <button class="btn-add">+ Nueva Subcategoría</button>
+                </div>
+
+                <form id="subcategoriaForm" class="compact-form">
+                    <input type="hidden" id="subcategoriaId">
+                    <div class="form-row">
                         <div class="form-group">
                             <select id="subcategoriaCategoria" required>
                                 <option value="">Seleccione categoría</option>
@@ -74,74 +149,19 @@
                         <div class="form-group">
                             <input type="text" id="subcategoriaNombre" placeholder="Nombre" required>
                         </div>
-                        <div class="form-group">
-                            <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
-                        </div>
-                        <button type="submit" class="btn-save">Guardar Subcategoría</button>
-                    </form>
-                    
-                    <div class="item-list-container">
-                        <ul id="subcategoriasLista" class="item-list"></ul>
                     </div>
-                </section>
-            </div>
+                    <div class="form-group">
+                        <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">Guardar</button>
+                        <button type="reset" class="btn-cancel">Cancelar</button>
+                    </div>
+                </form>
 
-            <!-- Columna derecha - Productos -->
-            <div class="products-column">
-                <section class="inventory-section products-section">
-                    <div class="section-header">
-                        <h2>Productos</h2>
-                        <div class="product-actions">
-                            <div class="search-box">
-                                <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar producto...">
-                                <datalist id="sugerenciasProducto"></datalist>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <form id="productoForm" class="item-form">
-                        <input type="hidden" id="productoId">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="productoNombre">Nombre</label>
-                                <input type="text" id="productoNombre" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="productoCategoria">Categoría</label>
-                                <select id="productoCategoria" required></select>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="productoSubcategoria">Subcategoría</label>
-                                <select id="productoSubcategoria" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="productoStock">Stock inicial</label>
-                                <input type="number" id="productoStock" min="0" value="0">
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="productoPrecio">Precio compra</label>
-                            <input type="number" id="productoPrecio" min="0" step="0.01" value="0">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="productoDesc">Descripción</label>
-                            <textarea id="productoDesc"></textarea>
-                        </div>
-                        
-                        <button type="submit" class="btn-save">Guardar Producto</button>
-                    </form>
-                    
-                    <div id="alertasStock" class="stock-alerts"></div>
-                    
-                    <div class="item-list-container">
-                        <ul id="productosLista" class="item-list"></ul>
-                    </div>
-                </section>
+                <div class="items-grid">
+                    <ul id="subcategoriasLista" class="item-list"></ul>
+                </div>
             </div>
         </main>
     </div>
