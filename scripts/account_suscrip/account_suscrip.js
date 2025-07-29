@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
         document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
         document.getElementById('usuario_email').textContent = data.usuario.correo;
+        document.getElementById('telefonoUsuario').textContent = data.usuario.telefono || '';
+        localStorage.setItem('usuario_telefono', data.usuario.telefono || '');
         if(data.usuario.foto_perfil){
           document.getElementById('profile_img').src = data.usuario.foto_perfil;
           localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
@@ -127,9 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(respEmpresa => {
           if(respEmpresa.success){
             // Actualizar localStorage con nuevos datos
-            localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
-            localStorage.setItem('usuario_email', formDataUser.get('correo'));
-            localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
+              localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
+              localStorage.setItem('usuario_email', formDataUser.get('correo'));
+              localStorage.setItem('usuario_telefono', formDataUser.get('telefono'));
+              localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
             // Puedes actualizar otros datos si quieres
 
             // Refrescar página para aplicar cambios
