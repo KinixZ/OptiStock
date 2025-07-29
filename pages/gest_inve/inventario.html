@@ -10,6 +10,79 @@
     <link rel="stylesheet" href="../../styles/gest_inve/inventario.css">
 </head>
 <body>
+
+<div class="inventory-wrapper">
+    <div class="inventory-header">
+        <h2>Gestión de Inventario</h2>
+        <div class="acciones-globales">
+            <button id="exportarPDF" type="button">Exportar PDF</button>
+            <button id="exportarExcel" type="button">Exportar Excel</button>
+        </div>
+    </div>
+
+    <div class="inventory-grid">
+    <section class="productos-section inventory-section">
+        <h3>Productos</h3>
+        <div class="acciones-productos">
+            <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar">
+            <datalist id="sugerenciasProducto"></datalist>
+        </div>
+        <form id="productoForm" autocomplete="off">
+            <input type="hidden" id="productoId">
+            <label for="productoNombre">Nombre:</label>
+            <input type="text" id="productoNombre" required>
+            <label for="productoDesc">Descripción:</label>
+            <textarea id="productoDesc"></textarea>
+            <label for="productoCategoria">Categoría:</label>
+            <select id="productoCategoria" required></select>
+            <label for="productoSubcategoria">Subcategoría:</label>
+            <select id="productoSubcategoria" required></select>
+            <label for="productoStock">Stock inicial:</label>
+            <input type="number" id="productoStock" min="0" value="0">
+            <label for="productoPrecio">Precio compra:</label>
+            <input type="number" id="productoPrecio" min="0" step="0.01" value="0">
+            <button type="submit">Guardar</button>
+        </form>
+        <div id="alertasStock" class="alertas"></div>
+        <ul id="productosLista" class="item-list"></ul>
+    </section>
+
+    <div class="config-sections">
+        <section class="categorias-section inventory-section">
+            <h3>Categorías</h3>
+            <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar">
+            <datalist id="sugerenciasCategoria"></datalist>
+            <form id="categoriaForm" autocomplete="off">
+                <input type="hidden" id="categoriaId">
+                <input type="text" id="categoriaNombre" placeholder="Nombre" required>
+                <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
+                <button type="submit">Guardar</button>
+            </form>
+            <ul id="categoriasLista" class="item-list"></ul>
+        </section>
+
+        <section class="subcategorias-section inventory-section">
+            <h3>Subcategorías</h3>
+            <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar">
+            <datalist id="sugerenciasSubcategoria"></datalist>
+            <form id="subcategoriaForm" autocomplete="off">
+                <input type="hidden" id="subcategoriaId">
+                <select id="subcategoriaCategoria" required></select>
+                <input type="text" id="subcategoriaNombre" placeholder="Nombre" required>
+                <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
+                <button type="submit">Guardar</button>
+            </form>
+            <ul id="subcategoriasLista" class="item-list"></ul>
+        </section>
+
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="../../scripts/gest_inve/inventario.js"></script>
+
     <div class="inventory-app">
         <!-- Header compacto -->
         <header class="app-header">
@@ -171,5 +244,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="../../scripts/gest_inve/inventario.js"></script>
+
 </body>
 </html>
