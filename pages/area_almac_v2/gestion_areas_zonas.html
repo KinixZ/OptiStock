@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Áreas y Zonas</title>
+    <link rel="stylesheet" href="../../styles/Area_almac_v2/gestion_areas_zonas.css">
+    <script defer src="../../scripts/area_almac_v2/gestion_areas_zonas.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Gestión de Áreas y Zonas</h1>
+    <div class="actions">
+        <button id="nuevaArea">Registrar nueva Área</button>
+        <button id="nuevaZona">Registrar nueva Zona</button>
+    </div>
+    <div id="formularios">
+        <form id="formArea" class="hidden">
+            <h2>Nueva Área</h2>
+            <label>Nombre</label>
+            <input type="text" id="areaNombre" required>
+            <label>Descripción</label>
+            <textarea id="areaDescripcion" required></textarea>
+            <label>Dimensiones (m)</label>
+            <input type="number" id="areaLargo" placeholder="Largo" min="0" step="0.01" required>
+            <input type="number" id="areaAncho" placeholder="Ancho" min="0" step="0.01" required>
+            <input type="number" id="areaAlto" placeholder="Alto" min="0" step="0.01" required>
+            <p>Volumen: <span id="areaVolumen">0</span> m³</p>
+            <button type="submit">Guardar Área</button>
+        </form>
+        <form id="formZona" class="hidden">
+            <h2>Nueva Zona</h2>
+            <label>Nombre</label>
+            <input type="text" id="zonaNombre" required>
+            <label>Área</label>
+            <select id="zonaArea" required></select>
+            <label>Descripción</label>
+            <textarea id="zonaDescripcion" required></textarea>
+            <label>Dimensiones (m)</label>
+            <input type="number" id="zonaLargo" placeholder="Largo" min="0" step="0.01" required>
+            <input type="number" id="zonaAncho" placeholder="Ancho" min="0" step="0.01" required>
+            <input type="number" id="zonaAlto" placeholder="Alto" min="0" step="0.01" required>
+            <label>Tipo de Zona</label>
+            <select id="zonaTipo" required></select>
+            <label>Subniveles</label>
+            <input type="number" id="zonaSubniveles" min="0" value="0">
+            <label>Distancia entre subniveles (cm)</label>
+            <input type="number" id="zonaDistancia" min="0" step="0.1" value="0">
+            <button type="submit">Guardar Zona</button>
+        </form>
+    </div>
+    <div id="lista"></div>
+</div>
+</body>
+</html>

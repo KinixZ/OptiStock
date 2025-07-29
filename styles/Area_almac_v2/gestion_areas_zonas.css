@@ -1,0 +1,23 @@
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: Arial, sans-serif;
+}
+.actions {
+  margin-bottom: 1rem;
+}
+.actions button {
+  margin-right: 0.5rem;
+}
+.hidden {
+  display: none;
+}
+form {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #ccc;
+}
+#lista {
+  margin-top: 2rem;
+}
