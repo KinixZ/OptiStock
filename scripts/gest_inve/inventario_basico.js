@@ -1,5 +1,4 @@
 (() => {
-  // Datos en memoria
   const categorias = [];
   const subcategorias = [];
   const productos = [];
@@ -35,7 +34,6 @@
   btnCategorias.addEventListener('click', () => mostrar('categoria'));
   btnSubcategorias.addEventListener('click', () => mostrar('subcategoria'));
 
-  // Formularios
   const prodForm = document.getElementById('productoForm');
   const catForm = document.getElementById('categoriaForm');
   const subcatForm = document.getElementById('subcategoriaForm');
@@ -70,6 +68,7 @@
   function renderResumen() {
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
+
     if (vistaActual === 'producto') {
       tablaHead.innerHTML = `
         <tr>
@@ -147,26 +146,8 @@
         tablaResumen.appendChild(tr);
       });
     }
-
-    productos.forEach(p => {
-      const cat = categorias.find(c => c.id === p.categoriaId)?.nombre || '';
-      const sub = subcategorias.find(s => s.id === p.subcategoriaId)?.nombre || '';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${p.nombre}</td>
-        <td>${p.descripcion}</td>
-        <td>${cat}</td>
-        <td>${sub}</td>
-        <td>${p.dimensiones}</td>
-        <td>${p.stock}</td>
-        <td>${p.precio}</td>
-      `;
-      tablaResumen.appendChild(tr);
-    });
-
   }
 
-  // Guardar categoría
   catForm.addEventListener('submit', e => {
     e.preventDefault();
     if (editCatId) {
@@ -182,14 +163,8 @@
     catForm.reset();
     actualizarSelectCategorias();
     renderResumen();
-
-    categorias.push({ id: catId++, nombre: catForm.catNombre.value, descripcion: catForm.catDescripcion.value });
-    catForm.reset();
-    actualizarSelectCategorias();
-
   });
 
-  // Guardar subcategoría
   subcatForm.addEventListener('submit', e => {
     e.preventDefault();
     const data = {
@@ -207,31 +182,17 @@
     subcatForm.reset();
     actualizarSelectSubcategorias();
     renderResumen();
-
-    subcategorias.push({
-      id: subcatId++,
-      nombre: subcatForm.subcatNombre.value,
-      descripcion: subcatForm.subcatDescripcion.value,
-      categoriaId: parseInt(subcatForm.subcatCategoria.value) || null
-    });
-    subcatForm.reset();
-    actualizarSelectSubcategorias();
-
   });
 
-  // Guardar producto
   prodForm.addEventListener('submit', e => {
     e.preventDefault();
     const categoriaId = parseInt(prodCategoria.value) || null;
     const subcategoriaId = parseInt(prodSubcategoria.value) || null;
     if (!categoriaId) {
       alert('Advertencia: faltan campos por rellenar');
+      return;
     }
     const data = {
-
-    productos.push({
-      id: prodId++,
-
       nombre: prodForm.prodNombre.value,
       descripcion: prodForm.prodDescripcion.value,
       categoriaId,
@@ -240,6 +201,7 @@
       stock: parseInt(prodForm.prodStock.value) || 0,
       precio: parseFloat(prodForm.prodPrecio.value) || 0
     };
+
     if (editProdId) {
       const p = productos.find(pr => pr.id === editProdId);
       if (p) Object.assign(p, data);
@@ -256,6 +218,7 @@
     const tipo = e.target.dataset.tipo;
     const accion = e.target.dataset.accion;
     if (!accion) return;
+
     if (accion === 'del') {
       if (tipo === 'producto') {
         const i = productos.findIndex(p => p.id === id);
@@ -271,6 +234,7 @@
       }
       renderResumen();
     }
+
     if (accion === 'edit') {
       if (tipo === 'producto') {
         const p = productos.find(pr => pr.id === id);
@@ -306,10 +270,4 @@
       }
     }
   });
-
-    });
-    prodForm.reset();
-    renderResumen();
-  });
-
 })();
