@@ -1,13 +1,17 @@
 <?php
 header("Content-Type: application/json");
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 // Conexión a la base de datos (se usan las mismas credenciales que en otros scripts)
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
 $database   = "u296155119_OptiStock";
 
-$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
-if (!$conn) {
+try {
+    $conn = new mysqli($servername, $db_user, $db_pass, $database);
+    $conn->set_charset('utf8mb4');
+} catch (mysqli_sql_exception $e) {
     echo json_encode(["success" => false, "message" => "Error de conexión"]);
     exit;
 }
