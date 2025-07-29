@@ -10,135 +10,146 @@
     <link rel="stylesheet" href="../../styles/gest_inve/inventario.css">
 </head>
 <body>
-<div class="inventory-wrapper">
+    <div class="inventory-container">
+        <!-- Encabezado principal -->
+        <header class="inventory-header">
+            <h1>Gestión de Inventario</h1>
+            <div class="global-actions">
+                <button id="exportarPDF" type="button" class="btn-export">
+                    <i class="icon-pdf"></i> Exportar PDF
+                </button>
+                <button id="exportarExcel" type="button" class="btn-export">
+                    <i class="icon-excel"></i> Exportar Excel
+                </button>
+            </div>
+        </header>
 
-    <div class="inventory-header">
-        <h2>Gestión de Inventario</h2>
-        <div class="acciones-globales">
-            <button id="exportarPDF" type="button">Exportar PDF</button>
-            <button id="exportarExcel" type="button">Exportar Excel</button>
-        </div>
+        <!-- Contenido principal en diseño de dos columnas -->
+        <main class="inventory-content">
+            <!-- Columna izquierda - Configuración -->
+            <div class="config-column">
+                <!-- Sección de Categorías -->
+                <section class="inventory-section category-section">
+                    <div class="section-header">
+                        <h2>Categorías</h2>
+                        <div class="search-box">
+                            <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar categoría...">
+                            <datalist id="sugerenciasCategoria"></datalist>
+                        </div>
+                    </div>
+                    
+                    <form id="categoriaForm" class="item-form">
+                        <input type="hidden" id="categoriaId">
+                        <div class="form-group">
+                            <input type="text" id="categoriaNombre" placeholder="Nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
+                        </div>
+                        <button type="submit" class="btn-save">Guardar Categoría</button>
+                    </form>
+                    
+                    <div class="item-list-container">
+                        <ul id="categoriasLista" class="item-list"></ul>
+                    </div>
+                </section>
+
+                <!-- Sección de Subcategorías -->
+                <section class="inventory-section subcategory-section">
+                    <div class="section-header">
+                        <h2>Subcategorías</h2>
+                        <div class="search-box">
+                            <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar subcategoría...">
+                            <datalist id="sugerenciasSubcategoria"></datalist>
+                        </div>
+                    </div>
+                    
+                    <form id="subcategoriaForm" class="item-form">
+                        <input type="hidden" id="subcategoriaId">
+                        <div class="form-group">
+                            <select id="subcategoriaCategoria" required>
+                                <option value="">Seleccione categoría</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="subcategoriaNombre" placeholder="Nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
+                        </div>
+                        <button type="submit" class="btn-save">Guardar Subcategoría</button>
+                    </form>
+                    
+                    <div class="item-list-container">
+                        <ul id="subcategoriasLista" class="item-list"></ul>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Columna derecha - Productos -->
+            <div class="products-column">
+                <section class="inventory-section products-section">
+                    <div class="section-header">
+                        <h2>Productos</h2>
+                        <div class="product-actions">
+                            <div class="search-box">
+                                <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar producto...">
+                                <datalist id="sugerenciasProducto"></datalist>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="productoForm" class="item-form">
+                        <input type="hidden" id="productoId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productoNombre">Nombre</label>
+                                <input type="text" id="productoNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productoCategoria">Categoría</label>
+                                <select id="productoCategoria" required></select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productoSubcategoria">Subcategoría</label>
+                                <select id="productoSubcategoria" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="productoStock">Stock inicial</label>
+                                <input type="number" id="productoStock" min="0" value="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="productoPrecio">Precio compra</label>
+                            <input type="number" id="productoPrecio" min="0" step="0.01" value="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="productoDesc">Descripción</label>
+                            <textarea id="productoDesc"></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn-save">Guardar Producto</button>
+                    </form>
+                    
+                    <div id="alertasStock" class="stock-alerts"></div>
+                    
+                    <div class="item-list-container">
+                        <ul id="productosLista" class="item-list"></ul>
+                    </div>
+                </section>
+            </div>
+        </main>
     </div>
 
-    <div class="inventory-grid">
-    <section class="productos-section inventory-section">
-        <h3>Productos</h3>
-        <div class="acciones-productos">
-            <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar">
-            <datalist id="sugerenciasProducto"></datalist>
-
-    <h2>Gestión de Inventario</h2>
-
-    <div class="top-sections">
-        <section class="categorias-section inventory-section">
-            <h3>Categorías</h3>
-            <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar">
-            <datalist id="sugerenciasCategoria"></datalist>
-
-
-    <section class="categorias-section inventory-section">
-        <h3>Categorías</h3>
-        <input type="text" id="buscarCategoria" placeholder="Buscar">
-
-        <form id="categoriaForm" autocomplete="off">
-            <input type="hidden" id="categoriaId">
-            <input type="text" id="categoriaNombre" placeholder="Nombre" required>
-            <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
-            <button type="submit">Guardar</button>
-        </form>
-        <ul id="categoriasLista" class="item-list"></ul>
-
-        </section>
-
-        <section class="subcategorias-section inventory-section">
-            <h3>Subcategorías</h3>
-            <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar">
-            <datalist id="sugerenciasSubcategoria"></datalist>
-
-    </section>
-
-    <section class="subcategorias-section inventory-section">
-        <h3>Subcategorías</h3>
-        <input type="text" id="buscarSubcategoria" placeholder="Buscar">
-
-        <form id="subcategoriaForm" autocomplete="off">
-            <input type="hidden" id="subcategoriaId">
-            <select id="subcategoriaCategoria" required></select>
-            <input type="text" id="subcategoriaNombre" placeholder="Nombre" required>
-            <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
-            <button type="submit">Guardar</button>
-        </form>
-        <ul id="subcategoriasLista" class="item-list"></ul>
-        </section>
-    </div>
-
-    <section class="productos-section inventory-section">
-        <h3>Productos</h3>
-        <div class="acciones-productos">
-
-            <input list="sugerenciasProducto" id="buscarProducto" placeholder="Buscar">
-            <datalist id="sugerenciasProducto"></datalist>
-
-            <input type="text" id="buscarProducto" placeholder="Buscar">
-
-            <button id="exportarPDF" type="button">Exportar PDF</button>
-            <button id="exportarExcel" type="button">Exportar Excel</button>
-
-        </div>
-        <form id="productoForm" autocomplete="off">
-            <input type="hidden" id="productoId">
-            <label for="productoNombre">Nombre:</label>
-            <input type="text" id="productoNombre" required>
-            <label for="productoDesc">Descripción:</label>
-            <textarea id="productoDesc"></textarea>
-            <label for="productoCategoria">Categoría:</label>
-            <select id="productoCategoria" required></select>
-            <label for="productoSubcategoria">Subcategoría:</label>
-            <select id="productoSubcategoria" required></select>
-            <label for="productoStock">Stock inicial:</label>
-            <input type="number" id="productoStock" min="0" value="0">
-            <label for="productoPrecio">Precio compra:</label>
-            <input type="number" id="productoPrecio" min="0" step="0.01" value="0">
-            <button type="submit">Guardar</button>
-        </form>
-        <div id="alertasStock" class="alertas"></div>
-        <ul id="productosLista" class="item-list"></ul>
-    </section>
-
-    <div class="config-sections">
-        <section class="categorias-section inventory-section">
-            <h3>Categorías</h3>
-            <input list="sugerenciasCategoria" id="buscarCategoria" placeholder="Buscar">
-            <datalist id="sugerenciasCategoria"></datalist>
-            <form id="categoriaForm" autocomplete="off">
-                <input type="hidden" id="categoriaId">
-                <input type="text" id="categoriaNombre" placeholder="Nombre" required>
-                <textarea id="categoriaDesc" placeholder="Descripción"></textarea>
-                <button type="submit">Guardar</button>
-            </form>
-            <ul id="categoriasLista" class="item-list"></ul>
-        </section>
-
-        <section class="subcategorias-section inventory-section">
-            <h3>Subcategorías</h3>
-            <input list="sugerenciasSubcategoria" id="buscarSubcategoria" placeholder="Buscar">
-            <datalist id="sugerenciasSubcategoria"></datalist>
-            <form id="subcategoriaForm" autocomplete="off">
-                <input type="hidden" id="subcategoriaId">
-                <select id="subcategoriaCategoria" required></select>
-                <input type="text" id="subcategoriaNombre" placeholder="Nombre" required>
-                <textarea id="subcategoriaDesc" placeholder="Descripción"></textarea>
-                <button type="submit">Guardar</button>
-            </form>
-            <ul id="subcategoriasLista" class="item-list"></ul>
-        </section>
-
-    </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-<script src="../../scripts/gest_inve/inventario.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="../../scripts/gest_inve/inventario.js"></script>
 </body>
 </html>
