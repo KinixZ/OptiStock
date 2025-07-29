@@ -1,17 +1,30 @@
-console.log('Script cargado'); 
+
+console.log('Script cargado');
+
+async function loadAccountData(id) {
+  try {
+    const resp = await fetch(`/scripts/php/get_account_data.php?usuario_id=${id}`);
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+    return await resp.json();
+  } catch (err) {
+    console.error('Error loading account data:', err);
+    return null;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
+
   // Obtener datos de localStorage
-  console.log('DOM listo');
   const el = document.getElementById('nombreCompleto');
   if (el) {
     el.textContent = 'Prueba de carga JS correcta';
-    console.log('Elemento nombreCompleto actualizado');
   } else {
     console.error('Elemento nombreCompleto NO encontrado');
   }
-
-  alert('JS ejecutado');
   
   const usuarioId = localStorage.getItem('usuario_id');
   const usuarioEmail = localStorage.getItem('usuario_email');
@@ -31,6 +44,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Cargar datos completos del backend para mostrar detalles y sincronizar UI
+
+  const data = await loadAccountData(usuarioId);
+  if (data && data.success) {
+    // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
+    document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
+    document.getElementById('usuario_email').textContent = data.usuario.correo;
+    if (data.usuario.foto_perfil) {
+      document.getElementById('profile_img').src = data.usuario.foto_perfil;
+      localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
+    }
+    document.getElementById('empresa_nombre').textContent = data.empresa.nombre_empresa;
+    localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
+    localStorage.setItem('id_empresa', data.empresa.id_empresa);
+
   fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
     .then(res => res.json())
     .then(data => {
@@ -38,6 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
         document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
         document.getElementById('usuario_email').textContent = data.usuario.correo;
+        document.getElementById('telefonoUsuario').textContent = data.usuario.telefono || '';
+        localStorage.setItem('usuario_telefono', data.usuario.telefono || '');
         if(data.usuario.foto_perfil){
           document.getElementById('profile_img').src = data.usuario.foto_perfil;
           localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
@@ -46,50 +75,43 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
         localStorage.setItem('id_empresa', data.empresa.id_empresa);
 
-        // Aquí muestra más detalles: suscripción, colores, etc (según data)
-        // Por ejemplo:
-        document.getElementById('subscription_plan').textContent = data.suscripcion.plan || 'Sin plan';
-        document.getElementById('subscription_renewal').textContent = data.suscripcion.fecha_renovacion || 'N/A';
-        document.getElementById('subscription_cost').textContent = data.suscripcion.costo || 'N/A';
-        document.getElementById('payment_method').textContent = data.suscripcion.metodo_pago || 'N/A';
 
-        // ...más código para colores y configuraciones visuales si quieres
-      } else {
-        alert('Error al cargar datos de la cuenta.');
-      }
-    })
-    .catch(err => {
-      console.error('Error al obtener datos:', err);
-    });
+    // Aquí muestra más detalles: suscripción, colores, etc (según data)
+    // Por ejemplo:
+    document.getElementById('subscription_plan').textContent = data.suscripcion.plan || 'Sin plan';
+    document.getElementById('subscription_renewal').textContent = data.suscripcion.fecha_renovacion || 'N/A';
+    document.getElementById('subscription_cost').textContent = data.suscripcion.costo || 'N/A';
+    document.getElementById('payment_method').textContent = data.suscripcion.metodo_pago || 'N/A';
+
+    // ...más código para colores y configuraciones visuales si quieres
+  } else {
+    alert('Error al cargar datos de la cuenta.');
+  }
 
   // Abrir modal con datos para editar info personal
-  document.getElementById('btnEditarUsuario').addEventListener('click', () => {
-    // Llenar formulario con datos actuales del usuario
-    fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
-      .then(res => res.json())
-      .then(data => {
-        if(data.success){
-          const user = data.usuario;
-          const empresa = data.empresa;
-          // Campos usuario
-          document.getElementById('edit_nombre').value = user.nombre;
-          document.getElementById('edit_apellidos').value = user.apellido;
-          document.getElementById('edit_email').value = user.correo;
-          document.getElementById('edit_telefono').value = user.telefono;
-          // Nota: contraseña se deja vacía para cambiar solo si quiere
-          document.getElementById('edit_password').value = '';
+  document.getElementById('btnEditarUsuario').addEventListener('click', async () => {
+    const data = await loadAccountData(usuarioId);
+    if (data && data.success) {
+      const user = data.usuario;
+      const empresa = data.empresa;
+      // Campos usuario
+      document.getElementById('edit_nombre').value = user.nombre;
+      document.getElementById('edit_apellidos').value = user.apellido;
+      document.getElementById('edit_email').value = user.correo;
+      document.getElementById('edit_telefono').value = user.telefono;
+      // Nota: contraseña se deja vacía para cambiar solo si quiere
+      document.getElementById('edit_password').value = '';
 
-          // Campos empresa
-          document.getElementById('edit_empresa_nombre').value = empresa.nombre_empresa;
-          document.getElementById('edit_sector').value = empresa.sector_empresa || '';
+      // Campos empresa
+      document.getElementById('edit_empresa_nombre').value = empresa.nombre_empresa;
+      document.getElementById('edit_sector').value = empresa.sector_empresa || '';
 
-          // Mostrar modal
-          const modal = new bootstrap.Modal(document.getElementById('editModal'));
-          modal.show();
-        } else {
-          alert('No se pudo cargar datos para edición');
-        }
-      });
+      // Mostrar modal
+      const modal = new bootstrap.Modal(document.getElementById('editModal'));
+      modal.show();
+    } else {
+      alert('No se pudo cargar datos para edición');
+    }
   });
 
   // Enviar formulario de edición
@@ -127,9 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(respEmpresa => {
           if(respEmpresa.success){
             // Actualizar localStorage con nuevos datos
-            localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
-            localStorage.setItem('usuario_email', formDataUser.get('correo'));
-            localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
+              localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
+              localStorage.setItem('usuario_email', formDataUser.get('correo'));
+              localStorage.setItem('usuario_telefono', formDataUser.get('telefono'));
+              localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
             // Puedes actualizar otros datos si quieres
 
             // Refrescar página para aplicar cambios
