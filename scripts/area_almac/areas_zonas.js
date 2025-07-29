@@ -462,6 +462,11 @@ if (document.readyState === 'loading') {
   initAreasZonas();
 }
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 45a7f1fc6d87bc4c89c2a3c502e626e16710f29e
 })();
 
 
