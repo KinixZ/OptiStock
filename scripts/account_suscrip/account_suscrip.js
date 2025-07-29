@@ -14,7 +14,6 @@ async function loadAccountData(id) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -222,4 +221,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Navegación de secciones
+  const menuItems = document.querySelectorAll(".account-menu li");
+  const sections = document.querySelectorAll(".account-section");
+  menuItems.forEach(item => {
+    item.addEventListener("click", () => {
+      menuItems.forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      const target = item.getAttribute("data-target");
+      sections.forEach(sec => {
+        if (sec.id === target) {
+          sec.classList.add("active");
+        } else {
+          sec.classList.remove("active");
+        }
+      });
+    });
+  });
+}); // cierre DOMContentLoaded
+
+
 });
+
