@@ -101,7 +101,10 @@ CREATE TABLE `areas` (
   `alto` decimal(10,2) NOT NULL,
   `largo` decimal(10,2) NOT NULL,
   `volumen` decimal(15,2) NOT NULL,
-  PRIMARY KEY (`id`)
+  `id_empresa` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_empresa` (`id_empresa`),
+  CONSTRAINT `areas_ibfk_1` FOREIGN KEY (`id_empresa`) REFERENCES `empresa`(`id_empresa`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -118,12 +121,13 @@ CREATE TABLE `zonas` (
   `volumen` decimal(15,2) NOT NULL,
   `tipo_almacenamiento` varchar(50) DEFAULT NULL,
   `subniveles` json DEFAULT NULL,
-  `tipo_almacenamiento` varchar(50) DEFAULT NULL,
-  `subniveles` json DEFAULT NULL,
   `area_id` int(11) DEFAULT NULL,
+  `id_empresa` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `area_id` (`area_id`),
-  CONSTRAINT `zonas_ibfk_1` FOREIGN KEY (`area_id`) REFERENCES `areas`(`id`) ON DELETE SET NULL
+  KEY `id_empresa` (`id_empresa`),
+  CONSTRAINT `zonas_ibfk_1` FOREIGN KEY (`area_id`) REFERENCES `areas`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `zonas_ibfk_2` FOREIGN KEY (`id_empresa`) REFERENCES `empresa`(`id_empresa`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
