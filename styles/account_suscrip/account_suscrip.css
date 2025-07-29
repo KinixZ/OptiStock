@@ -58,6 +58,11 @@ body {
   text-align: center;
 }
 
+#tablaPlanes th,
+#tablaPlanes td {
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .account-wrapper {
     flex-direction: column;

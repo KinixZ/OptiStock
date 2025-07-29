@@ -221,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
   // Navegación de secciones
   const menuItems = document.querySelectorAll(".account-menu li");
   const sections = document.querySelectorAll(".account-section");
@@ -239,4 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 }); // cierre DOMContentLoaded
+
+
+});
 
