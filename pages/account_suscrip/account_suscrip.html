@@ -56,6 +56,38 @@
         <button class="btn btn-outline-danger btn-sm" id="btnCancelarSuscripcion">Cancelar suscripción</button>
       </section>
 
+
+      <section id="secPlanes" class="account-section">
+        <span class="fw-bold d-block mb-2">Beneficios por plan</span>
+        <table class="table table-bordered" id="tablaPlanes">
+          <thead>
+            <tr>
+              <th>Característica</th>
+              <th>Gratis</th>
+              <th>Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Usuarios incluidos</td>
+              <td>1</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>Soporte</td>
+              <td>Correo</td>
+              <td>Prioritario</td>
+            </tr>
+            <tr>
+              <td>Reportes</td>
+              <td>Básicos</td>
+              <td>Avanzados</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+
       <section id="secPlanes" class="account-section">
         <span class="fw-bold d-block mb-2">Beneficios por plan</span>
         <table class="table table-bordered" id="tablaPlanes">
@@ -118,6 +150,7 @@
           </tr>
         </tbody>
       </table>
+
     </div>
   </div>
 
@@ -165,5 +198,39 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal editar empresa -->
+  <div class="modal fade" id="modalEditarEmpresa" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Información de Empresa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditarEmpresa">
+            <div class="mb-2">
+              <label>Nombre empresa:</label>
+              <input type="text" class="form-control" id="inputNombreEmpresa">
+            </div>
+            <div class="mb-2">
+              <label>Sector:</label>
+              <input type="text" class="form-control" id="inputSectorEmpresa">
+            </div>
+            <div class="mb-2">
+              <label>Logo URL:</label>
+              <input type="text" class="form-control" id="inputLogoEmpresa">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" id="btnGuardarCambiosEmpresa">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
 </div>
 <script src="../../scripts/account_suscrip/account_suscrip.js"></script>
