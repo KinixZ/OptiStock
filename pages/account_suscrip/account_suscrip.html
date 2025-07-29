@@ -1,60 +1,90 @@
 <div class="container py-4">
   <link rel="stylesheet" href="../../styles/account_suscrip/account_suscrip.css">
-  <h2 class="mb-3">Tu cuenta</h2>
-  <p class="text-muted">Gestiona tus datos personales, configuración empresarial y suscripción.</p>
+  <h2 class="mb-3">Configuración de cuenta</h2>
+  <div class="account-wrapper">
+    <nav class="account-menu">
+      <ul>
+        <li class="active" data-target="secUser">Perfil</li>
+        <li data-target="secEmpresa">Empresa</li>
+        <li data-target="secVisual">Diseño</li>
+        <li data-target="secSuscripcion">Suscripción</li>
+        <li data-target="secPlanes">Planes</li>
+      </ul>
+    </nav>
 
-  <!-- Información de usuario -->
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Información personal</span>
-      <button class="btn btn-outline-primary btn-sm" id="btnEditarUsuario">Editar</button>
-    </div>
-    <div class="card-body" id="usuarioInfo">
-      <div class="row">
-        <div class="col-md-3 text-center">
-          <img id="fotoPerfil" class="img-thumbnail rounded-circle mb-2" width="120" height="120">
+    <div class="account-content">
+      <section id="secUser" class="account-section active">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="fw-bold">Información personal</span>
+          <button class="btn btn-outline-primary btn-sm" id="btnEditarUsuario">Editar</button>
         </div>
-        <div class="col-md-9">
-          <p><strong>Nombre:</strong> <span id="nombreCompleto"></span></p>
-          <p><strong>Correo:</strong> <span id="correoUsuario"></span></p>
-          <p><strong>Teléfono:</strong> <span id="telefonoUsuario"></span></p>
+        <div class="row">
+          <div class="col-md-3 text-center">
+            <img id="fotoPerfil" class="img-thumbnail rounded-circle mb-2" width="120" height="120">
+          </div>
+          <div class="col-md-9">
+            <p><strong>Nombre:</strong> <span id="nombreCompleto"></span></p>
+            <p><strong>Correo:</strong> <span id="correoUsuario"></span></p>
+            <p><strong>Teléfono:</strong> <span id="telefonoUsuario"></span></p>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
+      </section>
 
-  <!-- Información empresarial -->
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Información empresarial</span>
-      <button class="btn btn-outline-primary btn-sm" id="btnEditarEmpresa">Editar</button>
-    </div>
-    <div class="card-body" id="empresaInfo">
-      <p><strong>Nombre de empresa:</strong> <span id="nombreEmpresa"></span></p>
-      <p><strong>Sector:</strong> <span id="sectorEmpresa"></span></p>
-      <p><strong>Logo:</strong><br> <img id="logoEmpresa" height="60"></p>
-    </div>
-  </div>
+      <section id="secEmpresa" class="account-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="fw-bold">Información empresarial</span>
+          <button class="btn btn-outline-primary btn-sm" id="btnEditarEmpresa">Editar</button>
+        </div>
+        <p><strong>Nombre de empresa:</strong> <span id="nombreEmpresa"></span></p>
+        <p><strong>Sector:</strong> <span id="sectorEmpresa"></span></p>
+        <p><strong>Logo:</strong><br> <img id="logoEmpresa" height="60"></p>
+      </section>
 
-  <!-- Personalización visual -->
-  <div class="card mb-4">
-    <div class="card-header">Personalización visual</div>
-    <div class="card-body">
-      <label>Color Sidebar: <input type="color" id="colorSidebar" disabled></label>
-      <label class="ms-3">Color Topbar: <input type="color" id="colorTopbar" disabled></label>
-      <button class="btn btn-sm btn-primary ms-3" id="btnGuardarColores">Guardar</button>
-    </div>
-  </div>
+      <section id="secVisual" class="account-section">
+        <span class="fw-bold d-block mb-2">Personalización visual</span>
+        <label>Color Sidebar: <input type="color" id="colorSidebar" disabled></label>
+        <label class="ms-3">Color Topbar: <input type="color" id="colorTopbar" disabled></label>
+        <button class="btn btn-sm btn-primary ms-3" id="btnGuardarColores">Guardar</button>
+      </section>
 
-  <!-- Información de suscripción -->
-  <div class="card mb-4">
-    <div class="card-header">Suscripción actual</div>
-    <div class="card-body">
-      <p><strong>Plan:</strong> <span id="planActual">Gratuito</span></p>
-      <p><strong>Renovación:</strong> <span id="fechaRenovacion">-</span></p>
-      <p><strong>Método de pago:</strong> <span id="metodoPago">-</span></p>
-      <button class="btn btn-outline-success btn-sm" id="btnActualizarPlan">Actualizar plan</button>
-      <button class="btn btn-outline-danger btn-sm" id="btnCancelarSuscripcion">Cancelar suscripción</button>
+      <section id="secSuscripcion" class="account-section">
+        <span class="fw-bold d-block mb-2">Suscripción actual</span>
+        <p><strong>Plan:</strong> <span id="planActual">Gratuito</span></p>
+        <p><strong>Renovación:</strong> <span id="fechaRenovacion">-</span></p>
+        <p><strong>Método de pago:</strong> <span id="metodoPago">-</span></p>
+        <button class="btn btn-outline-success btn-sm" id="btnActualizarPlan">Actualizar plan</button>
+        <button class="btn btn-outline-danger btn-sm" id="btnCancelarSuscripcion">Cancelar suscripción</button>
+      </section>
+
+      <section id="secPlanes" class="account-section">
+        <span class="fw-bold d-block mb-2">Beneficios por plan</span>
+        <table class="table table-bordered" id="tablaPlanes">
+          <thead>
+            <tr>
+              <th>Característica</th>
+              <th>Gratis</th>
+              <th>Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Usuarios incluidos</td>
+              <td>1</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>Soporte</td>
+              <td>Correo</td>
+              <td>Prioritario</td>
+            </tr>
+            <tr>
+              <td>Reportes</td>
+              <td>Básicos</td>
+              <td>Avanzados</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </div>
   </div>
 
@@ -102,7 +132,36 @@
       </div>
     </div>
   </div>
-
+  <!-- Modal editar empresa -->
+  <div class="modal fade" id="modalEditarEmpresa" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Información de Empresa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditarEmpresa">
+            <div class="mb-2">
+              <label>Nombre empresa:</label>
+              <input type="text" class="form-control" id="inputNombreEmpresa">
+            </div>
+            <div class="mb-2">
+              <label>Sector:</label>
+              <input type="text" class="form-control" id="inputSectorEmpresa">
+            </div>
+            <div class="mb-2">
+              <label>Logo URL:</label>
+              <input type="text" class="form-control" id="inputLogoEmpresa">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" id="btnGuardarCambiosEmpresa">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-
 <script src="../../scripts/account_suscrip/account_suscrip.js"></script>

@@ -1,172 +1,146 @@
+// Gestion de cuenta y suscripción
 
-console.log('Script cargado');
-
-async function loadAccountData(id) {
-  try {
-    const resp = await fetch(`/scripts/php/get_account_data.php?usuario_id=${id}`);
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`);
-    }
-    return await resp.json();
-  } catch (err) {
-    console.error('Error loading account data:', err);
-    return null;
-  }
+async function obtenerDatosCuenta(idUsuario){
+  const resp = await fetch(`../../scripts/php/get_account_data.php?usuario_id=${idUsuario}`);
+  return resp.json();
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-
 document.addEventListener('DOMContentLoaded', () => {
-
-  // Obtener datos de localStorage
-  const el = document.getElementById('nombreCompleto');
-  if (el) {
-    el.textContent = 'Prueba de carga JS correcta';
-  } else {
-    console.error('Elemento nombreCompleto NO encontrado');
-  }
-  
   const usuarioId = localStorage.getItem('usuario_id');
-  const usuarioEmail = localStorage.getItem('usuario_email');
-  const usuarioNombre = localStorage.getItem('usuario_nombre');
-  const usuarioRol = localStorage.getItem('usuario_rol');
-  const usuarioSuscripcion = localStorage.getItem('usuario_suscripcion');
-  const empresaNombre = localStorage.getItem('empresa_nombre');
-  const fotoPerfil = localStorage.getItem('foto_perfil');
   const idEmpresa = localStorage.getItem('id_empresa');
 
-  // Mostrar datos básicos en pantalla
-  document.getElementById('nombreCompleto').textContent = usuarioNombre || '';
-  document.getElementById('correoUsuario').textContent = usuarioEmail || '';
-  document.getElementById('nombreEmpresa').textContent = empresaNombre || '';
-  if(fotoPerfil){
-    document.getElementById('fotoPerfil').src = fotoPerfil;
-  }
+  const nombreEl = document.getElementById('nombreCompleto');
+  const correoEl = document.getElementById('correoUsuario');
+  const telEl    = document.getElementById('telefonoUsuario');
+  const fotoEl   = document.getElementById('fotoPerfil');
+  const empNomEl = document.getElementById('nombreEmpresa');
+  const empSecEl = document.getElementById('sectorEmpresa');
+  const empLogo  = document.getElementById('logoEmpresa');
 
-  // Cargar datos completos del backend para mostrar detalles y sincronizar UI
-
-  const data = await loadAccountData(usuarioId);
-  if (data && data.success) {
-    // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
-    document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
-    document.getElementById('usuario_email').textContent = data.usuario.correo;
-    if (data.usuario.foto_perfil) {
-      document.getElementById('profile_img').src = data.usuario.foto_perfil;
-      localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
+  async function cargar(){
+    const data = await obtenerDatosCuenta(usuarioId);
+    if(data.success){
+      const u = data.usuario;
+      nombreEl.textContent = `${u.nombre} ${u.apellido}`;
+      correoEl.textContent = u.correo;
+      telEl.textContent = u.telefono || '';
+      if(u.foto_perfil){ fotoEl.src = u.foto_perfil; }
+      const e = data.empresa || {};
+      empNomEl.textContent = e.nombre_empresa || '';
+      empSecEl.textContent = e.sector_empresa || '';
+      if(e.logo_empresa){ empLogo.src = e.logo_empresa; }
     }
-    document.getElementById('empresa_nombre').textContent = data.empresa.nombre_empresa;
-    localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
-    localStorage.setItem('id_empresa', data.empresa.id_empresa);
-
-  fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
-    .then(res => res.json())
-    .then(data => {
-      if(data.success){
-        // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
-        document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
-        document.getElementById('usuario_email').textContent = data.usuario.correo;
-        document.getElementById('telefonoUsuario').textContent = data.usuario.telefono || '';
-        localStorage.setItem('usuario_telefono', data.usuario.telefono || '');
-        if(data.usuario.foto_perfil){
-          document.getElementById('profile_img').src = data.usuario.foto_perfil;
-          localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
-        }
-        document.getElementById('empresa_nombre').textContent = data.empresa.nombre_empresa;
-        localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
-        localStorage.setItem('id_empresa', data.empresa.id_empresa);
-
-
-    // Aquí muestra más detalles: suscripción, colores, etc (según data)
-    // Por ejemplo:
-    document.getElementById('subscription_plan').textContent = data.suscripcion.plan || 'Sin plan';
-    document.getElementById('subscription_renewal').textContent = data.suscripcion.fecha_renovacion || 'N/A';
-    document.getElementById('subscription_cost').textContent = data.suscripcion.costo || 'N/A';
-    document.getElementById('payment_method').textContent = data.suscripcion.metodo_pago || 'N/A';
-
-    // ...más código para colores y configuraciones visuales si quieres
-  } else {
-    alert('Error al cargar datos de la cuenta.');
   }
 
-  // Abrir modal con datos para editar info personal
+  cargar();
+
+  // --- Editar usuario ---
+  const modalUsuario = new bootstrap.Modal(document.getElementById('modalEditarUsuario'));
   document.getElementById('btnEditarUsuario').addEventListener('click', async () => {
-    const data = await loadAccountData(usuarioId);
-    if (data && data.success) {
-      const user = data.usuario;
-      const empresa = data.empresa;
-      // Campos usuario
-      document.getElementById('edit_nombre').value = user.nombre;
-      document.getElementById('edit_apellidos').value = user.apellido;
-      document.getElementById('edit_email').value = user.correo;
-      document.getElementById('edit_telefono').value = user.telefono;
-      // Nota: contraseña se deja vacía para cambiar solo si quiere
-      document.getElementById('edit_password').value = '';
-
-      // Campos empresa
-      document.getElementById('edit_empresa_nombre').value = empresa.nombre_empresa;
-      document.getElementById('edit_sector').value = empresa.sector_empresa || '';
-
-      // Mostrar modal
-      const modal = new bootstrap.Modal(document.getElementById('editModal'));
-      modal.show();
-    } else {
-      alert('No se pudo cargar datos para edición');
+    const d = await obtenerDatosCuenta(usuarioId);
+    if(d.success){
+      const u = d.usuario;
+      document.getElementById('inputNombre').value = u.nombre;
+      document.getElementById('inputApellido').value = u.apellido;
+      document.getElementById('inputCorreo').value = u.correo;
+      document.getElementById('inputTelefono').value = u.telefono || '';
+      document.getElementById('inputContrasena').value = '';
+      modalUsuario.show();
     }
   });
 
-  // Enviar formulario de edición
-  document.getElementById('editForm').addEventListener('submit', e => {
-    e.preventDefault();
-
-    const formDataUser = new FormData();
-    formDataUser.append('usuario_id', usuarioId);
-    formDataUser.append('nombre', document.getElementById('edit_nombre').value);
-    formDataUser.append('apellido', document.getElementById('edit_apellidos').value);
-    formDataUser.append('correo', document.getElementById('edit_email').value);
-    formDataUser.append('telefono', document.getElementById('edit_telefono').value);
-    const password = document.getElementById('edit_password').value;
-    if(password) formDataUser.append('contrasena', password);
-
-    // Primero actualizar usuario
-    fetch('/scripts/php/update_user_info.php', {
+  document.getElementById('btnGuardarCambiosUsuario').addEventListener('click', async () => {
+    const payload = {
+      id_usuario: usuarioId,
+      nombre: document.getElementById('inputNombre').value,
+      apellido: document.getElementById('inputApellido').value,
+      telefono: document.getElementById('inputTelefono').value,
+      correo: document.getElementById('inputCorreo').value,
+      contrasena: document.getElementById('inputContrasena').value
+    };
+    const resp = await fetch('../../scripts/php/update_user.php', {
       method: 'POST',
-      body: formDataUser
-    })
-    .then(res => res.json())
-    .then(respUser => {
-      if(respUser.success){
-        // Luego actualizar empresa
-        const formDataEmpresa = new FormData();
-        formDataEmpresa.append('id_empresa', localStorage.getItem('id_empresa'));
-        formDataEmpresa.append('nombre_empresa', document.getElementById('edit_empresa_nombre').value);
-        formDataEmpresa.append('sector_empresa', document.getElementById('edit_sector').value);
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    }).then(r=>r.json());
+    if(resp.success){
+      localStorage.setItem('usuario_nombre', payload.nombre + ' ' + payload.apellido);
+      localStorage.setItem('usuario_email', payload.correo);
+      localStorage.setItem('usuario_telefono', payload.telefono);
+      modalUsuario.hide();
+      cargar();
+    }else{
+      alert('Error al actualizar usuario');
+    }
+  });
 
-        fetch('/scripts/php/update_empresa_info.php', {
-          method: 'POST',
-          body: formDataEmpresa
-        })
-        .then(res => res.json())
-        .then(respEmpresa => {
-          if(respEmpresa.success){
-            // Actualizar localStorage con nuevos datos
-              localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
-              localStorage.setItem('usuario_email', formDataUser.get('correo'));
-              localStorage.setItem('usuario_telefono', formDataUser.get('telefono'));
-              localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
-            // Puedes actualizar otros datos si quieres
+  // --- Editar empresa ---
+  const modalEmpresa = new bootstrap.Modal(document.getElementById('modalEditarEmpresa'));
+  document.getElementById('btnEditarEmpresa').addEventListener('click', async () => {
+    const d = await obtenerDatosCuenta(usuarioId);
+    if(d.success && d.empresa){
+      const e = d.empresa;
+      document.getElementById('inputNombreEmpresa').value = e.nombre_empresa || '';
+      document.getElementById('inputSectorEmpresa').value = e.sector_empresa || '';
+      document.getElementById('inputLogoEmpresa').value = e.logo_empresa || '';
+      modalEmpresa.show();
+    }
+  });
 
-            // Refrescar página para aplicar cambios
-            location.reload();
-          } else {
-            alert('Error al actualizar información de empresa.');
-          }
-        });
-      } else {
-        alert('Error al actualizar información del usuario.');
-      }
-    })
-    .catch(err => {
-      console.error('Error al actualizar:', err);
+  document.getElementById('btnGuardarCambiosEmpresa').addEventListener('click', async () => {
+    const payload = {
+      id_empresa: idEmpresa,
+      nombre_empresa: document.getElementById('inputNombreEmpresa').value,
+      sector_empresa: document.getElementById('inputSectorEmpresa').value,
+      logo_empresa: document.getElementById('inputLogoEmpresa').value
+    };
+    const resp = await fetch('../../scripts/php/update_empresa.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    }).then(r=>r.json());
+    if(resp.success){
+      localStorage.setItem('empresa_nombre', payload.nombre_empresa);
+      modalEmpresa.hide();
+      cargar();
+    }else{
+      alert('Error al actualizar empresa');
+    }
+  });
+
+  // Cancelar suscripción
+  const btnCancel = document.getElementById('btnCancelarSuscripcion');
+  btnCancel?.addEventListener('click', () => {
+    if(confirm('¿Seguro que deseas cancelar la suscripción?') && confirm('Confirma nuevamente para cancelar')){
+      const form = new URLSearchParams();
+      form.append('id_empresa', idEmpresa);
+      fetch('../../scripts/php/cancel_subscription.php', { method:'POST', body: form })
+        .then(r=>r.json()).then(d=>{ if(d.success){ alert('Suscripción cancelada'); cargar(); } else { alert(d.message||'Error'); } });
+    }
+  });
+
+  // Actualizar plan
+  const btnPlan = document.getElementById('btnActualizarPlan');
+  btnPlan?.addEventListener('click', () => {
+    const plan = prompt('Ingresa el nuevo plan (Pro, etc)');
+    if(plan){
+      const form = new URLSearchParams();
+      form.append('id_empresa', idEmpresa);
+      form.append('plan', plan);
+      fetch('../../scripts/php/update_subscription_plan.php', { method:'POST', body: form })
+        .then(r=>r.json()).then(d=>{ if(d.success){ alert('Plan actualizado'); cargar(); } else { alert(d.message||'Error'); } });
+    }
+  });
+
+  // Navegación lateral
+  const menuItems = document.querySelectorAll('.account-menu li');
+  const sections = document.querySelectorAll('.account-section');
+  menuItems.forEach(item => {
+    item.addEventListener('click', () => {
+      menuItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const target = item.getAttribute('data-target');
+      sections.forEach(sec => sec.classList.toggle('active', sec.id === target));
     });
   });
 });
