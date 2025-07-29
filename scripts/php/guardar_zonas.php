@@ -1,12 +1,17 @@
 <?php
 header('Content-Type: application/json');
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
 $database   = "u296155119_OptiStock";
 
-$conn = new mysqli($servername, $db_user, $db_pass, $database);
-if ($conn->connect_error) {
+try {
+    $conn = new mysqli($servername, $db_user, $db_pass, $database);
+    $conn->set_charset('utf8mb4');
+} catch (mysqli_sql_exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Error de conexión']);
     exit;
@@ -65,9 +70,9 @@ if ($method === 'POST') {
     $tipo = $data['tipo_almacenamiento'] ?? null;
     $subniveles = isset($data['subniveles']) ? json_encode($data['subniveles']) : null;
     $area_id = isset($data['area_id']) ? intval($data['area_id']) : null;
-    $empresa_id = intval($data['empresa_id'] ?? 0);
+    $empresa_id = isset($data['empresa_id']) ? intval($data['empresa_id']) : 0;
 
-    if (!$nombre || !$empresa_id) {
+    if (!$nombre || $empresa_id <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'Datos incompletos']);
         exit;
