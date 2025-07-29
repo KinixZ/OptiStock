@@ -23,6 +23,7 @@
     productoFormContainer.classList.add('d-none');
     categoriaFormContainer.classList.add('d-none');
     subcategoriaFormContainer.classList.add('d-none');
+
     vistaActual = seccion;
     renderResumen();
     if (seccion === 'producto') productoFormContainer.classList.remove('d-none');
@@ -146,6 +147,23 @@
         tablaResumen.appendChild(tr);
       });
     }
+
+    productos.forEach(p => {
+      const cat = categorias.find(c => c.id === p.categoriaId)?.nombre || '';
+      const sub = subcategorias.find(s => s.id === p.subcategoriaId)?.nombre || '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.nombre}</td>
+        <td>${p.descripcion}</td>
+        <td>${cat}</td>
+        <td>${sub}</td>
+        <td>${p.dimensiones}</td>
+        <td>${p.stock}</td>
+        <td>${p.precio}</td>
+      `;
+      tablaResumen.appendChild(tr);
+    });
+
   }
 
   // Guardar categoría
@@ -164,6 +182,11 @@
     catForm.reset();
     actualizarSelectCategorias();
     renderResumen();
+
+    categorias.push({ id: catId++, nombre: catForm.catNombre.value, descripcion: catForm.catDescripcion.value });
+    catForm.reset();
+    actualizarSelectCategorias();
+
   });
 
   // Guardar subcategoría
@@ -184,6 +207,16 @@
     subcatForm.reset();
     actualizarSelectSubcategorias();
     renderResumen();
+
+    subcategorias.push({
+      id: subcatId++,
+      nombre: subcatForm.subcatNombre.value,
+      descripcion: subcatForm.subcatDescripcion.value,
+      categoriaId: parseInt(subcatForm.subcatCategoria.value) || null
+    });
+    subcatForm.reset();
+    actualizarSelectSubcategorias();
+
   });
 
   // Guardar producto
@@ -195,6 +228,10 @@
       alert('Advertencia: faltan campos por rellenar');
     }
     const data = {
+
+    productos.push({
+      id: prodId++,
+
       nombre: prodForm.prodNombre.value,
       descripcion: prodForm.prodDescripcion.value,
       categoriaId,
@@ -269,4 +306,10 @@
       }
     }
   });
+
+    });
+    prodForm.reset();
+    renderResumen();
+  });
+
 })();
