@@ -1,3 +1,4 @@
+
 console.log('Script cargado');
 
 async function loadAccountData(id) {
@@ -14,17 +15,16 @@ async function loadAccountData(id) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+
+document.addEventListener('DOMContentLoaded', () => {
+
   // Obtener datos de localStorage
-  console.log('DOM listo');
   const el = document.getElementById('nombreCompleto');
   if (el) {
     el.textContent = 'Prueba de carga JS correcta';
-    console.log('Elemento nombreCompleto actualizado');
   } else {
     console.error('Elemento nombreCompleto NO encontrado');
   }
-
-  alert('JS ejecutado');
   
   const usuarioId = localStorage.getItem('usuario_id');
   const usuarioEmail = localStorage.getItem('usuario_email');
@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Cargar datos completos del backend para mostrar detalles y sincronizar UI
+
   const data = await loadAccountData(usuarioId);
   if (data && data.success) {
     // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
@@ -56,6 +57,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('empresa_nombre').textContent = data.empresa.nombre_empresa;
     localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
     localStorage.setItem('id_empresa', data.empresa.id_empresa);
+
+  fetch(`/scripts/php/get_account_data.php?usuario_id=${usuarioId}`)
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        // Actualizar UI con datos recibidos (puedes ajustar campos según respuesta)
+        document.getElementById('usuario_nombre').textContent = data.usuario.nombre + ' ' + data.usuario.apellido;
+        document.getElementById('usuario_email').textContent = data.usuario.correo;
+        document.getElementById('telefonoUsuario').textContent = data.usuario.telefono || '';
+        localStorage.setItem('usuario_telefono', data.usuario.telefono || '');
+        if(data.usuario.foto_perfil){
+          document.getElementById('profile_img').src = data.usuario.foto_perfil;
+          localStorage.setItem('foto_perfil', data.usuario.foto_perfil);
+        }
+        document.getElementById('empresa_nombre').textContent = data.empresa.nombre_empresa;
+        localStorage.setItem('empresa_nombre', data.empresa.nombre_empresa);
+        localStorage.setItem('id_empresa', data.empresa.id_empresa);
+
 
     // Aquí muestra más detalles: suscripción, colores, etc (según data)
     // Por ejemplo:
@@ -130,9 +149,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         .then(respEmpresa => {
           if(respEmpresa.success){
             // Actualizar localStorage con nuevos datos
-            localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
-            localStorage.setItem('usuario_email', formDataUser.get('correo'));
-            localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
+              localStorage.setItem('usuario_nombre', formDataUser.get('nombre') + ' ' + formDataUser.get('apellido'));
+              localStorage.setItem('usuario_email', formDataUser.get('correo'));
+              localStorage.setItem('usuario_telefono', formDataUser.get('telefono'));
+              localStorage.setItem('empresa_nombre', formDataEmpresa.get('nombre_empresa'));
             // Puedes actualizar otros datos si quieres
 
             // Refrescar página para aplicar cambios
