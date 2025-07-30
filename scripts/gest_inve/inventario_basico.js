@@ -5,6 +5,7 @@
     productos: '../../scripts/php/guardar_productos.php'
   };
 
+
   const empresaId = localStorage.getItem('id_empresa') || '';
 
   const categorias = [];
@@ -83,16 +84,24 @@
 
   async function cargarCategorias() {
     categorias.length = 0;
+
     const url = empresaId ? `${API.categorias}?empresa_id=${empresaId}` : API.categorias;
     const datos = await fetchAPI(url);
+
+    const datos = await fetchAPI(API.categorias);
+
     datos.forEach(c => categorias.push(c));
     actualizarSelectCategorias();
   }
 
   async function cargarSubcategorias() {
     subcategorias.length = 0;
+
     const url = empresaId ? `${API.subcategorias}?empresa_id=${empresaId}` : API.subcategorias;
     const datos = await fetchAPI(url);
+
+    const datos = await fetchAPI(API.subcategorias);
+
     datos.forEach(s => subcategorias.push(s));
     actualizarSelectSubcategorias();
   }
@@ -101,6 +110,7 @@
     productos.length = 0;
     const url = empresaId ? `${API.productos}?empresa_id=${empresaId}` : API.productos;
     const datos = await fetchAPI(url);
+    const datos = await fetchAPI(API.productos);
     datos.forEach(p => productos.push(p));
   }
 
@@ -203,6 +213,14 @@ if (vistaActual === 'producto') {
       editCatId = null;
     } else {
       await fetchAPI(`${API.categorias}?empresa_id=${empresaId}`, 'POST', data);
+      descripcion: catForm.catDescripcion.value
+    };
+
+    if (editCatId) {
+      await fetchAPI(`${API.categorias}?id=${editCatId}`, 'PUT', data);
+      editCatId = null;
+    } else {
+      await fetchAPI(API.categorias, 'POST', data);
     }
 
     catForm.reset();
@@ -222,6 +240,13 @@ if (vistaActual === 'producto') {
       editSubcatId = null;
     } else {
       await fetchAPI(`${API.subcategorias}?empresa_id=${empresaId}`, 'POST', data);
+      categoria_id: parseInt(subcatForm.subcatCategoria.value) || null
+    };
+    if (editSubcatId) {
+      await fetchAPI(`${API.subcategorias}?id=${editSubcatId}`, 'PUT', data);
+      editSubcatId = null;
+    } else {
+      await fetchAPI(API.subcategorias, 'POST', data);
     }
     subcatForm.reset();
     await cargarSubcategorias();
@@ -251,6 +276,14 @@ if (vistaActual === 'producto') {
       editProdId = null;
     } else {
       await fetchAPI(`${API.productos}?empresa_id=${empresaId}`, 'POST', data);
+      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0
+    };
+
+    if (editProdId) {
+      await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
+      editProdId = null;
+    } else {
+      await fetchAPI(API.productos, 'POST', data);
     }
     prodForm.reset();
     await cargarProductos();
@@ -268,11 +301,16 @@ if (vistaActual === 'producto') {
         await cargarProductos();
       } else if (tipo === 'categoria') {
         await fetchAPI(`${API.categorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+        await fetchAPI(`${API.productos}?id=${id}`, 'DELETE');
+        await cargarProductos();
+      } else if (tipo === 'categoria') {
+        await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
         await cargarCategorias();
         await cargarSubcategorias();
         await cargarProductos();
       } else if (tipo === 'subcategoria') {
         await fetchAPI(`${API.subcategorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+        await fetchAPI(`${API.subcategorias}?id=${id}`, 'DELETE');
         await cargarSubcategorias();
         await cargarProductos();
       }
