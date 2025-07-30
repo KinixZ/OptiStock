@@ -5,7 +5,12 @@
     productos: '../../scripts/php/guardar_productos.php'
   };
 
+
   const empresaId = localStorage.getItem('id_empresa');
+
+
+  const empresaId = localStorage.getItem('id_empresa') || '';
+
 
   const categorias = [];
   const subcategorias = [];
@@ -83,16 +88,34 @@
 
   async function cargarCategorias() {
     categorias.length = 0;
+
     const url = empresaId ? `${API.categorias}?empresa_id=${empresaId}` : API.categorias;
     const datos = await fetchAPI(url);
+
+
+    const url = empresaId ? `${API.categorias}?empresa_id=${empresaId}` : API.categorias;
+    const datos = await fetchAPI(url);
+
+    const datos = await fetchAPI(API.categorias);
+
+
     datos.forEach(c => categorias.push(c));
     actualizarSelectCategorias();
   }
 
   async function cargarSubcategorias() {
     subcategorias.length = 0;
+
     const url = empresaId ? `${API.subcategorias}?empresa_id=${empresaId}` : API.subcategorias;
     const datos = await fetchAPI(url);
+
+
+    const url = empresaId ? `${API.subcategorias}?empresa_id=${empresaId}` : API.subcategorias;
+    const datos = await fetchAPI(url);
+
+    const datos = await fetchAPI(API.subcategorias);
+
+
     datos.forEach(s => subcategorias.push(s));
     actualizarSelectSubcategorias();
   }
@@ -101,6 +124,9 @@
     productos.length = 0;
     const url = empresaId ? `${API.productos}?empresa_id=${empresaId}` : API.productos;
     const datos = await fetchAPI(url);
+
+    const datos = await fetchAPI(API.productos);
+
     datos.forEach(p => productos.push(p));
   }
 
@@ -194,6 +220,7 @@ if (vistaActual === 'producto') {
     e.preventDefault();
     const data = {
       nombre: catForm.catNombre.value,
+
       descripcion: catForm.catDescripcion.value
     };
     if (empresaId) data.empresa_id = parseInt(empresaId);
@@ -205,6 +232,25 @@ if (vistaActual === 'producto') {
     } else {
       const url = empresaId ? `${API.categorias}?empresa_id=${empresaId}` : API.categorias;
       await fetchAPI(url, 'POST', data);
+
+      descripcion: catForm.catDescripcion.value,
+      empresa_id: parseInt(empresaId)
+    };
+
+    if (editCatId) {
+      await fetchAPI(`${API.categorias}?id=${editCatId}&empresa_id=${empresaId}`, 'PUT', data);
+      editCatId = null;
+    } else {
+      await fetchAPI(`${API.categorias}?empresa_id=${empresaId}`, 'POST', data);
+      descripcion: catForm.catDescripcion.value
+    };
+
+    if (editCatId) {
+      await fetchAPI(`${API.categorias}?id=${editCatId}`, 'PUT', data);
+      editCatId = null;
+    } else {
+      await fetchAPI(API.categorias, 'POST', data);
+
     }
 
     catForm.reset();
@@ -216,16 +262,33 @@ if (vistaActual === 'producto') {
     const data = {
       nombre: subcatForm.subcatNombre.value,
       descripcion: subcatForm.subcatDescripcion.value,
+
+      categoria_id: parseInt(subcatForm.subcatCategoria.value) || null,
+      empresa_id: parseInt(empresaId)
+    };
+    if (editSubcatId) {
+      await fetchAPI(`${API.subcategorias}?id=${editSubcatId}&empresa_id=${empresaId}`, 'PUT', data);
+      editSubcatId = null;
+    } else {
+      await fetchAPI(`${API.subcategorias}?empresa_id=${empresaId}`, 'POST', data);
+
       categoria_id: parseInt(subcatForm.subcatCategoria.value) || null
     };
     if (empresaId) data.empresa_id = parseInt(empresaId);
     if (editSubcatId) {
+
       const url = empresaId ? `${API.subcategorias}?id=${editSubcatId}&empresa_id=${empresaId}` : `${API.subcategorias}?id=${editSubcatId}`;
       await fetchAPI(url, 'PUT', data);
       editSubcatId = null;
     } else {
       const url = empresaId ? `${API.subcategorias}?empresa_id=${empresaId}` : API.subcategorias;
       await fetchAPI(url, 'POST', data);
+
+      await fetchAPI(`${API.subcategorias}?id=${editSubcatId}`, 'PUT', data);
+      editSubcatId = null;
+    } else {
+      await fetchAPI(API.subcategorias, 'POST', data);
+
     }
     subcatForm.reset();
     await cargarSubcategorias();
@@ -246,17 +309,37 @@ if (vistaActual === 'producto') {
       subcategoria_id,
       dimensiones: prodForm.prodDimensiones.value,
       stock: parseInt(prodForm.prodStock.value) || 0,
+
       precio_compra: parseFloat(prodForm.prodPrecio.value) || 0
+
+      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0,
+      empresa_id: parseInt(empresaId)
+
     };
     if (empresaId) data.empresa_id = parseInt(empresaId);
 
     if (editProdId) {
+
       const url = empresaId ? `${API.productos}?id=${editProdId}&empresa_id=${empresaId}` : `${API.productos}?id=${editProdId}`;
       await fetchAPI(url, 'PUT', data);
       editProdId = null;
     } else {
       const url = empresaId ? `${API.productos}?empresa_id=${empresaId}` : API.productos;
       await fetchAPI(url, 'POST', data);
+
+      await fetchAPI(`${API.productos}?id=${editProdId}&empresa_id=${empresaId}`, 'PUT', data);
+      editProdId = null;
+    } else {
+      await fetchAPI(`${API.productos}?empresa_id=${empresaId}`, 'POST', data);
+      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0
+    };
+
+    if (editProdId) {
+      await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
+      editProdId = null;
+    } else {
+      await fetchAPI(API.productos, 'POST', data);
+
     }
     prodForm.reset();
     await cargarProductos();
@@ -270,18 +353,34 @@ if (vistaActual === 'producto') {
 
     if (accion === 'del') {
       if (tipo === 'producto') {
+
         const url = empresaId ? `${API.productos}?id=${id}&empresa_id=${empresaId}` : `${API.productos}?id=${id}`;
         await fetchAPI(url, 'DELETE');
         await cargarProductos();
       } else if (tipo === 'categoria') {
         const url = empresaId ? `${API.categorias}?id=${id}&empresa_id=${empresaId}` : `${API.categorias}?id=${id}`;
         await fetchAPI(url, 'DELETE');
+
+        await fetchAPI(`${API.productos}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+        await cargarProductos();
+      } else if (tipo === 'categoria') {
+        await fetchAPI(`${API.categorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+        await fetchAPI(`${API.productos}?id=${id}`, 'DELETE');
+        await cargarProductos();
+      } else if (tipo === 'categoria') {
+        await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
+
         await cargarCategorias();
         await cargarSubcategorias();
         await cargarProductos();
       } else if (tipo === 'subcategoria') {
+
         const url = empresaId ? `${API.subcategorias}?id=${id}&empresa_id=${empresaId}` : `${API.subcategorias}?id=${id}`;
         await fetchAPI(url, 'DELETE');
+
+        await fetchAPI(`${API.subcategorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+        await fetchAPI(`${API.subcategorias}?id=${id}`, 'DELETE');
+
         await cargarSubcategorias();
         await cargarProductos();
       }

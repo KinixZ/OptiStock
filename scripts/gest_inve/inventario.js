@@ -18,6 +18,9 @@ const AppConfig = {
 
 const empresaId = localStorage.getItem('id_empresa');
 
+const empresaId = localStorage.getItem('id_empresa') || '';
+
+
 // Estado de la aplicación
 const AppState = {
   categorias: [],
@@ -250,8 +253,12 @@ const DataController = {
     if (!confirm('¿Eliminar esta categoría y todas sus subcategorías?')) return;
 
     try {
+
       const url = empresaId ? `${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.categorias}?id=${id}`;
       await AppUtils.fetchAPI(url, 'DELETE');
+
+      await AppUtils.fetchAPI(`${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+
       await this.loadCategorias();
       await this.loadSubcategorias();
       await this.loadProductos();
@@ -266,8 +273,12 @@ const DataController = {
     if (!confirm('¿Eliminar esta subcategoría?')) return;
 
     try {
+
       const url = empresaId ? `${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.subcategorias}?id=${id}`;
       await AppUtils.fetchAPI(url, 'DELETE');
+
+      await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+
       await this.loadSubcategorias();
       await this.loadProductos();
       AppUtils.showAlert('Subcategoría eliminada', 'success');
@@ -281,8 +292,12 @@ const DataController = {
     if (!confirm('¿Eliminar este producto?')) return;
 
     try {
+
       const urlP = empresaId ? `${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.productos}?id=${id}`;
       await AppUtils.fetchAPI(urlP, 'DELETE');
+
+      await AppUtils.fetchAPI(`${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+
       await this.loadProductos();
       AppUtils.showAlert('Producto eliminado', 'success');
     } catch (error) {
@@ -320,18 +335,26 @@ const FormController = {
     const id = form.querySelector('#categoriaId').value;
   const data = {
       nombre: form.querySelector('#categoriaNombre').value,
-      descripcion: form.querySelector('#categoriaDesc').value
+      descripcion: form.querySelector('#categoriaDesc').value,
+      empresa_id: parseInt(empresaId)
     };
     if (empresaId) data.empresa_id = parseInt(empresaId);
     
     try {
       if (id) {
+
         const url = empresaId ? `${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.categorias}?id=${id}`;
         await AppUtils.fetchAPI(url, 'PUT', data);
         AppUtils.showAlert('Categoría actualizada', 'success');
       } else {
         const url = empresaId ? `${AppConfig.API.categorias}?empresa_id=${empresaId}` : AppConfig.API.categorias;
         await AppUtils.fetchAPI(url, 'POST', data);
+
+        await AppUtils.fetchAPI(`${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}`, 'PUT', data);
+        AppUtils.showAlert('Categoría actualizada', 'success');
+      } else {
+        await AppUtils.fetchAPI(`${AppConfig.API.categorias}?empresa_id=${empresaId}`, 'POST', data);
+
         AppUtils.showAlert('Categoría creada', 'success');
       }
       
@@ -348,18 +371,26 @@ const FormController = {
   const data = {
       categoria_id: form.querySelector('#subcategoriaCategoria').value,
       nombre: form.querySelector('#subcategoriaNombre').value,
-      descripcion: form.querySelector('#subcategoriaDesc').value
+      descripcion: form.querySelector('#subcategoriaDesc').value,
+      empresa_id: parseInt(empresaId)
     };
     if (empresaId) data.empresa_id = parseInt(empresaId);
     
     try {
       if (id) {
+
         const url = empresaId ? `${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.subcategorias}?id=${id}`;
         await AppUtils.fetchAPI(url, 'PUT', data);
         AppUtils.showAlert('Subcategoría actualizada', 'success');
       } else {
         const url = empresaId ? `${AppConfig.API.subcategorias}?empresa_id=${empresaId}` : AppConfig.API.subcategorias;
         await AppUtils.fetchAPI(url, 'POST', data);
+
+        await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}`, 'PUT', data);
+        AppUtils.showAlert('Subcategoría actualizada', 'success');
+      } else {
+        await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?empresa_id=${empresaId}`, 'POST', data);
+
         AppUtils.showAlert('Subcategoría creada', 'success');
       }
       
@@ -379,18 +410,26 @@ const FormController = {
       categoria_id: form.querySelector('#productoCategoria').value,
       subcategoria_id: form.querySelector('#productoSubcategoria').value,
       stock: parseInt(form.querySelector('#productoStock').value || '0'),
-      precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0')
+      precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0'),
+      empresa_id: parseInt(empresaId)
     };
     if (empresaId) data.empresa_id = parseInt(empresaId);
     
     try {
       if (id) {
+
         const url = empresaId ? `${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.productos}?id=${id}`;
         await AppUtils.fetchAPI(url, 'PUT', data);
         AppUtils.showAlert('Producto actualizado', 'success');
       } else {
         const url = empresaId ? `${AppConfig.API.productos}?empresa_id=${empresaId}` : AppConfig.API.productos;
         await AppUtils.fetchAPI(url, 'POST', data);
+
+        await AppUtils.fetchAPI(`${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}`, 'PUT', data);
+        AppUtils.showAlert('Producto actualizado', 'success');
+      } else {
+        await AppUtils.fetchAPI(`${AppConfig.API.productos}?empresa_id=${empresaId}`, 'POST', data);
+
         AppUtils.showAlert('Producto creado', 'success');
       }
       

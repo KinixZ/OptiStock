@@ -20,7 +20,7 @@
         </div>
         <div class="row">
           <div class="col-md-3 text-center">
-            <img id="fotoPerfil" class="img-thumbnail rounded-circle mb-2" width="120" height="120">
+            <img id="fotoPerfil" class="img-thumbnail rounded-circle mb-2" width="120" height="120" src="/images/profile.jpg">
           </div>
           <div class="col-md-9">
             <p><strong>Nombre:</strong> <span id="nombreCompleto"></span></p>
@@ -163,7 +163,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form id="formEditarUsuario">
+          <form id="formEditarUsuario" enctype="multipart/form-data">
             <input type="hidden" id="usuarioId">
             <div class="mb-2">
               <label>Nombre:</label>

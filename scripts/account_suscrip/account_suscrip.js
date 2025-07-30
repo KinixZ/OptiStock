@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
       nombreEl.textContent = `${u.nombre} ${u.apellido}`;
       correoEl.textContent = u.correo;
       telEl.textContent = u.telefono || '';
-      if(u.foto_perfil){ fotoEl.src = u.foto_perfil; }
+      fotoEl.src = u.foto_perfil ? u.foto_perfil : '/images/profile.jpg';
       const e = data.empresa || {};
       empNomEl.textContent = e.nombre_empresa || '';
       empSecEl.textContent = e.sector_empresa || '';
@@ -65,6 +65,14 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify(payload)
     }).then(r=>r.json());
     if(resp.success){
+      const file = document.getElementById('inputFoto').files[0];
+      if(file){
+        const fd = new FormData();
+        fd.append('usuario_id', usuarioId);
+        fd.append('foto_perfil', file);
+        await fetch('../../scripts/php/upload_profile_picture.php', { method:'POST', body: fd })
+          .then(r=>r.json()).then(d=>{ if(d.success){ fotoEl.src = d.foto; } });
+      }
       localStorage.setItem('usuario_nombre', payload.nombre + ' ' + payload.apellido);
       localStorage.setItem('usuario_email', payload.correo);
       localStorage.setItem('usuario_telefono', payload.telefono);
@@ -216,7 +224,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 }); // cierre DOMContentLoaded
-
-
-});
 
