@@ -1,10 +1,13 @@
 (() => {
+  const API = {
+    categorias: '../../scripts/php/guardar_categorias.php',
+    subcategorias: '../../scripts/php/guardar_subcategorias.php',
+    productos: '../../scripts/php/guardar_productos.php'
+  };
+
   const categorias = [];
   const subcategorias = [];
   const productos = [];
-  let catId = 1;
-  let subcatId = 1;
-  let prodId = 1;
   let vistaActual = 'producto';
   let editProdId = null;
   let editCatId = null;
@@ -17,6 +20,17 @@
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
   const subcategoriaFormContainer = document.getElementById('subcategoriaFormContainer');
+
+  async function fetchAPI(url, method = 'GET', data) {
+    const options = { method };
+    if (data) {
+      options.headers = { 'Content-Type': 'application/json' };
+      options.body = JSON.stringify(data);
+    }
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error('Error en la solicitud');
+    return res.json();
+  }
 
   function mostrar(seccion) {
     productoFormContainer.classList.add('d-none');
@@ -65,6 +79,26 @@
     });
   }
 
+  async function cargarCategorias() {
+    categorias.length = 0;
+    const datos = await fetchAPI(API.categorias);
+    datos.forEach(c => categorias.push(c));
+    actualizarSelectCategorias();
+  }
+
+  async function cargarSubcategorias() {
+    subcategorias.length = 0;
+    const datos = await fetchAPI(API.subcategorias);
+    datos.forEach(s => subcategorias.push(s));
+    actualizarSelectSubcategorias();
+  }
+
+  async function cargarProductos() {
+    productos.length = 0;
+    const datos = await fetchAPI(API.productos);
+    datos.forEach(p => productos.push(p));
+  }
+
   function renderResumen() {
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
@@ -84,8 +118,8 @@ if (vistaActual === 'producto') {
     </tr>`;
 
   productos.forEach(p => {
-    const cat = categorias.find(c => c.id === p.categoriaId)?.nombre || '';
-    const sub = subcategorias.find(s => s.id === p.subcategoriaId)?.nombre || '';
+    const cat = categorias.find(c => c.id === p.categoria_id)?.nombre || '';
+    const sub = subcategorias.find(s => s.id === p.subcategoria_id)?.nombre || '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail">` : ''}</td>
@@ -95,7 +129,7 @@ if (vistaActual === 'producto') {
       <td>${sub}</td>
       <td>${p.dimensiones}</td>
       <td>${p.stock}</td>
-      <td>${p.precio}</td>
+      <td>${p.precio_compra}</td>
       <td>
         <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="producto" data-id="${p.id}">Editar</button>
         <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="producto" data-id="${p.id}">Eliminar</button>
@@ -113,7 +147,7 @@ if (vistaActual === 'producto') {
         </tr>`;
       categorias.forEach(c => {
         const subcats = subcategorias
-          .filter(sc => sc.categoriaId === c.id)
+          .filter(sc => sc.categoria_id === c.id)
           .map(sc => sc.nombre)
           .join(', ');
         const tr = document.createElement('tr');
@@ -136,7 +170,7 @@ if (vistaActual === 'producto') {
           <th>Acciones</th>
         </tr>`;
       subcategorias.forEach(sc => {
-        const cat = categorias.find(c => c.id === sc.categoriaId)?.nombre || '';
+        const cat = categorias.find(c => c.id === sc.categoria_id)?.nombre || '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${sc.nombre}</td>
@@ -151,72 +185,70 @@ if (vistaActual === 'producto') {
     }
   }
 
-  catForm.addEventListener('submit', e => {
+  catForm.addEventListener('submit', async e => {
     e.preventDefault();
+    const data = {
+      nombre: catForm.catNombre.value,
+      descripcion: catForm.catDescripcion.value
+    };
+
     if (editCatId) {
-      const c = categorias.find(cat => cat.id === editCatId);
-      if (c) {
-        c.nombre = catForm.catNombre.value;
-        c.descripcion = catForm.catDescripcion.value;
-      }
+      await fetchAPI(`${API.categorias}?id=${editCatId}`, 'PUT', data);
       editCatId = null;
     } else {
-      categorias.push({ id: catId++, nombre: catForm.catNombre.value, descripcion: catForm.catDescripcion.value });
+      await fetchAPI(API.categorias, 'POST', data);
     }
+
     catForm.reset();
-    actualizarSelectCategorias();
-    renderResumen();
+    await cargarCategorias();
   });
 
-  subcatForm.addEventListener('submit', e => {
+  subcatForm.addEventListener('submit', async e => {
     e.preventDefault();
     const data = {
       nombre: subcatForm.subcatNombre.value,
       descripcion: subcatForm.subcatDescripcion.value,
-      categoriaId: parseInt(subcatForm.subcatCategoria.value) || null
+      categoria_id: parseInt(subcatForm.subcatCategoria.value) || null
     };
     if (editSubcatId) {
-      const sc = subcategorias.find(s => s.id === editSubcatId);
-      if (sc) Object.assign(sc, data);
+      await fetchAPI(`${API.subcategorias}?id=${editSubcatId}`, 'PUT', data);
       editSubcatId = null;
     } else {
-      subcategorias.push({ id: subcatId++, ...data });
+      await fetchAPI(API.subcategorias, 'POST', data);
     }
     subcatForm.reset();
-    actualizarSelectSubcategorias();
-    renderResumen();
+    await cargarSubcategorias();
   });
 
-  prodForm.addEventListener('submit', e => {
+  prodForm.addEventListener('submit', async e => {
     e.preventDefault();
-    const categoriaId = parseInt(prodCategoria.value) || null;
-    const subcategoriaId = parseInt(prodSubcategoria.value) || null;
-    if (!categoriaId) {
+    const categoria_id = parseInt(prodCategoria.value) || null;
+    const subcategoria_id = parseInt(prodSubcategoria.value) || null;
+    if (!categoria_id) {
       alert('Advertencia: faltan campos por rellenar');
       return;
     }
     const data = {
       nombre: prodForm.prodNombre.value,
       descripcion: prodForm.prodDescripcion.value,
-      categoriaId,
-      subcategoriaId,
+      categoria_id,
+      subcategoria_id,
       dimensiones: prodForm.prodDimensiones.value,
       stock: parseInt(prodForm.prodStock.value) || 0,
-      precio: parseFloat(prodForm.prodPrecio.value) || 0
+      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0
     };
 
     if (editProdId) {
-      const p = productos.find(pr => pr.id === editProdId);
-      if (p) Object.assign(p, data);
+      await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
       editProdId = null;
     } else {
-      productos.push({ id: prodId++, ...data });
+      await fetchAPI(API.productos, 'POST', data);
     }
     prodForm.reset();
-    renderResumen();
+    await cargarProductos();
   });
 
-  tablaResumen.addEventListener('click', e => {
+  tablaResumen.addEventListener('click', async e => {
     const id = parseInt(e.target.dataset.id);
     const tipo = e.target.dataset.tipo;
     const accion = e.target.dataset.accion;
@@ -224,16 +256,17 @@ if (vistaActual === 'producto') {
 
     if (accion === 'del') {
       if (tipo === 'producto') {
-        const i = productos.findIndex(p => p.id === id);
-        if (i > -1) productos.splice(i, 1);
+        await fetchAPI(`${API.productos}?id=${id}`, 'DELETE');
+        await cargarProductos();
       } else if (tipo === 'categoria') {
-        const i = categorias.findIndex(c => c.id === id);
-        if (i > -1) categorias.splice(i, 1);
-        actualizarSelectCategorias();
+        await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
+        await cargarCategorias();
+        await cargarSubcategorias();
+        await cargarProductos();
       } else if (tipo === 'subcategoria') {
-        const i = subcategorias.findIndex(sc => sc.id === id);
-        if (i > -1) subcategorias.splice(i, 1);
-        actualizarSelectSubcategorias();
+        await fetchAPI(`${API.subcategorias}?id=${id}`, 'DELETE');
+        await cargarSubcategorias();
+        await cargarProductos();
       }
       renderResumen();
     }
@@ -245,12 +278,12 @@ if (vistaActual === 'producto') {
           mostrar('producto');
           prodForm.prodNombre.value = p.nombre;
           prodForm.prodDescripcion.value = p.descripcion;
-          prodCategoria.value = p.categoriaId || '';
+          prodCategoria.value = p.categoria_id || '';
           actualizarSelectSubcategorias();
-          prodSubcategoria.value = p.subcategoriaId || '';
+          prodSubcategoria.value = p.subcategoria_id || '';
           prodForm.prodDimensiones.value = p.dimensiones;
           prodForm.prodStock.value = p.stock;
-          prodForm.prodPrecio.value = p.precio;
+          prodForm.prodPrecio.value = p.precio_compra;
           editProdId = id;
         }
       } else if (tipo === 'categoria') {
@@ -265,7 +298,7 @@ if (vistaActual === 'producto') {
         const sc = subcategorias.find(s => s.id === id);
         if (sc) {
           mostrar('subcategoria');
-          subcatCategoria.value = sc.categoriaId || '';
+          subcatCategoria.value = sc.categoria_id || '';
           subcatForm.subcatNombre.value = sc.nombre;
           subcatForm.subcatDescripcion.value = sc.descripcion;
           editSubcatId = id;
@@ -273,4 +306,11 @@ if (vistaActual === 'producto') {
       }
     }
   });
+
+  (async function init() {
+    await cargarCategorias();
+    await cargarSubcategorias();
+    await cargarProductos();
+    renderResumen();
+  })();
 })();
