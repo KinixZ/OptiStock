@@ -21,9 +21,24 @@ function getJsonInput() {
     return $data ?: [];
 }
 
+function getEmpresaId($fromQuery = false) {
+    if ($fromQuery && isset($_GET['empresa_id'])) {
+        $id = intval($_GET['empresa_id']);
+        if ($id > 0) return $id;
+    }
+    if (isset($_SESSION['id_empresa'])) {
+        return intval($_SESSION['id_empresa']);
+    }
+    return 0;
+}
+
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    $empresaId = getEmpresaId(true);
+
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
+
     if ($id) {
         if ($empresaId) {
             $stmt = $conn->prepare('SELECT * FROM productos WHERE id = ? AND id_empresa = ?');
@@ -55,7 +70,11 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
     $data = getJsonInput();
+
+    $empresaId = isset($data['empresa_id']) && intval($data['empresa_id']) > 0 ? intval($data['empresa_id']) : getEmpresaId();
+
     $empresaId = isset($data['empresa_id']) ? intval($data['empresa_id']) : 0;
+
     $nombre = $data['nombre'] ?? '';
     $descripcion = $data['descripcion'] ?? '';
     $categoria_id = isset($data['categoria_id']) ? intval($data['categoria_id']) : null;
@@ -76,7 +95,11 @@ if ($method === 'POST') {
 
 if ($method === 'PUT') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    $empresaId = getEmpresaId(true);
+
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
+
     $data = getJsonInput();
     $nombre = $data['nombre'] ?? '';
     $descripcion = $data['descripcion'] ?? '';
@@ -98,7 +121,11 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    $empresaId = getEmpresaId(true);
+
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
+
     if ($empresaId) {
         $stmt = $conn->prepare('DELETE FROM productos WHERE id=? AND id_empresa=?');
         $stmt->bind_param('ii', $id, $empresaId);

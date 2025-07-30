@@ -16,7 +16,10 @@ const AppConfig = {
   }
 };
 
+const empresaId = localStorage.getItem('id_empresa');
+
 const empresaId = localStorage.getItem('id_empresa') || '';
+
 
 // Estado de la aplicación
 const AppState = {
@@ -250,7 +253,12 @@ const DataController = {
     if (!confirm('¿Eliminar esta categoría y todas sus subcategorías?')) return;
 
     try {
+
+      const url = empresaId ? `${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.categorias}?id=${id}`;
+      await AppUtils.fetchAPI(url, 'DELETE');
+
       await AppUtils.fetchAPI(`${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+
       await this.loadCategorias();
       await this.loadSubcategorias();
       await this.loadProductos();
@@ -265,7 +273,12 @@ const DataController = {
     if (!confirm('¿Eliminar esta subcategoría?')) return;
 
     try {
+
+      const url = empresaId ? `${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.subcategorias}?id=${id}`;
+      await AppUtils.fetchAPI(url, 'DELETE');
+
       await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+
       await this.loadSubcategorias();
       await this.loadProductos();
       AppUtils.showAlert('Subcategoría eliminada', 'success');
@@ -279,7 +292,12 @@ const DataController = {
     if (!confirm('¿Eliminar este producto?')) return;
 
     try {
+
+      const urlP = empresaId ? `${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.productos}?id=${id}`;
+      await AppUtils.fetchAPI(urlP, 'DELETE');
+
       await AppUtils.fetchAPI(`${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+
       await this.loadProductos();
       AppUtils.showAlert('Producto eliminado', 'success');
     } catch (error) {
@@ -315,18 +333,28 @@ const FormController = {
 
   async handleCategoria(form) {
     const id = form.querySelector('#categoriaId').value;
-    const data = {
+  const data = {
       nombre: form.querySelector('#categoriaNombre').value,
       descripcion: form.querySelector('#categoriaDesc').value,
       empresa_id: parseInt(empresaId)
     };
+    if (empresaId) data.empresa_id = parseInt(empresaId);
     
     try {
       if (id) {
+
+        const url = empresaId ? `${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.categorias}?id=${id}`;
+        await AppUtils.fetchAPI(url, 'PUT', data);
+        AppUtils.showAlert('Categoría actualizada', 'success');
+      } else {
+        const url = empresaId ? `${AppConfig.API.categorias}?empresa_id=${empresaId}` : AppConfig.API.categorias;
+        await AppUtils.fetchAPI(url, 'POST', data);
+
         await AppUtils.fetchAPI(`${AppConfig.API.categorias}?id=${id}&empresa_id=${empresaId}`, 'PUT', data);
         AppUtils.showAlert('Categoría actualizada', 'success');
       } else {
         await AppUtils.fetchAPI(`${AppConfig.API.categorias}?empresa_id=${empresaId}`, 'POST', data);
+
         AppUtils.showAlert('Categoría creada', 'success');
       }
       
@@ -340,19 +368,29 @@ const FormController = {
 
   async handleSubcategoria(form) {
     const id = form.querySelector('#subcategoriaId').value;
-    const data = {
+  const data = {
       categoria_id: form.querySelector('#subcategoriaCategoria').value,
       nombre: form.querySelector('#subcategoriaNombre').value,
       descripcion: form.querySelector('#subcategoriaDesc').value,
       empresa_id: parseInt(empresaId)
     };
+    if (empresaId) data.empresa_id = parseInt(empresaId);
     
     try {
       if (id) {
+
+        const url = empresaId ? `${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.subcategorias}?id=${id}`;
+        await AppUtils.fetchAPI(url, 'PUT', data);
+        AppUtils.showAlert('Subcategoría actualizada', 'success');
+      } else {
+        const url = empresaId ? `${AppConfig.API.subcategorias}?empresa_id=${empresaId}` : AppConfig.API.subcategorias;
+        await AppUtils.fetchAPI(url, 'POST', data);
+
         await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?id=${id}&empresa_id=${empresaId}`, 'PUT', data);
         AppUtils.showAlert('Subcategoría actualizada', 'success');
       } else {
         await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?empresa_id=${empresaId}`, 'POST', data);
+
         AppUtils.showAlert('Subcategoría creada', 'success');
       }
       
@@ -366,7 +404,7 @@ const FormController = {
 
   async handleProducto(form) {
     const id = form.querySelector('#productoId').value;
-    const data = {
+  const data = {
       nombre: form.querySelector('#productoNombre').value,
       descripcion: form.querySelector('#productoDesc').value,
       categoria_id: form.querySelector('#productoCategoria').value,
@@ -375,13 +413,23 @@ const FormController = {
       precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0'),
       empresa_id: parseInt(empresaId)
     };
+    if (empresaId) data.empresa_id = parseInt(empresaId);
     
     try {
       if (id) {
+
+        const url = empresaId ? `${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}` : `${AppConfig.API.productos}?id=${id}`;
+        await AppUtils.fetchAPI(url, 'PUT', data);
+        AppUtils.showAlert('Producto actualizado', 'success');
+      } else {
+        const url = empresaId ? `${AppConfig.API.productos}?empresa_id=${empresaId}` : AppConfig.API.productos;
+        await AppUtils.fetchAPI(url, 'POST', data);
+
         await AppUtils.fetchAPI(`${AppConfig.API.productos}?id=${id}&empresa_id=${empresaId}`, 'PUT', data);
         AppUtils.showAlert('Producto actualizado', 'success');
       } else {
         await AppUtils.fetchAPI(`${AppConfig.API.productos}?empresa_id=${empresaId}`, 'POST', data);
+
         AppUtils.showAlert('Producto creado', 'success');
       }
       
@@ -541,51 +589,6 @@ const ExportController = {
   }
 };
 
-
-function exportarExcel() {
-  const tabla = document.createElement('table');
-  const header = ['Nombre', 'Stock', 'Precio'];
-  const thead = tabla.createTHead();
-  const hRow = thead.insertRow();
-  header.forEach(t => { const th = document.createElement('th'); th.textContent = t; hRow.appendChild(th); });
-  const tbody = tabla.createTBody();
-  productos.forEach(p => {
-    const r = tbody.insertRow();
-    r.insertCell().textContent = p.nombre;
-    r.insertCell().textContent = p.stock;
-    r.insertCell().textContent = p.precio_compra;
-  });
-  const wb = XLSX.utils.table_to_book(tabla, { sheet: 'Productos' });
-  XLSX.writeFile(wb, 'inventario.xlsx');
-}
-
-function exportarPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  const rows = productos.map(p => [p.nombre, p.stock, p.precio_compra]);
-  doc.text('Inventario', 14, 16);
-  doc.autoTable({ head: [['Nombre','Stock','Precio']], body: rows, startY: 22, styles: { fontSize: 10 } });
-  doc.save('inventario.pdf');
-}
-
-// Búsquedas y exportaciones
-['buscarCategoria','buscarSubcategoria','buscarProducto'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', () => {
-    renderCategorias();
-    renderSubcategorias();
-    renderProductos();
-  });
-});
-
-document.getElementById('exportarExcel').addEventListener('click', exportarExcel);
-document.getElementById('exportarPDF').addEventListener('click', exportarPDF);
-
-(async function(){
-  await cargarCategorias();
-  await cargarSubcategorias();
-  await cargarProductos();
-})();
 
 // Controlador de búsquedas
 const SearchController = {
