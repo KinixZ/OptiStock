@@ -41,11 +41,10 @@ if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOA
 }
 
 // Insertar los datos en la base de datos
-$sql = "INSERT INTO empresa (nombre_empresa, logo_empresa, sector_empresa, usuario_creador) 
-        VALUES (?, ?, ?, ?)";
+$sql = "INSERT INTO empresa (nombre_empresa, logo_empresa, sector_empresa, usuario_creador)"
+        . " VALUES (?, ?, ?, ?)";
 $stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "sssi", $nombre_empresa, $logo_empresa, $sector_empresa, $usuario_creador);
-
 if (mysqli_stmt_execute($stmt)) {
     echo json_encode(["success" => true, "message" => "Empresa registrada con éxito"]);
 } else {
