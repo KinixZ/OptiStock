@@ -69,38 +69,41 @@
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
 
-    if (vistaActual === 'producto') {
-      tablaHead.innerHTML = `
-        <tr>
-          <th>Nombre</th>
-          <th>Descripción</th>
-          <th>Categoría</th>
-          <th>Subcategoría</th>
-          <th>Dimensiones</th>
-          <th>Stock</th>
-          <th>Precio compra</th>
-          <th>Acciones</th>
-        </tr>`;
-      productos.forEach(p => {
-        const cat = categorias.find(c => c.id === p.categoriaId)?.nombre || '';
-        const sub = subcategorias.find(s => s.id === p.subcategoriaId)?.nombre || '';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${p.nombre}</td>
-          <td>${p.descripcion}</td>
-          <td>${cat}</td>
-          <td>${sub}</td>
-          <td>${p.dimensiones}</td>
-          <td>${p.stock}</td>
-          <td>${p.precio}</td>
-          <td>
-            <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="producto" data-id="${p.id}">Editar</button>
-            <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="producto" data-id="${p.id}">Eliminar</button>
-          </td>
-        `;
-        tablaResumen.appendChild(tr);
-      });
-    } else if (vistaActual === 'categoria') {
+if (vistaActual === 'producto') {
+  tablaHead.innerHTML = `
+    <tr>
+      <th>Imagen</th>
+      <th>Nombre</th>
+      <th>Descripción</th>
+      <th>Categoría</th>
+      <th>Subcategoría</th>
+      <th>Dimensiones</th>
+      <th>Stock</th>
+      <th>Precio compra</th>
+      <th>Acciones</th>
+    </tr>`;
+
+  productos.forEach(p => {
+    const cat = categorias.find(c => c.id === p.categoriaId)?.nombre || '';
+    const sub = subcategorias.find(s => s.id === p.subcategoriaId)?.nombre || '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail">` : ''}</td>
+      <td>${p.nombre}</td>
+      <td>${p.descripcion}</td>
+      <td>${cat}</td>
+      <td>${sub}</td>
+      <td>${p.dimensiones}</td>
+      <td>${p.stock}</td>
+      <td>${p.precio}</td>
+      <td>
+        <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="producto" data-id="${p.id}">Editar</button>
+        <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="producto" data-id="${p.id}">Eliminar</button>
+      </td>
+    `;
+    tablaResumen.appendChild(tr);
+  });
+} else if (vistaActual === 'categoria') {
       tablaHead.innerHTML = `
         <tr>
           <th>Nombre</th>
