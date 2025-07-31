@@ -1,80 +1,95 @@
 <?php
-header('Content-Type: application/json');
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// registro.php
+// -------------------------------------------------
+// 1) Conexión a la base de datos
+require 'db_connection.php';  // Ajusta la ruta si es necesario
 
-$response = ["success" => false, "message" => ""]; // Respuesta inicial
-
-try {
-    // 1. Leer datos del formulario
-    $data = json_decode(file_get_contents("php://input"), true);
-
-    $nombre = $data['nombre'] ?? null;
-    $apellido = $data['apellido'] ?? null;
-    $fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
-    $telefono = $data['telefono'] ?? null;
-    $correo = $data['correo'] ?? null;
-    $contrasena = $data['contrasena'] ?? null;
-
-    // 2. Validar datos mínimos
-    if (!$nombre || !$apellido || !$fecha_nacimiento || !$telefono || !$correo || !$contrasena) {
-        throw new Exception("Datos incompletos");
-    }
-
-    // 3. Conectarse a la base de datos
-    $servername = "localhost";
-    $db_user    = "u296155119_Admin";
-    $db_pass    = "4Dmin123o";
-    $database   = "u296155119_OptiStock";
-
-    $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
-    if (!$conn) {
-        throw new Exception("Error de conexión: " . mysqli_connect_error());
-    }
-
-    // 4. Cifrar la contraseña
-    $contrasena_hash = sha1($contrasena);
-
-    // 5. Preparar la consulta SQL
-    $sql = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena)
-            VALUES (?, ?, ?, ?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "ssssss", $nombre, $apellido, $fecha_nacimiento, $telefono, $correo, $contrasena_hash);
-
-    // 6. Ejecutar la consulta
-    if (!mysqli_stmt_execute($stmt)) {
-        throw new Exception("Error al registrar el usuario: " . mysqli_error($conn));
-    }
-
-    // 7. Generar código de verificación
-    $codigo_verificacion = mt_rand(100000, 999999);
-    session_start();
-    $_SESSION['codigo_verificacion'] = $codigo_verificacion;
-    $_SESSION['correo_verificacion'] = $correo;
-
-    // 8. Enviar el correo
-    $mail_subject = "OPTISTOCK - Codigo de Verificación";
-    $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
-    $mail_headers = "From: no-reply@optistock.site";
-
-    if (!mail($correo, $mail_subject, $mail_message, $mail_headers)) {
-        throw new Exception("Error al enviar el correo de verificación.");
-    }
-
-    // Respuesta de éxito
-    $response["success"] = true;
-    $response["message"] = "Usuario registrado correctamente. Se ha enviado un código de verificación a tu correo.";
-
-} catch (Exception $e) {
-    // Capturar errores y enviar respuesta
-    $response["success"] = false;
-    $response["message"] = $e->getMessage();
-} finally {
-    // Cerrar la conexión si existe
-    if (isset($conn) && $conn) {
-        mysqli_close($conn);
-    }
-    // Enviar la respuesta JSON
-    echo json_encode($response);
+// 2) Helpers de validación
+function validar_password($pwd) {
+    // Mínimo 8 chars, 1 mayúscula, 1 número y 1 caracter especial
+    return preg_match('/^(?=.*[A-Z])(?=.*\d)(?=.*\W).{8,}$/', $pwd);
 }
-?>
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 3) Recoger y sanitizar
+    $nombre            = trim($_POST['nombre']);
+    $apellido          = trim($_POST['apellido']);
+    $fecha_nacimiento  = $_POST['fecha_nacimiento'];
+    $telefono          = trim($_POST['telefono']);
+    $correo            = filter_var($_POST['correo'], FILTER_VALIDATE_EMAIL);
+    $contrasena        = $_POST['contrasena'];
+    $confirmPassword   = $_POST['confirmPassword'];
+    $role_id           = intval($_POST['role_id']);
+    $plan_id           = intval($_POST['plan_id']);
+
+    // 4) Validaciones básicas
+    $errores = [];
+    if (!$correo) {
+        $errores[] = "Correo inválido.";
+    }
+    if (!validar_password($contrasena)) {
+        $errores[] = "Contraseña no cumple requisitos de seguridad.";
+    }
+    if ($contrasena !== $confirmPassword) {
+        $errores[] = "Las contraseñas no coinciden.";
+    }
+    // Si hay errores, puedes redirigir o mostrar
+    if (count($errores) > 0) {
+        foreach ($errores as $e) {
+            echo "<p style='color:red;'>• $e</p>";
+        }
+        exit;
+    }
+
+    // 5) Procesar foto de perfil (opcional)
+    $foto_destino = 'images/profile.jpg';  // valor por defecto
+    if (
+        isset($_FILES['profilePicture']) &&
+        $_FILES['profilePicture']['error'] === UPLOAD_ERR_OK
+    ) {
+        $ext = pathinfo($_FILES['profilePicture']['name'], PATHINFO_EXTENSION);
+        $nuevoNombre = uniqid('profile_') . "." . $ext;
+        $directorio = __DIR__ . '/../../images/profiles/'; 
+        if (!is_dir($directorio)) {
+            mkdir($directorio, 0755, true);
+        }
+        $fullPath = $directorio . $nuevoNombre;
+        if (move_uploaded_file($_FILES['profilePicture']['tmp_name'], $fullPath)) {
+            $foto_destino = 'images/profiles/' . $nuevoNombre;
+        }
+    }
+
+    // 6) Hash de la contraseña
+    $pass_hash = sha1($contrasena);
+
+    // 7) Insertar en la tabla usuario
+    $sql = "INSERT INTO usuario 
+        (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, foto_perfil, role_id, plan_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(
+        "ssssssii",
+        $nombre,
+        $apellido,
+        $fecha_nacimiento,
+        $telefono,
+        $correo,
+        $pass_hash,
+        $foto_destino,
+        $role_id,
+        $plan_id
+    );
+
+    if ($stmt->execute()) {
+        // Éxito: redirigir o mostrar mensaje
+        header('Location: registro_success.php');
+        exit;
+    } else {
+        echo "Error en el registro: " . $stmt->error;
+    }
+
+    // 8) Cerrar
+    $stmt->close();
+    $conn->close();
+}
+?>  
