@@ -32,6 +32,14 @@
     return res.json();
   }
 
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-message';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
   function mostrar(seccion) {
     productoFormContainer.classList.add('d-none');
     categoriaFormContainer.classList.add('d-none');
@@ -56,6 +64,7 @@
   const subcatCategoria = document.getElementById('subcatCategoria');
   const tablaResumen = document.querySelector('#tablaResumen tbody');
   const tablaHead = document.getElementById('tablaHead');
+  const btnRecargarResumen = document.getElementById('btnRecargarResumen');
 
   function actualizarSelectCategorias() {
     [prodCategoria, subcatCategoria].forEach(select => {
@@ -195,8 +204,10 @@ if (vistaActual === 'producto') {
     if (editCatId) {
       await fetchAPI(`${API.categorias}?id=${editCatId}`, 'PUT', data);
       editCatId = null;
+      showToast('Categoría editada correctamente');
     } else {
       await fetchAPI(API.categorias, 'POST', data);
+      showToast('Categoría guardada correctamente');
     }
 
     catForm.reset();
@@ -213,8 +224,10 @@ if (vistaActual === 'producto') {
     if (editSubcatId) {
       await fetchAPI(`${API.subcategorias}?id=${editSubcatId}`, 'PUT', data);
       editSubcatId = null;
+      showToast('Subcategoría editada correctamente');
     } else {
       await fetchAPI(API.subcategorias, 'POST', data);
+      showToast('Subcategoría guardada correctamente');
     }
     subcatForm.reset();
     await cargarSubcategorias();
@@ -233,7 +246,7 @@ if (vistaActual === 'producto') {
       descripcion: prodForm.prodDescripcion.value,
       categoria_id,
       subcategoria_id,
-      dimensiones: prodForm.prodDimensiones.value,
+      dimensiones: `${prodForm.prodDimX.value}x${prodForm.prodDimY.value}x${prodForm.prodDimZ.value}`,
       stock: parseInt(prodForm.prodStock.value) || 0,
       precio_compra: parseFloat(prodForm.prodPrecio.value) || 0
     };
@@ -241,8 +254,10 @@ if (vistaActual === 'producto') {
     if (editProdId) {
       await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
       editProdId = null;
+      showToast('Producto editado correctamente');
     } else {
       await fetchAPI(API.productos, 'POST', data);
+      showToast('Producto guardado correctamente');
     }
     prodForm.reset();
     await cargarProductos();
@@ -281,7 +296,10 @@ if (vistaActual === 'producto') {
           prodCategoria.value = p.categoria_id || '';
           actualizarSelectSubcategorias();
           prodSubcategoria.value = p.subcategoria_id || '';
-          prodForm.prodDimensiones.value = p.dimensiones;
+          const dims = (p.dimensiones || '').split('x');
+          prodForm.prodDimX.value = dims[0] || '';
+          prodForm.prodDimY.value = dims[1] || '';
+          prodForm.prodDimZ.value = dims[2] || '';
           prodForm.prodStock.value = p.stock;
           prodForm.prodPrecio.value = p.precio_compra;
           editProdId = id;
@@ -305,6 +323,14 @@ if (vistaActual === 'producto') {
         }
       }
     }
+  });
+
+  btnRecargarResumen?.addEventListener('click', async () => {
+    await cargarCategorias();
+    await cargarSubcategorias();
+    await cargarProductos();
+    renderResumen();
+    showToast('Resumen recargado');
   });
 
   (async function init() {
