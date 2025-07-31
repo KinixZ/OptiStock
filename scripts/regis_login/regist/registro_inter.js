@@ -39,6 +39,20 @@ function verifyCode(email, code) {
         },
         body: JSON.stringify({ email: email, code: code })
     })
+
+    .then(response => response.text().then(text => {
+        if (!response.ok) {
+            console.error('Respuesta del servidor:', text);
+            throw new Error('HTTP ' + response.status);
+        }
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Respuesta no válida:', text);
+            throw e;
+        }
+    }))
+
     .then(response => {
         return response.text().then(text => {
             if (!response.ok) {
@@ -72,6 +86,10 @@ function verifyCode(email, code) {
             window.location.href = '../../main_menu/main_menu.html';
 
 
+            // Redirigir al menú principal
+            window.location.href = '../../main_menu/main_menu.html';
+
+
             // Redirigir a la página de registro de empresa
             window.location.href = 'regist_empresa.html';
 
@@ -81,6 +99,7 @@ function verifyCode(email, code) {
 
             // Redirigir directamente al menú principal
             window.location.href = '../../main_menu/main_menu.html';
+
         } else {
             alert(data.message);  // Si hubo un error, mostramos el mensaje de error
         }
