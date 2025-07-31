@@ -1,5 +1,17 @@
-document.getElementById('registerForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('user_id');
+    const email = params.get('email');
+
+    if (uid) {
+        localStorage.setItem('usuario_id', uid);
+    }
+    if (email) {
+        sessionStorage.setItem('email', email);
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
 
     // Obtener el ID del usuario desde localStorage
     const usuario_id = localStorage.getItem('usuario_id');
@@ -28,7 +40,8 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
         console.log(data);  // Ver el contenido de la respuesta JSON en la consola
         if (data.success) {
             alert('Empresa registrada con éxito');
-            window.location.href = '../../main_menu/main_menu.html'; // Redirigir al menú principal
+            const mail = sessionStorage.getItem('email');
+            window.location.href = 'regist_inter.html?email=' + encodeURIComponent(mail);
         } else {
             alert('Hubo un error al registrar la empresa: ' + data.message);
         }
@@ -37,4 +50,5 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
         console.error('Error:', error); // Si ocurre un error con la solicitud
         alert('Error en la solicitud');
     });
+});
 });

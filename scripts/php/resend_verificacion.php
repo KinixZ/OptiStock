@@ -41,4 +41,3 @@ try {
 } finally {
     echo json_encode($response);
 }
-?>
