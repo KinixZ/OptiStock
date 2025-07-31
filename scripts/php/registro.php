@@ -6,19 +6,18 @@ error_reporting(E_ALL);
 // registro.php
 // -------------------------------------------------
 // 1) Conexión a la base de datos
-require 'db_connection.php';  // Ajusta la ruta si es necesario
 header('Content-Type: application/json');
 
-// ——— Conexión a la base de datos (idéntica a registro_usuario_empresa.php) ———
+// Conexión a la base de datos
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
 $database   = "u296155119_OptiStock";
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
-+
-+if (!$conn) {
-+    die("Error de conexión: " . mysqli_connect_error());
-+}
+
+if (!$conn) {
+    die("Error de conexión: " . mysqli_connect_error());
+}
 // 2) Helpers de validación
 function validar_password($pwd) {
     // Mínimo 8 chars, 1 mayúscula, 1 número y 1 caracter especial
@@ -83,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
-        "ssssssii",
+        "sssssssii",
         $nombre,
         $apellido,
         $fecha_nacimiento,
@@ -99,14 +98,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "Error en la preparación de la consulta: " . $conn->error;
         exit;
     }
+
+    $stmt->execute();
     if ($stmt->affected_rows > 0) {
         // Redirigir a la página de verificación
         header(
-            'Location: ../../regist_inter.html'
+            'Location: ../../pages/regis_login/regist/regist_inter.html'
             . '?email=' . urlencode($correo)
         );
-exit;
-    } 
+        exit;
+    }
     else {
         echo "Error en el registro: " . $stmt->error;
     }
