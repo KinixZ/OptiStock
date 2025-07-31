@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // registro.php
 // -------------------------------------------------
 // 1) Conexión a la base de datos
@@ -91,14 +95,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $plan_id
     );
 
-    if ($stmt->execute()) {
-        // Éxito: redirigir o mostrar mensaje
+    if (!$stmt) {
+        echo "Error en la preparación de la consulta: " . $conn->error;
+        exit;
+    }
+    if ($stmt->affected_rows > 0) {
+        // Redirigir a la página de verificación
         header(
-    'Location: ../pages/regis_login/regist/regist_inter.html'
-  . '?email=' . urlencode($correo)
-);
+            'Location: ../../regist_inter.html'
+            . '?email=' . urlencode($correo)
+        );
 exit;
-    } else {
+    } 
+    else {
         echo "Error en el registro: " . $stmt->error;
     }
 
