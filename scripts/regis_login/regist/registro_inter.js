@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (email) {
         // Si hay un correo válido, lo mostramos en la página
         document.getElementById('email').textContent = email;
+        // Enviar el código de verificación automáticamente
+        resendVerificationEmail(email);
     } else {
         alert("No se pudo verificar el correo. Intenta nuevamente.");
         window.location.href = "../login/login.html"; // Redirigir al registro si no hay correo
@@ -37,11 +39,36 @@ function verifyCode(email, code) {
         },
         body: JSON.stringify({ email: email, code: code })
     })
-    .then(response => response.json())
+    .then(response => {
+        return response.text().then(text => {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Respuesta no válida:', text);
+                throw e;
+            }
+        });
+    })
     .then(data => {
         if (data.success) {
-            // Si la verificación fue exitosa, redirigir al siguiente paso
-            window.location.href = `../../main_menu/main_menu.html?email=${encodeURIComponent(email)}`;
+            // Guardar la sesión en localStorage para que el menú principal la detecte
+            localStorage.setItem('usuario_id', data.id_usuario);
+            localStorage.setItem('usuario_nombre', data.nombre);
+            localStorage.setItem('usuario_email', data.correo);
+            localStorage.setItem('usuario_rol', data.rol);
+
+            if (data.id_empresa) {
+                localStorage.setItem('id_empresa', data.id_empresa);
+            }
+            if (data.empresa_nombre) {
+                localStorage.setItem('empresa_nombre', data.empresa_nombre);
+            }
+
+            // Redirigir a la página de registro de empresa
+            window.location.href = 'regist_empresa.html';
         } else {
             alert(data.message);  // Si hubo un error, mostramos el mensaje de error
         }
