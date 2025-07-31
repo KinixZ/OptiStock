@@ -3,7 +3,18 @@
 // -------------------------------------------------
 // 1) Conexión a la base de datos
 require 'db_connection.php';  // Ajusta la ruta si es necesario
+header('Content-Type: application/json');
 
+// ——— Conexión a la base de datos (idéntica a registro_usuario_empresa.php) ———
+$servername = "localhost";
+$db_user    = "u296155119_Admin";
+$db_pass    = "4Dmin123o";
+$database   = "u296155119_OptiStock";
+$conn = mysqli_connect($servername, $db_user, $db_pass, $database);
++
++if (!$conn) {
++    die("Error de conexión: " . mysqli_connect_error());
++}
 // 2) Helpers de validación
 function validar_password($pwd) {
     // Mínimo 8 chars, 1 mayúscula, 1 número y 1 caracter especial
@@ -82,8 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($stmt->execute()) {
         // Éxito: redirigir o mostrar mensaje
-        header('Location: registro_success.php');
-        exit;
+        header(
+    'Location: ../pages/regis_login/regist/regist_inter.html'
+  . '?email=' . urlencode($correo)
+);
+exit;
     } else {
         echo "Error en el registro: " . $stmt->error;
     }
