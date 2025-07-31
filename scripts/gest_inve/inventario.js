@@ -364,6 +364,7 @@ const FormController = {
       descripcion: form.querySelector('#productoDesc').value,
       categoria_id: form.querySelector('#productoCategoria').value,
       subcategoria_id: form.querySelector('#productoSubcategoria').value,
+      dimensiones: `${form.querySelector('#productoDimX').value}x${form.querySelector('#productoDimY').value}x${form.querySelector('#productoDimZ').value}`,
       stock: parseInt(form.querySelector('#productoStock').value || '0'),
       precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0')
     };
@@ -424,6 +425,10 @@ const FormController = {
     form.querySelector('#productoDesc').value = item.descripcion || '';
     form.querySelector('#productoCategoria').value = item.categoria_id || '';
     form.querySelector('#productoSubcategoria').value = item.subcategoria_id || '';
+    const dims = (item.dimensiones || '').split('x');
+    form.querySelector('#productoDimX').value = dims[0] || '';
+    form.querySelector('#productoDimY').value = dims[1] || '';
+    form.querySelector('#productoDimZ').value = dims[2] || '';
     form.querySelector('#productoStock').value = item.stock;
     form.querySelector('#productoPrecio').value = item.precio_compra;
     

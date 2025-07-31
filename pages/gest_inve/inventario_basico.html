@@ -21,8 +21,14 @@
         <div class="col-md-6">
           <input type="text" id="prodNombre" class="form-control" placeholder="Nombre del producto" required>
         </div>
-        <div class="col-md-6">
-          <input type="text" id="prodDimensiones" class="form-control" placeholder="Dimensiones">
+        <div class="col-md-2">
+          <input type="number" id="prodDimX" class="form-control" placeholder="X" step="0.01" min="0">
+        </div>
+        <div class="col-md-2">
+          <input type="number" id="prodDimY" class="form-control" placeholder="Y" step="0.01" min="0">
+        </div>
+        <div class="col-md-2">
+          <input type="number" id="prodDimZ" class="form-control" placeholder="Z" step="0.01" min="0">
         </div>
       </div>
       <div class="row mb-2">
@@ -39,10 +45,10 @@
       </div>
       <div class="row mb-2">
         <div class="col-md-6">
-          <input type="number" id="prodStock" class="form-control" placeholder="Stock inicial" min="0" value="0">
+          <input type="number" id="prodStock" class="form-control" placeholder="Stock inicial" min="0">
         </div>
         <div class="col-md-6">
-          <input type="number" id="prodPrecio" class="form-control" placeholder="Precio de compra" min="0" step="0.01" value="0">
+          <input type="number" id="prodPrecio" class="form-control" placeholder="Precio de compra" min="0" step="0.01">
         </div>
       </div>
       <div class="mb-2">
@@ -87,6 +93,7 @@
   </div>
 
   <h3>Resumen del inventario</h3>
+  <button id="btnRecargarResumen" class="btn btn-secondary mb-2">Recargar Resumen</button>
   <table class="table" id="tablaResumen">
     <thead id="tablaHead"></thead>
     <tbody></tbody>
