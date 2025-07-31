@@ -40,8 +40,21 @@ function verifyCode(email, code) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Si la verificación fue exitosa, redirigir al siguiente paso
-            window.location.href = `../../main_menu/main_menu.html?email=${encodeURIComponent(email)}`;
+            // Guardar la sesión en localStorage para que el menú principal la detecte
+            localStorage.setItem('usuario_id', data.id_usuario);
+            localStorage.setItem('usuario_nombre', data.nombre);
+            localStorage.setItem('usuario_email', data.correo);
+            localStorage.setItem('usuario_rol', data.rol);
+
+            if (data.id_empresa) {
+                localStorage.setItem('id_empresa', data.id_empresa);
+            }
+            if (data.empresa_nombre) {
+                localStorage.setItem('empresa_nombre', data.empresa_nombre);
+            }
+
+            // Redirigir directamente al menú principal
+            window.location.href = '../../main_menu/main_menu.html';
         } else {
             alert(data.message);  // Si hubo un error, mostramos el mensaje de error
         }
