@@ -13,9 +13,9 @@ const client = new OAuth2Client(CLIENT_ID);
 
 // Configuración de la base de datos
 const db = mysql.createConnection({
-    host: 'optistock.site',
-    user: 'u296155119_Admin	',
-    password: 'admin123',
+    host: 'localhost',
+    user: 'u296155119_Admin',
+    password: '4Dmin123o',
     database: 'u296155119_OptiStock',
 });
 
