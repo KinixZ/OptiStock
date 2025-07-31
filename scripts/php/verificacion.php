@@ -1,5 +1,6 @@
 <?php
 session_start(); // Iniciar la sesión
+header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -87,4 +88,3 @@ if (isset($data['email']) && isset($data['code'])) {
 } else {
     echo json_encode(["success" => false, "message" => "Datos no válidos."]);
 }
-?>
