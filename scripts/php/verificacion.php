@@ -1,5 +1,10 @@
 <?php
 
+session_start();
+header('Content-Type: application/json');
+
+
+
 session_start(); // Iniciar la sesión
 
 header('Content-Type: application/json');
@@ -84,6 +89,7 @@ try {
     if (isset($conn) && $conn instanceof mysqli) {
         $conn->close();
 
+
     $code = $data['code'];
 
     // Verificar si el código ingresado es correcto y si el correo coincide con el guardado en la sesión
@@ -162,6 +168,7 @@ try {
         mysqli_close($conn);
     } else {
         echo json_encode(["success" => false, "message" => "El código de verificación es incorrecto o ha expirado."]);
+
 
     }
     echo json_encode($response);
