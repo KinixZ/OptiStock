@@ -215,6 +215,7 @@ const DataController = {
         </div>
         <div class="item-details">
           Stock: ${p.stock} | Precio: $${p.precio_compra.toFixed(2)}
+          ${p.dim_x ? `<br>Dimensiones: ${p.dim_x}x${p.dim_y}x${p.dim_z}` : ''}
           ${cat ? `<br>Categoría: ${cat.nombre}` : ''}
           ${subcat ? ` > ${subcat.nombre}` : ''}
         </div>
@@ -365,7 +366,10 @@ const FormController = {
       categoria_id: form.querySelector('#productoCategoria').value,
       subcategoria_id: form.querySelector('#productoSubcategoria').value,
       stock: parseInt(form.querySelector('#productoStock').value || '0'),
-      precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0')
+      precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0'),
+      dim_x: parseFloat(form.querySelector('#productoDimX').value || '0'),
+      dim_y: parseFloat(form.querySelector('#productoDimY').value || '0'),
+      dim_z: parseFloat(form.querySelector('#productoDimZ').value || '0')
     };
     
     try {
@@ -426,6 +430,9 @@ const FormController = {
     form.querySelector('#productoSubcategoria').value = item.subcategoria_id || '';
     form.querySelector('#productoStock').value = item.stock;
     form.querySelector('#productoPrecio').value = item.precio_compra;
+    form.querySelector('#productoDimX').value = item.dim_x || '';
+    form.querySelector('#productoDimY').value = item.dim_y || '';
+    form.querySelector('#productoDimZ').value = item.dim_z || '';
     
     // Cambiar a pestaña de productos
     TabController.switchTab('productos');
@@ -601,6 +608,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     FormController.initForms();
     ExportController.init();
     SearchController.init();
+
+    document.getElementById('recargarResumen')?.addEventListener('click', async () => {
+      await DataController.loadCategorias();
+      await DataController.loadSubcategorias();
+      await DataController.loadProductos();
+    });
     
     await DataController.loadCategorias();
     await DataController.loadSubcategorias();
