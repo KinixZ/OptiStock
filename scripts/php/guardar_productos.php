@@ -47,13 +47,16 @@ if ($method === 'POST') {
     $subcategoria_id = isset($data['subcategoria_id']) ? intval($data['subcategoria_id']) : null;
     $stock = intval($data['stock'] ?? 0);
     $precio = floatval($data['precio_compra'] ?? 0);
+    $dim_x = isset($data['dim_x']) ? floatval($data['dim_x']) : null;
+    $dim_y = isset($data['dim_y']) ? floatval($data['dim_y']) : null;
+    $dim_z = isset($data['dim_z']) ? floatval($data['dim_z']) : null;
     if (!$nombre) {
         http_response_code(400);
         echo json_encode(['error' => 'Nombre requerido']);
         exit;
     }
-    $stmt = $conn->prepare('INSERT INTO productos (nombre, descripcion, categoria_id, subcategoria_id, stock, precio_compra) VALUES (?, ?, ?, ?, ?, ?)');
-    $stmt->bind_param('ssiiid', $nombre, $descripcion, $categoria_id, $subcategoria_id, $stock, $precio);
+    $stmt = $conn->prepare('INSERT INTO productos (nombre, descripcion, categoria_id, subcategoria_id, stock, precio_compra, dim_x, dim_y, dim_z) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->bind_param('ssiiidddd', $nombre, $descripcion, $categoria_id, $subcategoria_id, $stock, $precio, $dim_x, $dim_y, $dim_z);
     $stmt->execute();
     echo json_encode(['id' => $stmt->insert_id]);
     exit;
@@ -68,8 +71,11 @@ if ($method === 'PUT') {
     $subcategoria_id = isset($data['subcategoria_id']) ? intval($data['subcategoria_id']) : null;
     $stock = intval($data['stock'] ?? 0);
     $precio = floatval($data['precio_compra'] ?? 0);
-    $stmt = $conn->prepare('UPDATE productos SET nombre=?, descripcion=?, categoria_id=?, subcategoria_id=?, stock=?, precio_compra=? WHERE id=?');
-    $stmt->bind_param('ssiiidi', $nombre, $descripcion, $categoria_id, $subcategoria_id, $stock, $precio, $id);
+    $dim_x = isset($data['dim_x']) ? floatval($data['dim_x']) : null;
+    $dim_y = isset($data['dim_y']) ? floatval($data['dim_y']) : null;
+    $dim_z = isset($data['dim_z']) ? floatval($data['dim_z']) : null;
+    $stmt = $conn->prepare('UPDATE productos SET nombre=?, descripcion=?, categoria_id=?, subcategoria_id=?, stock=?, precio_compra=?, dim_x=?, dim_y=?, dim_z=? WHERE id=?');
+    $stmt->bind_param('ssiiiddddi', $nombre, $descripcion, $categoria_id, $subcategoria_id, $stock, $precio, $dim_x, $dim_y, $dim_z, $id);
     $stmt->execute();
     echo json_encode(['success' => $stmt->affected_rows > 0]);
     exit;
