@@ -24,13 +24,53 @@ if (isset($data['email']) && isset($data['code'])) {
 
         // 1. Actualizar la verificación de la cuenta en la base de datos
         $sql = "UPDATE usuario SET verificacion_cuenta = 1 WHERE correo = ?";
-        
+
         $stmt = mysqli_prepare($conn, $sql);
         mysqli_stmt_bind_param($stmt, "s", $email);
 
         if (mysqli_stmt_execute($stmt)) {
-            // Si la actualización es exitosa, devolver éxito
-            echo json_encode(["success" => true, "message" => "Tu cuenta ha sido verificada exitosamente."]);
+            // 2. Obtener datos del usuario para iniciar la sesión automáticamente
+            $sqlUser = "SELECT id_usuario, nombre, rol FROM usuario WHERE correo = ? LIMIT 1";
+            $stmtUser = mysqli_prepare($conn, $sqlUser);
+            mysqli_stmt_bind_param($stmtUser, "s", $email);
+            mysqli_stmt_execute($stmtUser);
+            $resUser = mysqli_stmt_get_result($stmtUser);
+
+            if ($user = mysqli_fetch_assoc($resUser)) {
+                // Empresa asociada si existe
+                $id_empresa = null;
+                $empresa_nombre = null;
+                $qEmp = "SELECT id_empresa, nombre_empresa FROM empresa WHERE usuario_creador = ? LIMIT 1";
+                $sEmp = mysqli_prepare($conn, $qEmp);
+                mysqli_stmt_bind_param($sEmp, "i", $user['id_usuario']);
+                mysqli_stmt_execute($sEmp);
+                $rEmp = mysqli_stmt_get_result($sEmp);
+                if ($e = mysqli_fetch_assoc($rEmp)) {
+                    $id_empresa = $e['id_empresa'];
+                    $empresa_nombre = $e['nombre_empresa'];
+                }
+
+                // Guardar datos de sesión
+                $_SESSION['usuario_id']     = $user['id_usuario'];
+                $_SESSION['usuario_nombre'] = $user['nombre'];
+                $_SESSION['usuario_correo'] = $email;
+                $_SESSION['usuario_rol']    = $user['rol'];
+                $_SESSION['id_empresa']     = $id_empresa;
+                $_SESSION['empresa_nombre'] = $empresa_nombre;
+
+                echo json_encode([
+                    "success"        => true,
+                    "message"        => "Tu cuenta ha sido verificada exitosamente.",
+                    "id_usuario"     => $user['id_usuario'],
+                    "nombre"         => $user['nombre'],
+                    "correo"         => $email,
+                    "rol"            => $user['rol'],
+                    "id_empresa"     => $id_empresa,
+                    "empresa_nombre" => $empresa_nombre
+                ]);
+            } else {
+                echo json_encode(["success" => false, "message" => "No se pudo obtener la información del usuario."]);
+            }
         } else {
             echo json_encode(["success" => false, "message" => "Error al verificar la cuenta."]);
         }
