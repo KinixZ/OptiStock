@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (email) {
         // Si hay un correo válido, lo mostramos en la página
         document.getElementById('email').textContent = email;
+        // Enviar el código de verificación automáticamente
+        resendVerificationEmail(email);
     } else {
         alert("No se pudo verificar el correo. Intenta nuevamente.");
         window.location.href = "../login/login.html"; // Redirigir al registro si no hay correo
@@ -53,8 +55,13 @@ function verifyCode(email, code) {
                 localStorage.setItem('empresa_nombre', data.empresa_nombre);
             }
 
+
+            // Redirigir a la página de registro de empresa
+            window.location.href = 'regist_empresa.html';
+
             // Redirigir directamente al menú principal
             window.location.href = '../../main_menu/main_menu.html';
+
         } else {
             alert(data.message);  // Si hubo un error, mostramos el mensaje de error
         }
