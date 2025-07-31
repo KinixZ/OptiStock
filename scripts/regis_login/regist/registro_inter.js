@@ -19,6 +19,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (email) {
         console.log("Mostrando email en la interfaz:", email);
         document.getElementById('email').textContent = email;
+
+        // Enviar el código de verificación automáticamente
+
         
         // Mostrar código de sesión para debug (solo desarrollo)
         console.log("SessionStorage actual:", JSON.stringify(sessionStorage));
@@ -46,6 +49,32 @@ document.addEventListener("DOMContentLoaded", function () {
         verifyCode(email, verificationCode);
     });
 });
+
+
+function verifyCode(email, code) {
+    fetch('../../../scripts/php/verificacion.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email: email, code: code })
+    })
+    .then(response => response.text().then(text => {
+        if (!response.ok) {
+            console.error('Respuesta del servidor:', text);
+            throw new Error('HTTP ' + response.status);
+        }
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Respuesta no válida:', text);
+            throw e;
+        }
+    }))
+    .then(data => {
+        if (data.success) {
+            // Guardar la sesión en localStorage para que el menú principal la detecte
 
 async function verifyCode(email, code) {
     console.log("Iniciando verificación para:", email);
@@ -89,10 +118,23 @@ async function verifyCode(email, code) {
             console.log("Verificación exitosa. Datos recibidos:", data);
             
             // Guardar datos en localStorage
+
             localStorage.setItem('usuario_id', data.id_usuario);
             localStorage.setItem('usuario_nombre', data.nombre);
             localStorage.setItem('usuario_email', data.correo);
             localStorage.setItem('usuario_rol', data.rol);
+
+
+            if (data.id_empresa) {
+                localStorage.setItem('id_empresa', data.id_empresa);
+            }
+            if (data.empresa_nombre) {
+                localStorage.setItem('empresa_nombre', data.empresa_nombre);
+            }
+
+            // Redirigir al menú principal
+            window.location.href = '../../main_menu/main_menu.html';
+
             
             if (data.id_empresa) {
                 localStorage.setItem('id_empresa', data.id_empresa);
@@ -105,6 +147,7 @@ async function verifyCode(email, code) {
             } else {
                 window.location.href = 'regist_empresa.html';
             }
+
         } else {
             console.error("Error en la verificación:", data.message);
             alert(`Error: ${data.message}\n\nDetalles: ${JSON.stringify(data.debug || {}, null, 2)}`);
@@ -127,6 +170,19 @@ async function verifyCode(email, code) {
     }
 }
 
+
+function resendVerificationEmail(email) {
+    fetch('../../../scripts/php/resend_verificacion.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+
 async function resendVerificationEmail(email) {
     console.log("Solicitando reenvío de código para:", email);
     
@@ -145,6 +201,7 @@ async function resendVerificationEmail(email) {
         const data = await response.json();
         console.log("Respuesta de reenvío:", data);
         
+
         if (data.success) {
             alert("Se ha enviado un nuevo código de verificación a tu correo.");
             
