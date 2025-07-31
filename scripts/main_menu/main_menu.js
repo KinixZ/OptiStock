@@ -377,7 +377,7 @@ document.addEventListener('movimientoNoAutorizado', e => {
     notifyUnauthorizedMovement(e.detail || 'Movimiento no autorizado detectado');
 });
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     requestPushPermission();
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
@@ -429,12 +429,33 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Verificación empresa
-    const userId = localStorage.getItem('usuario_id');
+    // Verificación empresa y restauración de sesión si es necesario
+    let userId = localStorage.getItem('usuario_id');
     if (!userId) {
-        alert("No hay sesión activa.");
-        window.location.href = "../../pages/regis_login/login/login.html";
-        return;
+        try {
+            const resp = await fetch('/scripts/php/main_menu.php', { credentials: 'include' });
+            const data = await resp.json();
+            if (data.success) {
+                localStorage.setItem('usuario_id', data.usuario_id);
+                localStorage.setItem('usuario_nombre', data.usuario_nombre);
+                localStorage.setItem('usuario_email', data.usuario_correo);
+                localStorage.setItem('usuario_rol', data.usuario_rol);
+                if (data.id_empresa) {
+                    localStorage.setItem('id_empresa', data.id_empresa);
+                    localStorage.setItem('empresa_nombre', data.empresa_nombre);
+                }
+                userId = data.usuario_id;
+            } else {
+                alert('No hay sesión activa.');
+                window.location.href = "../../pages/regis_login/login/login.html";
+                return;
+            }
+        } catch (err) {
+            console.error('Error obteniendo la sesión:', err);
+            alert('No hay sesión activa.');
+            window.location.href = "../../pages/regis_login/login/login.html";
+            return;
+        }
     }
 
     fetch('/scripts/php/check_empresa.php', {

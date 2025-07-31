@@ -6,7 +6,6 @@ error_reporting(E_ALL);
 // registro.php
 // -------------------------------------------------
 // 1) Conexión a la base de datos
-header('Content-Type: application/json');
 
 // Conexión a la base de datos
 $servername = "localhost";
@@ -101,14 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt->execute();
     if ($stmt->affected_rows > 0) {
-        // Redirigir a la página de verificación
+        $last_id = $conn->insert_id;
         header(
-            'Location: ../../pages/regis_login/regist/regist_inter.html'
-            . '?email=' . urlencode($correo)
+            'Location: ../../pages/regis_login/regist/regist_empresa.html'
+            . '?user_id=' . $last_id
+            . '&email=' . urlencode($correo)
         );
         exit;
-    }
-    else {
+    } else {
         echo "Error en el registro: " . $stmt->error;
     }
 
@@ -116,4 +115,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
     $conn->close();
 }
-?>  
