@@ -67,7 +67,19 @@ function verifyCode(email, code) {
                 localStorage.setItem('empresa_nombre', data.empresa_nombre);
             }
 
+
             // Redirigir al menú principal
+            window.location.href = '../../main_menu/main_menu.html';
+
+
+            // Redirigir a la página de registro de empresa
+            window.location.href = 'regist_empresa.html';
+
+
+            // Redirigir a la página de registro de empresa
+            window.location.href = 'regist_empresa.html';
+
+            // Redirigir directamente al menú principal
             window.location.href = '../../main_menu/main_menu.html';
         } else {
             alert(data.message);  // Si hubo un error, mostramos el mensaje de error
