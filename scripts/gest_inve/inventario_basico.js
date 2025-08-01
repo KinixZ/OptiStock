@@ -480,8 +480,16 @@ tablaResumen.addEventListener('click', async e => {
 
   // 1) Eliminar
 if (accion === 'del') {
-  // --- BORRAR PRODUCTO (sin cambios) ---
+  // --- BORRAR PRODUCTO CON CONFIRMACIÓN ---
   if (tipo === 'producto') {
+    // 1) Encuentra el producto para mostrar su nombre en el diálogo
+    const prod = productos.find(p => p.id === id);
+    const nombre = prod ? prod.nombre : 'este producto';
+    // 2) Pregunta al usuario
+    const ok = window.confirm(`¿Estás seguro de que quieres eliminar "${nombre}"? Esta acción no se puede deshacer.`);
+    if (!ok) return; // si cancela, no hacemos nada
+
+    // 3) Si confirma, borramos y recargamos
     await fetchAPI(
       `${API.productos}?id=${id}&empresa_id=${EMP_ID}`,
       'DELETE'
