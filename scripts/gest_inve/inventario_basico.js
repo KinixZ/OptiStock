@@ -35,17 +35,21 @@ async function fetchAPI(url, method = 'GET', data) {
   }
   const res = await fetch(url, options);
 
-  // Intentamos parsear el JSON (éxito o error vienen en JSON)
+  // Intentamos parsear el JSON
   let payload;
   try {
     payload = await res.json();
   } catch (e) {
-    throw new Error('Respuesta no es JSON válido');
+   // si no es JSON, leemos el texto crudo y lo volcamos en consola
+    const text = await res.text();
+    console.error(`⚠️ fetchAPI: respuesta HTTP ${res.status} no es JSON:\n`, text);
+    throw new Error(`HTTP ${res.status} – Response no-JSON: ${text.slice(0,200)}`);
   }
 
   // Si hubo cualquier código ≠2xx, lanzamos con el mensaje del servidor
   if (!res.ok) {
-    const msg = payload.error || 'Error en la solicitud';
+    console.warn(`⚠️ fetchAPI: HTTP ${res.status}`, payload);
+    const msg = payload.error || `Error HTTP ${res.status}`;
     throw new Error(msg);
   }
 
