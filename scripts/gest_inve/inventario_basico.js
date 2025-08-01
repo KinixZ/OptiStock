@@ -76,7 +76,9 @@ async function fetchAPI(url, method = 'GET', data) {
   const subcatForm = document.getElementById('subcategoriaForm');
   const prodCategoria = document.getElementById('prodCategoria');
   const prodSubcategoria = document.getElementById('prodSubcategoria');
-  prodCategoria.addEventListener('change', () => {
+ // Cada vez que cambie la categoría, repoblamos el select de subcategorías
+prodCategoria.addEventListener('change', () => {
+  // parseInt devuelve NaN si está vacío; con || null forzamos null
   const catId = parseInt(prodCategoria.value) || null;
   actualizarSelectSubcategorias(catId);
 });
@@ -97,10 +99,13 @@ async function fetchAPI(url, method = 'GET', data) {
     });
   }
 
-function actualizarSelectSubcategorias(categoriaId = null) {
+function actualizarSelectSubcategorias(categoriaId) {
   prodSubcategoria.innerHTML = '<option value="">Seleccione subcategoría</option>';
+  // Si no hay categoría elegida, salimos con sólo el placeholder
+  if (!categoriaId) return;
+  // Filtramos y añadimos las que coincidan
   subcategorias
-    .filter(sc => categoriaId === null || sc.categoria_id === categoriaId)
+    .filter(sc => sc.categoria_id === categoriaId)
     .forEach(sc => {
       const opt = document.createElement('option');
       opt.value = sc.id;
@@ -108,6 +113,7 @@ function actualizarSelectSubcategorias(categoriaId = null) {
       prodSubcategoria.appendChild(opt);
     });
 }
+
 
   async function cargarCategorias() {
     categorias.length = 0;
@@ -120,7 +126,7 @@ function actualizarSelectSubcategorias(categoriaId = null) {
   subcategorias.length = 0;
   const datos = await fetchAPI(API.subcategorias);
   datos.forEach(s => subcategorias.push(s));
-  // Al cargar, no hay categoría seleccionada
+  // Al iniciar, ninguna categoría está elegida → sólo placeholder
   actualizarSelectSubcategorias(null);
 }
 
