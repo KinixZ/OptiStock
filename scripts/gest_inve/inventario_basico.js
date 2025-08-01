@@ -269,27 +269,21 @@ const sub = p.subcategoria_nombre || '';
 
 catForm.addEventListener('submit', async e => {
   e.preventDefault();
+  // 1) Leer campos
+  const nombre       = document.getElementById('catNombre').value.trim();
+  const descripcion  = document.getElementById('catDescripcion').value.trim();
+  if (!nombre) { alert('El nombre es obligatorio'); return; }
 
-  // 1) Leer los valores de los inputs correctamente
-  const nombre      = document.getElementById('catNombre').value.trim();
-  const descripcion = document.getElementById('catDescripcion').value.trim();
-
-  // 2) Validación mínima
-  if (!nombre) {
-    alert('El nombre es obligatorio');
-    return;
-  }
-
-  // 3) Armar el objeto incluyendo empresa_id
-  const data = { nombre, descripcion, empresa_id: EMP_ID };
+  // 2) Payload con empresa
+  const payload = { nombre, descripcion, empresa_id: EMP_ID };
 
   try {
-    // 4) POST o PUT con empresa_id en la URL y en el body
+    // 3) POST o PUT
     if (editCatId) {
       await fetchAPI(
         `${API.categorias}?id=${editCatId}&empresa_id=${EMP_ID}`,
         'PUT',
-        data
+        payload
       );
       showToast('Categoría editada correctamente');
       editCatId = null;
@@ -297,12 +291,12 @@ catForm.addEventListener('submit', async e => {
       await fetchAPI(
         `${API.categorias}?empresa_id=${EMP_ID}`,
         'POST',
-        data
+        payload
       );
       showToast('Categoría guardada correctamente');
     }
 
-    // 5) Reset y recarga
+    // 4) Reset y recarga
     catForm.reset();
     await cargarCategorias();
 
@@ -315,32 +309,23 @@ catForm.addEventListener('submit', async e => {
 
 subcatForm.addEventListener('submit', async e => {
   e.preventDefault();
-
-  // 1) Leer valores
+  // 1) Leer campos
   const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
   const nombre       = document.getElementById('subcatNombre').value.trim();
   const descripcion  = document.getElementById('subcatDescripcion').value.trim();
+  if (!categoria_id) { alert('Selecciona una categoría'); return; }
+  if (!nombre)       { alert('El nombre es obligatorio'); return; }
 
-  // 2) Validaciones mínimas
-  if (!categoria_id) {
-    alert('Selecciona una categoría');
-    return;
-  }
-  if (!nombre) {
-    alert('El nombre es obligatorio');
-    return;
-  }
-
-  // 3) Construir payload
-  const data = { categoria_id, nombre, descripcion, empresa_id: EMP_ID };
+  // 2) Payload con empresa
+  const payload = { categoria_id, nombre, descripcion, empresa_id: EMP_ID };
 
   try {
-    // 4) POST o PUT con empresa_id
+    // 3) POST o PUT
     if (editSubcatId) {
       await fetchAPI(
         `${API.subcategorias}?id=${editSubcatId}&empresa_id=${EMP_ID}`,
         'PUT',
-        data
+        payload
       );
       showToast('Subcategoría editada correctamente');
       editSubcatId = null;
@@ -348,12 +333,12 @@ subcatForm.addEventListener('submit', async e => {
       await fetchAPI(
         `${API.subcategorias}?empresa_id=${EMP_ID}`,
         'POST',
-        data
+        payload
       );
       showToast('Subcategoría guardada correctamente');
     }
 
-    // 5) Reset y recarga
+    // 4) Reset y recarga
     subcatForm.reset();
     await cargarSubcategorias();
 
@@ -362,6 +347,7 @@ subcatForm.addEventListener('submit', async e => {
     showToast('Error guardando subcategoría: ' + err.message);
   }
 });
+
 
 prodForm.addEventListener('submit', async e => {
     e.preventDefault();
