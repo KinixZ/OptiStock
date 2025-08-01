@@ -335,7 +335,17 @@ async function deleteArea(id) {
   await renderZonas();
 }
 
-
+// —————— Borrar Zona ——————
+async function deleteZone(id) {
+  if (!confirm('¿Seguro que deseas eliminar esta zona?')) return;
+  // Llamada al endpoint DELETE
+  await fetch(`${API_BASE}/guardar_zonas.php?id=${id}&empresa_id=${EMP_ID}`, {
+    method: 'DELETE'
+  });
+  // Refrescar ambas vistas para mantener los contadores al día
+  await renderZonas();
+  await renderAreas();
+}
 
   // —————— Botones de alternar vista ——————
   areaBtn.addEventListener('click', () => {
@@ -365,7 +375,6 @@ tablaZonasBody.addEventListener('click', e => {
   if (e.target.matches('.btn-edit-zone'))  editZone(id);
   if (e.target.matches('.btn-delete-zone')) deleteZone(id);
 });
-
 
 // Zonas sin asignar: editar / borrar
 tablaZonasSinAreaBody.addEventListener('click', e => {
