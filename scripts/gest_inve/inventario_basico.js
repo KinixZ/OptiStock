@@ -309,12 +309,11 @@ catForm.addEventListener('submit', async e => {
 subcatForm.addEventListener('submit', async e => {
   e.preventDefault();
   // 1) Leer campos
-  const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
-  const nombre       = document.getElementById('subcatNombre').value.trim();
-  const descripcion  = document.getElementById('subcatDescripcion').value.trim();
-  if (!categoria_id) { alert('Selecciona una categoría'); return; }
-  if (!nombre)       { alert('El nombre es obligatorio'); return; }
-
+const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
+const nombre       = document.getElementById('subcatNombre').value.trim();
+const descripcion  = document.getElementById('subcatDescripcion').value.trim();
+if (!categoria_id) { alert('Selecciona una categoría'); return; }
+if (!nombre)       { alert('El nombre es obligatorio');     return; }
   // 2) Payload con empresa
   const payload = { categoria_id, nombre, descripcion, empresa_id: EMP_ID };
 
@@ -327,7 +326,6 @@ subcatForm.addEventListener('submit', async e => {
         payload
       );
       showToast('Subcategoría editada correctamente');
-      editSubcatId = null;
     } else {
       await fetchAPI(
         `${API.subcategorias}?empresa_id=${EMP_ID}`,
