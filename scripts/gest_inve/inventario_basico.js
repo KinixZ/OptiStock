@@ -418,28 +418,88 @@ tablaResumen.addEventListener('click', async e => {
   if (!accion) return;
 
   // 1) Eliminar
-  if (accion === 'del') {
-    if (tipo === 'producto') {
-  await fetchAPI(
-    `${API.productos}?id=${id}&empresa_id=${EMP_ID}`,
-    'DELETE'
-  );
-  await cargarProductos();
-} else if (tipo === 'categoria') {
-      await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
-      await cargarCategorias();
-      await cargarSubcategorias();
-      await cargarProductos();
-    } else if (tipo === 'subcategoria') {
-      await fetchAPI(`${API.subcategorias}?id=${id}`, 'DELETE');
-      await cargarSubcategorias();
-      await cargarProductos();
+if (accion === 'del') {
+  // --- BORRAR PRODUCTO (sin cambios) ---
+  if (tipo === 'producto') {
+    await fetchAPI(
+      `${API.productos}?id=${id}&empresa_id=${EMP_ID}`,
+      'DELETE'
+    );
+    await cargarProductos();
+
+  // --- BORRAR CATEGORÍA + OPCIONES EN CASCADA ---
+  } else if (tipo === 'categoria') {
+    // 1) Subcategorías de esta categoría
+    const subs = subcategorias.filter(sc => sc.categoria_id === id);
+    let eliminarSubs = true;
+    if (subs.length) {
+      eliminarSubs = confirm(
+        `Esta categoría tiene ${subs.length} subcategoría(s).\n¿Quieres eliminar también las subcategorías relacionadas?`
+      );
     }
-    await cargarProductos();    // ← recalc volumen
-    await cargarZonas();
-    renderResumen();
-    return;
+    if (eliminarSubs) {
+      for (const sc of subs) {
+        // 2) Productos de cada subcategoría
+        const prods = productos.filter(p => p.subcategoria_id === sc.id);
+        let eliminarProds = true;
+        if (prods.length) {
+          eliminarProds = confirm(
+            `La subcategoría "${sc.nombre}" tiene ${prods.length} producto(s).\n¿Eliminar también los productos asociados?`
+          );
+        }
+        if (eliminarProds) {
+          for (const p of prods) {
+            await fetchAPI(
+              `${API.productos}?id=${p.id}&empresa_id=${EMP_ID}`,
+              'DELETE'
+            );
+          }
+        }
+        // 3) Borrar la subcategoría
+        await fetchAPI(
+          `${API.subcategorias}?id=${sc.id}&empresa_id=${EMP_ID}`,
+          'DELETE'
+        );
+      }
+    }
+    // 4) Borrar finalmente la categoría
+    await fetchAPI(
+      `${API.categorias}?id=${id}&empresa_id=${EMP_ID}`,
+      'DELETE'
+    );
+    await cargarCategorias();
+    await cargarSubcategorias();
+    await cargarProductos();
+
+  // --- BORRAR SUBCATEGORÍA + OPCIÓN DE BORRAR PRODUCTOS ---
+  } else if (tipo === 'subcategoria') {
+    const prods = productos.filter(p => p.subcategoria_id === id);
+    let eliminarProds = true;
+    if (prods.length) {
+      eliminarProds = confirm(
+        `Esta subcategoría tiene ${prods.length} producto(s).\n¿Eliminar también los productos asociados?`
+      );
+    }
+    if (eliminarProds) {
+      for (const p of prods) {
+        await fetchAPI(
+          `${API.productos}?id=${p.id}&empresa_id=${EMP_ID}`,
+          'DELETE'
+        );
+      }
+    }
+    await fetchAPI(
+      `${API.subcategorias}?id=${id}&empresa_id=${EMP_ID}`,
+      'DELETE'
+    );
+    await cargarSubcategorias();
+    await cargarProductos();
   }
+
+  // Siempre refrescamos la vista
+  renderResumen();
+  return;
+}
 
   // 2) Editar producto
   if (accion === 'edit' && tipo === 'producto') {
