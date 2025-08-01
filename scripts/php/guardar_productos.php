@@ -67,20 +67,20 @@ if ($method === 'GET') {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ii', $id, $empresa_id);
     } else {
-        $sql = "
-          SELECT
-            p.*,
-            z.id   AS zona_id,   z.nombre    AS zona_nombre,
-            a.id   AS area_id,   a.nombre    AS area_nombre,
-            c.nombre AS categoria_nombre,
-            sc.nombre AS subcategoria_nombre
-          FROM productos p
-          LEFT JOIN zonas   z  ON p.zona_id         = z.id
-          LEFT JOIN areas   a  ON z.area_id         = a.id
-          LEFT JOIN categorias    c  ON p.categoria_id    = c.id
-          LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
-          WHERE p.empresa_id = ?
-        ";
+       $sql = "
+  SELECT
+    p.*,
+    z.id   AS zona_id,        z.nombre  AS zona_nombre,
+    a.id   AS area_id,        a.nombre  AS area_nombre,
+    c.nombre AS categoria_nombre,
+    sc.nombre AS subcategoria_nombre       
+  FROM productos p
+  LEFT JOIN zonas         z  ON p.zona_id         = z.id
+  LEFT JOIN areas         a  ON z.area_id         = a.id
+  LEFT JOIN categorias    c  ON p.categoria_id    = c.id
+  LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
+  WHERE p.empresa_id = ?
+";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('i', $empresa_id);
     }
