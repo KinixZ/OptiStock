@@ -76,6 +76,10 @@ async function fetchAPI(url, method = 'GET', data) {
   const subcatForm = document.getElementById('subcategoriaForm');
   const prodCategoria = document.getElementById('prodCategoria');
   const prodSubcategoria = document.getElementById('prodSubcategoria');
+  prodCategoria.addEventListener('change', () => {
+  const catId = parseInt(prodCategoria.value) || null;
+  actualizarSelectSubcategorias(catId);
+});
   const subcatCategoria = document.getElementById('subcatCategoria');
   const tablaResumen = document.querySelector('#tablaResumen tbody');
   const tablaHead = document.getElementById('tablaHead');
@@ -93,15 +97,17 @@ async function fetchAPI(url, method = 'GET', data) {
     });
   }
 
-  function actualizarSelectSubcategorias() {
-    prodSubcategoria.innerHTML = '<option value="">Seleccione subcategoría</option>';
-    subcategorias.forEach(sc => {
+function actualizarSelectSubcategorias(categoriaId = null) {
+  prodSubcategoria.innerHTML = '<option value="">Seleccione subcategoría</option>';
+  subcategorias
+    .filter(sc => categoriaId === null || sc.categoria_id === categoriaId)
+    .forEach(sc => {
       const opt = document.createElement('option');
       opt.value = sc.id;
       opt.textContent = sc.nombre;
       prodSubcategoria.appendChild(opt);
     });
-  }
+}
 
   async function cargarCategorias() {
     categorias.length = 0;
@@ -111,11 +117,12 @@ async function fetchAPI(url, method = 'GET', data) {
   }
 
   async function cargarSubcategorias() {
-    subcategorias.length = 0;
-    const datos = await fetchAPI(API.subcategorias);
-    datos.forEach(s => subcategorias.push(s));
-    actualizarSelectSubcategorias();
-  }
+  subcategorias.length = 0;
+  const datos = await fetchAPI(API.subcategorias);
+  datos.forEach(s => subcategorias.push(s));
+  // Al cargar, no hay categoría seleccionada
+  actualizarSelectSubcategorias(null);
+}
 
   async function cargarProductos() {
     productos.length = 0;
@@ -334,7 +341,7 @@ prodForm.addEventListener('submit', async e => {
           prodForm.prodNombre.value = p.nombre;
           prodForm.prodDescripcion.value = p.descripcion;
           prodCategoria.value = p.categoria_id || '';
-          actualizarSelectSubcategorias();
+          actualizarSelectSubcategorias(p.categoria_id);
           prodSubcategoria.value = p.subcategoria_id || '';
           const dims = (p.dimensiones || '').split('x');
           prodForm.prodDimX.value = dims[0] || '';
