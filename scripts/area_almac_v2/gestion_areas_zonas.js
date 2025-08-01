@@ -37,15 +37,15 @@
 
   function llenarTipos() {
     zonaTipoSel.innerHTML = '<option value="">Seleccione tipo</option>';
-    // al menos las primeras 8
-    tiposZona.slice(0, 8).forEach(t => {
+    // al menos las primeras 20
+    tiposZona.slice(0, 20).forEach(t => {
       const opt = document.createElement('option');
       opt.value = t.toLowerCase();
       opt.textContent = t;
       zonaTipoSel.appendChild(opt);
     });
   }
-  
+
   // —————— Helpers ——————
   function showToast(msg) {
     const t = document.createElement('div');
