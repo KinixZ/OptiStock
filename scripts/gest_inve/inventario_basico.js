@@ -267,33 +267,51 @@ const sub = p.subcategoria_nombre || '';
     }
   }
 
-  catForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-      nombre: catForm.catNombre.value,
-      descripcion: catForm.catDescripcion.value
-    };
+catForm.addEventListener('submit', async e => {
+  e.preventDefault();
 
+  // 1) Leer los valores de los inputs correctamente
+  const nombre      = document.getElementById('catNombre').value.trim();
+  const descripcion = document.getElementById('catDescripcion').value.trim();
+
+  // 2) Validación mínima
+  if (!nombre) {
+    alert('El nombre es obligatorio');
+    return;
+  }
+
+  // 3) Armar el objeto incluyendo empresa_id
+  const data = { nombre, descripcion, empresa_id: EMP_ID };
+
+  try {
+    // 4) POST o PUT con empresa_id en la URL y en el body
     if (editCatId) {
       await fetchAPI(
-    `${API.categorias}?id=${editCatId}&empresa_id=${EMP_ID}`,
-    'PUT',
-    { nombre, descripcion }
-  );
-      editCatId = null;
+        `${API.categorias}?id=${editCatId}&empresa_id=${EMP_ID}`,
+        'PUT',
+        data
+      );
       showToast('Categoría editada correctamente');
+      editCatId = null;
     } else {
       await fetchAPI(
-    `${API.categorias}?empresa_id=${EMP_ID}`,
-    'POST',
-    { nombre, descripcion }
-  );
+        `${API.categorias}?empresa_id=${EMP_ID}`,
+        'POST',
+        data
+      );
       showToast('Categoría guardada correctamente');
     }
 
+    // 5) Reset y recarga
     catForm.reset();
     await cargarCategorias();
-  });
+
+  } catch (err) {
+    console.error(err);
+    showToast('Error guardando categoría: ' + err.message);
+  }
+});
+
 
   subcatForm.addEventListener('submit', async e => {
     e.preventDefault();
