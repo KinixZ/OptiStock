@@ -134,10 +134,16 @@ function actualizarSelectSubcategorias(categoriaId) {
     productos.length = 0;
     const datos = await fetchAPI(API.productos);
     datos.forEach(p => {
-      const dims = [p.dim_x, p.dim_y, p.dim_z]
-        .filter(v => v !== null && v !== undefined)
-        .join('x');
-      p.dimensiones = dims;
+      // Asegurarnos que son números
+      const x = parseFloat(p.dim_x) || 0;
+      const y = parseFloat(p.dim_y) || 0;
+      const z = parseFloat(p.dim_z) || 0;
+      // Calcular volumen en cm³
+      const volumen = x * y * z;
+      // Formatear con dos decimales, o vacío si falta algún dato
+      p.volumen = (volumen > 0)
+        ? volumen.toFixed(2) + ' cm³'
+        : '';
       productos.push(p);
     });
   }
@@ -155,6 +161,7 @@ if (vistaActual === 'producto') {
       <th>Categoría</th>
       <th>Subcategoría</th>
       <th>Dimensiones</th>
+      <th>Volumen (cm³)</th>
       <th>Stock</th>
       <th>Precio compra</th>
       <th>Acciones</th>
