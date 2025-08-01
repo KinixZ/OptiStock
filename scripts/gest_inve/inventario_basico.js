@@ -15,6 +15,9 @@
   let editCatId = null;
   let editSubcatId = null;
 
+const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
+
+
   const btnProductos = document.getElementById('btnProductos');
   const btnCategorias = document.getElementById('btnCategorias');
   const btnSubcategorias = document.getElementById('btnSubcategorias');
@@ -144,15 +147,15 @@ function actualizarSelectZonas() {
 
 async function cargarZonas() {
    zonas.length = 0;
-   const datos = await fetchAPI(API.zonas);
+  const datos = await fetchAPI(`${API.zonas}?empresa_id=${EMP_ID}`);
    datos.forEach(z => zonas.push(z));
   actualizarSelectZonas();
  }
 
 
   async function cargarProductos() {
-    productos.length = 0;
-    const datos = await fetchAPI(API.productos);
+     productos.length = 0;
+  const datos = await fetchAPI(`${API.productos}?empresa_id=${EMP_ID}`);
     datos.forEach(p => {
       // Asegurarnos que son números
       const x = parseFloat(p.dim_x) || 0;
@@ -328,14 +331,25 @@ prodForm.addEventListener('submit', async e => {
 
     try {
       // 2) POST o PUT
-      if (editProdId) {
-        await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
-        showToast('Producto editado correctamente');
-        editProdId = null;
-      } else {
-        await fetchAPI(API.productos, 'POST', data);
-        showToast('Producto guardado correctamente');
-      }
+      const base = API.productos;
+if (editProdId) {
+  // PUT con filtro por empresa
+  await fetchAPI(
+    `${base}?id=${editProdId}&empresa_id=${EMP_ID}`,
+    'PUT',
+    {...data, empresa_id: EMP_ID}
+  );
+  showToast('Producto editado correctamente');
+  editProdId = null;
+} else {
+  // POST con filtro por empresa
+  await fetchAPI(
+    `${base}?empresa_id=${EMP_ID}`,
+    'POST',
+    {...data, empresa_id: EMP_ID}
+  );
+  showToast('Producto guardado correctamente');
+}
 
       // 3) Reset y recarga de datos
       prodForm.reset();
@@ -357,9 +371,12 @@ tablaResumen.addEventListener('click', async e => {
   // 1) Eliminar
   if (accion === 'del') {
     if (tipo === 'producto') {
-      await fetchAPI(`${API.productos}?id=${id}`, 'DELETE');
-      await cargarProductos();
-    } else if (tipo === 'categoria') {
+  await fetchAPI(
+    `${API.productos}?id=${id}&empresa_id=${EMP_ID}`,
+    'DELETE'
+  );
+  await cargarProductos();
+} else if (tipo === 'categoria') {
       await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
       await cargarCategorias();
       await cargarSubcategorias();
