@@ -239,40 +239,53 @@ if (vistaActual === 'producto') {
     await cargarSubcategorias();
   });
 
-  prodForm.addEventListener('submit', async e => {
+prodForm.addEventListener('submit', async e => {
     e.preventDefault();
-    const categoria_id = parseInt(prodCategoria.value) || null;
-    const subcategoria_id = parseInt(prodSubcategoria.value) || null;
-    if (!categoria_id) {
-      alert('Advertencia: faltan campos por rellenar');
+
+    // 1) Leer campos de forma fiable
+    const nombre = document.getElementById('prodNombre').value.trim();
+    const descripcion = document.getElementById('prodDescripcion').value.trim();
+    const categoria_id = parseInt(document.getElementById('prodCategoria').value) || null;
+    const subcategoria_id = parseInt(document.getElementById('prodSubcategoria').value) || null;
+    const stock = parseInt(document.getElementById('prodStock').value) || 0;
+    const precio_compra = parseFloat(document.getElementById('prodPrecio').value) || 0;
+    const dim_x = parseFloat(document.getElementById('prodDimX').value) || 0;
+    const dim_y = parseFloat(document.getElementById('prodDimY').value) || 0;
+    const dim_z = parseFloat(document.getElementById('prodDimZ').value) || 0;
+
+    // Validaciones mínimas
+    if (!nombre) {
+      alert('El nombre es obligatorio');
       return;
     }
-    const dimX = parseFloat(prodForm.prodDimX.value) || 0;
-    const dimY = parseFloat(prodForm.prodDimY.value) || 0;
-    const dimZ = parseFloat(prodForm.prodDimZ.value) || 0;
-    const data = {
-      nombre: prodForm.prodNombre.value,
-      descripcion: prodForm.prodDescripcion.value,
-      categoria_id,
-      subcategoria_id,
-      dimensiones: `${dimX}x${dimY}x${dimZ}`,
-      stock: parseInt(prodForm.prodStock.value) || 0,
-      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0,
-      dim_x: dimX,
-      dim_y: dimY,
-      dim_z: dimZ
-    };
-
-    if (editProdId) {
-      await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
-      editProdId = null;
-      showToast('Producto editado correctamente');
-    } else {
-      await fetchAPI(API.productos, 'POST', data);
-      showToast('Producto guardado correctamente');
+    if (!categoria_id) {
+      alert('Selecciona una categoría');
+      return;
     }
-    prodForm.reset();
-    await cargarProductos();
+
+    const data = { nombre, descripcion, categoria_id, subcategoria_id,
+                   stock, precio_compra, dim_x, dim_y, dim_z };
+
+    try {
+      // 2) POST o PUT
+      if (editProdId) {
+        await fetchAPI(`${API.productos}?id=${editProdId}`, 'PUT', data);
+        showToast('Producto editado correctamente');
+        editProdId = null;
+      } else {
+        await fetchAPI(API.productos, 'POST', data);
+        showToast('Producto guardado correctamente');
+      }
+
+      // 3) Reset y recarga de datos
+      prodForm.reset();
+      await cargarProductos();
+      renderResumen();
+
+    } catch (err) {
+      console.error(err);
+      showToast('Error al guardar producto: ' + err.message);
+    }
   });
 
   tablaResumen.addEventListener('click', async e => {
