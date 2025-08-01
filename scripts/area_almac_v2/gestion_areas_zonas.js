@@ -1,311 +1,186 @@
+// gestion_areas_zonas.js
 (function() {
-  const areaBtn = document.getElementById('nuevaArea');
-  const zonaBtn = document.getElementById('nuevaZona');
-  const formArea = document.getElementById('formArea');
-  const formZona = document.getElementById('formZona');
-  const resumen = document.getElementById('resumen');
-  const volumenSpan = document.getElementById('areaVolumen');
-  const zonaVolumenSpan = document.getElementById('zonaVolumen');
+  // —————— Referencias al DOM ——————
+  const areaBtn      = document.getElementById('nuevaArea');
+  const zonaBtn      = document.getElementById('nuevaZona');
+  const formArea     = document.getElementById('formArea');
+  const formZona     = document.getElementById('formZona');
+  const resumen      = document.getElementById('resumen');
+  const lista        = document.getElementById('lista');
+  const areaNombre   = document.getElementById('areaNombre');
+  const areaDesc     = document.getElementById('areaDescripcion');
+  const areaLargo    = document.getElementById('areaLargo');
+  const areaAncho    = document.getElementById('areaAncho');
+  const areaAlto     = document.getElementById('areaAlto');
+  const volumenArea  = document.getElementById('areaVolumen');
+  const zonaNombre   = document.getElementById('zonaNombre');
+  const zonaDesc     = document.getElementById('zonaDescripcion');
+  const zonaLargo    = document.getElementById('zonaLargo');
+  const zonaAncho    = document.getElementById('zonaAncho');
+  const zonaAlto     = document.getElementById('zonaAlto');
+  const volumenZona  = document.getElementById('zonaVolumen');
+  const zonaAreaSel  = document.getElementById('zonaArea');
+  const zonaTipoSel  = document.getElementById('zonaTipo');
+  const zonaSubniv   = document.getElementById('zonaSubniveles');
+  const zonaDist     = document.getElementById('zonaDistancia');
 
-  const tipoSelect = document.getElementById('zonaTipo');
-  const areaSelect = document.getElementById('zonaArea');
+  const API_BASE     = '../../scripts/php';
+  const EMP_ID       = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
 
-
-  const lista = document.getElementById('lista');
-  const volumenSpan = document.getElementById('areaVolumen');
-  const tipoSelect = document.getElementById('zonaTipo');
-  const areaSelect = document.getElementById('zonaArea');
-
-  const tiposZona = [
-    'Rack', 'Mostrador', 'Caja', 'Estantería', 'Refrigeración', 'Congelador',
-    'Piso', 'Contenedor', 'Palet', 'Carro', 'Cajón', 'Jaula', 'Estiba',
-    'Bodega', 'Silo', 'Tanque', 'Gabinete', 'Vitrina', 'Armario', 'Otro'
-  ];
-
-
-  function getAreas() {
-    const stored = localStorage.getItem('areas');
-    try { return stored ? JSON.parse(stored) : []; } catch (e) { return []; }
+  // —————— Helpers ——————
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast-message';
+    t.innerText = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
   }
 
-  function getZonas() {
-    const stored = localStorage.getItem('zonas');
-    try { return stored ? JSON.parse(stored) : []; } catch (e) { return []; }
+  function calcularVolumenArea() {
+    const v = (parseFloat(areaLargo.value)||0) *
+              (parseFloat(areaAncho.value)||0) *
+              (parseFloat(areaAlto.value)||0);
+    volumenArea.textContent = v.toFixed(2);
   }
-
-  function saveAreas(data) {
-    localStorage.setItem('areas', JSON.stringify(data));
-  }
-
-  function saveZonas(data) {
-    localStorage.setItem('zonas', JSON.stringify(data));
-  }
-
-
-  function llenarTipos() {
-    tiposZona.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.toLowerCase();
-      opt.textContent = t;
-      tipoSelect.appendChild(opt);
-    });
-  }
-
-  function cargarAreas() {
-
-    const areas = getAreas();
-    areaSelect.innerHTML = '<option value="">Seleccione</option>';
-    areas.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.id;
-      opt.textContent = a.nombre;
-      areaSelect.appendChild(opt);
-    });
-  }
-
-  function mostrarResumenAreas() {
-    const areas = getAreas();
-    const zonas = getZonas();
-    resumen.innerHTML = '';
-    areas.forEach(area => {
-      const div = document.createElement('div');
-      div.className = 'resumen-item';
-      const vol = (area.largo * area.ancho * area.alto).toFixed(2);
-      div.innerHTML = `<h3>${area.nombre}</h3>
-        <p>${area.descripcion}</p>
-        <p>Dimensiones: ${area.largo} x ${area.ancho} x ${area.alto} m</p>
-        <p>Volumen: ${vol} m³</p>`;
-      const relacionadas = zonas.filter(z => z.area_id === area.id);
-      if (relacionadas.length) {
-        const ul = document.createElement('ul');
-        relacionadas.forEach(z => {
-          const li = document.createElement('li');
-          li.textContent = `${z.nombre} (${z.tipo})`;
-          ul.appendChild(li);
-        });
-        div.appendChild(ul);
-      }
-      resumen.appendChild(div);
-
-    fetch('../../scripts/php/guardar_areas.php?empresa_id=' + localStorage.getItem('id_empresa'))
-      .then(r => r.json())
-      .then(data => {
-        areaSelect.innerHTML = '<option value="">Seleccione</option>';
-        data.forEach(a => {
-          const opt = document.createElement('option');
-          opt.value = a.id;
-          opt.textContent = a.nombre;
-          areaSelect.appendChild(opt);
-        });
-      });
-  }
-  function mostrarResumenAreas() {
-  function mostrarLista() {
-    Promise.all([
-      fetch('../../scripts/php/guardar_areas.php?empresa_id=' + localStorage.getItem('id_empresa')).then(r => r.json()),
-      fetch('../../scripts/php/guardar_zonas.php?empresa_id=' + localStorage.getItem('id_empresa')).then(r => r.json())
-    ]).then(([areas, zonas]) => {
-      resumen.innerHTML = '';
-      areas.forEach(area => {
-        const div = document.createElement('div');
-        div.className = 'resumen-item';
-        div.innerHTML = `<h3>${area.nombre}</h3>
-          <p>${area.descripcion}</p>
-          <p>Dimensiones: ${area.largo} x ${area.ancho} x ${area.alto} m</p>
-          <p>Volumen: ${parseFloat(area.volumen).toFixed(2)} m³</p>`;
-
-      lista.innerHTML = '';
-      areas.forEach(area => {
-        const div = document.createElement('div');
-        div.innerHTML = `<h3>${area.nombre}</h3>`;
-
-        const relacionadas = zonas.filter(z => z.area_id == area.id);
-        if (relacionadas.length) {
-          const ul = document.createElement('ul');
-          relacionadas.forEach(z => {
-            const li = document.createElement('li');
-            li.textContent = `${z.nombre} (${z.tipo_almacenamiento})`;
-            ul.appendChild(li);
-          });
-          div.appendChild(ul);
-        }
-        resumen.appendChild(div);
-      });
-
-    });
-  }
-
-  function mostrarResumenZonas() {
-
-    const zonas = getZonas();
-    const areas = getAreas();
-    resumen.innerHTML = '';
-    zonas.forEach(z => {
-      const area = areas.find(a => a.id === z.area_id);
-      const div = document.createElement('div');
-      div.className = 'resumen-item';
-      const volumen = (z.largo * z.ancho * z.alto).toFixed(2);
-      div.innerHTML = `<h3>${z.nombre}</h3>
-        <p>${z.descripcion}</p>
-        <p>Dimensiones: ${z.largo} x ${z.ancho} x ${z.alto} m</p>
-        <p>Volumen: ${volumen} m³</p>
-        <p>Área: ${area ? area.nombre : 'Sin asignar'}</p>`;
-      resumen.appendChild(div);
-
-    Promise.all([
-      fetch('../../scripts/php/guardar_zonas.php?empresa_id=' + localStorage.getItem('id_empresa')).then(r => r.json()),
-      fetch('../../scripts/php/guardar_areas.php?empresa_id=' + localStorage.getItem('id_empresa')).then(r => r.json())
-    ]).then(([zonas, areas]) => {
-      resumen.innerHTML = '';
-      zonas.forEach(z => {
-        const area = areas.find(a => a.id == z.area_id);
-        const div = document.createElement('div');
-        div.className = 'resumen-item';
-        const volumen = (z.largo * z.ancho * z.alto).toFixed(2);
-        div.innerHTML = `<h3>${z.nombre}</h3>
-          <p>${z.descripcion}</p>
-          <p>Dimensiones: ${z.largo} x ${z.ancho} x ${z.alto} m</p>
-          <p>Volumen: ${volumen} m³</p>
-          <p>Área: ${area ? area.nombre : 'Sin asignar'}</p>`;
-        resumen.appendChild(div);
-
-        lista.appendChild(div);
-      });
-
-    });
-  }
-
-  function calcularVolumen() {
-    const largo = parseFloat(document.getElementById('areaLargo').value) || 0;
-    const ancho = parseFloat(document.getElementById('areaAncho').value) || 0;
-    const alto = parseFloat(document.getElementById('areaAlto').value) || 0;
-    volumenSpan.textContent = (largo * ancho * alto).toFixed(2);
-  }
-
   function calcularVolumenZona() {
-    const largo = parseFloat(document.getElementById('zonaLargo').value) || 0;
-    const ancho = parseFloat(document.getElementById('zonaAncho').value) || 0;
-    const alto = parseFloat(document.getElementById('zonaAlto').value) || 0;
-    zonaVolumenSpan.textContent = (largo * ancho * alto).toFixed(2);
+    const v = (parseFloat(zonaLargo.value)||0) *
+              (parseFloat(zonaAncho.value)||0) *
+              (parseFloat(zonaAlto.value)||0);
+    volumenZona.textContent = v.toFixed(2);
   }
 
+  // —————— CRUD Áreas ——————
+  async function fetchAreas() {
+    const res = await fetch(`${API_BASE}/guardar_areas.php?empresa_id=${EMP_ID}`);
+    return await res.json();
+  }
+  async function renderAreas() {
+    const areas = await fetchAreas();
+    // rellenar select de zona
+    zonaAreaSel.innerHTML = '<option value="">Seleccione</option>';
+    areas.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a.id; o.textContent = a.nombre;
+      zonaAreaSel.appendChild(o);
+    });
+    // pintar resumen de áreas
+    resumen.innerHTML = '';
+    areas.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'resumen-item';
+      div.innerHTML = `
+        <h3>${a.nombre}</h3>
+        <p>${a.descripcion}</p>
+        <p>Dimensiones: ${a.ancho}×${a.largo}×${a.alto} m</p>
+        <p>Volumen: ${parseFloat(a.volumen).toFixed(2)} m³</p>
+      `;
+      resumen.appendChild(div);
+    });
+  }
+  formArea.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      nombre:      areaNombre.value.trim(),
+      descripcion: areaDesc.value.trim(),
+      ancho:       parseFloat(areaAncho.value)||0,
+      largo:       parseFloat(areaLargo.value)||0,
+      alto:        parseFloat(areaAlto.value)||0,
+      empresa_id:  EMP_ID
+    };
+    try {
+      const res = await fetch(`${API_BASE}/guardar_areas.php`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const j = await res.json();
+      if (!j.id) throw new Error(j.error||'Falló el registro');
+      showToast('Área registrada');
+      formArea.reset();
+      calcularVolumenArea();
+      formArea.classList.add('hidden');
+      renderAreas();
+      renderZonas(); // para actualizar vinculaciones
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
+
+  // —————— CRUD Zonas ——————
+  async function fetchZonas() {
+    const res = await fetch(`${API_BASE}/guardar_zonas.php?empresa_id=${EMP_ID}`);
+    return await res.json();
+  }
+  async function renderZonas() {
+    const zonas = await fetchZonas();
+    // pintar lista independiente si quieres
+    lista.innerHTML = '';
+    zonas.forEach(z => {
+      const div = document.createElement('div');
+      div.className = 'resumen-item';
+      div.innerHTML = `
+        <h3>${z.nombre}</h3>
+        <p>${z.descripcion}</p>
+        <p>Dimensiones: ${z.ancho}×${z.largo}×${z.alto} m</p>
+        <p>Volumen: ${parseFloat(z.volumen).toFixed(2)} m³</p>
+        <p>Área: ${z.area_id}</p>
+        <p>Tipo: ${z.tipo_almacenamiento}</p>
+      `;
+      lista.appendChild(div);
+    });
+  }
+  formZona.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      nombre:             zonaNombre.value.trim(),
+      descripcion:        zonaDesc.value.trim(),
+      ancho:              parseFloat(zonaAncho.value)||0,
+      largo:              parseFloat(zonaLargo.value)||0,
+      alto:               parseFloat(zonaAlto.value)||0,
+      tipo_almacenamiento: zonaTipoSel.value,
+      subniveles:         [],        // tu lógica de subniveles
+      area_id:            parseInt(zonaAreaSel.value,10)||0,
+      empresa_id:         EMP_ID
+    };
+    try {
+      const res = await fetch(`${API_BASE}/guardar_zonas.php`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const j = await res.json();
+      if (!j.id) throw new Error(j.error||'Falló el registro');
+      showToast('Zona registrada');
+      formZona.reset();
+      calcularVolumenZona();
+      formZona.classList.add('hidden');
+      renderZonas();
+      renderAreas();
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
+
+  // —————— Botones de alternar vista ——————
   areaBtn.addEventListener('click', () => {
     formArea.classList.remove('hidden');
     formZona.classList.add('hidden');
-    mostrarResumenAreas();
+    renderAreas();
   });
   zonaBtn.addEventListener('click', () => {
     formZona.classList.remove('hidden');
     formArea.classList.add('hidden');
-    cargarAreas();
-    mostrarResumenZonas();
+    renderAreas();
+    renderZonas();
   });
 
-  formArea.addEventListener('input', calcularVolumen);
+  // —————— Eventos de volumen en vivo ——————
+  formArea.addEventListener('input', calcularVolumenArea);
   formZona.addEventListener('input', calcularVolumenZona);
 
-  formArea.addEventListener('submit', e => {
-    e.preventDefault();
-    const areas = getAreas();
-    const data = {
-      id: Date.now(),
-
-  areaBtn.addEventListener('click', () => {
-    formArea.classList.toggle('hidden');
-    formZona.classList.add('hidden');
-  });
-  zonaBtn.addEventListener('click', () => {
-    formZona.classList.toggle('hidden');
-    formArea.classList.add('hidden');
-    cargarAreas();
-  });
-
-  formArea.addEventListener('input', calcularVolumen);
-  formArea.addEventListener('submit', e => {
-    e.preventDefault();
-    const data = {
-
-      nombre: document.getElementById('areaNombre').value,
-      descripcion: document.getElementById('areaDescripcion').value,
-      largo: parseFloat(document.getElementById('areaLargo').value),
-      ancho: parseFloat(document.getElementById('areaAncho').value),
-
-      alto: parseFloat(document.getElementById('areaAlto').value)
-    };
-    areas.push(data);
-    saveAreas(areas);
-    formArea.reset();
-    calcularVolumen();
-    mostrarResumenAreas();
-
-      alto: parseFloat(document.getElementById('areaAlto').value),
-      empresa_id: parseInt(localStorage.getItem('id_empresa'))
-    };
-    fetch('../../scripts/php/guardar_areas.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).then(() => {
-      formArea.reset();
-      calcularVolumen();
-      formArea.classList.add('hidden');
-      mostrarResumenAreas();
-      mostrarLista();
-    });
-
-  });
-
-  formZona.addEventListener('submit', e => {
-    e.preventDefault();
-
-    const zonas = getZonas();
-    const data = {
-      id: Date.now(),
-
-    const data = {
-
-      nombre: document.getElementById('zonaNombre').value,
-      descripcion: document.getElementById('zonaDescripcion').value,
-      largo: parseFloat(document.getElementById('zonaLargo').value),
-      ancho: parseFloat(document.getElementById('zonaAncho').value),
-      alto: parseFloat(document.getElementById('zonaAlto').value),
-
-      tipo: document.getElementById('zonaTipo').value,
-      subniveles: parseInt(document.getElementById('zonaSubniveles').value) || 0,
-      distancia: parseFloat(document.getElementById('zonaDistancia').value) || 0,
-      area_id: parseInt(document.getElementById('zonaArea').value) || null
-    };
-    zonas.push(data);
-    saveZonas(zonas);
-    formZona.reset();
-    mostrarResumenZonas();
-
-      tipo_almacenamiento: document.getElementById('zonaTipo').value,
-      subniveles: document.getElementById('zonaSubniveles').value ? [{ numero_subnivel: 1 }] : [],
-      distancia: parseFloat(document.getElementById('zonaDistancia').value) || 0,
-      area_id: parseInt(document.getElementById('zonaArea').value) || null,
-      empresa_id: parseInt(localStorage.getItem('id_empresa'))
-    };
-    fetch('../../scripts/php/guardar_zonas.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).then(() => {
-      formZona.reset();
-      formZona.classList.add('hidden');
-      mostrarResumenZonas();
-      mostrarLista();
-    });
-
-  });
-
-  llenarTipos();
-  formArea.classList.remove('hidden');
-  mostrarResumenAreas();
-
+  // —————— Inicialización ——————
+  calcularVolumenArea();
+  calcularVolumenZona();
+  renderAreas();
+  renderZonas();
 })();
-
-
-  mostrarLista();
-})();
-
