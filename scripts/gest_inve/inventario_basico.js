@@ -333,7 +333,6 @@ prodForm.addEventListener('submit', async e => {
       // 2) POST o PUT
       const base = API.productos;
 if (editProdId) {
-  // PUT con filtro por empresa
   await fetchAPI(
     `${base}?id=${editProdId}&empresa_id=${EMP_ID}`,
     'PUT',
@@ -343,7 +342,7 @@ if (editProdId) {
   editProdId = null;
 } else {
   // POST con filtro por empresa
-  await fetchAPI(
+    await fetchAPI(
     `${base}?empresa_id=${EMP_ID}`,
     'POST',
     {...data, empresa_id: EMP_ID}
@@ -354,6 +353,7 @@ if (editProdId) {
       // 3) Reset y recarga de datos
       prodForm.reset();
       await cargarProductos();
+      await cargarZonas();
       renderResumen();
 
     } catch (err) {
@@ -441,6 +441,7 @@ tablaResumen.addEventListener('click', async e => {
     await cargarCategorias();
     await cargarSubcategorias();
     await cargarProductos();
+    await cargarZonas();
     renderResumen();
     showToast('Resumen recargado');
   });

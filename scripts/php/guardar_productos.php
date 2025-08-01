@@ -16,7 +16,24 @@ if ($conn->connect_error) {
     exit;
 }
 
+
 $method = $_SERVER['REQUEST_METHOD'];
+// capturamos empresa_id de GET o de JSON en un solo paso
+$empresa_id = 0;
+if (isset($_REQUEST['empresa_id'])) {
+    $empresa_id = intval($_REQUEST['empresa_id']);
+} else {
+    // en POST/PUT podremos recibirlo en el cuerpo JSON
+    $data_tmp = getJsonInput();
+    if (isset($data_tmp['empresa_id'])) {
+        $empresa_id = intval($data_tmp['empresa_id']);
+    }
+}
+if ($empresa_id <= 0) {
+    http_response_code(400);
+    echo json_encode(['error'=>'empresa_id es obligatorio']);
+    exit;
+}
 
 function getJsonInput(){
   $input = file_get_contents('php://input');
@@ -95,7 +112,6 @@ if ($method === 'POST' || $method === 'PUT') {
     $dim_y           = isset($data['dim_y']) ? floatval($data['dim_y']) : null;
     $dim_z           = isset($data['dim_z']) ? floatval($data['dim_z']) : null;
     $zona_id         = isset($data['zona_id']) ? intval($data['zona_id']) : null;
-    $empresa_id = isset($data['empresa_id']) ? intval($data['empresa_id']) : 0;
 
     // Validación de empresa_id
     if ($empresa_id <= 0) {
@@ -178,7 +194,7 @@ if ($method === 'POST' || $method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    $stmt = $conn->prepare( "DELETE FROM productos WHERE id=? AND empresa_id=?");
+    $stmt = $conn->prepare("DELETE FROM productos WHERE id=? AND empresa_id=?");
     $stmt->bind_param('ii', $id, $empresa_id);
     $stmt->execute();
     echo json_encode(['success' => true]);
