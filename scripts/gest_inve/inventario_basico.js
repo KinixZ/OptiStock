@@ -340,7 +340,7 @@ prodForm.addEventListener('submit', async e => {
     }
 
 if (accion === 'edit' && tipo === 'producto') {
-    const p = productos.find(pr => pr.id === id);
+    const p = productos.find(pr => parseInt(pr.id, 10) === id);
     console.log('Editar producto', { id, producto: p });
     if (!p) {
       console.warn('Producto no encontrado', id);
