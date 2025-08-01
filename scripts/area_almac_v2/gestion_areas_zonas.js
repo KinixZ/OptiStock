@@ -179,6 +179,7 @@
   formZona.addEventListener('input', calcularVolumenZona);
 
   // —————— Inicialización ——————
+  llenarTipos();
   calcularVolumenArea();
   calcularVolumenZona();
   renderAreas();
