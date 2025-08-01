@@ -105,7 +105,7 @@ prodCategoria.addEventListener('change', () => {
   const movProdSel = document.getElementById('movProdSelect');
   const movCant    = document.getElementById('movCantidad');
   const movGuardar = document.getElementById('movGuardar');
-  let movTipo      = 'ingreso'; // o 'egreso'
+  let movTipo      = ''; 
 
 function poblarSelectProductos() {
   movProdSel.innerHTML = '<option value="">Seleccione producto</option>';
@@ -117,20 +117,20 @@ function poblarSelectProductos() {
   });
 }
 
-btnIngreso.addEventListener('click', () => {
-  movTipo = 'ingreso';
-  movTitle.textContent = 'Registrar Ingreso';
-  poblarSelectProductos();
-  movCant.value = '';
-  movModal.show();
-});
-btnEgreso.addEventListener('click', () => {
-  movTipo = 'egreso';
-  movTitle.textContent = 'Registrar Egreso';
-  poblarSelectProductos();
-  movCant.value = '';
-  movModal.show();
-});
+ btnIngreso.addEventListener('click', () => {
+    movTipo = 'ingreso';
+    movTitle.textContent = 'Registrar Ingreso';
+    poblarSelectProductos();
+    movCant.value = '';
+    movModal.show();
+  });
+  btnEgreso.addEventListener('click', () => {
+    movTipo = 'egreso';
+    movTitle.textContent = 'Registrar Egreso';
+    poblarSelectProductos();
+    movCant.value = '';
+    movModal.show();
+  });
 
 
 
@@ -208,10 +208,10 @@ movGuardar.addEventListener('click', async () => {
   }
   // POST a nuevo endpoint
   try {
-    await fetchAPI(
+  await fetchAPI(
   API.movimiento,
   'POST',
-  { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo }
+  { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo: movTipo }
 );
     movModal.hide();
     await cargarProductos();
