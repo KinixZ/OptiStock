@@ -21,16 +21,31 @@
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
   const subcategoriaFormContainer = document.getElementById('subcategoriaFormContainer');
 
-  async function fetchAPI(url, method = 'GET', data) {
-    const options = { method };
-    if (data) {
-      options.headers = { 'Content-Type': 'application/json' };
-      options.body = JSON.stringify(data);
-    }
-    const res = await fetch(url, options);
-    if (!res.ok) throw new Error('Error en la solicitud');
-    return res.json();
+async function fetchAPI(url, method = 'GET', data) {
+  const options = { method };
+  if (data) {
+    options.headers = { 'Content-Type': 'application/json' };
+    options.body    = JSON.stringify(data);
   }
+  const res = await fetch(url, options);
+
+  // Intentamos parsear el JSON (éxito o error vienen en JSON)
+  let payload;
+  try {
+    payload = await res.json();
+  } catch (e) {
+    throw new Error('Respuesta no es JSON válido');
+  }
+
+  // Si hubo cualquier código ≠2xx, lanzamos con el mensaje del servidor
+  if (!res.ok) {
+    const msg = payload.error || 'Error en la solicitud';
+    throw new Error(msg);
+  }
+
+  // OK → devolvemos el objeto parsado
+  return payload;
+}
 
   function showToast(message) {
     const toast = document.createElement('div');
