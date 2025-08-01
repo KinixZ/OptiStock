@@ -313,32 +313,55 @@ catForm.addEventListener('submit', async e => {
 });
 
 
-  subcatForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-      nombre: subcatForm.subcatNombre.value,
-      descripcion: subcatForm.subcatDescripcion.value,
-      categoria_id: parseInt(subcatForm.subcatCategoria.value) || null
-    };
+subcatForm.addEventListener('submit', async e => {
+  e.preventDefault();
+
+  // 1) Leer valores
+  const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
+  const nombre       = document.getElementById('subcatNombre').value.trim();
+  const descripcion  = document.getElementById('subcatDescripcion').value.trim();
+
+  // 2) Validaciones mínimas
+  if (!categoria_id) {
+    alert('Selecciona una categoría');
+    return;
+  }
+  if (!nombre) {
+    alert('El nombre es obligatorio');
+    return;
+  }
+
+  // 3) Construir payload
+  const data = { categoria_id, nombre, descripcion, empresa_id: EMP_ID };
+
+  try {
+    // 4) POST o PUT con empresa_id
     if (editSubcatId) {
       await fetchAPI(
-    `${API.subcategorias}?id=${editSubcatId}&empresa_id=${EMP_ID}`,
-    'PUT',
-    { categoria_id, nombre, descripcion }
-  );
-      editSubcatId = null;
+        `${API.subcategorias}?id=${editSubcatId}&empresa_id=${EMP_ID}`,
+        'PUT',
+        data
+      );
       showToast('Subcategoría editada correctamente');
+      editSubcatId = null;
     } else {
       await fetchAPI(
-    `${API.subcategorias}?empresa_id=${EMP_ID}`,
-    'POST',
-    { categoria_id, nombre, descripcion }
-  );
+        `${API.subcategorias}?empresa_id=${EMP_ID}`,
+        'POST',
+        data
+      );
       showToast('Subcategoría guardada correctamente');
     }
+
+    // 5) Reset y recarga
     subcatForm.reset();
     await cargarSubcategorias();
-  });
+
+  } catch (err) {
+    console.error(err);
+    showToast('Error guardando subcategoría: ' + err.message);
+  }
+});
 
 prodForm.addEventListener('submit', async e => {
     e.preventDefault();
