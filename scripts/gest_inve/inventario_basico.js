@@ -132,14 +132,18 @@ function actualizarSelectZonas() {
 
   async function cargarCategorias() {
     categorias.length = 0;
-    const datos = await fetchAPI(API.categorias);
+    const datos = await fetchAPI(
+    `${API.categorias}?empresa_id=${EMP_ID}`
+  );
     datos.forEach(c => categorias.push(c));
     actualizarSelectCategorias();
   }
 
   async function cargarSubcategorias() {
   subcategorias.length = 0;
-  const datos = await fetchAPI(API.subcategorias);
+  const datos = await fetchAPI(
+    `${API.subcategorias}?empresa_id=${EMP_ID}`
+  );
   datos.forEach(s => subcategorias.push(s));
   // Al iniciar, ninguna categoría está elegida → sólo placeholder
   actualizarSelectSubcategorias(null);
@@ -271,11 +275,19 @@ const sub = p.subcategoria_nombre || '';
     };
 
     if (editCatId) {
-      await fetchAPI(`${API.categorias}?id=${editCatId}`, 'PUT', data);
+      await fetchAPI(
+    `${API.categorias}?id=${editCatId}&empresa_id=${EMP_ID}`,
+    'PUT',
+    { nombre, descripcion }
+  );
       editCatId = null;
       showToast('Categoría editada correctamente');
     } else {
-      await fetchAPI(API.categorias, 'POST', data);
+      await fetchAPI(
+    `${API.categorias}?empresa_id=${EMP_ID}`,
+    'POST',
+    { nombre, descripcion }
+  );
       showToast('Categoría guardada correctamente');
     }
 
@@ -291,11 +303,19 @@ const sub = p.subcategoria_nombre || '';
       categoria_id: parseInt(subcatForm.subcatCategoria.value) || null
     };
     if (editSubcatId) {
-      await fetchAPI(`${API.subcategorias}?id=${editSubcatId}`, 'PUT', data);
+      await fetchAPI(
+    `${API.subcategorias}?id=${editSubcatId}&empresa_id=${EMP_ID}`,
+    'PUT',
+    { categoria_id, nombre, descripcion }
+  );
       editSubcatId = null;
       showToast('Subcategoría editada correctamente');
     } else {
-      await fetchAPI(API.subcategorias, 'POST', data);
+      await fetchAPI(
+    `${API.subcategorias}?empresa_id=${EMP_ID}`,
+    'POST',
+    { categoria_id, nombre, descripcion }
+  );
       showToast('Subcategoría guardada correctamente');
     }
     subcatForm.reset();
@@ -386,6 +406,8 @@ tablaResumen.addEventListener('click', async e => {
       await cargarSubcategorias();
       await cargarProductos();
     }
+    await cargarProductos();    // ← recalc volumen
+    await cargarZonas();
     renderResumen();
     return;
   }

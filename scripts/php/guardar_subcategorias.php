@@ -21,10 +21,13 @@ function getJsonInput() {
 }
 
 if ($method === 'GET') {
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+     $id = intval($_GET['id']??0);
     if ($id) {
-        $stmt = $conn->prepare('SELECT * FROM subcategorias WHERE id = ?');
-        $stmt->bind_param('i', $id);
+       $stmt = $conn->prepare(
+      'SELECT * FROM subcategorias 
+       WHERE id=? AND empresa_id=?'
+    );
+       $stmt->bind_param('ii',$id,$empresa_id);
         $stmt->execute();
         $res = $stmt->get_result();
         echo json_encode($res->fetch_assoc() ?: []);
@@ -49,8 +52,12 @@ if ($method === 'POST') {
         echo json_encode(['error' => 'Nombre requerido']);
         exit;
     }
-    $stmt = $conn->prepare('INSERT INTO subcategorias (categoria_id, nombre, descripcion) VALUES (?, ?, ?)');
-    $stmt->bind_param('iss', $categoria_id, $nombre, $descripcion);
+    $stmt = $conn->prepare(
+  'INSERT INTO subcategorias 
+     (categoria_id,nombre,descripcion,empresa_id)
+   VALUES (?,?,?,?)'
+);
+   $stmt->bind_param('iss i',$categoria_id,$nombre,$descripcion,$empresa_id);
     $stmt->execute();
     echo json_encode(['id' => $stmt->insert_id]);
     exit;
@@ -62,8 +69,12 @@ if ($method === 'PUT') {
     $categoria_id = isset($data['categoria_id']) ? intval($data['categoria_id']) : null;
     $nombre = $data['nombre'] ?? '';
     $descripcion = $data['descripcion'] ?? '';
-    $stmt = $conn->prepare('UPDATE subcategorias SET categoria_id=?, nombre=?, descripcion=? WHERE id=?');
-    $stmt->bind_param('issi', $categoria_id, $nombre, $descripcion, $id);
+    $stmt = $conn->prepare(
+  'UPDATE subcategorias 
+     SET categoria_id=?,nombre=?,descripcion=?
+     WHERE id=? AND empresa_id=?'
+);
+$stmt->bind_param('issii',$categoria_id,$nombre,$descripcion,$id,$empresa_id);
     $stmt->execute();
     echo json_encode(['success' => $stmt->affected_rows > 0]);
     exit;
@@ -71,8 +82,11 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    $stmt = $conn->prepare('DELETE FROM subcategorias WHERE id=?');
-    $stmt->bind_param('i', $id);
+    $stmt = $conn->prepare(
+  'DELETE FROM subcategorias 
+     WHERE id=? AND empresa_id=?'
+);
+    $stmt->bind_param('ii',$id,$empresa_id);
     $stmt->execute();
     echo json_encode(['success' => true]);
     exit;
