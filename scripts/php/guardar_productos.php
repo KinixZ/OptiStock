@@ -134,7 +134,6 @@ if ($method === 'POST' || $method === 'PUT') {
             $zona_id,
             $empresa_id
         );
-        $stmt->execute();
         if (!$stmt->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Execute failed', 'details' => $stmt->error]);
@@ -167,7 +166,6 @@ if ($method === 'POST' || $method === 'PUT') {
             $id,
             $empresa_id
         );
-        $stmt->execute();
         if (!$stmt->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Execute failed', 'details' => $stmt->error]);

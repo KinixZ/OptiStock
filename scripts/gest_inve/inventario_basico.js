@@ -192,8 +192,8 @@ if (vistaActual === 'producto') {
     </tr>`;
 
   productos.forEach(p => {
-    const cat = categorias.find(c => c.id === p.categoria_id)?.nombre || '';
-    const sub = subcategorias.find(s => s.id === p.subcategoria_id)?.nombre || '';
+    const cat = categorias.find(c => c.id === Number(p.categoria_id))?.nombre || '';
+    const sub = subcategorias.find(s => s.id === Number(p.subcategoria_id))?.nombre || '';
     const zona= p.zona_nombre || '';
     const area= p.area_nombre || '';
     const tr = document.createElement('tr');
