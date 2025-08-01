@@ -132,46 +132,51 @@
 
   // —————— CRUD Zonas ——————
   async function fetchZonas() {
-    // 1) traemos todas las zonas
-    const zonas = await fetchZonas();
-    // 2) mantenemos el encabezado y pintamos cada zona
-    resumenZonas.innerHTML = '<h2 class=\"h5 mb-3\">Resumen de Zonas</h2>';
-    zonas.forEach(z => {
-      const div = document.createElement('div');
-      div.className = 'resumen-item';
-      div.innerHTML = `
+  const res = await fetch(`${API_BASE}/guardar_zonas.php?empresa_id=${EMP_ID}`);
+  return await res.json();
+}
+
+async function renderZonas() {
+  const zonas = await fetchZonas();
+  // Reconstruimos la sección, manteniendo el título
+  resumenZonas.innerHTML = '<h2 class="h5 mb-3">Resumen de Zonas</h2>';
+  zonas.forEach(z => {
+    const div = document.createElement('div');
+    div.className = 'resumen-item';
+    div.innerHTML = `
       <h3>${z.nombre}</h3>
       <p>${z.descripcion}</p>
       <p>Dimensiones: ${z.ancho}×${z.largo}×${z.alto} m</p>
       <p>Volumen: ${parseFloat(z.volumen).toFixed(2)} m³</p>
-     <p>Área ID: ${z.area_id}</p>
+      <p>Área ID: ${z.area_id}</p>
       <p>Tipo: ${z.tipo_almacenamiento}</p>
     `;
-      resumenZonas.appendChild(div);
-    });
-  }
+    resumenZonas.appendChild(div);
+  });
+}
+
 
   formZona.addEventListener('submit', async e => {
     e.preventDefault();
     const data = {
-      nombre:             zonaNombre.value.trim(),
-      descripcion:        zonaDesc.value.trim(),
-      ancho:              parseFloat(zonaAncho.value)||0,
-      largo:              parseFloat(zonaLargo.value)||0,
-      alto:               parseFloat(zonaAlto.value)||0,
+      nombre: zonaNombre.value.trim(),
+      descripcion: zonaDesc.value.trim(),
+      ancho: parseFloat(zonaAncho.value) || 0,
+      largo: parseFloat(zonaLargo.value) || 0,
+      alto: parseFloat(zonaAlto.value) || 0,
       tipo_almacenamiento: zonaTipoSel.value,
-      subniveles:         [],        // tu lógica de subniveles
-      area_id:            parseInt(zonaAreaSel.value,10)||0,
-      empresa_id:         EMP_ID
+      subniveles: [],        // tu lógica de subniveles
+      area_id: parseInt(zonaAreaSel.value, 10) || 0,
+      empresa_id: EMP_ID
     };
     try {
       const res = await fetch(`${API_BASE}/guardar_zonas.php`, {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
       const j = await res.json();
-      if (!j.id) throw new Error(j.error||'Falló el registro');
+      if (!j.id) throw new Error(j.error || 'Falló el registro');
       showToast('Zona registrada');
       formZona.reset();
       calcularVolumenZona();
@@ -181,6 +186,8 @@
     } catch (err) {
       showToast(err.message);
     }
+    await renderZonas();
+    await renderAreas();
   });
 
   // —————— Botones de alternar vista ——————
