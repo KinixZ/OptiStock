@@ -27,6 +27,25 @@
   const API_BASE     = '../../scripts/php';
   const EMP_ID       = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
 
+ const tiposZona = [
+    'Rack', 'Mostrador', 'Caja', 'Estantería',
+    'Refrigeración', 'Congelador', 'Piso', 'Contenedor',
+    'Palet', 'Carro', 'Cajón', 'Jaula', 'Estiba',
+    'Bodega', 'Silo', 'Tanque', 'Gabinete', 'Vitrina',
+    'Armario', 'Otro'
+  ];
+
+  function llenarTipos() {
+    zonaTipoSel.innerHTML = '<option value="">Seleccione tipo</option>';
+    // al menos las primeras 8
+    tiposZona.slice(0, 8).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.toLowerCase();
+      opt.textContent = t;
+      zonaTipoSel.appendChild(opt);
+    });
+  }
+  
   // —————— Helpers ——————
   function showToast(msg) {
     const t = document.createElement('div');
