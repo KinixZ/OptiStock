@@ -31,21 +31,22 @@ if (isset($_REQUEST['empresa_id'])) {
 }
 if ($empresa_id <= 0) {
     http_response_code(400);
-    echo json_encode(['error'=>'empresa_id es obligatorio']);
+    echo json_encode(['error' => 'empresa_id es obligatorio']);
     exit;
 }
 
-function getJsonInput(){
-  $input = file_get_contents('php://input');
-  return json_decode($input,true) ?: [];
+function getJsonInput()
+{
+    $input = file_get_contents('php://input');
+    return json_decode($input, true) ?: [];
 }
 
 if ($method === 'GET') {
     $empresa_id = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
     if ($empresa_id <= 0) {
-      http_response_code(400);
-      echo json_encode(['error'=>'empresa_id es obligatorio']);
-      exit;
+        http_response_code(400);
+        echo json_encode(['error' => 'empresa_id es obligatorio']);
+        exit;
     }
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -67,20 +68,20 @@ if ($method === 'GET') {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ii', $id, $empresa_id);
     } else {
-       $sql = "
-  SELECT
-    p.*,
-    z.id   AS zona_id,        z.nombre  AS zona_nombre,
-    a.id   AS area_id,        a.nombre  AS area_nombre,
-    c.nombre AS categoria_nombre,
-    sc.nombre AS subcategoria_nombre       
-  FROM productos p
-  LEFT JOIN zonas         z  ON p.zona_id         = z.id
-  LEFT JOIN areas         a  ON z.area_id         = a.id
-  LEFT JOIN categorias    c  ON p.categoria_id    = c.id
-  LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
-  WHERE p.empresa_id = ?
-";
+        $sql = "
+          SELECT
+            p.*,                            
+            z.id   AS zona_id,   z.nombre  AS zona_nombre,
+            a.id   AS area_id,   a.nombre  AS area_nombre,
+            c.nombre AS categoria_nombre,
+            sc.nombre AS subcategoria_nombre
+          FROM productos p
+          LEFT JOIN zonas         z  ON p.zona_id         = z.id
+          LEFT JOIN areas         a  ON z.area_id         = a.id
+          LEFT JOIN categorias    c  ON p.categoria_id    = c.id
+         LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
+          WHERE p.empresa_id = ?
+      ";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('i', $empresa_id);
     }
@@ -89,13 +90,13 @@ if ($method === 'GET') {
     $res = $stmt->get_result();
 
     if ($id) {
-      echo json_encode($res->fetch_assoc() ?: []);
+        echo json_encode($res->fetch_assoc() ?: []);
     } else {
-      $items = [];
-      while ($row = $res->fetch_assoc()) {
-        $items[] = $row;
-      }
-      echo json_encode($items);
+        $items = [];
+        while ($row = $res->fetch_assoc()) {
+            $items[] = $row;
+        }
+        echo json_encode($items);
     }
     exit;
 }
