@@ -3,7 +3,8 @@
     categorias: '../../scripts/php/guardar_categorias.php',
     subcategorias: '../../scripts/php/guardar_subcategorias.php',
     productos: '../../scripts/php/guardar_productos.php',
-    zonas:         '../../scripts/php/guardar_zonas.php'
+    zonas:         '../../scripts/php/guardar_zonas.php',
+    movimiento:   '../../scripts/php/movimiento.php'
   };
 
   const categorias = [];
@@ -208,10 +209,10 @@ movGuardar.addEventListener('click', async () => {
   // POST a nuevo endpoint
   try {
     await fetchAPI(
-      `${API.productos}/movimiento.php`,
-      'POST',
-      { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo: movTipo }
-    );
+  API.movimiento,
+  'POST',
+  { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo }
+);
     movModal.hide();
     await cargarProductos();
     renderResumen();
