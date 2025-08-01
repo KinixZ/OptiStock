@@ -2,12 +2,14 @@
   const API = {
     categorias: '../../scripts/php/guardar_categorias.php',
     subcategorias: '../../scripts/php/guardar_subcategorias.php',
-    productos: '../../scripts/php/guardar_productos.php'
+    productos: '../../scripts/php/guardar_productos.php',
+    zonas:         '../../scripts/php/guardar_zonas.php'
   };
 
   const categorias = [];
   const subcategorias = [];
   const productos = [];
+  const zonas        = [];
   let vistaActual = 'producto';
   let editProdId = null;
   let editCatId = null;
@@ -16,6 +18,7 @@
   const btnProductos = document.getElementById('btnProductos');
   const btnCategorias = document.getElementById('btnCategorias');
   const btnSubcategorias = document.getElementById('btnSubcategorias');
+  const prodZona = document.getElementById('prodZona');
 
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
@@ -114,6 +117,15 @@ function actualizarSelectSubcategorias(categoriaId) {
     });
 }
 
+function actualizarSelectZonas() {
+   prodZona.innerHTML = '<option value="">Seleccione zona</option>';
+   zonas.forEach(z => {
+     const opt = document.createElement('option');
+     opt.value = z.id;
+     opt.textContent = `${z.nombre} (${z.tipo_almacenamiento || '—'})`;
+     prodZona.appendChild(opt);
+   });
+ }
 
   async function cargarCategorias() {
     categorias.length = 0;
@@ -129,6 +141,14 @@ function actualizarSelectSubcategorias(categoriaId) {
   // Al iniciar, ninguna categoría está elegida → sólo placeholder
   actualizarSelectSubcategorias(null);
 }
+
+async function cargarZonas() {
+   zonas.length = 0;
+   const datos = await fetchAPI(API.zonas);
+   datos.forEach(z => zonas.push(z));
+  actualizarSelectZonas();
+ }
+
 
   async function cargarProductos() {
     productos.length = 0;
@@ -157,6 +177,8 @@ if (vistaActual === 'producto') {
     <tr>
       <th>Imagen</th>
       <th>Nombre</th>
+      <th>Área</th>
+      <th>Zona</th>
       <th>Descripción</th>
       <th>Categoría</th>
       <th>Subcategoría</th>
@@ -169,10 +191,14 @@ if (vistaActual === 'producto') {
   productos.forEach(p => {
     const cat = categorias.find(c => c.id === p.categoria_id)?.nombre || '';
     const sub = subcategorias.find(s => s.id === p.subcategoria_id)?.nombre || '';
+    const zona= p.zona_nombre || '';
+    const area= p.area_nombre || '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail">` : ''}</td>
       <td>${p.nombre}</td>
+      <td>${area}</td>
+      <td>${zona}</td>
       <td>${p.descripcion}</td>
       <td>${cat}</td>
       <td>${sub}</td>
@@ -297,7 +323,7 @@ prodForm.addEventListener('submit', async e => {
       return;
     }
 
-    const data = { nombre, descripcion, categoria_id, subcategoria_id,
+    const data = { nombre, descripcion, categoria_id, subcategoria_id, zona_id: parseInt(prodZona.value) || null,
                    stock, precio_compra, dim_x, dim_y, dim_z };
 
     try {
@@ -405,6 +431,7 @@ tablaResumen.addEventListener('click', async e => {
   (async function init() {
     await cargarCategorias();
     await cargarSubcategorias();
+    await cargarZonas();
     await cargarProductos();
     renderResumen();
   })();
