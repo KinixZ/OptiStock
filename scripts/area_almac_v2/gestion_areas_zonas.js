@@ -290,26 +290,48 @@ formZona.addEventListener('submit', async e => {
 
 
 async function deleteArea(id) {
-  // Opción: impedir borrado si hay zonas
-  const [areas, zonas] = await Promise.all([ fetchAreas(), fetchZonas() ]);
-  const count = zonas.filter(z => z.area_id === parseInt(id,10)).length;
-  if (count > 0) {
-    alert(`Esta área tiene ${count} zona(s). Eliminalas primero.`);
-    return;
+  // 1) Obtener todas las zonas
+  const zonas = await fetchZonas();
+  // 2) Filtrar las que están asignadas a este área
+  const zonasAsig = zonas.filter(z => z.area_id === parseInt(id, 10));
+
+  // 3) Mensaje de confirmación distinto si hay zonas
+  let mensaje = '¿Seguro que deseas eliminar esta área?';
+  if (zonasAsig.length) {
+    mensaje = `El área que vas a eliminar y sus ${zonasAsig.length} zona(s) asignadas quedarán sin un área a la que pertenezcan. ¿Deseas continuar?`;
   }
-  if (!confirm('¿Seguro que deseas eliminar esta área?')) return;
+  if (!confirm(mensaje)) return;
 
-  await fetch(`${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`, {
+  // 4) Para cada zona asignada, lanzamos un PUT reasignando area_id a 0
+  for (const z of zonasAsig) {
+    // Construir payload completo con area_id = 0
+    const payload = {
+      nombre:             z.nombre,
+      descripcion:        z.descripcion,
+      ancho:              z.ancho,
+      largo:              z.largo,
+      alto:               z.alto,
+      tipo_almacenamiento: z.tipo_almacenamiento,
+      subniveles:         z.subniveles || [],
+      area_id:            0,
+      empresa_id:         EMP_ID
+    };
+    await fetch(
+      `${API_BASE}/guardar_zonas.php?id=${z.id}&empresa_id=${EMP_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  // 5) Finalmente borramos el área
+  await fetch(
+    `${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`, {
     method: 'DELETE'
   });
+
+  // 6) Refrescar ambas tablas
   await renderAreas();
-}
-
-async function deleteZone(id) {
-  if (!confirm('¿Seguro que deseas eliminar esta zona?')) return;
-  await fetch(`${API_BASE}/guardar_zonas.php?id=${id}&empresa_id=${EMP_ID}`, {
-    method: 'DELETE'
-  });
   await renderZonas();
 }
 
