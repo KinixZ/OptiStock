@@ -105,7 +105,7 @@ function actualizarSelectSubcategorias(categoriaId) {
   if (!categoriaId) return;
   // Filtramos y añadimos las que coincidan
   subcategorias
-    .filter(sc => sc.categoria_id === categoriaId)
+    .filter(sc => parseInt(sc.categoria_id, 10) === categoriaId)
     .forEach(sc => {
       const opt = document.createElement('option');
       opt.value = sc.id;
