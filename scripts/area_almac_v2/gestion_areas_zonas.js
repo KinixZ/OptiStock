@@ -74,28 +74,33 @@
     return await res.json();
   }
   async function renderAreas() {
+    // 1) traemos datos y rellenamos el <select> de área dentro del formulario de zona
     const areas = await fetchAreas();
-    // rellenar select de zona
-    zonaAreaSel.innerHTML = '<option value="">Seleccione</option>';
+    zonaAreaSel.innerHTML = '<option value=\"\">Seleccione</option>';
     areas.forEach(a => {
       const o = document.createElement('option');
-      o.value = a.id; o.textContent = a.nombre;
+      o.value = a.id;
+      o.textContent = a.nombre;
       zonaAreaSel.appendChild(o);
     });
-    // pintar resumen de áreas
-    resumenAreas.innerHTML = '';
-    areas.forEach(a => {
-      const div = document.createElement('div');
-      div.className = 'resumen-item';
-      div.innerHTML = `
-        <h3>${a.nombre}</h3>
-        <p>${a.descripcion}</p>
-        <p>Dimensiones: ${a.ancho}×${a.largo}×${a.alto} m</p>
-        <p>Volumen: ${parseFloat(a.volumen).toFixed(2)} m³</p>
-      `;
-      resumen.appendChild(div);
-    });
+
+    // 2) reconstruimos la sección de resumenAreas, manteniendo el título
+  resumenAreas.innerHTML = '<h2 class=\"h5 mb-3\">Resumen de Áreas y sus Zonas</h2>';
+  areas.forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'resumen-item';
+    div.innerHTML = `
+      <h3>${a.nombre}</h3>
+      <p>${a.descripcion}</p>
+      <p>Dimensiones: ${a.ancho}×${a.largo}×${a.alto} m</p>
+      <p>Volumen: ${parseFloat(a.volumen).toFixed(2)} m³</p>
+   `;
+    // aquí podrías inyectar sus zonas si las traes en la misma llamada
+    resumenAreas.appendChild(div);
+  });
   }
+
+
   formArea.addEventListener('submit', async e => {
     e.preventDefault();
     const data = {
@@ -127,27 +132,25 @@
 
   // —————— CRUD Zonas ——————
   async function fetchZonas() {
-    const res = await fetch(`${API_BASE}/guardar_zonas.php?empresa_id=${EMP_ID}`);
-    return await res.json();
-  }
-  async function renderZonas() {
+    // 1) traemos todas las zonas
     const zonas = await fetchZonas();
-    // pintar lista independiente si quieres
-    resumenZonas.innerHTML = '';
+    // 2) mantenemos el encabezado y pintamos cada zona
+    resumenZonas.innerHTML = '<h2 class=\"h5 mb-3\">Resumen de Zonas</h2>';
     zonas.forEach(z => {
       const div = document.createElement('div');
       div.className = 'resumen-item';
       div.innerHTML = `
-        <h3>${z.nombre}</h3>
-        <p>${z.descripcion}</p>
-        <p>Dimensiones: ${z.ancho}×${z.largo}×${z.alto} m</p>
-        <p>Volumen: ${parseFloat(z.volumen).toFixed(2)} m³</p>
-        <p>Área: ${z.area_id}</p>
-        <p>Tipo: ${z.tipo_almacenamiento}</p>
-      `;
-      lista.appendChild(div);
+      <h3>${z.nombre}</h3>
+      <p>${z.descripcion}</p>
+      <p>Dimensiones: ${z.ancho}×${z.largo}×${z.alto} m</p>
+      <p>Volumen: ${parseFloat(z.volumen).toFixed(2)} m³</p>
+     <p>Área ID: ${z.area_id}</p>
+      <p>Tipo: ${z.tipo_almacenamiento}</p>
+    `;
+      resumenZonas.appendChild(div);
     });
   }
+
   formZona.addEventListener('submit', async e => {
     e.preventDefault();
     const data = {
