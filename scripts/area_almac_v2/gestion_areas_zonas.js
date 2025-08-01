@@ -5,8 +5,8 @@
   const zonaBtn      = document.getElementById('nuevaZona');
   const formArea     = document.getElementById('formArea');
   const formZona     = document.getElementById('formZona');
-  const resumen      = document.getElementById('resumen');
-  const lista        = document.getElementById('lista');
+  const resumenAreas = document.getElementById('resumenAreas');
+  const resumenZonas = document.getElementById('resumenZonas');
   const areaNombre   = document.getElementById('areaNombre');
   const areaDesc     = document.getElementById('areaDescripcion');
   const areaLargo    = document.getElementById('areaLargo');
@@ -83,7 +83,7 @@
       zonaAreaSel.appendChild(o);
     });
     // pintar resumen de áreas
-    resumen.innerHTML = '';
+    resumenAreas.innerHTML = '';
     areas.forEach(a => {
       const div = document.createElement('div');
       div.className = 'resumen-item';
@@ -133,7 +133,7 @@
   async function renderZonas() {
     const zonas = await fetchZonas();
     // pintar lista independiente si quieres
-    lista.innerHTML = '';
+    resumenZonas.innerHTML = '';
     zonas.forEach(z => {
       const div = document.createElement('div');
       div.className = 'resumen-item';
