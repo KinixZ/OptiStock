@@ -1,54 +1,94 @@
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 1rem;
+/* Gestión Áreas y Zonas — Estilos coherentes con Módulo Inventario */
+
+body {
   font-family: Arial, sans-serif;
+  margin: 1rem;
+  background-color: #f8f9fa;
 }
-.actions {
-  margin-bottom: 1rem;
+
+/* Tablas de resumen (si las usas) */
+table th,
+table td {
+  border: 1px solid #ccc;
+  padding: 4px;
 }
-.actions button {
+
+/* Botones de acción */
+.actions button,
+button[type="submit"] {
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
   margin-right: 0.5rem;
 }
-.hidden {
-  display: none;
+.actions button.btn-secondary {
+  background-color: #007bff;
 }
+.actions button:hover,
+button[type="submit"]:hover {
+  opacity: 0.9;
+}
+
+/* Formularios */
 form {
-  margin: 1rem 0;
+  background: #fff;
   padding: 1rem;
-  border: 1px solid #ccc;
-  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 1rem;
 }
+
 form label {
   display: block;
   margin-top: 0.5rem;
+  font-weight: bold;
 }
+
 form input,
-form select,
-form textarea {
+form textarea,
+form select {
   width: 100%;
   padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   margin-top: 0.25rem;
-  margin-bottom: 0.5rem;
+  font-size: 1rem;
   box-sizing: border-box;
 }
-form textarea {
-  resize: vertical;
-  min-height: 60px;
+
+/* Volumen */
+p span[id$="Volumen"] {
+  font-weight: bold;
 }
-#resumen {
-  margin-top: 1rem;
-  border-top: 1px solid #ccc;
-  padding-top: 1rem;
-}
+
+/* Resumen de áreas/zonas */
 .resumen-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1rem;
   margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
 .resumen-item h3 {
-  margin: 0 0 0.25rem 0;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
-#lista {
-  margin-top: 2rem;
+/* Toast */
+.toast-message {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: #333;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  opacity: 0.9;
+  z-index: 1000;
 }
-
