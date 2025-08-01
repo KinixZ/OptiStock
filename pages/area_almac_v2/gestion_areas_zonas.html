@@ -90,15 +90,45 @@
 
     <!-- Sección resumen Áreas con sus Zonas -->
     <section id="resumenAreas" class="mb-5">
-      <h2 class="h5 mb-3">Resumen de Áreas y sus Zonas</h2>
-      <!-- JS renderizará aquí cada área con sus zonas -->
-    </section>
+  <h2 class="h5 mb-3">Resumen de Áreas</h2>
+  <div class="table-responsive">
+    <table id="tablaAreas" class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Área</th>
+          <th>Descripción</th>
+          <th>Dimensiones (m)</th>
+          <th>Volumen (m³)</th>
+          <th># Zonas</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- filas generadas por JS -->
+      </tbody>
+    </table>
+  </div>
+</section>
 
     <!-- Sección resumen Zonas -->
     <section id="resumenZonas" class="mb-5">
-      <h2 class="h5 mb-3">Resumen de Zonas</h2>
-      <!-- JS renderizará aquí el listado de zonas -->
-    </section>
+  <h2 class="h5 mb-3">Resumen de Zonas</h2>
+  <div class="table-responsive">
+    <table id="tablaZonas" class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Zona</th>
+          <th>Área</th>
+          <th>Dimensiones (m)</th>
+          <th>Volumen (m³)</th>
+          <th>Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- filas generadas por JS -->
+      </tbody>
+    </table>
+  </div>
+</section>
   </div>
   <!-- Bootstrap JS para componentes -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>

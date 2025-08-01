@@ -21,6 +21,8 @@
   const volumenZona  = document.getElementById('zonaVolumen');
   const zonaAreaSel  = document.getElementById('zonaArea');
   const zonaTipoSel  = document.getElementById('zonaTipo');
+  const tablaAreasBody = document.querySelector('#tablaAreas tbody');
+  const tablaZonasBody = document.querySelector('#tablaZonas tbody'); 
   const zonaSubniv   = document.getElementById('zonaSubniveles');
   const zonaDist     = document.getElementById('zonaDistancia');
 
@@ -73,32 +75,40 @@
     const res = await fetch(`${API_BASE}/guardar_areas.php?empresa_id=${EMP_ID}`);
     return await res.json();
   }
-  async function renderAreas() {
-    // 1) traemos datos y rellenamos el <select> de área dentro del formulario de zona
-    const areas = await fetchAreas();
-    zonaAreaSel.innerHTML = '<option value=\"\">Seleccione</option>';
-    areas.forEach(a => {
-      const o = document.createElement('option');
-      o.value = a.id;
-      o.textContent = a.nombre;
-      zonaAreaSel.appendChild(o);
-    });
 
-    // 2) reconstruimos la sección de resumenAreas, manteniendo el título
-  resumenAreas.innerHTML = '<h2 class=\"h5 mb-3\">Resumen de Áreas y sus Zonas</h2>';
+async function renderAreas() {
+  // 1) Traer datos de áreas y zonas
+  const [areas, zonas] = await Promise.all([ fetchAreas(), fetchZonas() ]);
+  // 2) Contar cuántas zonas hay por área
+  const zonasPorArea = zonas.reduce((acc, z) => {
+    acc[z.area_id] = (acc[z.area_id] || 0) + 1;
+    return acc;
+  }, {});
+
+  // 3) Poblar la tabla de áreas
+  tablaAreasBody.innerHTML = '';
   areas.forEach(a => {
-    const div = document.createElement('div');
-    div.className = 'resumen-item';
-    div.innerHTML = `
-      <h3>${a.nombre}</h3>
-      <p>${a.descripcion}</p>
-      <p>Dimensiones: ${a.ancho}×${a.largo}×${a.alto} m</p>
-      <p>Volumen: ${parseFloat(a.volumen).toFixed(2)} m³</p>
-   `;
-    // aquí podrías inyectar sus zonas si las traes en la misma llamada
-    resumenAreas.appendChild(div);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${a.nombre}</td>
+      <td>${a.descripcion}</td>
+      <td>${a.ancho}×${a.largo}×${a.alto}</td>
+      <td>${parseFloat(a.volumen).toFixed(2)}</td>
+      <td>${zonasPorArea[a.id] || 0}</td>
+    `;
+    tablaAreasBody.appendChild(tr);
   });
-  }
+
+  // 4) También rellenamos el <select> de zonas
+  zonaAreaSel.innerHTML = '<option value="">Seleccione</option>';
+  areas.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.id;
+    o.textContent = a.nombre;
+    zonaAreaSel.appendChild(o);
+  });
+}
+
 
 
   formArea.addEventListener('submit', async e => {
@@ -128,6 +138,8 @@
     } catch (err) {
       showToast(err.message);
     }
+      await renderAreas();
+      renderZonas();
   });
 
   // —————— CRUD Zonas ——————
@@ -137,23 +149,25 @@
 }
 
 async function renderZonas() {
-  const zonas = await fetchZonas();
-  // Reconstruimos la sección, manteniendo el título
-  resumenZonas.innerHTML = '<h2 class="h5 mb-3">Resumen de Zonas</h2>';
+  // 1) Traer datos de zonas y áreas (para el nombre de área)
+  const [zonas, areas] = await Promise.all([ fetchZonas(), fetchAreas() ]);
+  const areasMap = Object.fromEntries(areas.map(a => [a.id, a.nombre]));
+
+  // 2) Poblar la tabla de zonas
+  tablaZonasBody.innerHTML = '';
   zonas.forEach(z => {
-    const div = document.createElement('div');
-    div.className = 'resumen-item';
-    div.innerHTML = `
-      <h3>${z.nombre}</h3>
-      <p>${z.descripcion}</p>
-      <p>Dimensiones: ${z.ancho}×${z.largo}×${z.alto} m</p>
-      <p>Volumen: ${parseFloat(z.volumen).toFixed(2)} m³</p>
-      <p>Área ID: ${z.area_id}</p>
-      <p>Tipo: ${z.tipo_almacenamiento}</p>
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${z.nombre}</td>
+      <td>${areasMap[z.area_id] || z.area_id}</td>
+      <td>${z.ancho}×${z.largo}×${z.alto}</td>
+      <td>${parseFloat(z.volumen).toFixed(2)}</td>
+      <td>${z.tipo_almacenamiento}</td>
     `;
-    resumenZonas.appendChild(div);
+    tablaZonasBody.appendChild(tr);
   });
 }
+
 
 
   formZona.addEventListener('submit', async e => {
@@ -187,7 +201,7 @@ async function renderZonas() {
       showToast(err.message);
     }
     await renderZonas();
-    await renderAreas();
+    renderAreas();
   });
 
   // —————— Botones de alternar vista ——————
