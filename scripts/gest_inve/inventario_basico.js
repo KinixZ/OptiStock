@@ -270,8 +270,8 @@ const sub = p.subcategoria_nombre || '';
 catForm.addEventListener('submit', async e => {
   e.preventDefault();
   // 1) Leer campos
-  const nombre       = document.getElementById('catNombre').value.trim();
-  const descripcion  = document.getElementById('catDescripcion').value.trim();
+  const nombre      = document.getElementById('catNombre').value.trim();
+  const descripcion = document.getElementById('catDescripcion').value.trim();
   if (!nombre) { alert('El nombre es obligatorio'); return; }
 
   // 2) Payload con empresa
@@ -286,7 +286,6 @@ catForm.addEventListener('submit', async e => {
         payload
       );
       showToast('Categoría editada correctamente');
-      editCatId = null;
     } else {
       await fetchAPI(
         `${API.categorias}?empresa_id=${EMP_ID}`,
