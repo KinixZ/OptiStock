@@ -1,8 +1,8 @@
 const AppConfig = {
   API: {
-    categorias: '/scripts/php/guardar_categorias.php',
-    subcategorias: '/scripts/php/guardar_subcategorias.php',
-    productos: '/scripts/php/guardar_productos.php'
+    categorias: '../../scripts/php/guardar_categorias.php',
+    subcategorias: '../../scripts/php/guardar_subcategorias.php',
+    productos: '../../scripts/php/guardar_productos.php'
   },
   selectors: {
     tabs: '.tab-btn',
@@ -360,11 +360,13 @@ const FormController = {
 
   async handleProducto(form) {
     const id = form.querySelector('#productoId').value;
+    const catValue = form.querySelector('#productoCategoria').value;
+    const subcatValue = form.querySelector('#productoSubcategoria').value;
     const data = {
       nombre: form.querySelector('#productoNombre').value,
       descripcion: form.querySelector('#productoDesc').value,
-      categoria_id: form.querySelector('#productoCategoria').value,
-      subcategoria_id: form.querySelector('#productoSubcategoria').value,
+      categoria_id: catValue ? parseInt(catValue) : null,
+      subcategoria_id: subcatValue ? parseInt(subcatValue) : null,
       dimensiones: `${form.querySelector('#productoDimX').value}x${form.querySelector('#productoDimY').value}x${form.querySelector('#productoDimZ').value}`,
       stock: parseInt(form.querySelector('#productoStock').value || '0'),
       precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0'),
