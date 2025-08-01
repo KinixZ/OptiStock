@@ -316,56 +316,78 @@ prodForm.addEventListener('submit', async e => {
     }
   });
 
-  tablaResumen.addEventListener('click', async e => {
-    const id = parseInt(e.target.dataset.id);
-    const tipo = e.target.dataset.tipo;
-    const accion = e.target.dataset.accion;
-    if (!accion) return;
+tablaResumen.addEventListener('click', async e => {
+  const id     = parseInt(e.target.dataset.id, 10);
+  const tipo   = e.target.dataset.tipo;
+  const accion = e.target.dataset.accion;
+  if (!accion) return;
 
-    if (accion === 'del') {
-      if (tipo === 'producto') {
-        await fetchAPI(`${API.productos}?id=${id}`, 'DELETE');
-        await cargarProductos();
-      } else if (tipo === 'categoria') {
-        await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
-        await cargarCategorias();
-        await cargarSubcategorias();
-        await cargarProductos();
-      } else if (tipo === 'subcategoria') {
-        await fetchAPI(`${API.subcategorias}?id=${id}`, 'DELETE');
-        await cargarSubcategorias();
-        await cargarProductos();
-      }
-      renderResumen();
+  // 1) Eliminar
+  if (accion === 'del') {
+    if (tipo === 'producto') {
+      await fetchAPI(`${API.productos}?id=${id}`, 'DELETE');
+      await cargarProductos();
+    } else if (tipo === 'categoria') {
+      await fetchAPI(`${API.categorias}?id=${id}`, 'DELETE');
+      await cargarCategorias();
+      await cargarSubcategorias();
+      await cargarProductos();
+    } else if (tipo === 'subcategoria') {
+      await fetchAPI(`${API.subcategorias}?id=${id}`, 'DELETE');
+      await cargarSubcategorias();
+      await cargarProductos();
     }
+    renderResumen();
+    return;
+  }
 
-if (accion === 'edit' && tipo === 'producto') {
+  // 2) Editar producto
+  if (accion === 'edit' && tipo === 'producto') {
     const p = productos.find(pr => parseInt(pr.id, 10) === id);
-    console.log('Editar producto', { id, producto: p });
-    if (!p) {
-      console.warn('Producto no encontrado', id);
-      return;
-    }
-    // 1) Cambiar a vista producto
+    if (!p) return;
     mostrar('producto');
-    // 2) Rellenar campos por ID
     document.getElementById('prodNombre').value      = p.nombre;
     document.getElementById('prodDescripcion').value = p.descripcion;
-    prodCategoria.value  = p.categoria_id || '';
-    actualizarSelectSubcategorias(p.categoria_id);
-    prodSubcategoria.value = p.subcategoria_id || '';
+    prodCategoria.value  = parseInt(p.categoria_id,10) || '';
+    actualizarSelectSubcategorias(parseInt(p.categoria_id,10));
+    prodSubcategoria.value = parseInt(p.subcategoria_id,10) || '';
     const dims = (p.dimensiones || '').split('x');
     document.getElementById('prodDimX').value   = dims[0] || '';
     document.getElementById('prodDimY').value   = dims[1] || '';
     document.getElementById('prodDimZ').value   = dims[2] || '';
     document.getElementById('prodStock').value  = p.stock;
     document.getElementById('prodPrecio').value = p.precio_compra;
-    // 3) Marcar edición
     editProdId = id;
-    return;  // Salimos para no caer en otros if
+    return;
   }
-  });
 
+  // 3) Editar categoría
+  if (accion === 'edit' && tipo === 'categoria') {
+    const c = categorias.find(cat => parseInt(cat.id, 10) === id);
+    if (!c) return;
+    mostrar('categoria');
+    // los inputs de categoría tienen id="catNombre" y id="catDescripcion"
+    document.getElementById('catNombre').value      = c.nombre;
+    document.getElementById('catDescripcion').value = c.descripcion;
+    editCatId = id;
+    return;
+  }
+
+  // 4) Editar subcategoría
+  if (accion === 'edit' && tipo === 'subcategoria') {
+    const sc = subcategorias.find(s => parseInt(s.id, 10) === id);
+    if (!sc) return;
+    mostrar('subcategoria');
+    // select de categorías y inputs de subcategoría por su id
+    document.getElementById('subcatCategoria').value   = parseInt(sc.categoria_id,10) || '';
+    document.getElementById('subcatNombre').value      = sc.nombre;
+    document.getElementById('subcatDescripcion').value = sc.descripcion;
+    editSubcatId = id;
+    return;
+  }
+});
+
+  // Botón para recargar el resumen
   btnRecargarResumen?.addEventListener('click', async () => {
     await cargarCategorias();
     await cargarSubcategorias();
