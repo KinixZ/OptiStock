@@ -105,7 +105,13 @@
   async function cargarProductos() {
     productos.length = 0;
     const datos = await fetchAPI(API.productos);
-    datos.forEach(p => productos.push(p));
+    datos.forEach(p => {
+      const dims = [p.dim_x, p.dim_y, p.dim_z]
+        .filter(v => v !== null && v !== undefined)
+        .join('x');
+      p.dimensiones = dims;
+      productos.push(p);
+    });
   }
 
   function renderResumen() {
@@ -241,14 +247,20 @@ if (vistaActual === 'producto') {
       alert('Advertencia: faltan campos por rellenar');
       return;
     }
+    const dimX = parseFloat(prodForm.prodDimX.value) || 0;
+    const dimY = parseFloat(prodForm.prodDimY.value) || 0;
+    const dimZ = parseFloat(prodForm.prodDimZ.value) || 0;
     const data = {
       nombre: prodForm.prodNombre.value,
       descripcion: prodForm.prodDescripcion.value,
       categoria_id,
       subcategoria_id,
-      dimensiones: `${prodForm.prodDimX.value}x${prodForm.prodDimY.value}x${prodForm.prodDimZ.value}`,
+      dimensiones: `${dimX}x${dimY}x${dimZ}`,
       stock: parseInt(prodForm.prodStock.value) || 0,
-      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0
+      precio_compra: parseFloat(prodForm.prodPrecio.value) || 0,
+      dim_x: dimX,
+      dim_y: dimY,
+      dim_z: dimZ
     };
 
     if (editProdId) {
