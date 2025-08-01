@@ -34,19 +34,20 @@ async function fetchAPI(url, method = 'GET', data) {
     options.body    = JSON.stringify(data);
   }
   const res = await fetch(url, options);
+  // clonamos la respuesta para poder leer el texto si json() falla
+  const clone = res.clone();
 
   // Intentamos parsear el JSON
   let payload;
   try {
     payload = await res.json();
   } catch (e) {
-   // si no es JSON, leemos el texto crudo y lo volcamos en consola
-    const text = await res.text();
+    const text = await clone.text();
     console.error(`⚠️ fetchAPI: respuesta HTTP ${res.status} no es JSON:\n`, text);
-    throw new Error(`HTTP ${res.status} – Response no-JSON: ${text.slice(0,200)}`);
+    throw new Error(`HTTP ${res.status} – respuesta no-JSON: ${text.slice(0,200)}`);
   }
 
-  // Si hubo cualquier código ≠2xx, lanzamos con el mensaje del servidor
+   // Si hubo cualquier código ≠2xx, volcamos el JSON y lanzamos
   if (!res.ok) {
     console.warn(`⚠️ fetchAPI: HTTP ${res.status}`, payload);
     const msg = payload.error || `Error HTTP ${res.status}`;
