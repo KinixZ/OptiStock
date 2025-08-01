@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 header('Content-Type: application/json');
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
@@ -36,6 +39,71 @@ if ($method === 'GET') {
         }
         echo json_encode($items);
     }
+    exit;
+}
+
+
+if ($method === 'POST') {
+    $data = getJsonInput();
+    // … obtención de $nombre, $descripcion, etc. …
+
+    if (!$nombre) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Nombre requerido']);
+        exit;
+    }
+
+    $sql = '
+      INSERT INTO productos
+        (nombre, descripcion, categoria_id, subcategoria_id, stock, precio_compra, dim_x, dim_y, dim_z)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ';
+
+    // 1) Prepare
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode([
+          'error'   => 'Prepare failed',
+          'details' => $conn->error
+        ]);
+        exit;
+    }
+
+    // 2) bind_param
+    if (!$stmt->bind_param(
+      'ssiiidddd',
+      $nombre,
+      $descripcion,
+      $categoria_id,
+      $subcategoria_id,
+      $stock,
+      $precio,
+      $dim_x,
+      $dim_y,
+      $dim_z
+    )) {
+        http_response_code(500);
+        echo json_encode([
+          'error'   => 'bind_param failed',
+          'details' => $stmt->error
+        ]);
+        exit;
+    }
+
+    // 3) execute
+    if (!$stmt->execute()) {
+        http_response_code(500);
+        echo json_encode([
+          'error'   => 'Execute failed',
+          'details' => $stmt->error
+        ]);
+        exit;
+    }
+
+    // 4) Si todo va bien
+    echo json_encode(['id' => $stmt->insert_id]);
     exit;
 }
 
