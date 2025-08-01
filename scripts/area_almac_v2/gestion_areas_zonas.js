@@ -182,13 +182,13 @@
 
   // —————— Botones de alternar vista ——————
   areaBtn.addEventListener('click', () => {
-    formArea.classList.remove('hidden');
-    formZona.classList.add('hidden');
+    formArea.classList.remove('d-none');
+    formZona.classList.add('d-none');
     renderAreas();
   });
   zonaBtn.addEventListener('click', () => {
-    formZona.classList.remove('hidden');
-    formArea.classList.add('hidden');
+    formZona.classList.remove('d-none');
+    formArea.classList.add('d-none');
     renderAreas();
     renderZonas();
   });
