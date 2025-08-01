@@ -339,43 +339,31 @@ prodForm.addEventListener('submit', async e => {
       renderResumen();
     }
 
-    if (accion === 'edit') {
-      if (tipo === 'producto') {
-        const p = productos.find(pr => pr.id === id);
-        if (p) {
-          mostrar('producto');
-          document.getElementById('prodNombre').value       = p.nombre;
-          document.getElementById('prodDescripcion').value  = p.descripcion;
-          prodCategoria.value = p.categoria_id || '';
-          actualizarSelectSubcategorias(p.categoria_id);
-          prodSubcategoria.value = p.subcategoria_id || '';
-          const dims = (p.dimensiones || '').split('x');
-          document.getElementById('prodDimX').value  = dims[0] || '';
-          document.getElementById('prodDimY').value  = dims[1] || '';
-          document.getElementById('prodDimZ').value  = dims[2] || '';
-          document.getElementById('prodStock').value = p.stock;
-          document.getElementById('prodPrecio').value= p.precio_compra;
-          editProdId = id;
-        }
-      } else if (tipo === 'categoria') {
-        const c = categorias.find(cat => cat.id === id);
-        if (c) {
-          mostrar('categoria');
-          catForm.catNombre.value = c.nombre;
-          catForm.catDescripcion.value = c.descripcion;
-          editCatId = id;
-        }
-      } else if (tipo === 'subcategoria') {
-        const sc = subcategorias.find(s => s.id === id);
-        if (sc) {
-          mostrar('subcategoria');
-          subcatCategoria.value = sc.categoria_id || '';
-          subcatForm.subcatNombre.value = sc.nombre;
-          subcatForm.subcatDescripcion.value = sc.descripcion;
-          editSubcatId = id;
-        }
-      }
+if (accion === 'edit' && tipo === 'producto') {
+    const p = productos.find(pr => pr.id === id);
+    console.log('Editar producto', { id, producto: p });
+    if (!p) {
+      console.warn('Producto no encontrado', id);
+      return;
     }
+    // 1) Cambiar a vista producto
+    mostrar('producto');
+    // 2) Rellenar campos por ID
+    document.getElementById('prodNombre').value      = p.nombre;
+    document.getElementById('prodDescripcion').value = p.descripcion;
+    prodCategoria.value  = p.categoria_id || '';
+    actualizarSelectSubcategorias(p.categoria_id);
+    prodSubcategoria.value = p.subcategoria_id || '';
+    const dims = (p.dimensiones || '').split('x');
+    document.getElementById('prodDimX').value   = dims[0] || '';
+    document.getElementById('prodDimY').value   = dims[1] || '';
+    document.getElementById('prodDimZ').value   = dims[2] || '';
+    document.getElementById('prodStock').value  = p.stock;
+    document.getElementById('prodPrecio').value = p.precio_compra;
+    // 3) Marcar edición
+    editProdId = id;
+    return;  // Salimos para no caer en otros if
+  }
   });
 
   btnRecargarResumen?.addEventListener('click', async () => {
