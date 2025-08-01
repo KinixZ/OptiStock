@@ -344,17 +344,17 @@ prodForm.addEventListener('submit', async e => {
         const p = productos.find(pr => pr.id === id);
         if (p) {
           mostrar('producto');
-          prodForm.prodNombre.value = p.nombre;
-          prodForm.prodDescripcion.value = p.descripcion;
+          document.getElementById('prodNombre').value       = p.nombre;
+          document.getElementById('prodDescripcion').value  = p.descripcion;
           prodCategoria.value = p.categoria_id || '';
           actualizarSelectSubcategorias(p.categoria_id);
           prodSubcategoria.value = p.subcategoria_id || '';
           const dims = (p.dimensiones || '').split('x');
-          prodForm.prodDimX.value = dims[0] || '';
-          prodForm.prodDimY.value = dims[1] || '';
-          prodForm.prodDimZ.value = dims[2] || '';
-          prodForm.prodStock.value = p.stock;
-          prodForm.prodPrecio.value = p.precio_compra;
+          document.getElementById('prodDimX').value  = dims[0] || '';
+          document.getElementById('prodDimY').value  = dims[1] || '';
+          document.getElementById('prodDimZ').value  = dims[2] || '';
+          document.getElementById('prodStock').value = p.stock;
+          document.getElementById('prodPrecio').value= p.precio_compra;
           editProdId = id;
         }
       } else if (tipo === 'categoria') {
