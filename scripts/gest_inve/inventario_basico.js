@@ -160,7 +160,6 @@ if (vistaActual === 'producto') {
       <th>Descripción</th>
       <th>Categoría</th>
       <th>Subcategoría</th>
-      <th>Dimensiones</th>
       <th>Volumen (cm³)</th>
       <th>Stock</th>
       <th>Precio compra</th>
@@ -177,7 +176,7 @@ if (vistaActual === 'producto') {
       <td>${p.descripcion}</td>
       <td>${cat}</td>
       <td>${sub}</td>
-      <td>${p.dimensiones}</td>
+      <td>${p.volumen}</td>
       <td>${p.stock}</td>
       <td>${p.precio_compra}</td>
       <td>
