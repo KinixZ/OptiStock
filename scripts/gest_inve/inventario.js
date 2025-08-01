@@ -588,9 +588,9 @@ document.getElementById('exportarExcel').addEventListener('click', exportarExcel
 document.getElementById('exportarPDF').addEventListener('click', exportarPDF);
 
 (async function(){
-  await cargarCategorias();
-  await cargarSubcategorias();
-  await cargarProductos();
+  await DataController.loadCategorias();
+  await DataController.loadSubcategorias();
+  await DataController.loadProductos();
 })();
 
 // Controlador de búsquedas
