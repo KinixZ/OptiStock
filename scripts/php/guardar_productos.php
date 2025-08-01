@@ -18,7 +18,8 @@ if ($conn->connect_error) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-function getJsonInput() {
+function getJsonInput()
+{
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
     return $data ?: [];
@@ -29,20 +30,17 @@ if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     if ($id) {
         $sql = "
-          SELECT
-            p.*,
-            z.id          AS zona_id,
-            z.nombre      AS zona_nombre,
-            a.id          AS area_id,
-            a.nombre      AS area_nombre
-          FROM productos p
-          LEFT JOIN zonas   z ON p.zona_id   = z.id
-          LEFT JOIN areas   a ON z.area_id    = a.id
-          WHERE p.id = ?
-        ";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
+  SELECT
+    p.*, z.id AS zona_id, z.nombre AS zona_nombre,
+    a.id AS area_id, a.nombre AS area_nombre
+  FROM productos p
+  LEFT JOIN zonas z ON p.zona_id = z.id
+  LEFT JOIN areas a ON z.area_id  = a.id
+  WHERE p.empresa_id = ?
+";
+       $stmt = $conn->prepare($sql);
+$stmt->bind_param('i',$empresa_id);
+$stmt->execute();
         $res = $stmt->get_result();
         echo json_encode($res->fetch_assoc() ?: []);
     } else {
@@ -68,6 +66,9 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST' || $method === 'PUT') {
+
+
+
     $data = getJsonInput();
 
     // Campos comunes
@@ -81,6 +82,14 @@ if ($method === 'POST' || $method === 'PUT') {
     $dim_y           = isset($data['dim_y']) ? floatval($data['dim_y']) : null;
     $dim_z           = isset($data['dim_z']) ? floatval($data['dim_z']) : null;
     $zona_id         = isset($data['zona_id']) ? intval($data['zona_id']) : null;
+    $empresa_id = isset($data['empresa_id']) ? intval($data['empresa_id']) : 0;
+
+    // Validación de empresa_id
+    if ($empresa_id <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'empresa_id es obligatorio']);
+        exit;
+    }
 
     // Validación mínima
     if (!$nombre) {
@@ -92,50 +101,63 @@ if ($method === 'POST' || $method === 'PUT') {
     if ($method === 'POST') {
         // Inserción
         $sql = "
-          INSERT INTO productos
-            (nombre, descripcion, categoria_id, subcategoria_id,
-             stock, precio_compra, dim_x, dim_y, dim_z, zona_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ";
+  INSERT INTO productos
+    (nombre, descripcion, categoria_id, subcategoria_id,
+     stock, precio_compra, dim_x, dim_y, dim_z, zona_id, empresa_id)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?)
+";
         $stmt = $conn->prepare($sql);
-        $bind = $stmt->bind_param(
-          'ssiiiddddi',
-          $nombre, $descripcion,
-          $categoria_id, $subcategoria_id,
-          $stock, $precio,
-          $dim_x, $dim_y, $dim_z,
-          $zona_id
+        $stmt->bind_param(
+            'ssiiidddiii',
+            $nombre,
+            $descripcion,
+            $categoria_id,
+            $subcategoria_id,
+            $stock,
+            $precio,
+            $dim_x,
+            $dim_y,
+            $dim_z,
+            $zona_id,
+            $empresa_id
         );
+        $stmt->execute();
         if (!$stmt->execute()) {
             http_response_code(500);
-            echo json_encode(['error'=>'Execute failed','details'=>$stmt->error]);
+            echo json_encode(['error' => 'Execute failed', 'details' => $stmt->error]);
             exit;
         }
         echo json_encode(['id' => $stmt->insert_id]);
         exit;
-
     } else {
         // Actualización
         $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
         $sql = "
-          UPDATE productos SET
-            nombre=?, descripcion=?, categoria_id=?, subcategoria_id=?,
-            stock=?, precio_compra=?, dim_x=?, dim_y=?, dim_z=?, zona_id=?
-          WHERE id=?
-        ";
+  UPDATE productos SET
+    nombre=?, descripcion=?, categoria_id=?, subcategoria_id=?,
+    stock=?, precio_compra=?, dim_x=?, dim_y=?, dim_z=?, zona_id=?
+  WHERE id=? AND empresa_id=?
+";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param(
-          'ssiiiddddii',
-          $nombre, $descripcion,
-          $categoria_id, $subcategoria_id,
-          $stock, $precio,
-          $dim_x, $dim_y, $dim_z,
-          $zona_id,
-          $id
+            'ssiiiddddiii',
+            $nombre,
+            $descripcion,
+            $categoria_id,
+            $subcategoria_id,
+            $stock,
+            $precio,
+            $dim_x,
+            $dim_y,
+            $dim_z,
+            $zona_id,
+            $id,
+            $empresa_id
         );
+        $stmt->execute();
         if (!$stmt->execute()) {
             http_response_code(500);
-            echo json_encode(['error'=>'Execute failed','details'=>$stmt->error]);
+            echo json_encode(['error' => 'Execute failed', 'details' => $stmt->error]);
             exit;
         }
         echo json_encode(['success' => $stmt->affected_rows > 0]);
@@ -145,8 +167,8 @@ if ($method === 'POST' || $method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    $stmt = $conn->prepare('DELETE FROM productos WHERE id=?');
-    $stmt->bind_param('i', $id);
+    $stmt = $conn->prepare( "DELETE FROM productos WHERE id=? AND empresa_id=?");
+    $stmt->bind_param('ii', $id, $empresa_id);
     $stmt->execute();
     echo json_encode(['success' => true]);
     exit;
