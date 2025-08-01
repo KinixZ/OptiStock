@@ -133,13 +133,37 @@ if ($method === 'POST' || $method === 'PUT') {
         exit;
     }
 
+    // ───────────────────────────────────────────────────────────────
+    // ➤ Validar que no exista otro producto con el mismo nombre
+    $q = $conn->prepare(
+        "SELECT COUNT(*) FROM productos
+       WHERE LOWER(nombre)=LOWER(?) AND empresa_id=?" .
+            ($method === 'PUT' ? " AND id<>?" : "")
+    );
+    if ($method === 'PUT') {
+        // en PUT excluimos el propio registro
+        $q->bind_param('sii', $nombre, $empresa_id, $id);
+    } else {
+        $q->bind_param('si', $nombre, $empresa_id);
+    }
+    $q->execute();
+    $q->bind_result($cnt);
+    $q->fetch();
+    if ($cnt > 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Ya existe un producto con ese nombre']);
+        exit;
+    }
+    // ───────────────────────────────────────────────────────────────
+
     if ($method === 'POST') {
-        // Inserción
+        // Inserción (ahora también graba last_movimiento)
         $sql = "
   INSERT INTO productos
     (nombre, descripcion, categoria_id, subcategoria_id,
-     stock, precio_compra, dim_x, dim_y, dim_z, zona_id, empresa_id)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?)
+     stock, precio_compra, dim_x, dim_y, dim_z, zona_id,
+     empresa_id, last_movimiento)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?, NOW())
 ";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param(
@@ -164,12 +188,12 @@ if ($method === 'POST' || $method === 'PUT') {
         echo json_encode(['id' => $stmt->insert_id]);
         exit;
     } else {
-        // Actualización
-        $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+        // Actualización (actualiza last_movimiento)
         $sql = "
   UPDATE productos SET
     nombre=?, descripcion=?, categoria_id=?, subcategoria_id=?,
-    stock=?, precio_compra=?, dim_x=?, dim_y=?, dim_z=?, zona_id=?
+    stock=?, precio_compra=?, dim_x=?, dim_y=?, dim_z=?, zona_id=?,
+    last_movimiento = NOW()
   WHERE id=? AND empresa_id=?
 ";
         $stmt = $conn->prepare($sql);

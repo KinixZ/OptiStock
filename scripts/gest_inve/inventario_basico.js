@@ -97,6 +97,43 @@ prodCategoria.addEventListener('change', () => {
   const tablaResumen = document.querySelector('#tablaResumen tbody');
   const tablaHead = document.getElementById('tablaHead');
   const btnRecargarResumen = document.getElementById('btnRecargarResumen');
+  const btnIngreso = document.getElementById('btnIngreso');
+  const btnEgreso  = document.getElementById('btnEgreso');
+  const movModal   = new bootstrap.Modal(document.getElementById('movimientoModal'));
+  const movTitle   = document.getElementById('movimientoTitle');
+  const movProdSel = document.getElementById('movProdSelect');
+  const movCant    = document.getElementById('movCantidad');
+  const movGuardar = document.getElementById('movGuardar');
+  let movTipo      = 'ingreso'; // o 'egreso'
+
+function poblarSelectProductos() {
+  movProdSel.innerHTML = '<option value="">Seleccione producto</option>';
+  productos.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.nombre} (Stock: ${p.stock})`;
+    movProdSel.appendChild(opt);
+  });
+}
+
+btnIngreso.addEventListener('click', () => {
+  movTipo = 'ingreso';
+  movTitle.textContent = 'Registrar Ingreso';
+  poblarSelectProductos();
+  movCant.value = '';
+  movModal.show();
+});
+btnEgreso.addEventListener('click', () => {
+  movTipo = 'egreso';
+  movTitle.textContent = 'Registrar Egreso';
+  poblarSelectProductos();
+  movCant.value = '';
+  movModal.show();
+});
+
+
+
+
 
   function actualizarSelectCategorias() {
     [prodCategoria, subcatCategoria].forEach(select => {
@@ -161,6 +198,29 @@ async function cargarZonas() {
   actualizarSelectZonas();
  }
 
+movGuardar.addEventListener('click', async () => {
+  const prodId = parseInt(movProdSel.value, 10);
+  const qty    = parseInt(movCant.value, 10);
+  if (!prodId || qty <= 0) {
+    alert('Selecciona un producto y cantidad válida');
+    return;
+  }
+  // POST a nuevo endpoint
+  try {
+    await fetchAPI(
+      `${API.productos}/movimiento.php`,
+      'POST',
+      { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo: movTipo }
+    );
+    movModal.hide();
+    await cargarProductos();
+    renderResumen();
+    showToast(`Movimiento ${movTipo} registrado`);
+  } catch (err) {
+    console.error(err);
+    showToast('Error al registrar movimiento: ' + err.message);
+  }
+});
 
   async function cargarProductos() {
      productos.length = 0;
