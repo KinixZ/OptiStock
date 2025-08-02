@@ -188,7 +188,25 @@ if ($method === 'POST' || $method === 'PUT') {
             echo json_encode(['error' => 'Execute failed', 'details' => $stmt->error]);
             exit;
         }
-        echo json_encode(['id' => $stmt->insert_id]);
+
+        $newId = $stmt->insert_id;
+
+        // Generar código QR basado en el ID del producto
+        require_once __DIR__.'/libs/phpqrcode/qrlib.php';
+        $qrDir = __DIR__.'/../../images/qr/';
+        if(!is_dir($qrDir)){
+            mkdir($qrDir,0777,true);
+        }
+        $qrFile = $qrDir.$newId.'.png';
+        QRcode::png((string)$newId, $qrFile, QR_ECLEVEL_L, 4, 2);
+        $qrRel = 'images/qr/'.$newId.'.png';
+
+        // Guardar ruta del QR en la base de datos
+        $up = $conn->prepare("UPDATE productos SET codigo_qr=? WHERE id=?");
+        $up->bind_param('si', $qrRel, $newId);
+        $up->execute();
+
+        echo json_encode(['id' => $newId, 'codigo_qr' => $qrRel]);
         exit;
     } else {
         // ACTUALIZAR (igual, actualiza last_movimiento y sólo un execute)

@@ -219,6 +219,9 @@ const DataController = {
           ${cat ? `<br>Categoría: ${cat.nombre}` : ''}
           ${subcat ? ` > ${subcat.nombre}` : ''}
         </div>
+        <div class="item-qr">
+          ${p.codigo_qr ? `<img src="../../${p.codigo_qr}" alt="QR ${p.nombre}" class="qr-img"><br><a href="../../${p.codigo_qr}" download>Descargar QR</a>` : ''}
+        </div>
       `;
       
       li.querySelector('.edit-btn').addEventListener('click', () => FormController.editProducto(p));
