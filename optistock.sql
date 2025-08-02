@@ -186,3 +186,7 @@ CREATE TABLE `productos` (
   CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`subcategoria_id`) REFERENCES `subcategorias`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Actualiza una base existente para incluir el código QR del producto
+ALTER TABLE `productos`
+  ADD COLUMN IF NOT EXISTS `codigo_qr` varchar(255) DEFAULT NULL AFTER `dim_z`;
+
