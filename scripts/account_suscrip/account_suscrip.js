@@ -7,6 +7,8 @@ async function obtenerDatosCuenta(idUsuario){
 
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('✅ account_suscrip.js está corriendo');
+  
   const usuarioId = localStorage.getItem('usuario_id');
   const idEmpresa = localStorage.getItem('id_empresa');
 
