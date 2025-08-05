@@ -8,7 +8,7 @@ async function obtenerDatosCuenta(idUsuario){
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('✅ account_suscrip.js está corriendo');
-  
+
   const usuarioId = localStorage.getItem('usuario_id');
   const idEmpresa = localStorage.getItem('id_empresa');
 
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
       nombreEl.textContent = `${u.nombre} ${u.apellido}`;
       correoEl.textContent = u.correo;
       telEl.textContent = u.telefono || '';
-      fotoEl.src = u.foto_perfil ? u.foto_perfil : '/images/profile.jpg';
+      fotoEl.src = u.foto_perfil ? `/${u.foto_perfil}` : '/images/profile.jpg';
       const e = data.empresa || {};
       empNomEl.textContent = e.nombre_empresa || '';
       empSecEl.textContent = e.sector_empresa || '';
