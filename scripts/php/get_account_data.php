@@ -64,16 +64,6 @@ if (!$empresa) {
         $config = $res3->fetch_assoc();
     }
 
-    // Ejemplo suscripcion (modificar según esquema real)
-    $suscripcion = null;
-    if ($empresa) {
-        $stmt4 = $conn->prepare("SELECT plan, costo, fecha_renovacion, metodo_pago FROM suscripciones WHERE id_empresa = ? ORDER BY fecha_renovacion DESC LIMIT 1");
-        $stmt4->bind_param("i", $empresa['id_empresa']);
-        $stmt4->execute();
-        $res4 = $stmt4->get_result();
-        $suscripcion = $res4->fetch_assoc();
-    }
-
     echo json_encode([
         'success' => true,
         'usuario' => $usuario,
