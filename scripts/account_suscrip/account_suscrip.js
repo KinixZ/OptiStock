@@ -148,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Cancelar suscripción con doble confirmación
-  const btnCancel = document.getElementById('btnCancelarSuscripcion');
   if (btnCancel) {
     btnCancel.addEventListener('click', () => {
       if (confirm('¿Seguro que deseas cancelar la suscripción?') &&
