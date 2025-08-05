@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const usuarioId = localStorage.getItem('usuario_id');
   const idEmpresa = localStorage.getItem('id_empresa');
 
-  if (!usuarioId || !idEmpresa) {
-  alert('Falta información del usuario o empresa en localStorage.');
+  if (!usuarioId) {
+  alert('Falta información del usuario en localStorage.');
   return;
 }
 
@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function cargar(){
     const data = await obtenerDatosCuenta(usuarioId);
+    console.log("Respuesta get_account_data:", data);
+
     if(data.success){
       const u = data.usuario;
       nombreEl.textContent = `${u.nombre} ${u.apellido}`;
