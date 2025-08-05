@@ -37,12 +37,22 @@ try {
         exit;
     }
 
-    // Obtener empresa asociada al usuario
-    $stmt2 = $conn->prepare("SELECT e.id_empresa, e.nombre_empresa, e.logo_empresa, e.sector_empresa FROM empresa e JOIN usuario_empresa ue ON e.id_empresa = ue.id_empresa WHERE ue.id_usuario = ?");
-    $stmt2->bind_param("i", $usuario_id);
-    $stmt2->execute();
-    $res2 = $stmt2->get_result();
-    $empresa = $res2->fetch_assoc();
+// Buscar si el usuario es el CREADOR de la empresa
+$stmt2 = $conn->prepare("SELECT id_empresa, nombre_empresa, logo_empresa, sector_empresa FROM empresa WHERE usuario_creador = ?");
+$stmt2->bind_param("i", $usuario_id);
+$stmt2->execute();
+$res2 = $stmt2->get_result();
+$empresa = $res2->fetch_assoc();
+
+// Si NO es creador (empleado), buscar por relación en tabla intermedia
+if (!$empresa) {
+    $stmt3 = $conn->prepare("SELECT e.id_empresa, e.nombre_empresa, e.logo_empresa, e.sector_empresa FROM empresa e JOIN usuario_empresa ue ON e.id_empresa = ue.id_empresa WHERE ue.id_usuario = ?");
+    $stmt3->bind_param("i", $usuario_id);
+    $stmt3->execute();
+    $res3 = $stmt3->get_result();
+    $empresa = $res3->fetch_assoc();
+}
+
 
     // Configuración empresa (sidebar colors, orden)
     $config = null;
