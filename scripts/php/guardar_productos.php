@@ -50,18 +50,34 @@ if ($method === 'GET') {
     }
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
-    if ($id) {
+        if ($id) {
         $sql = "
           SELECT
             p.*,
-            z.id   AS zona_id,   z.nombre    AS zona_nombre,
-            a.id   AS area_id,   a.nombre    AS area_nombre,
+            z.id   AS zona_id,        z.nombre  AS zona_nombre,
+            a.id   AS area_id,        a.nombre  AS area_nombre,
             c.nombre AS categoria_nombre,
-            sc.nombre AS subcategoria_nombre
+            sc.nombre AS subcategoria_nombre,
+            /* fecha del último movimiento */
+            ( SELECT m.fecha_movimiento
+                FROM movimientos m
+               WHERE m.producto_id = p.id
+                 AND m.empresa_id = p.empresa_id
+               ORDER BY m.fecha_movimiento DESC
+               LIMIT 1
+            ) AS last_movimiento,
+            /* tipo del último movimiento */
+            ( SELECT m.tipo
+                FROM movimientos m
+               WHERE m.producto_id = p.id
+                 AND m.empresa_id = p.empresa_id
+               ORDER BY m.fecha_movimiento DESC
+               LIMIT 1
+            ) AS last_tipo
           FROM productos p
-          LEFT JOIN zonas   z  ON p.zona_id         = z.id
-          LEFT JOIN areas   a  ON z.area_id         = a.id
-          LEFT JOIN categorias    c  ON p.categoria_id    = c.id
+          LEFT JOIN zonas        z  ON p.zona_id         = z.id
+          LEFT JOIN areas        a  ON z.area_id         = a.id
+          LEFT JOIN categorias   c  ON p.categoria_id    = c.id
           LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
           WHERE p.id = ? AND p.empresa_id = ?
         ";
@@ -70,18 +86,32 @@ if ($method === 'GET') {
     } else {
         $sql = "
           SELECT
-            p.*,                            
-            z.id   AS zona_id,   z.nombre  AS zona_nombre,
-            a.id   AS area_id,   a.nombre  AS area_nombre,
+            p.*,
+            z.id   AS zona_id,        z.nombre  AS zona_nombre,
+            a.id   AS area_id,        a.nombre  AS area_nombre,
             c.nombre AS categoria_nombre,
-            sc.nombre AS subcategoria_nombre
+            sc.nombre AS subcategoria_nombre,
+            ( SELECT m.fecha_movimiento
+                FROM movimientos m
+               WHERE m.producto_id = p.id
+                 AND m.empresa_id = p.empresa_id
+               ORDER BY m.fecha_movimiento DESC
+               LIMIT 1
+            ) AS last_movimiento,
+            ( SELECT m.tipo
+                FROM movimientos m
+               WHERE m.producto_id = p.id
+                 AND m.empresa_id = p.empresa_id
+               ORDER BY m.fecha_movimiento DESC
+               LIMIT 1
+            ) AS last_tipo
           FROM productos p
-          LEFT JOIN zonas         z  ON p.zona_id         = z.id
-          LEFT JOIN areas         a  ON z.area_id         = a.id
-          LEFT JOIN categorias    c  ON p.categoria_id    = c.id
-         LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
+          LEFT JOIN zonas        z  ON p.zona_id         = z.id
+          LEFT JOIN areas        a  ON z.area_id         = a.id
+          LEFT JOIN categorias   c  ON p.categoria_id    = c.id
+          LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
           WHERE p.empresa_id = ?
-      ";
+        ";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('i', $empresa_id);
     }
@@ -133,32 +163,29 @@ if ($method === 'POST' || $method === 'PUT') {
         exit;
     }
 
-       // ─── ÚNICOS POR NOMBRE (añádelo aquí) ───────────────────────────────
-    // Si es PUT, primero extrae el id:
+// ─── Validar nombre único por empresa ────────────────────────────
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
-    // Preparamos la consulta que cuenta duplicados
     $q = $conn->prepare(
-        "SELECT COUNT(*) FROM productos
-         WHERE LOWER(nombre)=LOWER(?) 
-           AND empresa_id=?" .
-        ($method === 'PUT' ? " AND id<>?" : "")
+      "SELECT COUNT(*) FROM productos
+       WHERE LOWER(nombre)=LOWER(?)
+         AND empresa_id=?" .
+      ($method==='PUT' ? " AND id<>?" : "")
     );
-    if ($method === 'PUT') {
-        $q->bind_param('sii', $nombre, $empresa_id, $id);
+    if ($method==='PUT') {
+      $q->bind_param('sii', $nombre, $empresa_id, $id);
     } else {
-        $q->bind_param('si', $nombre, $empresa_id);
+      $q->bind_param('si', $nombre, $empresa_id);
     }
     $q->execute();
     $q->bind_result($cnt);
     $q->fetch();
-    $q->close();  // ← ¡ciérralo para liberar resultados!
+    $q->close();
     if ($cnt > 0) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Ya existe un producto con ese nombre']);
-        exit;
+      http_response_code(400);
+      echo json_encode(['error'=>'Ya existe un producto con ese nombre']);
+      exit;
     }
-    // ────────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────
 
     if ($method === 'POST') {
         // INSERTAR (ahora sólo una llamada a execute)

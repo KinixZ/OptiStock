@@ -246,20 +246,22 @@ movGuardar.addEventListener('click', async () => {
     tablaHead.innerHTML = '';
 
 if (vistaActual === 'producto') {
-  tablaHead.innerHTML = `
-    <tr>
-      <th>Imagen</th>
-      <th>Nombre</th>
-      <th>Área</th>
-      <th>Zona</th>
-      <th>Descripción</th>
-      <th>Categoría</th>
-      <th>Subcategoría</th>
-      <th>Volumen (cm³)</th>
-      <th>Stock</th>
-      <th>Precio compra</th>
-      <th>Acciones</th>
-    </tr>`;
+ tablaHead.innerHTML = `
+  <tr>
+    <th>Imagen</th>
+    <th>Nombre</th>
+    <th>Área</th>
+    <th>Zona</th>
+    <th>Descripción</th>
+    <th>Categoría</th>
+    <th>Subcategoría</th>
+    <th>Volumen (cm³)</th>
+    <th>Stock</th>
+    <th>Precio compra</th>
+    <th>Últ. movimiento</th>
+    <th>Tipo</th>
+    <th>Acciones</th>
+  </tr>`;
 
   productos.forEach(p => {
 const cat = p.categoria_nombre   || '';
@@ -278,6 +280,8 @@ const sub = p.subcategoria_nombre || '';
       <td>${p.volumen}</td>
       <td>${p.stock}</td>
       <td>${p.precio_compra}</td>
+      <td>${p.last_movimiento  || '—'}</td>
+      <td>${p.last_tipo        || '—'}</td>
       <td>
         <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="producto" data-id="${p.id}">Editar</button>
         <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="producto" data-id="${p.id}">Eliminar</button>
