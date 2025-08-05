@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const usuarioId = localStorage.getItem('usuario_id');
   const idEmpresa = localStorage.getItem('id_empresa');
 
+  if (!usuarioId || !idEmpresa) {
+  alert('Falta información del usuario o empresa en localStorage.');
+  return;
+}
+
   const nombreEl = document.getElementById('nombreCompleto');
   const correoEl = document.getElementById('correoUsuario');
   const telEl    = document.getElementById('telefonoUsuario');
@@ -117,17 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Cancelar suscripción
-  const btnCancel = document.getElementById('btnCancelarSuscripcion');
-  btnCancel?.addEventListener('click', () => {
-    if(confirm('¿Seguro que deseas cancelar la suscripción?') && confirm('Confirma nuevamente para cancelar')){
-      const form = new URLSearchParams();
-      form.append('id_empresa', idEmpresa);
-      fetch('../../scripts/php/cancel_subscription.php', { method:'POST', body: form })
-        .then(r=>r.json()).then(d=>{ if(d.success){ alert('Suscripción cancelada'); cargar(); } else { alert(d.message||'Error'); } });
-    }
-  });
-
   // Actualizar plan
   const btnPlan = document.getElementById('btnActualizarPlan');
   btnPlan?.addEventListener('click', () => {
@@ -205,23 +199,5 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-
-  // Navegación de secciones
-  const menuItems = document.querySelectorAll(".account-menu li");
-  const sections = document.querySelectorAll(".account-section");
-  menuItems.forEach(item => {
-    item.addEventListener("click", () => {
-      menuItems.forEach(i => i.classList.remove("active"));
-      item.classList.add("active");
-      const target = item.getAttribute("data-target");
-      sections.forEach(sec => {
-        if (sec.id === target) {
-          sec.classList.add("active");
-        } else {
-          sec.classList.remove("active");
-        }
-      });
-    });
-  });
 }); // cierre DOMContentLoaded
 
