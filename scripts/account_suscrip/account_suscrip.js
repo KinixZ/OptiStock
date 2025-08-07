@@ -1,7 +1,7 @@
 // Gestion de cuenta y suscripción
 
 async function obtenerDatosCuenta(id_usuario) {
-  const res = await fetch(`../../scripts/php/get_account_data.php?usuario_id=${id_usuario}`);
+  const res = await fetch(`/scripts/php/get_account_data.php?usuario_id=${id_usuario}`);
   const data = await res.json();
   return data;
 }
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correo: document.getElementById('inputCorreo').value,
       contrasena: document.getElementById('inputContrasena').value
     };
-    const resp = await fetch('../../scripts/php/update_user.php', {
+    const resp = await fetch('/scripts/php/update_user.php', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fd = new FormData();
         fd.append('usuario_id', usuarioId);
         fd.append('foto_perfil', file);
-        await fetch('../../scripts/php/upload_profile_picture.php', { method:'POST', body: fd })
+        await fetch('/scripts/php/upload_profile_picture.php', { method:'POST', body: fd })
           .then(r=>r.json()).then(d=>{ if(d.success){ fotoEl.src = d.foto; } });
       }
       localStorage.setItem('usuario_nombre', payload.nombre + ' ' + payload.apellido);
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sector_empresa: document.getElementById('inputSectorEmpresa').value,
       logo_empresa: document.getElementById('inputLogoEmpresa').value
     };
-    const resp = await fetch('../../scripts/php/update_empresa.php', {
+    const resp = await fetch('/scripts/php/update_empresa.php', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = new URLSearchParams();
       form.append('id_empresa', idEmpresa);
       form.append('plan', plan);
-      fetch('../../scripts/php/update_subscription_plan.php', { method:'POST', body: form })
+      fetch('/scripts/php/update_subscription_plan.php', { method:'POST', body: form })
         .then(r=>r.json()).then(d=>{ if(d.success){ alert('Plan actualizado'); cargar(); } else { alert(d.message||'Error'); } });
     }
   });
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const idEmpresa = localStorage.getItem('id_empresa');
         const form = new URLSearchParams();
         form.append('id_empresa', idEmpresa);
-        fetch('../../scripts/php/cancel_subscription.php', {
+        fetch('/scripts/php/cancel_subscription.php', {
           method: 'POST',
           body: form
         })
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = new URLSearchParams();
         form.append('id_empresa', idEmpresa);
         form.append('plan', nuevoPlan);
-        fetch('../../scripts/php/update_subscription_plan.php', {
+        fetch('/scripts/php/update_subscription_plan.php', {
           method: 'POST',
           body: form
         })
