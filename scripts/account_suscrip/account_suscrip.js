@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const empNomEl = document.getElementById('nombreEmpresa');
   const empSecEl = document.getElementById('sectorEmpresa');
   const empLogo  = document.getElementById('logoEmpresa');
+  const btnCancel = document.getElementById('btnCancelarSuscripcion');
 
   async function cargar(){
     const data = await obtenerDatosCuenta(usuarioId);
