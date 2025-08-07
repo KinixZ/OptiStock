@@ -1,7 +1,7 @@
 // Gestion de cuenta y suscripción
 
 async function obtenerDatosCuenta(id_usuario) {
-  const res = await fetch(`../../scripts/account_suscrip/get_account_data.php?usuario_id=${id_usuario}`);
+  const res = await fetch(`../../scripts/php/get_account_data.php?usuario_id=${id_usuario}`);
   const data = await res.json();
   return data;
 }
