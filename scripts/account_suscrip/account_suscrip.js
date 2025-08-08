@@ -77,13 +77,15 @@ function mainAccountSuscrip() {
   }).then(r => r.json());
 
   if(resp.success){
-    localStorage.setItem('usuario_nombre', formData.get('nombre') + ' ' + formData.get('apellido'));
-    localStorage.setItem('usuario_email', formData.get('correo'));
-    localStorage.setItem('usuario_telefono', formData.get('telefono'));
-    modalUsuario.hide();
-    location.reload();
-    cargar();
-  }else{
+  localStorage.setItem('usuario_nombre', formData.get('nombre') + ' ' + formData.get('apellido'));
+  localStorage.setItem('usuario_email', formData.get('correo'));
+  localStorage.setItem('usuario_telefono', formData.get('telefono'));
+  if(resp.foto_perfil){
+    localStorage.setItem('foto_perfil', resp.foto_perfil);
+  }
+  modalUsuario.hide();
+  location.reload();
+}else{
     alert(resp.message || 'Error al actualizar usuario');
   }
 });
