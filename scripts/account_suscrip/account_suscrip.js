@@ -81,6 +81,7 @@ function mainAccountSuscrip() {
     localStorage.setItem('usuario_email', formData.get('correo'));
     localStorage.setItem('usuario_telefono', formData.get('telefono'));
     modalUsuario.hide();
+    location.reload();
     cargar();
   }else{
     alert(resp.message || 'Error al actualizar usuario');
@@ -115,6 +116,7 @@ function mainAccountSuscrip() {
     if(resp.success){
       localStorage.setItem('empresa_nombre', payload.nombre_empresa);
       modalEmpresa.hide();
+      location.reload();
       cargar();
     }else{
       alert('Error al actualizar empresa');
