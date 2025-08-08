@@ -6,18 +6,16 @@ async function obtenerDatosCuenta(id_usuario) {
   return data;
 }
 
-
-
-document.addEventListener('DOMContentLoaded', () => {
+function mainAccountSuscrip() {
   console.log('✅ account_suscrip.js está corriendo');
 
   const usuarioId = localStorage.getItem('usuario_id');
   const idEmpresa = localStorage.getItem('id_empresa');
 
   if (!usuarioId) {
-  alert('Falta información del usuario en localStorage.');
-  return;
-}
+    alert('Falta información del usuario en localStorage.');
+    return;
+  }
 
   const nombreEl = document.getElementById('nombreCompleto');
   const correoEl = document.getElementById('correoUsuario');
@@ -205,5 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-}); // cierre DOMContentLoaded
+}
 
+// Ejecutar el código principal según el estado del DOM
+if (document.readyState !== 'loading') {
+  mainAccountSuscrip();
+} else {
+  document.addEventListener('DOMContentLoaded', mainAccountSuscrip);
+}
