@@ -10,12 +10,21 @@ if (!$conn) {
     exit;
 }
 
-$data = json_decode(file_get_contents("php://input"), true);
+// Cambia aquí: usa $_POST y $_FILES
+$id_empresa     = $_POST['id_empresa'] ?? null;
+$nombre_empresa = $_POST['nombre_empresa'] ?? null;
+$sector_empresa = $_POST['sector_empresa'] ?? null;
 
-$id_empresa = $data['id_empresa'] ?? null;
-$nombre_empresa = $data['nombre_empresa'] ?? null;
-$logo_empresa = $data['logo_empresa'] ?? null; // URL o path
-$sector_empresa = $data['sector_empresa'] ?? null;
+// Manejo de logo (opcional)
+$logo_empresa = null;
+if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] == UPLOAD_ERR_OK) {
+    $target = "uploads/" . basename($_FILES['logo_empresa']['name']);
+    move_uploaded_file($_FILES['logo_empresa']['tmp_name'], $target);
+    $logo_empresa = $target;
+} else {
+    // Si no se subió nuevo logo, puedes mantener el anterior (opcional)
+    $logo_empresa = $_POST['logo_empresa'] ?? null;
+}
 
 if (!$id_empresa || !$nombre_empresa || !$sector_empresa) {
     echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
@@ -35,3 +44,4 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }
+?>
