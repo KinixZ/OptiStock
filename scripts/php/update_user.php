@@ -51,8 +51,19 @@ try {
             }
         }
     }
+    
+    $stmt3 = $conn->prepare("SELECT foto_perfil FROM usuario WHERE id_usuario = ?");
+    $stmt3->bind_param("i", $usuario_id);
+    $stmt3->execute();
+    $res3 = $stmt3->get_result();
+    $row = $res3->fetch_assoc();
+    $ruta_foto = $row ? $row['foto_perfil'] : null;
 
-    echo json_encode(['success' => true, 'message' => 'Usuario actualizado']);
+    echo json_encode([
+        'success' => true,
+        'foto_perfil' => $ruta_foto,
+        'message' => 'Usuario actualizado'
+    ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }

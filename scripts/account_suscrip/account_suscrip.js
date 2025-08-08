@@ -98,7 +98,7 @@ function mainAccountSuscrip() {
       const e = d.empresa;
       document.getElementById('inputNombreEmpresa').value = e.nombre_empresa || '';
       document.getElementById('inputSectorEmpresa').value = e.sector_empresa || '';
-      document.getElementById('inputLogoEmpresa').value = e.logo_empresa || '';
+      document.getElementById('inputLogoEmpresaFile').value = e.logo_empresa || '';
       modalEmpresa.show();
     }
   });
