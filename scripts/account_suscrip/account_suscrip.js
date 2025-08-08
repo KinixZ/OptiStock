@@ -93,37 +93,38 @@ function mainAccountSuscrip() {
   // --- Editar empresa ---
   const modalEmpresa = new bootstrap.Modal(document.getElementById('modalEditarEmpresa'));
   document.getElementById('btnEditarEmpresa').addEventListener('click', async () => {
-    const d = await obtenerDatosCuenta(usuarioId);
-    if(d.success && d.empresa){
-      const e = d.empresa;
-      document.getElementById('inputNombreEmpresa').value = e.nombre_empresa || '';
-      document.getElementById('inputSectorEmpresa').value = e.sector_empresa || '';
-      document.getElementById('inputLogoEmpresaFile').value = e.logo_empresa || '';
-      modalEmpresa.show();
-    }
-  });
+  const d = await obtenerDatosCuenta(usuarioId);
+  if(d.success && d.empresa){
+    const e = d.empresa;
+    document.getElementById('inputNombreEmpresa').value = e.nombre_empresa || '';
+    document.getElementById('inputSectorEmpresa').value = e.sector_empresa || '';
+    // Solo limpiar el input file, no puedes asignar value
+    document.getElementById('inputLogoEmpresaFile').value = '';
+    modalEmpresa.show();
+  }
+});
 
-  document.getElementById('btnGuardarCambiosEmpresa').addEventListener('click', async () => {
-    const payload = {
-      id_empresa: idEmpresa,
-      nombre_empresa: document.getElementById('inputNombreEmpresa').value,
-      sector_empresa: document.getElementById('inputSectorEmpresa').value,
-      logo_empresa: document.getElementById('inputLogoEmpresa').value
-    };
-    const resp = await fetch('/scripts/php/update_empresa.php', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    }).then(r=>r.json());
-    if(resp.success){
-      localStorage.setItem('empresa_nombre', payload.nombre_empresa);
-      modalEmpresa.hide();
-      location.reload();
-      cargar();
-    }else{
-      alert('Error al actualizar empresa');
-    }
-  });
+document.getElementById('btnGuardarCambiosEmpresa').addEventListener('click', async () => {
+  const formData = new FormData();
+  formData.append('id_empresa', idEmpresa);
+  formData.append('nombre_empresa', document.getElementById('inputNombreEmpresa').value);
+  formData.append('sector_empresa', document.getElementById('inputSectorEmpresa').value);
+  const file = document.getElementById('inputLogoEmpresaFile').files[0];
+  if (file) formData.append('logo_empresa', file);
+
+  const resp = await fetch('/scripts/php/update_empresa.php', {
+    method: 'POST',
+    body: formData
+  }).then(r=>r.json());
+
+  if(resp.success){
+    localStorage.setItem('empresa_nombre', formData.get('nombre_empresa'));
+    modalEmpresa.hide();
+    location.reload();
+  }else{
+    alert('Error al actualizar empresa');
+  }
+});
 
   // Actualizar plan
   const btnPlan = document.getElementById('btnActualizarPlan');
