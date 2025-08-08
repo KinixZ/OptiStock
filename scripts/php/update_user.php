@@ -39,7 +39,7 @@ try {
         $allowed = ['jpg', 'jpeg', 'png', 'gif'];
         $ext = strtolower(pathinfo($_FILES['foto_perfil']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, $allowed)) {
-            $destDir = '../../../images/profiles/';
+            $destDir = $_SERVER['DOCUMENT_ROOT'] . '/images/profiles/';
             if (!is_dir($destDir)) mkdir($destDir, 0755, true);
             $filename = 'perfil_' . $usuario_id . '_' . time() . '.' . $ext;
             $path = $destDir . $filename;
