@@ -25,8 +25,18 @@ if (!is_dir($destDir)) {
     mkdir($destDir, 0755, true);
 }
 
-$filename = basename($_FILES['foto_perfil']['name']);
+// Validar extensión
+$allowed = ['jpg', 'jpeg', 'png', 'gif'];
+$ext = strtolower(pathinfo($_FILES['foto_perfil']['name'], PATHINFO_EXTENSION));
+if (!in_array($ext, $allowed)) {
+    echo json_encode(['success' => false, 'message' => 'Formato no permitido']);
+    exit;
+}
+
+// Renombrar archivo
+$filename = 'perfil_' . $usuario_id . '_' . time() . '.' . $ext;
 $path = $destDir . $filename;
+
 if (!move_uploaded_file($_FILES['foto_perfil']['tmp_name'], $path)) {
     echo json_encode(['success' => false, 'message' => 'Error al subir la foto']);
     exit;
