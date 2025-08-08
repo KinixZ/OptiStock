@@ -10,26 +10,21 @@ if (!$conn) {
     exit;
 }
 
-$data = json_decode(file_get_contents("php://input"), true);
-
-$usuario_id = $data['id_usuario'] ?? null;
-$nombre = $data['nombre'] ?? null;
-$apellido = $data['apellido'] ?? null;
-$telefono = $data['telefono'] ?? null;
-$correo = $data['correo'] ?? null;
-$contrasena = $data['contrasena'] ?? null; // La contraseña debe venir en texto plano, aquí la encriptamos (sha1, md5 o bcrypt recomendado)
+$usuario_id = $_POST['id_usuario'] ?? null;
+$nombre     = $_POST['nombre'] ?? null;
+$apellido   = $_POST['apellido'] ?? null;
+$telefono   = $_POST['telefono'] ?? null;
+$correo     = $_POST['correo'] ?? null;
+$contrasena = $_POST['contrasena'] ?? null;
 
 if (!$usuario_id || !$nombre || !$apellido || !$telefono || !$correo) {
     echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
     exit;
 }
 
-// Validar correo (opcional)
-
 try {
-    // Encriptar contraseña solo si viene y no vacía
+    // Actualizar datos
     if ($contrasena && strlen($contrasena) > 0) {
-        // Aquí uso sha1 solo ejemplo, para producción usar bcrypt
         $pass_hash = sha1($contrasena);
         $stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, telefono = ?, correo = ?, contrasena = ? WHERE id_usuario = ?");
         $stmt->bind_param("sssssi", $nombre, $apellido, $telefono, $correo, $pass_hash, $usuario_id);
@@ -37,14 +32,28 @@ try {
         $stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, telefono = ?, correo = ? WHERE id_usuario = ?");
         $stmt->bind_param("ssssi", $nombre, $apellido, $telefono, $correo, $usuario_id);
     }
-
     $stmt->execute();
 
-    if ($stmt->affected_rows > 0) {
-        echo json_encode(['success' => true, 'message' => 'Usuario actualizado']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'No se actualizó ningún dato']);
+    // Subir imagen si existe
+    if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] == UPLOAD_ERR_OK) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $ext = strtolower(pathinfo($_FILES['foto_perfil']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed)) {
+            $destDir = '../../../images/profiles/';
+            if (!is_dir($destDir)) mkdir($destDir, 0755, true);
+            $filename = 'perfil_' . $usuario_id . '_' . time() . '.' . $ext;
+            $path = $destDir . $filename;
+            if (move_uploaded_file($_FILES['foto_perfil']['tmp_name'], $path)) {
+                $ruta_bd = 'images/profiles/' . $filename;
+                $stmt2 = $conn->prepare("UPDATE usuario SET foto_perfil=? WHERE id_usuario=?");
+                $stmt2->bind_param("si", $ruta_bd, $usuario_id);
+                $stmt2->execute();
+            }
+        }
     }
+
+    echo json_encode(['success' => true, 'message' => 'Usuario actualizado']);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }
+?>

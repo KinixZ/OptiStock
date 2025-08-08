@@ -61,37 +61,31 @@ function mainAccountSuscrip() {
   });
 
   document.getElementById('btnGuardarCambiosUsuario').addEventListener('click', async () => {
-    const payload = {
-      id_usuario: usuarioId,
-      nombre: document.getElementById('inputNombre').value,
-      apellido: document.getElementById('inputApellido').value,
-      telefono: document.getElementById('inputTelefono').value,
-      correo: document.getElementById('inputCorreo').value,
-      contrasena: document.getElementById('inputContrasena').value
-    };
-    const resp = await fetch('/scripts/php/update_user.php', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    }).then(r=>r.json());
-    if(resp.success){
-      const file = document.getElementById('inputFoto').files[0];
-      if(file){
-        const fd = new FormData();
-        fd.append('usuario_id', usuarioId);
-        fd.append('foto_perfil', file);
-        await fetch('/scripts/php/upload_profile_picture.php', { method:'POST', body: fd })
-          .then(r=>r.json()).then(d=>{ if(d.success){ fotoEl.src = d.foto; } });
-      }
-      localStorage.setItem('usuario_nombre', payload.nombre + ' ' + payload.apellido);
-      localStorage.setItem('usuario_email', payload.correo);
-      localStorage.setItem('usuario_telefono', payload.telefono);
-      modalUsuario.hide();
-      cargar();
-    }else{
-      alert('Error al actualizar usuario');
-    }
-  });
+  const formData = new FormData();
+  formData.append('id_usuario', usuarioId);
+  formData.append('nombre', document.getElementById('inputNombre').value);
+  formData.append('apellido', document.getElementById('inputApellido').value);
+  formData.append('telefono', document.getElementById('inputTelefono').value);
+  formData.append('correo', document.getElementById('inputCorreo').value);
+  formData.append('contrasena', document.getElementById('inputContrasena').value);
+  const file = document.getElementById('inputFoto').files[0];
+  if (file) formData.append('foto_perfil', file);
+
+  const resp = await fetch('/scripts/php/update_user.php', {
+    method: 'POST',
+    body: formData
+  }).then(r => r.json());
+
+  if(resp.success){
+    localStorage.setItem('usuario_nombre', formData.get('nombre') + ' ' + formData.get('apellido'));
+    localStorage.setItem('usuario_email', formData.get('correo'));
+    localStorage.setItem('usuario_telefono', formData.get('telefono'));
+    modalUsuario.hide();
+    cargar();
+  }else{
+    alert(resp.message || 'Error al actualizar usuario');
+  }
+});
 
   // --- Editar empresa ---
   const modalEmpresa = new bootstrap.Modal(document.getElementById('modalEditarEmpresa'));
