@@ -31,17 +31,28 @@ function mainAccountSuscrip() {
     console.log("Respuesta get_account_data:", data);
 
     if(data.success){
-      const u = data.usuario;
-      nombreEl.textContent = `${u.nombre} ${u.apellido}`;
-      correoEl.textContent = u.correo;
-      telEl.textContent = u.telefono || '';
-      fotoEl.src = u.foto_perfil ? `/${u.foto_perfil}` : '/images/profile.jpg';
-      const e = data.empresa || {};
-      empNomEl.textContent = e.nombre_empresa || '';
-      empSecEl.textContent = e.sector_empresa || '';
-      if(e.logo_empresa){ empLogo.src = e.logo_empresa; }
-    }
+    const u = data.usuario;
+    nombreEl.textContent = `${u.nombre} ${u.apellido}`;
+    correoEl.textContent = u.correo;
+    telEl.textContent = u.telefono || '';
+    fotoEl.src = u.foto_perfil ? `/${u.foto_perfil}` : '/images/profile.jpg';
+
+    // Actualiza localStorage con los datos más recientes
+    localStorage.setItem('usuario_nombre', `${u.nombre} ${u.apellido}`);
+    localStorage.setItem('usuario_email', u.correo);
+    localStorage.setItem('usuario_telefono', u.telefono || '');
+    localStorage.setItem('foto_perfil', u.foto_perfil || '');
+
+    const e = data.empresa || {};
+    empNomEl.textContent = e.nombre_empresa || '';
+    empSecEl.textContent = e.sector_empresa || '';
+    if(e.logo_empresa){ empLogo.src = e.logo_empresa; }
+
+    localStorage.setItem('empresa_nombre', e.nombre_empresa || '');
+    localStorage.setItem('empresa_sector', e.sector_empresa || '');
+    localStorage.setItem('logo_empresa', e.logo_empresa || '');
   }
+}
 
   cargar();
 
