@@ -394,14 +394,16 @@ document.addEventListener("DOMContentLoaded", function () {
     if (nombre && userNameEl) userNameEl.textContent = nombre;
     if (rol && userRoleEl) userRoleEl.textContent = rol;
 
-    const fotoPerfil = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
+    let fotoPerfil = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
+if (fotoPerfil && !fotoPerfil.startsWith('/')) {
+  fotoPerfil = '/' + fotoPerfil;
+}
 const userImgEl = document.querySelector('.user-profile img');
 if (userImgEl) {
-    userImgEl.onerror = function() {
-        userImgEl.src = '/images/profile.jpg';
-    };
-    userImgEl.src = fotoPerfil;
+  userImgEl.onerror = () => { userImgEl.src = '/images/profile.jpg'; };
+  userImgEl.src = fotoPerfil;
 }
+
 
     // Submenú usuario
     const dropdownButton = document.getElementById("dropdownMenuButton");
