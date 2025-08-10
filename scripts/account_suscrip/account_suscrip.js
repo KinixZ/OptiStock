@@ -130,10 +130,15 @@ document.getElementById('btnGuardarCambiosEmpresa').addEventListener('click', as
 
   if(resp.success){
     localStorage.setItem('empresa_nombre', formData.get('nombre_empresa'));
+    localStorage.setItem('empresa_sector', formData.get('sector_empresa'));
+    if (resp.logo_empresa) {
+      localStorage.setItem('logo_empresa', resp.logo_empresa);
+      empLogo.src = resp.logo_empresa;
+    }
     modalEmpresa.hide();
     location.reload();
   }else{
-    alert('Error al actualizar empresa');
+    alert(resp.message || 'Error al actualizar empresa');
   }
 });
 
