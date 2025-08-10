@@ -13,10 +13,11 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
 
     // Crear un nuevo objeto FormData
     const formData = new FormData();
-    formData.append('nombre_empresa', document.getElementById('nombre_empresa').value);
-    formData.append('logo_empresa', document.getElementById('logo_empresa').files[0]);
-    formData.append('sector_empresa', document.getElementById('sector_empresa').value);
-    formData.append('usuario_creador', usuario_id); // Pasa el ID del usuario al backend
+formData.append('nombre_empresa', document.getElementById('nombre_empresa').value);
+const logoFile = document.getElementById('logo_empresa').files[0];
+if (logoFile) formData.append('logo_empresa', logoFile);
+formData.append('sector_empresa', document.getElementById('sector_empresa').value);
+formData.append('usuario_creador', localStorage.getItem('usuario_id'));
 
     // Enviar los datos del formulario al archivo PHP mediante AJAX
     fetch('../../../scripts/php/registro_empresa.php', {
