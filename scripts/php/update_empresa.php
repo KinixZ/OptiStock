@@ -35,7 +35,7 @@ $logo_empresa = $logo_actual;
 
 // Si llega un archivo nuevo
 if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
-    $destDir = '../../../images/logos/';
+    $destDir = '/images/logos/';
     if (!is_dir($destDir)) {
         mkdir($destDir, 0755, true);
     }

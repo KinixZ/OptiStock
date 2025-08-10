@@ -25,7 +25,7 @@ if (empty($usuario_creador)) {
 
 $logo_empresa = null;
 if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
-    $destDir = '../../../images/logos/';
+    $destDir = '/images/logos/';
     if (!is_dir($destDir)) {
         mkdir($destDir, 0755, true);
     }
