@@ -7,6 +7,8 @@
     --success-color: #27ae60;
     --warning-color: #f39c12;
     --info-color: #2980b9;
+    --sidebar-color: #20252a;
+    --topbar-color: #20252a;
     --sidebar-width: 280px;
     --topbar-height: 70px;
     --transition-speed: 0.3s;
@@ -28,6 +30,7 @@ body {
 /* Sidebar Styles */
 .sidebar {
     background: linear-gradient(135deg, var(--primary-color), var(--dark-color));
+    background-color: var(--sidebar-color);
     color: white;
     width: var(--sidebar-width);
     height: 100vh;
@@ -105,7 +108,7 @@ body {
 
 /* Topbar Styles */
 .topbar {
-    background-color: white;
+    background-color: var(--topbar-color);
     height: var(--topbar-height);
     position: fixed;
     top: 0;
@@ -658,6 +661,13 @@ body {
     overflow: hidden;
 }
 
+.sidebar-logo {
+  display: block;
+  width: 80%;
+  margin: 0 auto;
+  padding: 15px 0;
+}
+
 .sidebar.collapsed .sidebar-header h2,
 .sidebar.collapsed .sidebar-menu a span,
 .sidebar.collapsed .sidebar-footer button span {
@@ -811,6 +821,15 @@ body {
     cursor: pointer;
     border-radius: 5px;
   }
+
+  .color-palette button {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  margin: 4px;
+  cursor: pointer;
+}
 
 @media (max-width: 600px) {
   :root {

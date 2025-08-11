@@ -688,3 +688,21 @@ function cargarConfiguracionVisual(idEmpresa) {
         }
     });
 }
+
+// Selección de colores para el sidebar
+const sidebarButtons = document.querySelectorAll('#sidebarColors button');
+sidebarButtons.forEach(btn => {
+  btn.addEventListener('click', e => {
+    const color = e.currentTarget.dataset.color;
+    document.documentElement.style.setProperty('--sidebar-color', color);
+  });
+});
+
+// Selección de colores para el topbar
+const topbarButtons = document.querySelectorAll('#topbarColors button');
+topbarButtons.forEach(btn => {
+  btn.addEventListener('click', e => {
+    const color = e.currentTarget.dataset.color;
+    document.documentElement.style.setProperty('--topbar-color', color);
+  });
+});
