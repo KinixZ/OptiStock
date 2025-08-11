@@ -467,11 +467,20 @@ if (userImgEl) {
     cargarConfiguracionVisual(data.empresa_id);
 
     // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
-    let colorSidebarSeleccionado = null;
+let colorSidebarSeleccionado = null;
 let colorTopbarSeleccionado = null;
 
-document.querySelector('.sidebar-footer button').addEventListener('click', () => {
-    document.getElementById('modalConfigVisual').style.display = 'flex';
+const openColorModal = document.getElementById('openColorModal');
+const colorModal = document.getElementById('colorModal');
+
+openColorModal.addEventListener('click', () => {
+    colorModal.style.display = 'flex';
+});
+
+colorModal.addEventListener('click', (e) => {
+    if (e.target === colorModal) {
+        colorModal.style.display = 'none';
+    }
 });
 
 // Selección de colores
@@ -480,6 +489,7 @@ document.querySelectorAll('#sidebarColors button').forEach(btn => {
         colorSidebarSeleccionado = btn.dataset.color;
         document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
+        document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
     });
 });
 
@@ -488,6 +498,7 @@ document.querySelectorAll('#topbarColors button').forEach(btn => {
         colorTopbarSeleccionado = btn.dataset.color;
         document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
+        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
     });
 });
 
@@ -521,7 +532,7 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
         }
     });
 
-    document.getElementById('modalConfigVisual').style.display = 'none';
+    colorModal.style.display = 'none';
 });
 
 }
@@ -688,21 +699,3 @@ function cargarConfiguracionVisual(idEmpresa) {
         }
     });
 }
-
-// Selección de colores para el sidebar
-const sidebarButtons = document.querySelectorAll('#sidebarColors button');
-sidebarButtons.forEach(btn => {
-  btn.addEventListener('click', e => {
-    const color = e.currentTarget.dataset.color;
-    document.documentElement.style.setProperty('--sidebar-color', color);
-  });
-});
-
-// Selección de colores para el topbar
-const topbarButtons = document.querySelectorAll('#topbarColors button');
-topbarButtons.forEach(btn => {
-  btn.addEventListener('click', e => {
-    const color = e.currentTarget.dataset.color;
-    document.documentElement.style.setProperty('--topbar-color', color);
-  });
-});
