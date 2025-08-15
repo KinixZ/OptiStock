@@ -46,11 +46,11 @@ function mainAccountSuscrip() {
     const e = data.empresa || {};
     empNomEl.textContent = e.nombre_empresa || '';
     empSecEl.textContent = e.sector_empresa || '';
-    if(e.logo_empresa){ empLogo.src = e.logo_empresa; }
+    if(e.logo_empresa){ empLogo.src = '/' + e.logo_empresa.replace(/^\/+/,''); }
 
     localStorage.setItem('empresa_nombre', e.nombre_empresa || '');
     localStorage.setItem('empresa_sector', e.sector_empresa || '');
-    localStorage.setItem('logo_empresa', e.logo_empresa || '');
+    localStorage.setItem('logo_empresa', e.logo_empresa ? '/' + e.logo_empresa.replace(/^\/+/,'') : '');
   }
 }
 
@@ -132,8 +132,9 @@ document.getElementById('btnGuardarCambiosEmpresa').addEventListener('click', as
     localStorage.setItem('empresa_nombre', formData.get('nombre_empresa'));
     localStorage.setItem('empresa_sector', formData.get('sector_empresa'));
     if (resp.logo_empresa) {
-      localStorage.setItem('logo_empresa', resp.logo_empresa);
-      empLogo.src = resp.logo_empresa;
+      const logoPath = '/' + resp.logo_empresa.replace(/^\/+/,'');
+      localStorage.setItem('logo_empresa', logoPath);
+      empLogo.src = logoPath;
     }
     modalEmpresa.hide();
     location.reload();

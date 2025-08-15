@@ -40,7 +40,7 @@ if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOA
         echo json_encode(["success" => false, "message" => "Error al subir el logo"]);
         exit;
     }
-    $logo_empresa = 'images/logos/' . $filename;   // ruta guardada en DB
+    $logo_empresa = '/images/logos/' . $filename;   // ruta guardada en DB
 }
 
 $sql  = "INSERT INTO empresa (nombre_empresa, logo_empresa, sector_empresa, usuario_creador)
