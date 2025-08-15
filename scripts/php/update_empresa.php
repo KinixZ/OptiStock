@@ -49,7 +49,7 @@ if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOA
         echo json_encode(["success" => false, "message" => "Error al subir el logo"]);
         exit;
     }
-    $logo_empresa = 'images/logos/' . $filename;
+    $logo_empresa = '/images/logos/' . $filename;
 }
 
 $stmt = $conn->prepare("UPDATE empresa SET nombre_empresa = ?, logo_empresa = ?, sector_empresa = ? WHERE id_empresa = ?");
