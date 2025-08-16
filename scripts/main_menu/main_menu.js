@@ -10,6 +10,10 @@ const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
+// Selected theme colors
+let colorSidebarSeleccionado = null;
+let colorTopbarSeleccionado = null;
+
 
 // Request browser permission for push notifications
 function requestPushPermission() {
@@ -39,6 +43,14 @@ function sendPushNotification(title, message) {
     } else {
         alert(message);
     }
+}
+
+function getContrastingColor(hexColor) {
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128 ? '#000000' : '#ffffff';
 }
 
 
@@ -467,17 +479,6 @@ if (userImgEl) {
     cargarConfiguracionVisual(data.empresa_id);
 
     // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
-let colorSidebarSeleccionado = null;
-let colorTopbarSeleccionado = null;
-
-function getContrastingColor(hexColor) {
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 128 ? '#000000' : '#ffffff';
-}
-
 const openColorModal = document.getElementById('openColorModal');
 const colorModal = document.getElementById('colorModal');
 
@@ -693,10 +694,22 @@ function cargarConfiguracionVisual(idEmpresa) {
     .then(({ success, config }) => {
         if (success && config) {
             if (config.color_sidebar) {
-                document.querySelector('.sidebar').style.backgroundColor = config.color_sidebar;
+                document.documentElement.style.setProperty('--sidebar-color', config.color_sidebar);
+                const textColor = getContrastingColor(config.color_sidebar);
+                document.documentElement.style.setProperty('--sidebar-text-color', textColor);
+                colorSidebarSeleccionado = config.color_sidebar;
+                document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
+                const btn = document.querySelector(`#sidebarColors button[data-color="${config.color_sidebar}"]`);
+                if (btn) btn.style.border = '3px solid black';
             }
             if (config.color_topbar) {
-                document.querySelector('.topbar').style.backgroundColor = config.color_topbar;
+                document.documentElement.style.setProperty('--topbar-color', config.color_topbar);
+                const textColor = getContrastingColor(config.color_topbar);
+                document.documentElement.style.setProperty('--topbar-text-color', textColor);
+                colorTopbarSeleccionado = config.color_topbar;
+                document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
+                const btn = document.querySelector(`#topbarColors button[data-color="${config.color_topbar}"]`);
+                if (btn) btn.style.border = '3px solid black';
             }
 
             if (config.orden_sidebar) {
