@@ -693,10 +693,14 @@ function cargarConfiguracionVisual(idEmpresa) {
     .then(({ success, config }) => {
         if (success && config) {
             if (config.color_sidebar) {
-                document.querySelector('.sidebar').style.backgroundColor = config.color_sidebar;
+                document.documentElement.style.setProperty('--sidebar-color', config.color_sidebar);
+                const textColor = getContrastingColor(config.color_sidebar);
+                document.documentElement.style.setProperty('--sidebar-text-color', textColor);
             }
             if (config.color_topbar) {
-                document.querySelector('.topbar').style.backgroundColor = config.color_topbar;
+                document.documentElement.style.setProperty('--topbar-color', config.color_topbar);
+                const textColor = getContrastingColor(config.color_topbar);
+                document.documentElement.style.setProperty('--topbar-text-color', textColor);
             }
 
             if (config.orden_sidebar) {
