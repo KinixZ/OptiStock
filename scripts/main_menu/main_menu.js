@@ -500,11 +500,15 @@ colorModal.addEventListener('click', (e) => {
 document.querySelectorAll('#sidebarColors button').forEach(btn => {
     btn.addEventListener('click', () => {
         colorSidebarSeleccionado = btn.dataset.color;
+        // Usa el mismo color para el topbar
+        colorTopbarSeleccionado = btn.dataset.color;
         document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
         document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
+        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
         const textColor = getContrastingColor(colorSidebarSeleccionado);
         document.documentElement.style.setProperty('--sidebar-text-color', textColor);
+        document.documentElement.style.setProperty('--topbar-text-color', textColor);
     });
 });
 
