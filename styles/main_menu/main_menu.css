@@ -8,7 +8,8 @@
     --warning-color: #f39c12;
     --info-color: #2980b9;
     --sidebar-color: #20252a;
-    --topbar-color: #20252a;
+    /* El topbar usará el mismo color que la barra lateral */
+    --topbar-color: var(--sidebar-color);
     --sidebar-text-color: #ffffff;
     --topbar-text-color: #ffffff;
     --sidebar-width: 280px;
