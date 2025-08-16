@@ -10,6 +10,10 @@ const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
+// Selected theme colors
+let colorSidebarSeleccionado = null;
+let colorTopbarSeleccionado = null;
+
 
 // Request browser permission for push notifications
 function requestPushPermission() {
@@ -475,6 +479,7 @@ if (userImgEl) {
     cargarConfiguracionVisual(data.empresa_id);
 
     // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
+
 let colorSidebarSeleccionado = null;
 let colorTopbarSeleccionado = null;
 
@@ -696,11 +701,21 @@ function cargarConfiguracionVisual(idEmpresa) {
                 document.documentElement.style.setProperty('--sidebar-color', config.color_sidebar);
                 const textColor = getContrastingColor(config.color_sidebar);
                 document.documentElement.style.setProperty('--sidebar-text-color', textColor);
+                colorSidebarSeleccionado = config.color_sidebar;
+                document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
+                const btn = document.querySelector(`#sidebarColors button[data-color="${config.color_sidebar}"]`);
+                if (btn) btn.style.border = '3px solid black';
+
             }
             if (config.color_topbar) {
                 document.documentElement.style.setProperty('--topbar-color', config.color_topbar);
                 const textColor = getContrastingColor(config.color_topbar);
                 document.documentElement.style.setProperty('--topbar-text-color', textColor);
+
+                colorTopbarSeleccionado = config.color_topbar;
+                document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
+                const btn = document.querySelector(`#topbarColors button[data-color="${config.color_topbar}"]`);
+                if (btn) btn.style.border = '3px solid black';
             }
 
             if (config.orden_sidebar) {
