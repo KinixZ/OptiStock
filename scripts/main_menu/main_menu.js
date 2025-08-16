@@ -470,6 +470,14 @@ if (userImgEl) {
 let colorSidebarSeleccionado = null;
 let colorTopbarSeleccionado = null;
 
+function getContrastingColor(hexColor) {
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128 ? '#000000' : '#ffffff';
+}
+
 const openColorModal = document.getElementById('openColorModal');
 const colorModal = document.getElementById('colorModal');
 
@@ -490,6 +498,8 @@ document.querySelectorAll('#sidebarColors button').forEach(btn => {
         document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
         document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
+        const textColor = getContrastingColor(colorSidebarSeleccionado);
+        document.documentElement.style.setProperty('--sidebar-text-color', textColor);
     });
 });
 
@@ -499,6 +509,8 @@ document.querySelectorAll('#topbarColors button').forEach(btn => {
         document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
         document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
+        const textColor = getContrastingColor(colorTopbarSeleccionado);
+        document.documentElement.style.setProperty('--topbar-text-color', textColor);
     });
 });
 
