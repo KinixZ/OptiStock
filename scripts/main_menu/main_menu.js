@@ -479,6 +479,10 @@ if (userImgEl) {
     cargarConfiguracionVisual(data.empresa_id);
 
     // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
+
+let colorSidebarSeleccionado = null;
+let colorTopbarSeleccionado = null;
+
 const openColorModal = document.getElementById('openColorModal');
 const colorModal = document.getElementById('colorModal');
 
@@ -701,11 +705,13 @@ function cargarConfiguracionVisual(idEmpresa) {
                 document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
                 const btn = document.querySelector(`#sidebarColors button[data-color="${config.color_sidebar}"]`);
                 if (btn) btn.style.border = '3px solid black';
+
             }
             if (config.color_topbar) {
                 document.documentElement.style.setProperty('--topbar-color', config.color_topbar);
                 const textColor = getContrastingColor(config.color_topbar);
                 document.documentElement.style.setProperty('--topbar-text-color', textColor);
+
                 colorTopbarSeleccionado = config.color_topbar;
                 document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
                 const btn = document.querySelector(`#topbarColors button[data-color="${config.color_topbar}"]`);
