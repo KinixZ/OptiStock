@@ -509,7 +509,7 @@ document.querySelectorAll('#sidebarColors button').forEach(btn => {
         document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
         const textColor = getContrastingColor(colorSidebarSeleccionado);
         document.documentElement.style.setProperty('--sidebar-text-color', textColor);
-        // Mantener el color de la topbar sin cambios
+
         document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
         const topbarText = getContrastingColor(colorTopbarSeleccionado);
         document.documentElement.style.setProperty('--topbar-text-color', topbarText);
