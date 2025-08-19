@@ -11,8 +11,12 @@ const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
 // Selected theme colors
-let colorSidebarSeleccionado = null;
-let colorTopbarSeleccionado = null;
+let colorSidebarSeleccionado = getComputedStyle(document.documentElement)
+    .getPropertyValue('--sidebar-color')
+    .trim();
+let colorTopbarSeleccionado = getComputedStyle(document.documentElement)
+    .getPropertyValue('--topbar-color')
+    .trim();
 
 
 // Request browser permission for push notifications
@@ -500,15 +504,15 @@ colorModal.addEventListener('click', (e) => {
 document.querySelectorAll('#sidebarColors button').forEach(btn => {
     btn.addEventListener('click', () => {
         colorSidebarSeleccionado = btn.dataset.color;
-        // Usa el mismo color para el topbar
-        colorTopbarSeleccionado = btn.dataset.color;
         document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
         document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
-        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
         const textColor = getContrastingColor(colorSidebarSeleccionado);
         document.documentElement.style.setProperty('--sidebar-text-color', textColor);
-        document.documentElement.style.setProperty('--topbar-text-color', textColor);
+        // Mantener el color de la topbar sin cambios
+        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
+        const topbarText = getContrastingColor(colorTopbarSeleccionado);
+        document.documentElement.style.setProperty('--topbar-text-color', topbarText);
     });
 });
 
