@@ -11,8 +11,12 @@ const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
 // Selected theme colors
-let colorSidebarSeleccionado = null;
-let colorTopbarSeleccionado = null;
+let colorSidebarSeleccionado = getComputedStyle(document.documentElement)
+    .getPropertyValue('--sidebar-color')
+    .trim();
+let colorTopbarSeleccionado = getComputedStyle(document.documentElement)
+    .getPropertyValue('--topbar-color')
+    .trim();
 
 
 // Request browser permission for push notifications
@@ -505,6 +509,10 @@ document.querySelectorAll('#sidebarColors button').forEach(btn => {
         document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
         const textColor = getContrastingColor(colorSidebarSeleccionado);
         document.documentElement.style.setProperty('--sidebar-text-color', textColor);
+
+        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
+        const topbarText = getContrastingColor(colorTopbarSeleccionado);
+        document.documentElement.style.setProperty('--topbar-text-color', topbarText);
     });
 });
 
