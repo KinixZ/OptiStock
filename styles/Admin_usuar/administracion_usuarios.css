@@ -87,3 +87,17 @@
 .btn-eliminar:hover {
     background-color: #a71d2a;
 }
+
+/* Foto de perfil en la tabla */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}

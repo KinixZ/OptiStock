@@ -19,8 +19,9 @@ function cargarUsuariosEmpresa() {
         conteoPorRol[u.rol] = (conteoPorRol[u.rol] || 0) + 1;
 
         const tr = document.createElement('tr');
+        const foto = u.foto_perfil ? `/${u.foto_perfil}` : '/images/profile.jpg';
         tr.innerHTML = `
-          <td>${u.nombre}</td>
+          <td class="user-cell"><img src="${foto}" class="user-photo" alt="Foto de ${u.nombre}"> ${u.nombre}</td>
           <td>${u.apellido}</td>
           <td>${u.correo}</td>
           <td>${u.rol}</td>
