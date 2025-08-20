@@ -23,10 +23,19 @@ $rol = $data['rol']; // Aunque no se usa en la inserción, se puede guardar si e
 $contrasena = sha1($data['contrasena']);
 $id_empresa = intval($data['id_empresa']);
 
-$query1 = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, rol, verificacion_cuenta)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
+$perfiles = [
+    'Administrador' => 'images/profile.jpg',
+    'Almacenista'   => 'images/almacenista.jpg',
+    'Etiquetador'   => 'images/etiquetador.jpg',
+    'Mantenimiento' => 'images/mantenimiento.jpg',
+    'Supervisor'    => 'images/supervisor.jpg'
+];
+$foto_perfil = $perfiles[$rol] ?? 'images/profile.jpg';
+
+$query1 = "INSERT INTO usuario (nombre, apellido, fecha_nacimiento, telefono, correo, contrasena, rol, foto_perfil, verificacion_cuenta)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)";
 $stmt1 = $conn->prepare($query1);
-$stmt1->bind_param("sssssss", $nombre, $apellido, $nacimiento, $telefono, $correo, $contrasena, $rol);
+$stmt1->bind_param("ssssssss", $nombre, $apellido, $nacimiento, $telefono, $correo, $contrasena, $rol, $foto_perfil);
 
 if ($stmt1->execute()) {
     $id_usuario = $stmt1->insert_id;
