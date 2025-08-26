@@ -101,6 +101,29 @@ function loadMetrics() {
     renderHighRotation();
     renderZoneCapacity();
 }
+
+function formatRelativeDate(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffDays === 0) return "Hoy";
+    if (diffDays === 1) return "Ayer";
+    if (diffDays < 30) return `${diffDays} días`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return "1 mes";
+    if (diffMonths < 12) return `${diffMonths} meses`;
+    const diffYears = Math.floor(diffMonths / 12);
+    return diffYears === 1 ? "1 año" : `${diffYears} años`;
+}
+
+function formatTime(date) {
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours || 12;
+    return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+}
 function loadAccessLogs() {
     if (!accessLogsList) return;
     fetch("/scripts/php/get_access_logs.php")
@@ -111,10 +134,20 @@ function loadAccessLogs() {
             data.logs.forEach(log => {
                 const li = document.createElement("li");
                 li.className = "activity-item";
+                const date = new Date(log.fecha.replace(' ', 'T'));
+                const timeStr = formatTime(date);
+                const dateStr = formatRelativeDate(date);
+                const imgSrc = log.foto_perfil || '/images/profile.jpg';
+                li.innerHTML =
+                    '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
+                    '<div class="activity-details"><div class="activity-description">' + log.nombre + ' ' + log.apellido + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
+                    '<div class="activity-time">' + dateStr + ' ' + timeStr + '</div></div>';
+
                 li.innerHTML =
                     '<div class="activity-icon"><img src="' + (log.foto_perfil || '/images/profile.jpg') + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
                     '<div class="activity-details"><div class="activity-description">' + log.nombre + ' ' + log.apellido + ' - ' + log.accion + '</div>' +
                     '<div class="activity-time">' + log.fecha + '</div></div>';
+
                 accessLogsList.appendChild(li);
             });
         });
