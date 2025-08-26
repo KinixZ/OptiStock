@@ -12,7 +12,9 @@ if (!$conn) {
     exit;
 }
 
+
 $sql = "SELECT ra.accion, ra.fecha, u.nombre, u.apellido, u.rol, u.foto_perfil
+
         FROM registro_accesos ra
         JOIN usuario u ON ra.id_usuario = u.id_usuario
         ORDER BY ra.fecha DESC
@@ -21,8 +23,10 @@ $result = mysqli_query($conn, $sql);
 
 $logs = [];
 while ($row = mysqli_fetch_assoc($result)) {
+
     $foto = $row['foto_perfil'] ?? '';
     $row['foto_perfil'] = '/' . ltrim($foto ?: 'images/profile.jpg', '/');
+
     $logs[] = $row;
 }
 

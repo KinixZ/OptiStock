@@ -101,6 +101,7 @@ function loadMetrics() {
     renderHighRotation();
     renderZoneCapacity();
 }
+
 function formatRelativeDate(date) {
     const now = new Date();
     const diffMs = now - date;
@@ -141,6 +142,12 @@ function loadAccessLogs() {
                     '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
                     '<div class="activity-details"><div class="activity-description">' + log.nombre + ' ' + log.apellido + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
                     '<div class="activity-time">' + dateStr + ' ' + timeStr + '</div></div>';
+
+                li.innerHTML =
+                    '<div class="activity-icon"><img src="' + (log.foto_perfil || '/images/profile.jpg') + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
+                    '<div class="activity-details"><div class="activity-description">' + log.nombre + ' ' + log.apellido + ' - ' + log.accion + '</div>' +
+                    '<div class="activity-time">' + log.fecha + '</div></div>';
+
                 accessLogsList.appendChild(li);
             });
         });
