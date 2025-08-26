@@ -21,6 +21,15 @@ if (!$conn) {
     exit;
 }
 
+function registrarAcceso($conn, $idUsuario, $accion) {
+    $stmt = mysqli_prepare($conn, "INSERT INTO registro_accesos (id_usuario, accion) VALUES (?, ?)");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "is", $idUsuario, $accion);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+}
+
 // Consulta SQL para verificar el correo
 $sql  = "SELECT * FROM usuario WHERE correo = ?";
 $stmt = mysqli_prepare($conn, $sql);
@@ -35,6 +44,7 @@ if ($user) {
     $currentTime        = time();
 
     if ($failedAttempts >= 4 && ($currentTime - $lastFailedAttempt) < 300) {
+    registrarAcceso($conn, $user['id_usuario'], 'Intento');
         echo json_encode(["success"=>false,"message"=>"Tu cuenta está bloqueada. Intenta nuevamente en 5 minutos."]);
         exit;
     }
@@ -58,6 +68,7 @@ if ($user) {
         $_SESSION['usuario_rol']         = $user['rol'];
         $_SESSION['usuario_suscripcion'] = $user['suscripcion'];
         $_SESSION['usuario_foto_perfil'] = $user['foto_perfil'];
+        registrarAcceso($conn, $user['id_usuario'], 'Inicio');
 
         /*─────────────────────────────────────────────
           RESOLVER EMPRESA (Creador o Afiliado)
@@ -135,6 +146,8 @@ if ($user) {
         $upSt  = mysqli_prepare($conn, $upSql);
         mysqli_stmt_bind_param($upSt, "is", $failedAttempts, $correo);
         mysqli_stmt_execute($upSt);
+
+        registrarAcceso($conn, $user['id_usuario'], 'Intento');
 
         if ($failedAttempts >= 4) {
             sendEmail($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.");

@@ -53,6 +53,13 @@ if ($check->num_rows > 0) {
     $_SESSION['usuario_rol'] = $rol;
     $_SESSION['usuario_suscripcion'] = $suscripcion;
 
+    $log = $conn->prepare("INSERT INTO registro_accesos (id_usuario, accion) VALUES (?, 'Inicio')");
+    if ($log) {
+        $log->bind_param("i", $id);
+        $log->execute();
+        $log->close();
+    }
+
     echo json_encode([
         "success" => true,
         "completo" => $completo,
@@ -87,6 +94,13 @@ if ($check->num_rows > 0) {
         $_SESSION['usuario_nombre'] = $nombre;
         $_SESSION['usuario_correo'] = $correo;
         $_SESSION['usuario_rol'] = $rol;
+
+        $log = $conn->prepare("INSERT INTO registro_accesos (id_usuario, accion) VALUES (?, 'Inicio')");
+        if ($log) {
+            $log->bind_param("i", $id);
+            $log->execute();
+            $log->close();
+        }
 
         echo json_encode([
             "success" => true,
