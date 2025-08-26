@@ -1,6 +1,7 @@
 // Toggle sidebar collapse/expand
 const menuToggle = document.getElementById('menuToggle');
 const sidebar = document.querySelector('.sidebar');
+const accessLogsList = document.getElementById('accessLogsList');
 const highRotationList = document.getElementById('highRotationList');
 const zoneCapacityList = document.getElementById('zoneCapacityList');
 const alertSettingsBtn = document.getElementById('alertSettingsBtn');
@@ -100,6 +101,25 @@ function loadMetrics() {
     renderHighRotation();
     renderZoneCapacity();
 }
+function loadAccessLogs() {
+    if (!accessLogsList) return;
+    fetch("/scripts/php/get_access_logs.php")
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) return;
+            accessLogsList.innerHTML = "";
+            data.logs.forEach(log => {
+                const li = document.createElement("li");
+                li.className = "activity-item";
+                li.innerHTML =
+                    '<div class="activity-icon"><img src="' + (log.foto_perfil || '/images/profile.jpg') + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
+                    '<div class="activity-details"><div class="activity-description">' + log.nombre + ' ' + log.apellido + ' - ' + log.accion + '</div>' +
+                    '<div class="activity-time">' + log.fecha + '</div></div>';
+                accessLogsList.appendChild(li);
+            });
+        });
+}
+
 
 // Toggle sidebar on button click
 menuToggle.addEventListener('click', function() {
@@ -399,6 +419,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let contenidoInicial = mainContent.innerHTML;
 
     loadMetrics();
+    loadAccessLogs();
     document.addEventListener('movimientoRegistrado', loadMetrics);
 
     // Mostrar nombre y rol del usuario

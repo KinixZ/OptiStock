@@ -190,3 +190,16 @@ CREATE TABLE `productos` (
 ALTER TABLE `productos`
   ADD COLUMN IF NOT EXISTS `codigo_qr` varchar(255) DEFAULT NULL AFTER `dim_z`;
 
+
+-- --------------------------------------------------------
+-- Tabla para registrar accesos de usuarios
+CREATE TABLE IF NOT EXISTS `registro_accesos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT NOT NULL,
+  `accion` ENUM('Inicio','Cierre','Intento') NOT NULL,
+  `fecha` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `id_usuario` (`id_usuario`),
+  CONSTRAINT `registro_accesos_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario`(`id_usuario`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
