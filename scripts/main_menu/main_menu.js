@@ -104,9 +104,10 @@ function loadMetrics() {
 
 function formatRelativeDate(date) {
     const now = new Date();
-    const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0) return "Hoy";
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    let diffDays = Math.round((today - targetDay) / 86400000);
+    if (diffDays <= 0) return "Hoy";
     if (diffDays === 1) return "Ayer";
     if (diffDays < 30) return `${diffDays} días`;
     const diffMonths = Math.floor(diffDays / 30);
