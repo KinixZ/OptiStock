@@ -142,7 +142,7 @@ function loadAccessLogs() {
                 li.innerHTML =
                     '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
                     '<div class="activity-details"><div class="activity-description">' +
-                    log.nombre + ' ' + log.apellido + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
+                    log.nombre + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
                     '<div class="activity-time">' + dateStr + ' ' + timeStr + '</div></div>';
 
                 accessLogsList.appendChild(li);
