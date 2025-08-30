@@ -127,8 +127,12 @@ function formatTime(date) {
 }
 function loadAccessLogs() {
     if (!accessLogsList) return;
-    fetch("/scripts/php/get_access_logs.php")
-        .then(res => res.json())
+    const idEmpresa = localStorage.getItem('id_empresa') || '';
+    fetch(`/scripts/php/get_access_logs.php?id_empresa=${idEmpresa}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Error al obtener los accesos');
+            return res.json();
+        })
         .then(data => {
             if (!data.success) return;
             accessLogsList.innerHTML = "";
@@ -139,15 +143,17 @@ function loadAccessLogs() {
                 const timeStr = formatTime(date);
                 const dateStr = formatRelativeDate(date);
                 const imgSrc = log.foto_perfil || '/images/profile.jpg';
+                const fullName = `${log.nombre} ${log.apellido}`.trim();
                 li.innerHTML =
-                    '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
+                    '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + fullName + '"></div>' +
                     '<div class="activity-details"><div class="activity-description">' +
-                    log.nombre + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
+                    fullName + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
                     '<div class="activity-time">' + dateStr + ' ' + timeStr + '</div></div>';
 
                 accessLogsList.appendChild(li);
             });
-        });
+        })
+        .catch(err => console.error('Error loading access logs:', err));
 }
 
 
