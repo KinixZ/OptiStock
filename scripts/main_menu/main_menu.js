@@ -129,6 +129,10 @@ function loadAccessLogs() {
     if (!accessLogsList) return;
     const idEmpresa = localStorage.getItem('id_empresa') || '';
     fetch(`/scripts/php/get_access_logs.php?id_empresa=${idEmpresa}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Error al obtener los accesos');
+            return res.json();
+        })
         .then(res => res.json())
         .then(data => {
             if (!data.success) return;
@@ -149,7 +153,8 @@ function loadAccessLogs() {
 
                 accessLogsList.appendChild(li);
             });
-        });
+        })
+        .catch(err => console.error('Error loading access logs:', err));
 }
 
 
