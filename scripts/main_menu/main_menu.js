@@ -140,10 +140,11 @@ function loadAccessLogs() {
                 const timeStr = formatTime(date);
                 const dateStr = formatRelativeDate(date);
                 const imgSrc = log.foto_perfil || '/images/profile.jpg';
+                const fullName = `${log.nombre} ${log.apellido}`.trim();
                 li.innerHTML =
-                    '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + log.nombre + '"></div>' +
+                    '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + fullName + '"></div>' +
                     '<div class="activity-details"><div class="activity-description">' +
-                    log.nombre + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
+                    fullName + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
                     '<div class="activity-time">' + dateStr + ' ' + timeStr + '</div></div>';
 
                 accessLogsList.appendChild(li);
