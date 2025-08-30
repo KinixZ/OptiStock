@@ -127,7 +127,8 @@ function formatTime(date) {
 }
 function loadAccessLogs() {
     if (!accessLogsList) return;
-    fetch("/scripts/php/get_access_logs.php")
+    const idEmpresa = localStorage.getItem('id_empresa') || '';
+    fetch(`/scripts/php/get_access_logs.php?id_empresa=${idEmpresa}`)
         .then(res => res.json())
         .then(data => {
             if (!data.success) return;
