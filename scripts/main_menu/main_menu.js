@@ -133,6 +133,7 @@ function loadAccessLogs() {
             if (!res.ok) throw new Error('Error al obtener los accesos');
             return res.json();
         })
+        .then(res => res.json())
         .then(data => {
             if (!data.success) return;
             accessLogsList.innerHTML = "";

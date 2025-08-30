@@ -15,6 +15,8 @@ if (!$conn) {
 
 $id_empresa = intval($_GET['id_empresa'] ?? 0);
 
+$id_empresa = intval($_GET['id_empresa'] ?? 0);
+
 $sql = "SELECT ra.accion, ra.fecha, u.nombre, u.apellido, u.rol, u.foto_perfil
         FROM registro_accesos ra
         JOIN usuario u ON ra.id_usuario = u.id_usuario
@@ -22,6 +24,9 @@ $sql = "SELECT ra.accion, ra.fecha, u.nombre, u.apellido, u.rol, u.foto_perfil
         WHERE ue.id_empresa = ? OR u.id_usuario = (
             SELECT usuario_creador FROM empresa WHERE id_empresa = ?
         )
+        JOIN empresa e ON e.id_empresa = ?
+        WHERE ue.id_empresa = e.id_empresa OR u.id_usuario = e.usuario_creador
+        WHERE ue.id_empresa = ? OR u.id_usuario = (SELECT usuario_creador FROM empresa WHERE id_empresa = ?)
         ORDER BY ra.fecha DESC
         LIMIT 5";
 
@@ -39,6 +44,9 @@ if (!mysqli_stmt_execute($stmt)) {
     exit;
 }
 
+mysqli_stmt_bind_param($stmt, "i", $id_empresa);
+mysqli_stmt_bind_param($stmt, "ii", $id_empresa, $id_empresa);
+mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
 $logs = [];
