@@ -12,10 +12,10 @@ body {
 
 .account-menu {
   width: 200px;
-  background: linear-gradient(45deg, #6a11cb, #2575fc);
+  background: var(--topbar-color, linear-gradient(45deg, #6a11cb, #2575fc));
   border-radius: 8px;
   padding: 20px;
-  color: #fff;
+  color: var(--topbar-text-color, #fff);
 
 }
 

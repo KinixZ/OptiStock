@@ -1,5 +1,13 @@
 // Gestion de cuenta y suscripción
 
+function getContrastingColor(hexColor) {
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? '#000000' : '#ffffff';
+}
+
 async function obtenerDatosCuenta(id_usuario) {
   const res = await fetch(`/scripts/php/get_account_data.php?usuario_id=${id_usuario}`);
   const data = await res.json();
@@ -31,6 +39,13 @@ function mainAccountSuscrip() {
     console.log("Respuesta get_account_data:", data);
 
     if(data.success){
+    const config = data.configuracion;
+    if (config && config.color_topbar) {
+      document.documentElement.style.setProperty('--topbar-color', config.color_topbar);
+      const textColor = getContrastingColor(config.color_topbar);
+      document.documentElement.style.setProperty('--topbar-text-color', textColor);
+    }
+
     const u = data.usuario;
     nombreEl.textContent = `${u.nombre} ${u.apellido}`;
     correoEl.textContent = u.correo;
