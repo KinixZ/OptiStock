@@ -98,6 +98,7 @@ prodCategoria.addEventListener('change', () => {
   const tablaResumen = document.querySelector('#tablaResumen tbody');
   const tablaHead = document.getElementById('tablaHead');
   const btnRecargarResumen = document.getElementById('btnRecargarResumen');
+  const btnScanQR = document.getElementById('btnScanQR');
   const btnIngreso = document.getElementById('btnIngreso');
   const btnEgreso  = document.getElementById('btnEgreso');
   const movModal   = new bootstrap.Modal(document.getElementById('movimientoModal'));
@@ -105,7 +106,9 @@ prodCategoria.addEventListener('change', () => {
   const movProdSel = document.getElementById('movProdSelect');
   const movCant    = document.getElementById('movCantidad');
   const movGuardar = document.getElementById('movGuardar');
-  let movTipo      = ''; 
+  let movTipo      = '';
+  const scanModal = new bootstrap.Modal(document.getElementById('scanQRModal'));
+  let qrScanner;
 
 function poblarSelectProductos() {
   movProdSel.innerHTML = '<option value="">Seleccione producto</option>';
@@ -116,6 +119,40 @@ function poblarSelectProductos() {
     movProdSel.appendChild(opt);
   });
 }
+
+btnScanQR.addEventListener('click', () => {
+  if (!/Mobi|Android/i.test(navigator.userAgent)) {
+    alert('El escáner QR solo está disponible en dispositivos móviles');
+    return;
+  }
+  scanModal.show();
+  if (!qrScanner) {
+    qrScanner = new Html5Qrcode('qrReader');
+  }
+  qrScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: 250 },
+    async decodedText => {
+      await qrScanner.stop();
+      scanModal.hide();
+      const productoId = parseInt(decodedText, 10);
+      fetch('../../scripts/php/guardar_movimientos.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
+      })
+      .then(r => r.json())
+      .then(() => alert('Movimiento registrado'))
+      .catch(() => alert('Error al registrar movimiento'));
+    }
+  );
+});
+
+document.getElementById('scanQRModal').addEventListener('hidden.bs.modal', () => {
+  if (qrScanner) {
+    qrScanner.stop().catch(() => {});
+  }
+});
 
  btnIngreso.addEventListener('click', () => {
     movTipo = 'ingreso';
@@ -279,6 +316,7 @@ const sub = p.subcategoria_nombre || '';
       <td>${p.stock}</td>
       <td>${p.precio_compra}</td>
       <td>
+        <button class="btn btn-sm btn-secondary me-1" data-accion="qr" data-tipo="producto" data-id="${p.id}">QR</button>
         <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="producto" data-id="${p.id}">Editar</button>
         <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="producto" data-id="${p.id}">Eliminar</button>
       </td>
@@ -477,6 +515,11 @@ tablaResumen.addEventListener('click', async e => {
   const tipo   = e.target.dataset.tipo;
   const accion = e.target.dataset.accion;
   if (!accion) return;
+
+  if (accion === 'qr' && tipo === 'producto') {
+    window.open(`../../scripts/php/generar_qr_producto.php?producto_id=${id}`, '_blank');
+    return;
+  }
 
   // 1) Eliminar
 if (accion === 'del') {
