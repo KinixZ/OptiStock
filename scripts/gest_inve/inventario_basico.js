@@ -107,7 +107,7 @@ prodCategoria.addEventListener('change', () => {
   const movCant    = document.getElementById('movCantidad');
   const movGuardar = document.getElementById('movGuardar');
   let movTipo      = '';
-  const scanModal = new bootstrap.Modal(document.getElementById('scanQRModal'));
+  const qrReader   = document.getElementById('qrReader');
   let qrScanner;
 
 function poblarSelectProductos() {
@@ -136,6 +136,7 @@ btnScanQR.addEventListener('click', async () => {
     alert('Permiso de cámara denegado');
     return;
   }
+  qrReader.classList.remove('d-none');
   scanModal.show();
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
@@ -145,7 +146,7 @@ btnScanQR.addEventListener('click', async () => {
     { fps: 10, qrbox: 250 },
     async decodedText => {
       await qrScanner.stop();
-      scanModal.hide();
+      qrReader.classList.add('d-none');
       const productoId = parseInt(decodedText, 10);
       fetch('../../scripts/php/guardar_movimientos.php', {
         method: 'POST',
@@ -156,13 +157,10 @@ btnScanQR.addEventListener('click', async () => {
       .then(() => alert('Movimiento registrado'))
       .catch(() => alert('Error al registrar movimiento'));
     }
-  );
-});
-
-document.getElementById('scanQRModal').addEventListener('hidden.bs.modal', () => {
-  if (qrScanner) {
-    qrScanner.stop().catch(() => {});
-  }
+  ).catch(() => {
+    qrReader.classList.add('d-none');
+    alert('Error al iniciar la cámara');
+  });
 });
 
  btnIngreso.addEventListener('click', () => {
