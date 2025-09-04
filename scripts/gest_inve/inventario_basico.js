@@ -107,7 +107,7 @@ prodCategoria.addEventListener('change', () => {
   const movCant    = document.getElementById('movCantidad');
   const movGuardar = document.getElementById('movGuardar');
   let movTipo      = '';
-  const scanModal = new bootstrap.Modal(document.getElementById('scanQRModal'));
+  const qrReader   = document.getElementById('qrReader');
   let qrScanner;
 
 function poblarSelectProductos() {
@@ -120,12 +120,23 @@ function poblarSelectProductos() {
   });
 }
 
-btnScanQR.addEventListener('click', () => {
+btnScanQR.addEventListener('click', async () => {
   if (!/Mobi|Android/i.test(navigator.userAgent)) {
     alert('El escáner QR solo está disponible en dispositivos móviles');
     return;
   }
-  scanModal.show();
+  if (!navigator.mediaDevices || !isSecureContext) {
+    alert('La cámara requiere HTTPS o localhost');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    stream.getTracks().forEach(track => track.stop());
+  } catch (e) {
+    alert('Permiso de cámara denegado');
+    return;
+  }
+  qrReader.classList.remove('d-none');
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
   }
@@ -134,7 +145,7 @@ btnScanQR.addEventListener('click', () => {
     { fps: 10, qrbox: 250 },
     async decodedText => {
       await qrScanner.stop();
-      scanModal.hide();
+      qrReader.classList.add('d-none');
       const productoId = parseInt(decodedText, 10);
       fetch('../../scripts/php/guardar_movimientos.php', {
         method: 'POST',
@@ -145,13 +156,10 @@ btnScanQR.addEventListener('click', () => {
       .then(() => alert('Movimiento registrado'))
       .catch(() => alert('Error al registrar movimiento'));
     }
-  );
-});
-
-document.getElementById('scanQRModal').addEventListener('hidden.bs.modal', () => {
-  if (qrScanner) {
-    qrScanner.stop().catch(() => {});
-  }
+  ).catch(() => {
+    qrReader.classList.add('d-none');
+    alert('Error al iniciar la cámara');
+  });
 });
 
  btnIngreso.addEventListener('click', () => {

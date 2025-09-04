@@ -218,6 +218,9 @@
     <p class="muted small mb-0">Usa los botones para registrar movimientos rápidos. La tabla se actualiza con <em>Recargar</em>.</p>
   </section>
 
+  <!-- ESCÁNER QR SIN MODAL -->
+  <div id="qrReader" class="d-none my-3" style="width:100%"></div>
+
   <!-- MODAL MOVIMIENTO -->
   <div class="modal fade" id="movimientoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -239,21 +242,6 @@
         <div class="modal-footer">
           <button id="movGuardar" class="btn btn-primary">Guardar</button>
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL ESCÁNER QR -->
-  <div class="modal fade" id="scanQRModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Escanear Código QR</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <div id="qrReader" style="width:100%"></div>
         </div>
       </div>
     </div>
