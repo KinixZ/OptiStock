@@ -137,6 +137,7 @@ btnScanQR.addEventListener('click', async () => {
     return;
   }
   qrReader.classList.remove('d-none');
+  scanModal.show();
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
   }
