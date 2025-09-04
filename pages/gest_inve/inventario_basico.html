@@ -44,6 +44,7 @@
       <button id="btnCategorias" class="btn btn-sm btn-outline-primary btn-pill">Categorías</button>
       <button id="btnSubcategorias" class="btn btn-sm btn-outline-primary btn-pill">Subcategorías</button>
       <button id="btnRecargarResumen" class="btn btn-outline-primary btn-pill">Recargar</button>
+      <button id="btnScanQR" class="btn btn-outline-success btn-pill">Escanear QR</button>
 
     </div>
   </header>
@@ -243,8 +244,24 @@
     </div>
   </div>
 
+  <!-- MODAL ESCÁNER QR -->
+  <div class="modal fade" id="scanQRModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Escanear Código QR</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="qrReader" style="width:100%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <!-- Tu lógica original -->
   <script src="../../scripts/gest_inve/inventario_basico.js"></script>
 

@@ -13,6 +13,11 @@ if ($conn->connect_error) {
     exit;
 }
 
+function getJsonInput() {
+    $input = file_get_contents('php://input');
+    return json_decode($input, true) ?: [];
+}
+
 $data = getJsonInput();
 $empresa = intval($_REQUEST['empresa_id'] ?? $data['empresa_id'] ?? 0);
 $idProd  = intval($data['producto_id'] ?? 0);
@@ -40,3 +45,4 @@ $stmt->bind_param('iii',$cant,$idProd,$empresa);
 $stmt->execute();
 
 echo json_encode(['success'=>true]);
+
