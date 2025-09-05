@@ -28,7 +28,8 @@ $stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, fecha_nacim
 $stmt->bind_param("sssss",$nombre, $apellido, $fecha_nacimiento, $telefono, $correo);
 
 if ($stmt->execute()) {
-    echo "Datos actualizados correctamente. Puedes usar <a href='../../main_menu/main_menu.html'>tu cuenta</a>";
+    header("Location: ../../pages/regis_login/login/login.html?msg=created");
+    exit;
 } else {
     echo "Error al guardar los datos.";
 }

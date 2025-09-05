@@ -5,7 +5,16 @@ document.addEventListener("DOMContentLoaded", function () {
         // Si ya está logueado, redirigir directamente al menú principal
         window.location.href = "../../main_menu/main_menu.html";
         return;  // Salir de la función para evitar más redirecciones
-    } 
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('msg') === 'created') {
+        const statusDiv = document.getElementById('status-message');
+        if (statusDiv) {
+            statusDiv.textContent = 'Usuario creado. Ahora puedes iniciar sesión.';
+            statusDiv.classList.remove('d-none');
+        }
+    }
 
     // Función para manejar la respuesta del login con Google
     function handleCredentialResponse(response) {
