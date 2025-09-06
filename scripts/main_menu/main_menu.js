@@ -102,6 +102,40 @@ function loadMetrics() {
     renderZoneCapacity();
 }
 
+function saveHomeData() {
+    const data = {
+        empresaTitulo: document.getElementById('empresaTitulo')?.textContent || '',
+        stockAlerts: document.querySelector('#stockAlertsCard .stock-alert-list')?.innerHTML || '',
+        recentActivity: document.querySelector('#recentActivityCard .activity-list')?.innerHTML || '',
+        highRotation: document.getElementById('highRotationList')?.innerHTML || '',
+        zoneCapacity: document.getElementById('zoneCapacityList')?.innerHTML || '',
+        accessLogs: document.getElementById('accessLogsList')?.innerHTML || ''
+    };
+    sessionStorage.setItem('homeData', JSON.stringify(data));
+}
+
+function restoreHomeData() {
+    const raw = sessionStorage.getItem('homeData');
+    if (!raw) return;
+    try {
+        const data = JSON.parse(raw);
+        const empresaTitulo = document.getElementById('empresaTitulo');
+        if (empresaTitulo && data.empresaTitulo) empresaTitulo.textContent = data.empresaTitulo;
+        const stockAlerts = document.querySelector('#stockAlertsCard .stock-alert-list');
+        if (stockAlerts && data.stockAlerts) stockAlerts.innerHTML = data.stockAlerts;
+        const recentActivity = document.querySelector('#recentActivityCard .activity-list');
+        if (recentActivity && data.recentActivity) recentActivity.innerHTML = data.recentActivity;
+        const highRotation = document.getElementById('highRotationList');
+        if (highRotation && data.highRotation) highRotation.innerHTML = data.highRotation;
+        const zoneCapacity = document.getElementById('zoneCapacityList');
+        if (zoneCapacity && data.zoneCapacity) zoneCapacity.innerHTML = data.zoneCapacity;
+        const accessLogs = document.getElementById('accessLogsList');
+        if (accessLogs && data.accessLogs) accessLogs.innerHTML = data.accessLogs;
+    } catch (e) {
+        console.error('Error restoring home data', e);
+    }
+}
+
 function formatRelativeDate(date) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -453,9 +487,12 @@ document.addEventListener("DOMContentLoaded", function () {
     requestPushPermission();
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
+    let estaEnInicio = true;
 
     loadMetrics();
     loadAccessLogs();
+    restoreHomeData();
+    window.addEventListener('beforeunload', saveHomeData);
     document.addEventListener('movimientoRegistrado', loadMetrics);
 
     // Mostrar nombre y rol del usuario
@@ -649,34 +686,32 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
 
             const pageUrl = this.getAttribute('data-page');
 
-            // Si es "inicio", restaurar dashboard original
             if (pageUrl === 'inicio') {
                 mainContent.innerHTML = contenidoInicial;
+                restoreHomeData();
+                estaEnInicio = true;
                 return;
             }
 
-            // Cargar HTML externo en content
+            if (estaEnInicio) {
+                saveHomeData();
+                estaEnInicio = false;
+            }
+
             fetch(`../${pageUrl}`)
                 .then(res => res.text())
                 .then(html => {
                     mainContent.innerHTML = html;
 
-                    // Ejecutar scripts internos si los hay
                     const scripts = mainContent.querySelectorAll("script");
-scripts.forEach(oldScript => {
-    const newScript = document.createElement("script");
-
-    // Copiar atributos como src, type, etc.
-    Array.from(oldScript.attributes).forEach(attr => {
-        newScript.setAttribute(attr.name, attr.value);
-    });
-
-    // Si es inline
-    newScript.textContent = oldScript.textContent;
-
-    document.body.appendChild(newScript);
-});
-
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        newScript.textContent = oldScript.textContent;
+                        document.body.appendChild(newScript);
+                    });
                 })
                 .catch(err => {
                     mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
@@ -699,6 +734,7 @@ if (params.has("load")) {
         .then(html => {
             const mainContent = document.getElementById("mainContent");
             mainContent.innerHTML = html;
+            estaEnInicio = false;
 
             // Ejecutar scripts embebidos si los hay
             const scripts = mainContent.querySelectorAll("script");
@@ -725,6 +761,7 @@ if (vistaPendiente) {
         .then(html => {
             const mainContent = document.getElementById("mainContent");
             mainContent.innerHTML = html;
+            estaEnInicio = false;
 
             // Ejecutar los scripts externos/internos del HTML cargado
             const scripts = mainContent.querySelectorAll("script");
