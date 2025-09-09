@@ -3,6 +3,8 @@ header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+require_once __DIR__ . '/log_utils.php';
+
 $response = ["success" => false, "message" => ""]; // Respuesta inicial
 
 try {
@@ -46,6 +48,8 @@ try {
         throw new Exception("Error al registrar el usuario: " . mysqli_error($conn));
     }
 
+    $id_usuario = mysqli_insert_id($conn);
+
     // 7. Generar código de verificación
     $codigo_verificacion = mt_rand(100000, 999999);
     session_start();
@@ -60,6 +64,8 @@ try {
     if (!mail($correo, $mail_subject, $mail_message, $mail_headers)) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
+
+    registrarLog($conn, $id_usuario, 'Usuarios', "Registro de usuario: $correo");
 
     // Respuesta de éxito
     $response["success"] = true;

@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -9,6 +11,8 @@ if (!$conn) {
     echo json_encode(["success" => false, "message" => "Error de conexión"]);
     exit;
 }
+
+require_once __DIR__ . '/log_utils.php';
 
 $usuario_id = $_POST['id_usuario'] ?? null;
 $nombre     = $_POST['nombre'] ?? null;
@@ -58,6 +62,8 @@ try {
     $res3 = $stmt3->get_result();
     $row = $res3->fetch_assoc();
     $ruta_foto = $row ? $row['foto_perfil'] : null;
+
+    registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Usuarios', "Actualización de usuario: $usuario_id");
 
     echo json_encode([
         'success' => true,
