@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 $servername = "localhost";
@@ -11,6 +12,8 @@ if (!$conn) {
     echo json_encode(["success" => false, "message" => "Error de conexión"]);
     exit;
 }
+
+require_once __DIR__ . '/log_utils.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 $correo = $data['correo'] ?? null;
@@ -45,6 +48,7 @@ try {
     $stmt->execute();
 
     $conn->commit();
+    registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Usuarios', "Eliminación de usuario empresa: $correo");
     echo json_encode(["success" => true]);
 } catch (Exception $e) {
     $conn->rollback();
