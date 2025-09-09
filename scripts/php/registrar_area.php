@@ -1,6 +1,7 @@
 <?php
+session_start();
 header("Content-Type: application/json");
-// Conexión a la base de datos
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -12,7 +13,9 @@ if (!$conn) {
     exit;
 }
 
-$data = json_decode(file_get_contents("php://input"));
+require_once __DIR__ . '/log_utils.php';
+
+$data   = json_decode(file_get_contents("php://input"));
 $nombre = $data->areaName ?? '';
 
 if (!$nombre) {
@@ -24,6 +27,7 @@ $stmt = $conn->prepare("INSERT INTO areas (nombre) VALUES (?)");
 $stmt->bind_param("s", $nombre);
 
 if ($stmt->execute()) {
+    registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Áreas', "Creación de área: $nombre");
     echo json_encode(["success" => true, "message" => "Área registrada con éxito."]);
 } else {
     echo json_encode(["success" => false, "message" => "Error al registrar área."]);

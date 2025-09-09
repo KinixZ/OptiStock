@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 // Conexión a la base de datos
@@ -10,9 +11,11 @@ $database   = "u296155119_OptiStock";
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
 
 if (!$conn) {
-    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
+    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]); 
     exit;
 }
+
+require_once __DIR__ . '/log_utils.php';
 
 // Obtener datos del request
 $data = json_decode(file_get_contents("php://input"), true);
@@ -38,6 +41,7 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param("sssssi", $nombre, $apellido, $telefono, $fecha_nacimiento, $rol, $id_usuario);
 
 if ($stmt->execute()) {
+    registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Usuarios', "Edición de usuario empresa: $id_usuario");
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "message" => "Error al actualizar el usuario."]);

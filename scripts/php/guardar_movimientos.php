@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 $servername = "localhost";
@@ -12,6 +13,8 @@ if ($conn->connect_error) {
     echo json_encode(['error' => 'Error de conexión']);
     exit;
 }
+
+require_once __DIR__ . '/log_utils.php';
 
 function getJsonInput() {
     $input = file_get_contents('php://input');
@@ -35,6 +38,7 @@ $stmt = $conn->prepare(
 );
 $stmt->bind_param('iisi',$empresa,$idProd,$tipo,$cant);
 $stmt->execute();
+
 // 2) Actualizar stock y last_movimiento
 $op = $tipo==='ingreso' ? '+' : '-';
 $sql = "UPDATE productos
@@ -44,5 +48,8 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param('iii',$cant,$idProd,$empresa);
 $stmt->execute();
 
-echo json_encode(['success'=>true]);
+// 3) Registrar en log
+$detalle = ucfirst($tipo) . " de {$cant} unidad(es) del producto {$idProd}";
+registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Inventario', $detalle);
 
+echo json_encode(['success'=>true]);

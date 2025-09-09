@@ -1,6 +1,7 @@
 <?php
+session_start();
 header("Content-Type: application/json");
-// Conexión a la base de datos
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -11,6 +12,8 @@ if (!$conn) {
     echo json_encode(["success" => false, "message" => "Error de conexión"]);
     exit;
 }
+
+require_once __DIR__ . '/log_utils.php';
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -31,6 +34,7 @@ $stmt = $conn->prepare("INSERT INTO zonas (nombre, area_id, ancho, alto, largo, 
 $stmt->bind_param("sidddis", $nombre, $id_area, $ancho, $alto, $largo, $subniveles, $tipo);
 
 if ($stmt->execute()) {
+    registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Zonas', "Creación de zona: $nombre");
     echo json_encode(["success" => true, "message" => "Zona registrada con éxito."]);
 } else {
     echo json_encode(["success" => false, "message" => "Error al registrar zona."]);
