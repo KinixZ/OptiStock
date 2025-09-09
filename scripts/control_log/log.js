@@ -8,6 +8,8 @@ const exportExcelBtn = document.getElementById('exportExcel');
 
 let registros = [];
 
+const { jsPDF } = window.jspdf;
+
 async function cargarRegistros() {
     try {
         const params = new URLSearchParams();
@@ -15,7 +17,7 @@ async function cargarRegistros() {
         if (filtroUsuario.value) params.append('usuario', filtroUsuario.value);
         if (filtroRol.value) params.append('rol', filtroRol.value);
 
-        const res = await fetch(`/scripts/php/get_logs.php?${params.toString()}`);
+        const res = await fetch(`../../scripts/php/get_logs.php?${params.toString()}`);
         const data = await res.json();
         if (data.success) {
             registros = data.logs;
@@ -46,10 +48,10 @@ function mostrarRegistros(datos) {
     el.addEventListener('change', cargarRegistros);
 });
 
-document.addEventListener('DOMContentLoaded', cargarRegistros);
+cargarRegistros();
 
 exportPdfBtn.addEventListener('click', () => {
-    const doc = new jspdf.jsPDF();
+    const doc = new jsPDF();
     doc.autoTable({ html: '#logTable' });
     doc.save('logs.pdf');
 });
