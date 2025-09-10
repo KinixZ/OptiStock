@@ -12,6 +12,7 @@ function cargarUsuariosEmpresa() {
       if (!data.success) return;
 
       const tbody = document.querySelector('#tablaUsuariosEmpresa tbody');
+      if (!tbody) return;
       tbody.innerHTML = ''; // limpiar tabla
       const conteoPorRol = {};
 

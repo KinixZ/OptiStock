@@ -672,17 +672,53 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
 
     // Sidebar: navegación SPA
     const menuItems = document.querySelectorAll('.sidebar-menu a[data-page]');
+
+    function loadPage(pageUrl) {
+        const mainContent = document.getElementById('mainContent');
+
+        fetch(`../${pageUrl}`)
+            .then(res => res.text())
+            .then(html => {
+                mainContent.innerHTML = html;
+                estaEnInicio = false;
+
+                // Quitar scripts anteriores cargados dinámicamente
+                document.querySelectorAll('script[data-dynamic]').forEach(s => s.remove());
+
+                // Ejecutar los scripts del nuevo contenido
+                const scripts = mainContent.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    newScript.dataset.dynamic = 'true';
+                    if (oldScript.src) {
+                        newScript.async = false;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    document.body.appendChild(newScript);
+                });
+
+                // Actualizar título
+                const titulo = pageUrl.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+                const topbarTitle = document.querySelector('.topbar-title');
+                if (topbarTitle) {
+                    topbarTitle.textContent = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+                }
+            })
+            .catch(err => {
+                mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+            });
+    }
+
     menuItems.forEach(link => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
 
-            // Marcar activo
             menuItems.forEach(i => i.classList.remove('active'));
             this.classList.add('active');
-
-            // Cambiar título topbar
-            const titulo = this.textContent.trim();
-            document.querySelector('.topbar-title').textContent = titulo;
 
             const pageUrl = this.getAttribute('data-page');
 
@@ -690,6 +726,9 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 mainContent.innerHTML = contenidoInicial;
                 restoreHomeData();
                 estaEnInicio = true;
+                const titulo = this.textContent.trim();
+                const topbarTitle = document.querySelector('.topbar-title');
+                if (topbarTitle) topbarTitle.textContent = titulo;
                 return;
             }
 
@@ -698,96 +737,23 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 estaEnInicio = false;
             }
 
-            fetch(`../${pageUrl}`)
-                .then(res => res.text())
-                .then(html => {
-                    mainContent.innerHTML = html;
-
-                    const scripts = mainContent.querySelectorAll("script");
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement("script");
-                        Array.from(oldScript.attributes).forEach(attr => {
-                            newScript.setAttribute(attr.name, attr.value);
-                        });
-                        newScript.textContent = oldScript.textContent;
-                        document.body.appendChild(newScript);
-                    });
-                })
-                .catch(err => {
-                    mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
-                });
+            loadPage(pageUrl);
         });
     });
 
     // Si viene ?load en la URL, cargar la página solicitada automáticamente
 const params = new URLSearchParams(window.location.search);
-if (params.has("load")) {
-    const page = params.get("load");
-
-    // Cambiar el título en la topbar
-    const name = page.split('/').pop().replace('.html', '').replace(/_/g, ' ');
-    document.querySelector('.topbar-title').textContent = name.charAt(0).toUpperCase() + name.slice(1);
-
-    // Cargar el contenido en el mainContent
-    fetch(`../${page}`)
-        .then(res => res.text())
-        .then(html => {
-            const mainContent = document.getElementById("mainContent");
-            mainContent.innerHTML = html;
-            estaEnInicio = false;
-
-            // Ejecutar scripts embebidos si los hay
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(script => {
-                const newScript = document.createElement("script");
-                if (script.src) newScript.src = script.src;
-                else newScript.textContent = script.textContent;
-                document.body.appendChild(newScript);
-            });
-        })
-        .catch(err => {
-            document.getElementById("mainContent").innerHTML = `<p>Error cargando la vista: ${err}</p>`;
-        });
-    }
+if (params.has('load')) {
+    const page = params.get('load');
+    loadPage(page);
+}
 
     // 🟢 Si se solicitó cargar una vista desde el registro, hazlo ahora
 const vistaPendiente = localStorage.getItem('cargarVista');
 if (vistaPendiente) {
-    localStorage.removeItem('cargarVista'); // limpiamos
-
-    // Cargar HTML en mainContent
-    fetch(`../${vistaPendiente}`)
-        .then(res => res.text())
-        .then(html => {
-            const mainContent = document.getElementById("mainContent");
-            mainContent.innerHTML = html;
-            estaEnInicio = false;
-
-            // Ejecutar los scripts externos/internos del HTML cargado
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                Array.from(oldScript.attributes).forEach(attr => {
-                    newScript.setAttribute(attr.name, attr.value);
-                });
-                newScript.textContent = oldScript.textContent;
-                document.body.appendChild(newScript);
-            });
-
-            // Actualizar topbar (opcional)
-            const titulo = vistaPendiente.split('/').pop().replace('.html', '').replace(/_/g, ' ');
-            const topbarTitle = document.querySelector('.topbar-title');
-            if (topbarTitle) {
-                topbarTitle.textContent = titulo.charAt(0).toUpperCase() + titulo.slice(1);
-            }
-        })
-        .catch(err => {
-            const mainContent = document.getElementById("mainContent");
-            if (mainContent) {
-                mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
-            }
-        });
-    }
+    localStorage.removeItem('cargarVista');
+    loadPage(vistaPendiente);
+}
 });
 
 function cargarConfiguracionVisual(idEmpresa) {
