@@ -121,19 +121,15 @@ function poblarSelectProductos() {
 }
 
 btnScanQR.addEventListener('click', async () => {
-  if (!/Mobi|Android/i.test(navigator.userAgent)) {
-    alert('El escáner QR solo está disponible en dispositivos móviles');
-    return;
-  }
   if (!navigator.mediaDevices || !isSecureContext) {
-    alert('La cámara requiere HTTPS o localhost');
+    alert('La cámara no es compatible o se requiere HTTPS/localhost');
     return;
   }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
     stream.getTracks().forEach(track => track.stop());
   } catch (e) {
-    alert('Permiso de cámara denegado');
+    alert('Permiso de cámara denegado o no disponible');
     return;
   }
   qrReader.classList.remove('d-none');
@@ -142,7 +138,7 @@ btnScanQR.addEventListener('click', async () => {
     qrScanner = new Html5Qrcode('qrReader');
   }
   qrScanner.start(
-    { facingMode: 'environment' },
+    { facingMode: { ideal: 'environment' } },
     { fps: 10, qrbox: 250 },
     async decodedText => {
       await qrScanner.stop();
