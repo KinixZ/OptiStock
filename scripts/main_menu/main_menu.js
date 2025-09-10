@@ -709,7 +709,11 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                         Array.from(oldScript.attributes).forEach(attr => {
                             newScript.setAttribute(attr.name, attr.value);
                         });
-                        newScript.textContent = oldScript.textContent;
+                        if (oldScript.src) {
+                            newScript.async = false;
+                        } else {
+                            newScript.textContent = oldScript.textContent;
+                        }
                         document.body.appendChild(newScript);
                     });
                 })
@@ -740,8 +744,12 @@ if (params.has("load")) {
             const scripts = mainContent.querySelectorAll("script");
             scripts.forEach(script => {
                 const newScript = document.createElement("script");
-                if (script.src) newScript.src = script.src;
-                else newScript.textContent = script.textContent;
+                if (script.src) {
+                    newScript.src = script.src;
+                    newScript.async = false;
+                } else {
+                    newScript.textContent = script.textContent;
+                }
                 document.body.appendChild(newScript);
             });
         })
@@ -770,7 +778,11 @@ if (vistaPendiente) {
                 Array.from(oldScript.attributes).forEach(attr => {
                     newScript.setAttribute(attr.name, attr.value);
                 });
-                newScript.textContent = oldScript.textContent;
+                if (oldScript.src) {
+                    newScript.async = false;
+                } else {
+                    newScript.textContent = oldScript.textContent;
+                }
                 document.body.appendChild(newScript);
             });
 
