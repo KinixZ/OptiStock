@@ -3,6 +3,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/log_utils.php';
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -49,6 +51,7 @@ $stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "sssi", $nombre_empresa, $logo_empresa, $sector_empresa, $usuario_creador);
 
 if (mysqli_stmt_execute($stmt)) {
+    registrarLog($conn, (int) $usuario_creador, 'Empresas', "Registro de empresa: {$nombre_empresa}");
     echo json_encode(["success" => true, "logo_empresa" => $logo_empresa]);
 } else {
     echo json_encode(["success" => false, "message" => "Error: " . mysqli_error($conn)]);

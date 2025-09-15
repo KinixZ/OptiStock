@@ -1,6 +1,14 @@
 <?php
 header('Content-Type: application/json');
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+require_once __DIR__ . '/log_utils.php';
+
+$usuarioId = obtenerUsuarioIdSesion();
+if (!$usuarioId) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesión no válida']);
+    exit;
+}
 
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
@@ -27,6 +35,7 @@ try {
     $stmt->execute();
 
     if ($stmt->affected_rows > 0) {
+        registrarLog($conn, $usuarioId, 'Suscripciones', "Cancelación de suscripción para la empresa {$id_empresa}");
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'No se encontró suscripción activa']);
@@ -34,3 +43,4 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+

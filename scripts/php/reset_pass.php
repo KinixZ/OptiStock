@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json');
-// Conexión a la base de datos
+
+require_once __DIR__ . '/log_utils.php';
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -21,7 +23,6 @@ if (empty($token) || empty($newPassword)) {
     exit;
 }
 
-// Verificar el token
 $query = $conn->prepare("SELECT id_usuario FROM pass_resets WHERE token = ? AND expira > NOW()");
 $query->bind_param("s", $token);
 $query->execute();
@@ -33,18 +34,19 @@ if ($result->num_rows === 0) {
 }
 
 $user = $result->fetch_assoc();
-$userId = $user['user_id'];
+$userId = (int) $user['id_usuario'];
 
-// Actualizar la contraseña
 $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
 $update = $conn->prepare("UPDATE usuario SET contrasena = ? WHERE id_usuario = ?");
 $update->bind_param("si", $hashedPassword, $userId);
 $update->execute();
 
-// Eliminar el token usado
 $delete = $conn->prepare("DELETE FROM pass_resets WHERE token = ?");
 $delete->bind_param("s", $token);
 $delete->execute();
 
+registrarLog($conn, $userId, 'Usuarios', 'Restablecimiento de contraseña mediante token');
+
 echo json_encode(['success' => true, 'message' => 'Contraseña restablecida con éxito.']);
-?>
+
+

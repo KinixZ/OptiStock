@@ -4,6 +4,22 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 header('Content-Type: application/json');
 
+$method = $_SERVER['REQUEST_METHOD'];
+
+require_once __DIR__ . '/log_utils.php';
+
+function requireUserIdProductos()
+{
+    $usuarioId = obtenerUsuarioIdSesion();
+    if (!$usuarioId) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Sesión expirada']);
+        exit;
+    }
+
+    return $usuarioId;
+}
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -16,8 +32,6 @@ if ($conn->connect_error) {
     exit;
 }
 
-
-$method = $_SERVER['REQUEST_METHOD'];
 // capturamos empresa_id de GET o de JSON en un solo paso
 $empresa_id = 0;
 if (isset($_REQUEST['empresa_id'])) {
@@ -105,6 +119,7 @@ if ($method === 'POST' || $method === 'PUT') {
 
 
 
+    $usuarioId = requireUserIdProductos();
     $data = getJsonInput();
 
     // Campos comunes
@@ -191,6 +206,8 @@ if ($method === 'POST' || $method === 'PUT') {
 
         $newId = $stmt->insert_id;
 
+        registrarLog($conn, $usuarioId, 'Productos', "Creación de producto: {$nombre} (ID {$newId})");
+
         // Generar código QR basado en el ID del producto
         require_once __DIR__.'/libs/phpqrcode/qrlib.php';
         $qrDir = __DIR__.'/../../images/qr/';
@@ -237,19 +254,25 @@ if ($method === 'POST' || $method === 'PUT') {
             echo json_encode(['error' => 'Execute failed', 'details' => $stmt->error]);
             exit;
         }
+
+        registrarLog($conn, $usuarioId, 'Productos', "Actualización de producto ID: {$id}");
         echo json_encode(['success' => $stmt->affected_rows > 0]);
         exit;
     }
 }
 
 if ($method === 'DELETE') {
+    $usuarioId = requireUserIdProductos();
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $stmt = $conn->prepare("DELETE FROM productos WHERE id=? AND empresa_id=?");
     $stmt->bind_param('ii', $id, $empresa_id);
     $stmt->execute();
+
+    registrarLog($conn, $usuarioId, 'Productos', "Eliminación de producto ID: {$id}");
     echo json_encode(['success' => true]);
     exit;
 }
 
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
+

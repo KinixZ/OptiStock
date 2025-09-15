@@ -14,6 +14,13 @@ if (!$conn) {
 
 require_once __DIR__ . '/log_utils.php';
 
+$usuarioAccionId = obtenerUsuarioIdSesion();
+if (!$usuarioAccionId) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesión no válida']);
+    exit;
+}
+
 $usuario_id = $_POST['id_usuario'] ?? null;
 $nombre     = $_POST['nombre'] ?? null;
 $apellido   = $_POST['apellido'] ?? null;
@@ -63,7 +70,7 @@ try {
     $row = $res3->fetch_assoc();
     $ruta_foto = $row ? $row['foto_perfil'] : null;
 
-    registrarLog($conn, $_SESSION['usuario_id'] ?? 0, 'Usuarios', "Actualización de usuario: $usuario_id");
+    registrarLog($conn, $usuarioAccionId, 'Usuarios', "Actualización de usuario: $usuario_id");
 
     echo json_encode([
         'success' => true,
