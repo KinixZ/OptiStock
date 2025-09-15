@@ -7,56 +7,72 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
   <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="../../styles/control_log/log.css" />
 </head>
 <body>
-  <div class="log-app container-fluid">
-    <header class="app-header">
-      <h1 class="app-title">Log de control</h1>
-      <div class="app-actions">
-        <button id="exportPdf" class="btn-icon" title="Exportar PDF">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-        </button>
-        <button id="exportExcel" class="btn-icon" title="Exportar Excel">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <path d="M8 13h4"></path>
-            <path d="M8 17h4"></path>
-            <path d="M16 13h-4v4"></path>
-          </svg>
-        </button>
+  <div class="log-page container-fluid py-4 px-3 px-md-4">
+    <section class="page-header">
+      <span class="header-eyebrow">Registro de Actividades</span>
+      <h1 class="header-title">Log de control</h1>
+      <p class="header-description">
+        Monitorea y audita cada acción realizada en tu plataforma para mantener el control de los procesos críticos.
+      </p>
+      <div class="header-stats">
+        <div class="stat-card">
+          <span class="stat-label">Registros totales</span>
+          <strong class="stat-value" id="totalRegistros">0</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Última actualización</span>
+          <strong class="stat-value" id="lastUpdated">—</strong>
+        </div>
       </div>
-    </header>
+    </section>
 
-    <main class="app-content">
-      <div class="row g-3 align-items-end filters">
-        <div class="col-md-3">
+    <section class="filters-card">
+      <div class="filters-heading">
+        <div>
+          <span class="filters-eyebrow">Filtros principales</span>
+          <h2 class="filters-title">Refina el historial por módulo, usuario o rol</h2>
+        </div>
+        <div class="filters-actions">
+          <button id="exportPdf" class="btn-icon" title="Exportar PDF">
+            <span class="btn-icon__circle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </span>
+            <span class="btn-icon__label">PDF</span>
+          </button>
+          <button id="exportExcel" class="btn-icon" title="Exportar Excel">
+            <span class="btn-icon__circle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M8 13h4"></path>
+                <path d="M8 17h4"></path>
+                <path d="M16 13h-4v4"></path>
+              </svg>
+            </span>
+            <span class="btn-icon__label">Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-grid">
+        <div class="filter-field">
           <label for="filtroModulo" class="form-label">Módulo</label>
           <select id="filtroModulo" class="form-select">
             <option value="">Todos los módulos</option>
@@ -67,13 +83,13 @@
             <option value="Reportes">Reportes</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="filter-field">
           <label for="filtroUsuario" class="form-label">Usuario</label>
           <select id="filtroUsuario" class="form-select">
             <option value="">Todos los usuarios</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="filter-field">
           <label for="filtroRol" class="form-label">Rol</label>
           <select id="filtroRol" class="form-select">
             <option value="">Todos los roles</option>
@@ -82,23 +98,41 @@
           </select>
         </div>
       </div>
+    </section>
 
-      <div class="table-responsive">
-        <table id="logTable" class="table table-striped table-hover align-middle">
+    <section class="table-card">
+      <div class="table-heading">
+        <div>
+          <h2 class="table-title">Historial de actividades recientes</h2>
+          <span class="table-subtitle" id="logCount">Sin registros disponibles</span>
+        </div>
+        <div class="table-tools">
+          <div class="search-field">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="search" id="logSearch" placeholder="Buscar por usuario, módulo o acción" aria-label="Buscar en el log" />
+          </div>
+        </div>
+      </div>
+
+      <div class="log-table-wrapper">
+        <table id="logTable" class="log-table">
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Usuario</th>
-              <th>Rol</th>
-              <th>Módulo</th>
-              <th>Acción</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Hora</th>
+              <th scope="col">Usuario</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Módulo</th>
+              <th scope="col">Acción</th>
             </tr>
           </thead>
           <tbody id="logTableBody"></tbody>
         </table>
       </div>
-    </main>
+    </section>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -108,4 +142,3 @@
   <script src="../../scripts/control_log/log.js"></script>
 </body>
 </html>
-

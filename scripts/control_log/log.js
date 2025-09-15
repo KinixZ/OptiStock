@@ -6,6 +6,10 @@
     const tablaBody = document.getElementById('logTableBody');
     const exportPdfBtn = document.getElementById('exportPdf');
     const exportExcelBtn = document.getElementById('exportExcel');
+    const buscadorInput = document.getElementById('logSearch');
+    const totalRegistrosEl = document.getElementById('totalRegistros');
+    const logCountEl = document.getElementById('logCount');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
 
     if (!filtroModulo || !filtroUsuario || !filtroRol || !tablaBody) {
         console.warn('La vista del log de control no está disponible. Se omite la inicialización.');
@@ -22,6 +26,87 @@
     let filtrosGuardados = {};
     let savedUserFilter = '';
     let actualizandoOpcionesUsuario = false;
+    let terminoBusqueda = '';
+
+    function escapeHtml(valor) {
+        return String(valor ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function filtrarPorBusqueda(datos = []) {
+        const consulta = terminoBusqueda.trim().toLowerCase();
+        if (!consulta) {
+            return datos;
+        }
+
+        return datos.filter(registro => {
+            if (!registro || typeof registro !== 'object') {
+                return false;
+            }
+
+            return ['fecha', 'hora', 'usuario', 'rol', 'modulo', 'accion'].some(campo => {
+                const valorCampo = registro[campo];
+                if (valorCampo === null || valorCampo === undefined) {
+                    return false;
+                }
+                return String(valorCampo).toLowerCase().includes(consulta);
+            });
+        });
+    }
+
+    function actualizarResumen(datosMostrados = []) {
+        if (totalRegistrosEl) {
+            totalRegistrosEl.textContent = registros.length;
+        }
+
+        if (!logCountEl) {
+            return;
+        }
+
+        if (!registros.length) {
+            logCountEl.textContent = 'Sin registros disponibles';
+            return;
+        }
+
+        if (!datosMostrados.length) {
+            logCountEl.textContent = terminoBusqueda
+                ? 'Sin coincidencias con la búsqueda aplicada'
+                : 'Sin resultados para los filtros seleccionados';
+            return;
+        }
+
+        if (datosMostrados.length === registros.length && !terminoBusqueda) {
+            logCountEl.textContent = datosMostrados.length === 1
+                ? '1 actividad registrada'
+                : `${datosMostrados.length} actividades registradas`;
+            return;
+        }
+
+        logCountEl.textContent = `${datosMostrados.length} de ${registros.length} actividades filtradas`;
+    }
+
+    function actualizarUltimaActualizacion() {
+        if (!lastUpdatedEl) {
+            return;
+        }
+
+        const ahora = new Date();
+        const fecha = ahora.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }).replace('.', '');
+        const hora = ahora.toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        lastUpdatedEl.textContent = `${fecha} · ${hora}`;
+    }
 
     function cargarFiltrosGuardados() {
         try {
@@ -47,10 +132,12 @@
             guardados = [];
         }
 
-        if (Array.isArray(guardados) && guardados.length > 0) {
-            registros = guardados;
-            mostrarRegistros(registros);
+        if (!Array.isArray(guardados)) {
+            guardados = [];
         }
+
+        registros = guardados;
+        mostrarRegistros(registros);
     }
 
     function guardarRegistrosEnCache(datos) {
@@ -77,27 +164,51 @@
     }
 
     function mostrarRegistros(datos) {
+        const fuente = Array.isArray(datos) ? datos : [];
+        const filtrados = filtrarPorBusqueda(fuente);
+
         tablaBody.innerHTML = '';
 
-        if (!Array.isArray(datos) || datos.length === 0) {
+        if (filtrados.length === 0) {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td colspan="6" class="text-center text-muted">Sin registros disponibles.</td>';
+            const td = document.createElement('td');
+            td.colSpan = 6;
+
+            const mensaje = !registros.length
+                ? 'Sin actividades registradas'
+                : terminoBusqueda
+                    ? 'No se encontraron coincidencias con tu búsqueda'
+                    : 'Sin resultados para los filtros seleccionados';
+
+            td.innerHTML = `<div class="empty-state"><span>${mensaje}</span></div>`;
+            tr.appendChild(td);
             tablaBody.appendChild(tr);
+
+            actualizarResumen(filtrados);
             return;
         }
 
-        datos.forEach(reg => {
+        filtrados.forEach(reg => {
+            const fecha = escapeHtml(reg?.fecha || '');
+            const hora = escapeHtml(reg?.hora || '');
+            const usuario = escapeHtml(reg?.usuario || '');
+            const rol = escapeHtml(reg?.rol || '');
+            const modulo = escapeHtml(reg?.modulo || '');
+            const accion = escapeHtml(reg?.accion || '');
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${reg.fecha}</td>
-                <td>${reg.hora}</td>
-                <td>${reg.usuario}</td>
-                <td>${reg.rol}</td>
-                <td>${reg.modulo}</td>
-                <td>${reg.accion}</td>
+                <td>${fecha || '—'}</td>
+                <td class="cell-time">${hora || '—'}</td>
+                <td class="cell-user">${usuario || '—'}</td>
+                <td class="cell-role">${rol ? `<span class="role-chip">${rol}</span>` : '—'}</td>
+                <td>${modulo ? `<span class="module-chip">${modulo}</span>` : '—'}</td>
+                <td class="cell-action">${accion ? `<span class="action-text">${accion}</span>` : '—'}</td>
             `;
             tablaBody.appendChild(tr);
         });
+
+        actualizarResumen(filtrados);
     }
 
     function actualizarOpcionesUsuario(usuarios) {
@@ -180,6 +291,7 @@
             mostrarRegistros(registros);
             guardarRegistrosEnCache(registros);
             guardarFiltros();
+            actualizarUltimaActualizacion();
         } catch (err) {
             console.error('Error cargando logs', err);
         }
@@ -202,6 +314,13 @@
         guardarFiltros();
         cargarRegistros();
     });
+
+    if (buscadorInput) {
+        buscadorInput.addEventListener('input', () => {
+            terminoBusqueda = buscadorInput.value || '';
+            mostrarRegistros(registros);
+        });
+    }
 
     cargarFiltrosGuardados();
     mostrarLogsGuardados();
