@@ -1,4 +1,13 @@
 <?php
+require_once __DIR__ . '/log_utils.php';
+
+$usuarioId = obtenerUsuarioIdSesion();
+if (!$usuarioId) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesión no válida']);
+    exit;
+}
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -33,6 +42,7 @@ try {
     $stmt->execute();
 
     if ($stmt->affected_rows > 0) {
+        registrarLog($conn, $usuarioId, 'Configuración', "Actualización de configuración para empresa {$id_empresa}");
         echo json_encode(['success' => true, 'message' => 'Configuración actualizada']);
     } else {
         echo json_encode(['success' => false, 'message' => 'No se actualizó ningún dato']);
@@ -40,3 +50,4 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }
+

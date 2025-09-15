@@ -3,6 +3,15 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/log_utils.php';
+
+$usuarioId = obtenerUsuarioIdSesion();
+if (!$usuarioId) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "Sesión no válida"]);
+    exit;
+}
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -59,8 +68,10 @@ $stmt->execute();
 if ($stmt->affected_rows > 0) {
     $resp = ["success" => true, "message" => "Empresa actualizada"];
     if ($logo_empresa !== $logo_actual) $resp["logo_empresa"] = $logo_empresa;
+    registrarLog($conn, $usuarioId, 'Empresas', "Actualización de empresa ID: {$id_empresa}");
     echo json_encode($resp);
 } else {
     echo json_encode(["success" => false, "message" => "No se actualizó ningún dato"]);
 }
 ?>
+

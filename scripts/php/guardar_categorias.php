@@ -1,5 +1,24 @@
 <?php
 header('Content-Type: application/json');
+$method = $_SERVER['REQUEST_METHOD'];
+$empresa_id = isset($_REQUEST['empresa_id'])
+            ? intval($_REQUEST['empresa_id'])
+            : 0;
+
+require_once __DIR__ . '/log_utils.php';
+
+function requireUserIdCategorias()
+{
+    $usuarioId = obtenerUsuarioIdSesion();
+    if (!$usuarioId) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Sesión expirada']);
+        exit;
+    }
+
+    return $usuarioId;
+}
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -20,11 +39,6 @@ if ($empresa_id <= 0) {
   echo json_encode(['error'=>'empresa_id es obligatorio']);
   exit;
 }
-
-
-
-
-$method = $_SERVER['REQUEST_METHOD'];
 
 function getJsonInput(){
   $raw = file_get_contents('php://input');
@@ -55,6 +69,7 @@ if ($method==='GET') {
 }
 
 if ($method==='POST') {
+  $usuarioId = requireUserIdCategorias();
   $data = getJsonInput();
   $nombre = $data['nombre']??'';
   $descripcion = $data['descripcion']??'';
@@ -68,11 +83,15 @@ if ($method==='POST') {
   );
   $stmt->bind_param('ssi',$nombre,$descripcion,$empresa_id);
   $stmt->execute();
+
+  registrarLog($conn, $usuarioId, 'Categorías', "Creación de categoría: {$nombre}");
+
   echo json_encode(['id'=>$stmt->insert_id]);
   exit;
 }
 
 if ($method==='PUT') {
+  $usuarioId = requireUserIdCategorias();
   $id   = intval($_GET['id']??0);
   $data = getJsonInput();
   $nombre = $data['nombre']??'';
@@ -83,17 +102,24 @@ if ($method==='PUT') {
   );
   $stmt->bind_param('ssii',$nombre,$descripcion,$id,$empresa_id);
   $stmt->execute();
+
+  registrarLog($conn, $usuarioId, 'Categorías', "Actualización de categoría ID: {$id}");
+
   echo json_encode(['success'=>$stmt->affected_rows>0]);
   exit;
 }
 
 if ($method==='DELETE') {
+  $usuarioId = requireUserIdCategorias();
   $id = intval($_GET['id']??0);
   $stmt = $conn->prepare(
     'DELETE FROM categorias WHERE id=? AND empresa_id=?'
   );
   $stmt->bind_param('ii',$id,$empresa_id);
   $stmt->execute();
+
+  registrarLog($conn, $usuarioId, 'Categorías', "Eliminación de categoría ID: {$id}");
+
   echo json_encode(['success'=>true]);
   exit;
 }
@@ -101,3 +127,4 @@ if ($method==='DELETE') {
 http_response_code(405);
 echo json_encode(['error'=>'Método no permitido']);
 ?>
+

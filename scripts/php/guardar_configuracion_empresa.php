@@ -4,6 +4,15 @@ header("Content-Type: application/json");
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+require_once __DIR__ . '/log_utils.php';
+
+$usuarioId = obtenerUsuarioIdSesion();
+if (!$usuarioId) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "Sesión no válida"]);
+    exit;
+}
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -38,9 +47,11 @@ if (!$stmt) {
 $stmt->bind_param("isss", $id_empresa, $colorSidebar, $colorTopbar, $ordenSidebar);
 
 if ($stmt->execute()) {
+    registrarLog($conn, $usuarioId, 'Configuración', "Actualización de configuración para empresa {$id_empresa}");
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "message" => "Error al ejecutar: " . $stmt->error]);
 }
 
 ?>
+

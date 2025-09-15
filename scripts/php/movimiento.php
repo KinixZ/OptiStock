@@ -2,6 +2,15 @@
 header('Content-Type: application/json');
 ini_set('display_errors',1); error_reporting(E_ALL);
 
+require_once __DIR__ . '/log_utils.php';
+
+$usuarioId = obtenerUsuarioIdSesion();
+if (!$usuarioId) {
+  http_response_code(401);
+  echo json_encode(['error'=>'Sesión expirada']);
+  exit;
+}
+
 // 1) Conexión
 $conn = new mysqli("localhost","u296155119_Admin","4Dmin123o","u296155119_OptiStock");
 if($conn->connect_error){
@@ -48,5 +57,8 @@ if(!$stmt->execute()){
   exit;
 }
 
+registrarLog($conn, $usuarioId, 'Inventario', ucfirst($tipo) . " manual de {$cantidad} unidad(es) del producto {$producto_id}");
+
 // 7) Responder éxito
 echo json_encode(['success'=>true]);
+

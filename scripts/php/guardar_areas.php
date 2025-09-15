@@ -21,12 +21,26 @@ try {
     exit;
 }
 
+require_once __DIR__ . '/log_utils.php';
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 function getJsonInput() {
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
     return $data ?: [];
+}
+
+function requireUserId()
+{
+    $usuarioId = obtenerUsuarioIdSesion();
+    if (!$usuarioId) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Sesión expirada']);
+        exit;
+    }
+
+    return $usuarioId;
 }
 
 if ($method === 'GET') {
@@ -57,6 +71,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
+    $usuarioId = requireUserId();
     $data = getJsonInput();
     $nombre = $data['nombre'] ?? '';
     $descripcion = $data['descripcion'] ?? '';
@@ -73,11 +88,15 @@ if ($method === 'POST') {
     $stmt = $conn->prepare('INSERT INTO areas (nombre, descripcion, ancho, alto, largo, volumen, id_empresa) VALUES (?,?,?,?,?,?,?)');
     $stmt->bind_param('ssddddi', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $empresa_id);
     $stmt->execute();
+
+    registrarLog($conn, $usuarioId, 'Áreas', "Creación de área: {$nombre}");
+
     echo json_encode(['id' => $stmt->insert_id]);
     exit;
 }
 
 if ($method === 'PUT') {
+    $usuarioId = requireUserId();
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
     $data = getJsonInput();
@@ -95,11 +114,15 @@ if ($method === 'PUT') {
         $stmt->bind_param('ssddddi', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $id);
     }
     $stmt->execute();
+
+    registrarLog($conn, $usuarioId, 'Áreas', "Actualización de área ID: {$id}");
+
     echo json_encode(['success' => $stmt->affected_rows > 0]);
     exit;
 }
 
 if ($method === 'DELETE') {
+    $usuarioId = requireUserId();
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
     if ($empresaId) {
@@ -110,11 +133,15 @@ if ($method === 'DELETE') {
         $stmt->bind_param('i', $id);
     }
     $stmt->execute();
+
+    registrarLog($conn, $usuarioId, 'Áreas', "Eliminación de área ID: {$id}");
+
     echo json_encode(['success' => true]);
     exit;
 }
 
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
+
 
 

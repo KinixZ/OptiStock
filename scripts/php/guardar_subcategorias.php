@@ -3,6 +3,22 @@ header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+$method = $_SERVER['REQUEST_METHOD'];
+
+require_once __DIR__ . '/log_utils.php';
+
+function requireUserIdSubcategorias()
+{
+    $usuarioId = obtenerUsuarioIdSesion();
+    if (!$usuarioId) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Sesión expirada']);
+        exit;
+    }
+
+    return $usuarioId;
+}
+
 $servername = "localhost";
 $db_user    = "u296155119_Admin";
 $db_pass    = "4Dmin123o";
@@ -30,8 +46,6 @@ if ($empresa_id <= 0) {
     echo json_encode(['error' => 'empresa_id es obligatorio']);
     exit;
 }
-
-$method = $_SERVER['REQUEST_METHOD'];
 
 function getJsonInput() {
     $input = file_get_contents('php://input');
@@ -64,6 +78,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
+    $usuarioId = requireUserIdSubcategorias();
     $data = getJsonInput();
     $categoria_id = isset($data['categoria_id']) ? intval($data['categoria_id']) : null;
     $nombre       = $data['nombre'] ?? '';
@@ -91,11 +106,15 @@ if ($method === 'POST') {
         echo json_encode(['error'=>'Execute failed','details'=>$stmt->error]);
         exit;
     }
+
+    registrarLog($conn, $usuarioId, 'Subcategorías', "Creación de subcategoría: {$nombre}");
+
     echo json_encode(['id' => $stmt->insert_id]);
     exit;
 }
 
 if ($method === 'PUT') {
+    $usuarioId = requireUserIdSubcategorias();
     $id   = intval($_GET['id'] ?? 0);
     $data = getJsonInput();
     $categoria_id = isset($data['categoria_id']) ? intval($data['categoria_id']) : null;
@@ -116,11 +135,15 @@ if ($method === 'PUT') {
         $empresa_id
     );
     $stmt->execute();
+
+    registrarLog($conn, $usuarioId, 'Subcategorías', "Actualización de subcategoría ID: {$id}");
+
     echo json_encode(['success' => $stmt->affected_rows > 0]);
     exit;
 }
 
 if ($method === 'DELETE') {
+    $usuarioId = requireUserIdSubcategorias();
     $id = intval($_GET['id'] ?? 0);
     $stmt = $conn->prepare(
         'DELETE FROM subcategorias
@@ -128,9 +151,13 @@ if ($method === 'DELETE') {
     );
     $stmt->bind_param('ii', $id, $empresa_id);
     $stmt->execute();
+
+    registrarLog($conn, $usuarioId, 'Subcategorías', "Eliminación de subcategoría ID: {$id}");
+
     echo json_encode(['success' => true]);
     exit;
 }
 
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
+

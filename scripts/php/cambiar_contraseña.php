@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/log_utils.php';
 header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -25,10 +26,23 @@ try {
     $conn = new mysqli("localhost", "u296155119_Admin", "4Dmin123o", "u296155119_OptiStock");
     if ($conn->connect_error) throw new Exception("Error al conectar con la base de datos.");
 
+    $userId = null;
+    $findUser = $conn->prepare("SELECT id_usuario FROM usuario WHERE correo = ?");
+    $findUser->bind_param("s", $correo);
+    $findUser->execute();
+    $findUser->bind_result($userId);
+    $findUser->fetch();
+    $findUser->close();
+    if (!$userId) {
+        throw new Exception("No se encontró el usuario asociado al correo proporcionado.");
+    }
+
     // Actualizar contraseña
     $stmt = $conn->prepare("UPDATE usuario SET contrasena = ? WHERE correo = ?");
     $stmt->bind_param("ss", $hashed, $correo);
     $stmt->execute();
+
+    registrarLog($conn, $userId, 'Usuarios', 'Recuperación de contraseña completada');
 
     // Limpiar sesión
     unset($_SESSION['codigo_recuperacion']);
@@ -43,3 +57,4 @@ try {
     echo json_encode($response);
 }
 ?>
+

@@ -4,6 +4,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 session_start(); // Muy importante para usar $_SESSION
 
+require_once __DIR__ . '/log_utils.php';
+
 $response = ["success" => false, "message" => ""];
 
 try {
@@ -31,6 +33,9 @@ try {
         throw new Exception("El correo no está registrado.");
     }
 
+    $usuario = $result->fetch_assoc();
+    $userId = (int) $usuario['id_usuario'];
+
     // Generar código de 6 dígitos
     $codigo = mt_rand(100000, 999999);
 
@@ -47,6 +52,8 @@ try {
         throw new Exception("Error al enviar el correo de recuperación.");
     }
 
+    registrarLog($conn, $userId, 'Usuarios', 'Solicitud de código de recuperación de contraseña');
+
     $response["success"] = true;
     $response["message"] = "El código de recuperación ha sido enviado a tu correo.";
 
@@ -57,3 +64,4 @@ try {
     echo json_encode($response);
 }
 ?>
+
