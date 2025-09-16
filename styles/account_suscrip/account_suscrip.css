@@ -16,43 +16,6 @@ body {
   border-radius: 8px;
   padding: 20px;
   color: var(--topbar-text-color, #fff);
-
-}
-
-.account-menu ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.account-menu li {
-  padding: 10px 15px;
-  margin-bottom: 5px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.account-menu li.active,
-.account-menu li:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.account-content {
-  flex-grow: 1;
-}
-
-.account-section {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-  margin-bottom: 20px;
-  display: none;
-}
-
-.account-section.active {
-  display: block;
-
 }
 
 .account-menu ul {
@@ -90,10 +53,34 @@ body {
   display: block;
 }
 
-#tablaPlanes th,
-#tablaPlanes td {
-  text-align: center;
+.subscription-card {
+  background: #f8f9fc;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+}
 
+.subscription-card p {
+  margin-bottom: 0.5rem;
+}
+
+.subscription-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.subscription-actions .btn {
+  min-width: 180px;
+}
+
+.subscription-note {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+#subscriptionMessage {
+  font-size: 0.9rem;
 }
 
 #tablaPlanes th,
@@ -109,5 +96,13 @@ body {
   .account-menu {
     width: 100%;
     margin-bottom: 20px;
+  }
+
+  .subscription-actions {
+    flex-direction: column;
+  }
+
+  .subscription-actions .btn {
+    min-width: 100%;
   }
 }

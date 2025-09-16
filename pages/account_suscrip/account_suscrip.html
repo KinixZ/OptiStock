@@ -67,11 +67,24 @@
         <!-- Sección Suscripción -->
         <section id="secSuscripcion" class="account-section">
           <span class="fw-bold d-block mb-2">Suscripción actual</span>
-          <p><strong>Plan:</strong> <span id="planActual">Gratuito</span></p>
-          <p><strong>Renovación:</strong> <span id="fechaRenovacion">-</span></p>
-          <p><strong>Método de pago:</strong> <span id="metodoPago">-</span></p>
-          <button class="btn btn-outline-success btn-sm" id="btnActualizarPlan">Actualizar plan</button>
-          <button class="btn btn-outline-danger btn-sm" id="btnCancelarSuscripcion">Cancelar suscripción</button>
+
+          <div class="subscription-card">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="fw-bold">Estado:</span>
+              <span id="subscriptionStatusBadge" class="badge rounded-pill bg-secondary">Inactivo (0)</span>
+            </div>
+            <p class="mb-1"><strong>Última renovación:</strong> <span id="subscriptionLastRenewal">-</span></p>
+            <p class="mb-0"><strong>Próxima renovación:</strong> <span id="subscriptionNextRenewal">-</span></p>
+          </div>
+
+          <div id="subscriptionMessage" class="alert alert-warning d-none mt-3" role="alert"></div>
+
+          <div class="subscription-actions mt-3">
+            <button class="btn btn-success" id="btnSubscriptionToggle">Activar suscripción</button>
+            <button class="btn btn-outline-primary" id="btnSubscriptionRenew">Renovar por un mes</button>
+          </div>
+
+          <p class="subscription-note text-muted mt-2">Esta suscripción se guarda en este navegador y cambia el estado entre 0 (inactivo) y 1 (activo). Renueva cada mes con un solo clic.</p>
         </section>
 
         <!-- Sección Planes -->
