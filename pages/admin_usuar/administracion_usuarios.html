@@ -1,113 +1,197 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Administrar Usuarios</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../styles/Admin_usuar/administracion_usuarios.css">
+  <meta charset="UTF-8" />
+  <title>Administrar Usuarios</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="../../styles/Admin_usuar/administracion_usuarios.css" />
 </head>
 <body>
-<div class="module-wrapper">
-    <h2>Administrar Usuarios</h2>
-    <p>Aquí gestionas a los usuarios registrados de tu empresa</p>
-    <!-- más contenido -->
-</div>
+  <div class="users-page container-fluid py-4 px-3 px-md-4">
+    <section class="page-header">
+      <span class="header-eyebrow">Administración</span>
+      <h1 class="header-title">Gestión de usuarios</h1>
+      <p class="header-description">
+        Supervisa y controla a los colaboradores de tu empresa desde un panel moderno inspirado en el registro de actividades.
+      </p>
 
-<!-- Botón para registrar usuario -->
-<div class="text-end my-3">
-    <a href="../admin_usuar/registro_usuario_empresa.html" class="btn btn-success">
-        <i class="fas fa-user-plus"></i> Crear nuevo usuario
-    </a>
-</div>
-
-<!-- Tabla de usuarios -->
-<table class="table table-striped" id="tablaUsuariosEmpresa">
-    <thead>
-        <tr>
-            <th>Nombre</th>
-            <th>Apellido</th>
-            <th>Correo</th>
-            <th>Rol</th>
-        </tr>
-    </thead>
-    <tbody>
-        <!-- Aquí se inyectarán los usuarios por JS -->
-    </tbody>
-</table>
-
-<!-- Botones para exportar -->
-<div class="text-end mb-3">
-  <button class="btn btn-outline-primary me-2" onclick="exportarExcel()">📥 Exportar a Excel</button>
-  <button class="btn btn-outline-danger" onclick="exportarPDF()">📄 Exportar a PDF</button>
-</div>
-
-<div class="row mb-3" id="metricasUsuarios">
-  <!-- Aquí se insertarán tarjetas por JS -->
-</div>
-
-<!-- MODAL EDITAR USUARIO -->
-<div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content shadow-lg">
-      <form id="formEditarUsuario" class="p-3">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold">Editar usuario</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-
-        <div class="modal-body">
-          <input type="hidden" id="editar_id_usuario">
-
-          <div class="mb-3">
-            <label for="editar_nombre" class="form-label">Nombre</label>
-            <input type="text" class="form-control" id="editar_nombre" required>
+      <div class="header-bottom">
+        <div class="header-stats">
+          <div class="stat-card">
+            <span class="stat-label">Usuarios activos</span>
+            <strong class="stat-value" id="totalUsuarios">0</strong>
           </div>
-
-          <div class="mb-3">
-            <label for="editar_apellido" class="form-label">Apellido</label>
-            <input type="text" class="form-control" id="editar_apellido" required>
+          <div class="stat-card">
+            <span class="stat-label">Roles registrados</span>
+            <strong class="stat-value" id="totalRoles">0</strong>
           </div>
-
-          <div class="mb-3">
-            <label for="editar_telefono" class="form-label">Teléfono</label>
-            <input type="text" class="form-control" id="editar_telefono">
-          </div>
-
-          <div class="mb-3">
-            <label for="editar_nacimiento" class="form-label">Fecha de nacimiento</label>
-            <input type="date" class="form-control" id="editar_nacimiento">
-          </div>
-
-          <div class="mb-3">
-            <label for="editar_correo" class="form-label">Correo</label>
-            <input type="email" class="form-control" id="editar_correo" disabled>
-          </div>
-
-          <div class="mb-3">
-            <label for="editar_rol" class="form-label">Rol</label>
-            <select class="form-select" id="editar_rol" required>
-              <option value="Supervisor">Supervisor</option>
-              <option value="Almacenista">Almacenista</option>
-              <option value="Mantenimiento">Mantenimiento</option>
-              <option value="Etiquetador">Etiquetador</option>
-            </select>
+          <div class="stat-card">
+            <span class="stat-label">Última actualización</span>
+            <strong class="stat-value" id="ultimaActualizacion">—</strong>
           </div>
         </div>
 
-        <div class="modal-footer d-flex justify-content-between">
-          <button type="submit" class="btn btn-primary w-50 me-1">Guardar cambios</button>
-          <button type="button" class="btn btn-secondary w-50 ms-1" data-bs-dismiss="modal">Cancelar</button>
+        <a href="../admin_usuar/registro_usuario_empresa.html" class="cta-button">
+          <span class="cta-button__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
+          <span class="cta-button__label">Crear nuevo usuario</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="filters-card">
+      <div class="filters-heading">
+        <div>
+          <span class="filters-eyebrow">Herramientas rápidas</span>
+          <h2 class="filters-title">Filtra y exporta la información de tus colaboradores</h2>
         </div>
-      </form>
+        <div class="filters-actions">
+          <button type="button" onclick="exportarPDF()" class="btn-icon" title="Exportar PDF">
+            <span class="btn-icon__circle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </span>
+            <span class="btn-icon__label">PDF</span>
+          </button>
+          <button type="button" onclick="exportarExcel()" class="btn-icon" title="Exportar Excel">
+            <span class="btn-icon__circle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M8 13h4"></path>
+                <path d="M8 17h4"></path>
+                <path d="M16 13h-4v4"></path>
+              </svg>
+            </span>
+            <span class="btn-icon__label">Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-grid">
+        <div class="filter-field">
+          <label for="filtroRol" class="form-label">Filtrar por rol</label>
+          <select id="filtroRol" class="form-select">
+            <option value="">Todos los roles</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="metrics-grid" id="metricasUsuarios"></div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-heading">
+        <div>
+          <h2 class="table-title">Usuarios registrados</h2>
+          <span class="table-subtitle" id="usuariosCount">Sin usuarios disponibles</span>
+        </div>
+        <div class="table-tools">
+          <div class="search-field">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="search" id="buscarUsuario" placeholder="Buscar por nombre, correo o rol" aria-label="Buscar en usuarios" />
+          </div>
+        </div>
+      </div>
+
+      <div class="users-table-wrapper">
+        <table id="tablaUsuariosEmpresa" class="users-table">
+          <thead>
+            <tr>
+              <th scope="col">Nombre</th>
+              <th scope="col">Apellido</th>
+              <th scope="col">Correo</th>
+              <th scope="col">Rol</th>
+              <th scope="col" class="actions-column">Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg">
+        <form id="formEditarUsuario" class="p-3">
+          <div class="modal-header border-0">
+            <div>
+              <span class="modal-eyebrow">Editar</span>
+              <h5 class="modal-title fw-bold">Actualizar datos del usuario</h5>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+
+          <div class="modal-body">
+            <input type="hidden" id="editar_id_usuario" />
+
+            <div class="form-floating mb-3">
+              <input type="text" class="form-control" id="editar_nombre" placeholder="Nombre" required />
+              <label for="editar_nombre">Nombre</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="text" class="form-control" id="editar_apellido" placeholder="Apellido" required />
+              <label for="editar_apellido">Apellido</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="text" class="form-control" id="editar_telefono" placeholder="Teléfono" />
+              <label for="editar_telefono">Teléfono</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="date" class="form-control" id="editar_nacimiento" placeholder="Fecha de nacimiento" />
+              <label for="editar_nacimiento">Fecha de nacimiento</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="email" class="form-control" id="editar_correo" placeholder="Correo" disabled />
+              <label for="editar_correo">Correo</label>
+            </div>
+
+            <div class="form-floating">
+              <select class="form-select" id="editar_rol" required>
+                <option value="Supervisor">Supervisor</option>
+                <option value="Almacenista">Almacenista</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Etiquetador">Etiquetador</option>
+              </select>
+              <label for="editar_rol">Rol</label>
+            </div>
+          </div>
+
+          <div class="modal-footer border-0 d-flex flex-column flex-sm-row gap-2">
+            <button type="submit" class="btn btn-primary flex-fill">Guardar cambios</button>
+            <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-<script src="../../scripts/Admin_usuar/administracion_usuarios.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="../../scripts/Admin_usuar/administracion_usuarios.js"></script>
 </body>
 </html>
