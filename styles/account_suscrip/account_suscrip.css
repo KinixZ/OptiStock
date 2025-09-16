@@ -257,6 +257,11 @@ img {
 }
 
 .account-menu {
+  width: 200px;
+  background: var(--topbar-color, linear-gradient(45deg, #6a11cb, #2575fc));
+  border-radius: 8px;
+  padding: 20px;
+  color: var(--topbar-text-color, #fff);
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
@@ -363,6 +368,36 @@ img {
 
 .account-section.active {
   display: block;
+}
+
+.subscription-card {
+  background: #f8f9fc;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.subscription-card p {
+  margin-bottom: 0.5rem;
+}
+
+.subscription-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.subscription-actions .btn {
+  min-width: 180px;
+}
+
+.subscription-note {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+#subscriptionMessage {
+  font-size: 0.9rem;
 }
 
 .section-header {
@@ -664,5 +699,13 @@ img {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.35rem;
+  }
+
+  .subscription-actions {
+    flex-direction: column;
+  }
+
+  .subscription-actions .btn {
+    min-width: 100%;
   }
 }
