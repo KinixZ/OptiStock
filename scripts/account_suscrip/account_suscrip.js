@@ -1,8 +1,6 @@
 (() => {
 // Gestion de cuenta y suscripción
 
-// Gestión de cuenta y suscripción
-
 const DEFAULT_PROFILE_IMG = '/images/profile.jpg';
 const DEFAULT_COMPANY_LOGO = '/images/optistockLogo.png';
 
@@ -228,24 +226,6 @@ function mainAccountSuscrip() {
         lastRenewal: null,
         nextRenewal: null
       };
-  // Actualizar plan
-  const btnPlan = document.getElementById('btnActualizarPlan');
-  btnPlan?.addEventListener('click', () => {
-    const plan = prompt('Ingresa el nuevo plan (Pro, etc)');
-    if (plan) {
-      const form = new URLSearchParams();
-      form.append('id_empresa', idEmpresa);
-      form.append('plan', plan);
-      fetch('/scripts/php/update_subscription_plan.php', { method: 'POST', body: form })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.success) {
-            alert('Plan actualizado');
-            cargar();
-          } else {
-            alert(d.message || 'Error');
-          }
-        });
     }
 
     function loadSubscriptionState() {
@@ -432,6 +412,27 @@ function mainAccountSuscrip() {
     }
   }
 
+  // Actualizar plan
+  const btnPlan = document.getElementById('btnActualizarPlan');
+  btnPlan?.addEventListener('click', () => {
+    const plan = prompt('Ingresa el nuevo plan (Pro, etc)');
+    if (plan) {
+      const form = new URLSearchParams();
+      form.append('id_empresa', idEmpresa);
+      form.append('plan', plan);
+      fetch('/scripts/php/update_subscription_plan.php', { method: 'POST', body: form })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) {
+            alert('Plan actualizado');
+            cargar();
+          } else {
+            alert(d.message || 'Error');
+          }
+        });
+    }
+  });
+
   // Navegación lateral
   const menuItems = document.querySelectorAll('.account-menu li');
   const sections = document.querySelectorAll('.account-section');
@@ -478,5 +479,3 @@ if (document.readyState !== 'loading') {
   document.addEventListener('DOMContentLoaded', mainAccountSuscrip, { once: true });
 }
 })();
-  document.addEventListener('DOMContentLoaded', mainAccountSuscrip);
-}
