@@ -17,6 +17,9 @@ const zoneForm = document.getElementById('zoneForm');
 const registroLista = document.getElementById('registroLista');
 const zoneAreaSelect = document.getElementById('zoneArea');
 const errorContainer = document.getElementById('error-message');
+const resumenAreasEl = document.getElementById('totalAreas');
+const resumenZonasEl = document.getElementById('totalZonas');
+const resumenZonasSinAreaEl = document.getElementById('zonasSinArea');
 
 // Utilidades de caché en localStorage
 function getCache(key) {
@@ -203,7 +206,20 @@ async function cargarYMostrarRegistros() {
 // Mostrar resumen en el panel
 function mostrarResumen(data) {
   const { areas, zonas } = data;
-  
+
+  if (resumenAreasEl) {
+    resumenAreasEl.textContent = areas.length;
+  }
+
+  if (resumenZonasEl) {
+    resumenZonasEl.textContent = zonas.length;
+  }
+
+  if (resumenZonasSinAreaEl) {
+    const sinArea = zonas.filter(z => !z.area_id).length;
+    resumenZonasSinAreaEl.textContent = sinArea;
+  }
+
   if (!areas.length && !zonas.length) {
     registroLista.innerHTML = `
       <p class="vacio">No hay áreas ni zonas registradas.</p>

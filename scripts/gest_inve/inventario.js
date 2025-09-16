@@ -70,6 +70,7 @@ const DataController = {
       AppState.categorias = await AppUtils.fetchAPI(AppConfig.API.categorias);
       this.updateCategorySelects();
       this.renderCategorias();
+      this.updateSummary();
     } catch (error) {
       console.error('Error cargando categorías:', error);
       AppUtils.showAlert('Error al cargar categorías');
@@ -81,6 +82,7 @@ const DataController = {
       AppState.subcategorias = await AppUtils.fetchAPI(AppConfig.API.subcategorias);
       this.updateSubcategorySelect();
       this.renderSubcategorias();
+      this.updateSummary();
     } catch (error) {
       console.error('Error cargando subcategorías:', error);
       AppUtils.showAlert('Error al cargar subcategorías');
@@ -93,6 +95,7 @@ const DataController = {
       AppUtils.updateDatalist('sugerenciasProducto', AppState.productos.map(p => p.nombre));
       this.renderProductos();
       this.checkLowStock();
+      this.updateSummary();
     } catch (error) {
       console.error('Error cargando productos:', error);
       AppUtils.showAlert('Error al cargar productos');
@@ -230,18 +233,41 @@ const DataController = {
     });
   },
 
+  updateSummary() {
+    const totalProductosEl = document.getElementById('resumenProductos');
+    if (totalProductosEl) {
+      totalProductosEl.textContent = AppState.productos.length;
+    }
+
+    const totalCategoriasEl = document.getElementById('resumenCategorias');
+    if (totalCategoriasEl) {
+      totalCategoriasEl.textContent = AppState.categorias.length;
+    }
+
+    const criticosEl = document.getElementById('resumenCriticos');
+    if (criticosEl) {
+      const criticos = AppState.productos.filter(p => (Number(p.stock) || 0) <= 5);
+      criticosEl.textContent = criticos.length;
+    }
+  },
+
   checkLowStock() {
     const alerta = document.getElementById('alertasStock');
     if (!alerta) return;
-    
+
     const criticos = AppState.productos.filter(p => p.stock <= 5);
     if (criticos.length) {
       alerta.innerHTML = `
-        <strong>Stock crítico:</strong> 
+        <strong>Stock crítico:</strong>
         ${criticos.map(p => `${p.nombre} (${p.stock})`).join(', ')}
       `;
     } else {
       alerta.textContent = '';
+    }
+
+    const criticosEl = document.getElementById('resumenCriticos');
+    if (criticosEl) {
+      criticosEl.textContent = criticos.length;
     }
   },
 
