@@ -11,6 +11,42 @@ const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 
+let navegadorTimeZone = null;
+
+try {
+    const resolved = new Intl.DateTimeFormat().resolvedOptions();
+    if (resolved && resolved.timeZone) {
+        navegadorTimeZone = resolved.timeZone;
+    }
+} catch (error) {
+    console.warn('No se pudo obtener la zona horaria del navegador.', error);
+}
+
+const FALLBACK_TIME_ZONE_LABEL = (() => {
+    const offsetMinutes = -new Date().getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absMinutes = Math.abs(offsetMinutes);
+    const hours = String(Math.floor(absMinutes / 60)).padStart(2, '0');
+    const minutes = String(absMinutes % 60).padStart(2, '0');
+    return `GMT${sign}${hours}:${minutes}`;
+})();
+
+let timeZoneLabel = FALLBACK_TIME_ZONE_LABEL;
+
+try {
+    const tzFormatOptions = { timeZoneName: 'short' };
+    if (navegadorTimeZone) {
+        tzFormatOptions.timeZone = navegadorTimeZone;
+    }
+    const tzParts = new Intl.DateTimeFormat('es', tzFormatOptions).formatToParts(new Date());
+    const tzNamePart = tzParts.find(part => part.type === 'timeZoneName');
+    if (tzNamePart && tzNamePart.value) {
+        timeZoneLabel = tzNamePart.value;
+    }
+} catch (error) {
+    console.warn('No se pudo determinar la etiqueta de zona horaria del navegador.', error);
+}
+
 // Selected theme colors
 let colorSidebarSeleccionado = getComputedStyle(document.documentElement)
     .getPropertyValue('--sidebar-color')
@@ -152,12 +188,24 @@ function formatRelativeDate(date) {
 }
 
 function formatTime(date) {
-    let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours || 12;
-    return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    try {
+        const options = {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        };
+        if (navegadorTimeZone) {
+            options.timeZone = navegadorTimeZone;
+        }
+        return new Intl.DateTimeFormat('es', options).format(date);
+    } catch (error) {
+        let hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours || 12;
+        return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    }
 }
 function loadAccessLogs() {
     if (!accessLogsList) return;
@@ -171,18 +219,86 @@ function loadAccessLogs() {
             if (!data.success) return;
             accessLogsList.innerHTML = "";
             data.logs.forEach(log => {
-                const li = document.createElement("li");
-                li.className = "activity-item";
-                const date = new Date(log.fecha.replace(' ', 'T'));
-                const timeStr = formatTime(date);
-                const dateStr = formatRelativeDate(date);
-                const imgSrc = log.foto_perfil || '/images/profile.jpg';
-                const fullName = `${log.nombre} ${log.apellido}`.trim();
-                li.innerHTML =
-                    '<div class="activity-icon"><img src="' + imgSrc + '" class="activity-avatar" alt="' + fullName + '"></div>' +
-                    '<div class="activity-details"><div class="activity-description">' +
-                    fullName + ' - ' + log.rol + ' - ' + log.accion + '</div>' +
-                    '<div class="activity-time">' + dateStr + ' ' + timeStr + '</div></div>';
+                const li = document.createElement('li');
+                li.className = 'activity-item';
+
+                const rawFecha = (log.fecha || '').trim();
+                const [fechaParte = '', horaParte = ''] = rawFecha ? rawFecha.split(/\s+/) : [''];
+                const isoString = fechaParte ? `${fechaParte}T${horaParte || '00:00:00'}Z` : '';
+                let parsedDate = isoString ? new Date(isoString) : null;
+                if (parsedDate && Number.isNaN(parsedDate.getTime())) {
+                    parsedDate = null;
+                }
+
+                const displayParts = [];
+                let tooltipText = rawFecha;
+
+                if (parsedDate) {
+                    const relative = formatRelativeDate(parsedDate);
+                    if (relative) {
+                        displayParts.push(relative);
+                    }
+
+                    const formattedTime = formatTime(parsedDate);
+                    if (formattedTime) {
+                        displayParts.push(formattedTime);
+                    }
+
+                    try {
+                        const tooltipOptions = {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                        };
+                        if (navegadorTimeZone) {
+                            tooltipOptions.timeZone = navegadorTimeZone;
+                        }
+                        tooltipText = new Intl.DateTimeFormat('es', tooltipOptions).format(parsedDate);
+                    } catch (error) {
+                        tooltipText = parsedDate.toLocaleString();
+                    }
+                }
+
+                const zoneSuffix = timeZoneLabel ? ` (${timeZoneLabel})` : '';
+                let activityTime = displayParts.join(' · ');
+                if (activityTime) {
+                    activityTime += zoneSuffix;
+                } else if (tooltipText) {
+                    activityTime = `${tooltipText}${zoneSuffix}`;
+                } else {
+                    activityTime = zoneSuffix.trim();
+                }
+
+                const tooltipTextWithZone = tooltipText ? `${tooltipText}${zoneSuffix}` : zoneSuffix.trim();
+
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'activity-icon';
+                const avatar = document.createElement('img');
+                avatar.src = log.foto_perfil || '/images/profile.jpg';
+                avatar.className = 'activity-avatar';
+                const fullName = `${log.nombre || ''} ${log.apellido || ''}`.trim();
+                avatar.alt = fullName || 'Usuario';
+                iconDiv.appendChild(avatar);
+
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'activity-details';
+
+                const descriptionDiv = document.createElement('div');
+                descriptionDiv.className = 'activity-description';
+                const descriptionParts = [fullName, log.rol || '', log.accion || ''].filter(Boolean);
+                descriptionDiv.textContent = descriptionParts.join(' - ');
+
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'activity-time';
+                timeDiv.textContent = activityTime;
+                if (tooltipTextWithZone) {
+                    timeDiv.title = tooltipTextWithZone;
+                }
+
+                detailsDiv.appendChild(descriptionDiv);
+                detailsDiv.appendChild(timeDiv);
+
+                li.appendChild(iconDiv);
+                li.appendChild(detailsDiv);
 
                 accessLogsList.appendChild(li);
             });

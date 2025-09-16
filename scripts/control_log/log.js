@@ -10,6 +10,47 @@
     const totalRegistrosEl = document.getElementById('totalRegistros');
     const logCountEl = document.getElementById('logCount');
     const lastUpdatedEl = document.getElementById('lastUpdated');
+    const timeHeaderEl = document.getElementById('timeHeader');
+
+    let navegadorTimeZone = null;
+
+    try {
+        const resolved = new Intl.DateTimeFormat().resolvedOptions();
+        if (resolved && resolved.timeZone) {
+            navegadorTimeZone = resolved.timeZone;
+        }
+    } catch (error) {
+        console.warn('No se pudo obtener la zona horaria del navegador.', error);
+    }
+
+    const FALLBACK_TIME_ZONE_LABEL = (() => {
+        const offsetMinutes = -new Date().getTimezoneOffset();
+        const sign = offsetMinutes >= 0 ? '+' : '-';
+        const absMinutes = Math.abs(offsetMinutes);
+        const hours = String(Math.floor(absMinutes / 60)).padStart(2, '0');
+        const minutes = String(absMinutes % 60).padStart(2, '0');
+        return `GMT${sign}${hours}:${minutes}`;
+    })();
+
+    let timeZoneLabel = FALLBACK_TIME_ZONE_LABEL;
+
+    try {
+        const tzFormatOptions = { timeZoneName: 'short' };
+        if (navegadorTimeZone) {
+            tzFormatOptions.timeZone = navegadorTimeZone;
+        }
+        const tzParts = new Intl.DateTimeFormat('es', tzFormatOptions).formatToParts(new Date());
+        const tzNamePart = tzParts.find(part => part.type === 'timeZoneName');
+        if (tzNamePart && tzNamePart.value) {
+            timeZoneLabel = tzNamePart.value;
+        }
+    } catch (error) {
+        console.warn('No se pudo determinar la etiqueta de zona horaria configurada.', error);
+    }
+
+    if (timeHeaderEl) {
+        timeHeaderEl.textContent = `Hora (${timeZoneLabel})`;
+    }
 
     if (!filtroModulo || !filtroUsuario || !filtroRol || !tablaBody) {
         console.warn('La vista del log de control no está disponible. Se omite la inicialización.');
@@ -35,6 +76,49 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function convertirFechaHoraZona(fecha, hora) {
+        if (!fecha) {
+            return { fechaLocal: '', horaLocal: '' };
+        }
+
+        try {
+            const horaNormalizada = (hora || '00:00:00').substring(0, 8);
+            const fechaISO = `${fecha}T${horaNormalizada}Z`;
+            const date = new Date(fechaISO);
+
+            if (Number.isNaN(date.getTime())) {
+                return { fechaLocal: '', horaLocal: '' };
+            }
+
+            const fechaOptions = {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            };
+            if (navegadorTimeZone) {
+                fechaOptions.timeZone = navegadorTimeZone;
+            }
+
+            const horaOptions = {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            if (navegadorTimeZone) {
+                horaOptions.timeZone = navegadorTimeZone;
+            }
+
+            const fechaLocal = new Intl.DateTimeFormat('es', fechaOptions).format(date);
+            const horaLocal = new Intl.DateTimeFormat('es', horaOptions).format(date);
+
+            return { fechaLocal, horaLocal };
+        } catch (error) {
+            console.warn('No se pudo convertir la fecha y hora al huso horario configurado.', error);
+            return { fechaLocal: '', horaLocal: '' };
+        }
     }
 
     function filtrarPorBusqueda(datos = []) {
@@ -95,17 +179,44 @@
         }
 
         const ahora = new Date();
-        const fecha = ahora.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        }).replace('.', '');
-        const hora = ahora.toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
 
-        lastUpdatedEl.textContent = `${fecha} · ${hora}`;
+        try {
+            const fechaOptions = {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            };
+            if (navegadorTimeZone) {
+                fechaOptions.timeZone = navegadorTimeZone;
+            }
+
+            let fecha = new Intl.DateTimeFormat('es', fechaOptions).format(ahora);
+            fecha = fecha.replace('.', '');
+
+            const horaOptions = {
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            if (navegadorTimeZone) {
+                horaOptions.timeZone = navegadorTimeZone;
+            }
+
+            const hora = new Intl.DateTimeFormat('es', horaOptions).format(ahora);
+
+            lastUpdatedEl.textContent = `${fecha} · ${hora} (${timeZoneLabel})`;
+        } catch (error) {
+            const fecha = ahora.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).replace('.', '');
+            const hora = ahora.toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            lastUpdatedEl.textContent = `${fecha} · ${hora}`;
+        }
     }
 
     function cargarFiltrosGuardados() {
@@ -189,17 +300,31 @@
         }
 
         filtrados.forEach(reg => {
-            const fecha = escapeHtml(reg?.fecha || '');
-            const hora = escapeHtml(reg?.hora || '');
+            let fechaTexto = reg?.fecha || '';
+            let horaTexto = reg?.hora || '';
+
+            const conversion = convertirFechaHoraZona(reg?.fecha, reg?.hora);
+            if (conversion.fechaLocal) {
+                fechaTexto = conversion.fechaLocal;
+            }
+            if (conversion.horaLocal) {
+                horaTexto = conversion.horaLocal;
+            }
+
+            const fecha = escapeHtml(fechaTexto);
+            const hora = escapeHtml(horaTexto);
             const usuario = escapeHtml(reg?.usuario || '');
             const rol = escapeHtml(reg?.rol || '');
             const modulo = escapeHtml(reg?.modulo || '');
             const accion = escapeHtml(reg?.accion || '');
 
+            const horaLabel = timeZoneLabel ? `Horario ${timeZoneLabel}` : '';
+            const horaTitleAttr = horaLabel ? ` title="${escapeHtml(horaLabel)}"` : '';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${fecha || '—'}</td>
-                <td class="cell-time">${hora || '—'}</td>
+                <td class="cell-time"${horaTitleAttr}>${hora || '—'}</td>
                 <td class="cell-user">${usuario || '—'}</td>
                 <td class="cell-role">${rol ? `<span class="role-chip">${rol}</span>` : '—'}</td>
                 <td>${modulo ? `<span class="module-chip">${modulo}</span>` : '—'}</td>
