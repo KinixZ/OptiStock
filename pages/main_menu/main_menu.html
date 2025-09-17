@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OPTISTOCK - Sistema de Gestión de Almacenes</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="../../styles/main_menu/main_menu.css">
 </head>
@@ -63,56 +65,79 @@
             <div class="alert-settings" id="alertSettingsBtn">
                 <i class="fas fa-cog"></i>
             </div>
-            <!-- Usuario en la topbar -->
-<div class="user-profile">
-    <img src="" alt="Usuario">
-    <div class="user-info">
-        <span class="user-name">Usuario</span>
-        <span class="user-role">Rol</span>
-    </div>
-    <!-- Submenú desplegable -->
-    <div class="dropdown">
-        <button class="dropdown-toggle" id="dropdownMenuButton">
-            <i class="fas fa-caret-down"></i>
-        </button>
-        <div class="dropdown-menu" id="userMenu">
-            <a href="#" class="dropdown-item" id="logoutBtn">Cerrar sesión</a>
-        </div>
-    </div>
-</div>
-        </div>
-    </div>
-    
-    <!-- Main Content -->
-    <div class="content" id="mainContent">
-        <!-- Welcome Card -->
-        <div class="welcome-card">
-            <h1 class="welcome-title" id="empresaTitulo">Bienvenido a OPTISTOCK</h1>
-            <p class="welcome-text">Sistema de Gestión y Administración de Almacenes. Desde aquí puedes controlar todas las operaciones de tu almacén, gestionar inventarios, áreas de almacenamiento y generar reportes detallados.</p>
-            
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <button class="btn btn-success" id="ingresoFlashBtn">
-                    <i class="fas fa-bolt"></i> Ingreso Flash
-                </button>
-                <button class="btn btn-danger" id="egresoFlashBtn">
-                    <i class="fas fa-bolt"></i> Egreso Flash
-                </button>
-                <button class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Registrar Entrada
-                </button>
-                <button class="btn btn-primary">
-                    <i class="fas fa-sign-out-alt"></i> Registrar Salida
-                </button>
+            <div class="user-profile">
+                <img src="" alt="Usuario">
+                <div class="user-info">
+                    <span class="user-name">Usuario</span>
+                    <span class="user-role">Rol</span>
+                </div>
+                <div class="dropdown">
+                    <button class="dropdown-toggle" id="dropdownMenuButton">
+                        <i class="fas fa-caret-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="userMenu">
+                        <a href="#" class="dropdown-item" id="logoutBtn">Cerrar sesión</a>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
+    </div>
+
+    <!-- Main Content -->
+    <div class="content" id="mainContent">
+        <div class="dashboard-page">
+            <section class="page-header">
+                <span class="header-eyebrow">Panel principal</span>
+                <h1 class="header-title" id="empresaTitulo">Bienvenido a OPTISTOCK</h1>
+                <p class="header-description">Sistema de Gestión y Administración de Almacenes. Desde aquí puedes controlar todas las operaciones de tu almacén, gestionar inventarios, áreas de almacenamiento y generar reportes detallados.</p>
+
+                <div class="header-bottom">
+                    <div class="header-stats">
+                        <article class="stat-card">
+                            <span class="stat-label">Alertas activas</span>
+                            <span class="stat-value">4</span>
+                            <span class="stat-trend negative"><i class="fas fa-arrow-up"></i> +12%</span>
+                        </article>
+                        <article class="stat-card">
+                            <span class="stat-label">Movimientos hoy</span>
+                            <span class="stat-value">128</span>
+                            <span class="stat-trend positive"><i class="fas fa-arrow-up"></i> +8%</span>
+                        </article>
+                        <article class="stat-card">
+                            <span class="stat-label">Zonas críticas</span>
+                            <span class="stat-value">2</span>
+                            <span class="stat-trend neutral"><i class="fas fa-minus"></i> Sin cambios</span>
+                        </article>
+                    </div>
+
+                    <div class="header-actions">
+                        <span class="actions-title">Acciones rápidas</span>
+                        <div class="quick-actions">
+                            <button class="btn btn-success" id="ingresoFlashBtn">
+                                <i class="fas fa-bolt"></i> Ingreso Flash
+                            </button>
+                            <button class="btn btn-danger" id="egresoFlashBtn">
+                                <i class="fas fa-bolt"></i> Egreso Flash
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt"></i> Registrar Entrada
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-sign-out-alt"></i> Registrar Salida
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="dashboard-grid">
             <!-- Stock Alerts Card -->
             <div class="dashboard-card" id="stockAlertsCard">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo</h3>
+                    <div class="card-heading">
+                        <span class="card-eyebrow">Alertas</span>
+                        <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo</h3>
+                    </div>
                     <div class="card-actions">
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                         <button class="card-action-btn"><i class="fas fa-ellipsis-v"></i></button>
@@ -173,7 +198,10 @@
             <!-- Recent Activity Card -->
             <div class="dashboard-card" id="recentActivityCard">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-history"></i> Movimientos Recientes</h3>
+                    <div class="card-heading">
+                        <span class="card-eyebrow">Actividad</span>
+                        <h3 class="card-title"><i class="fas fa-history"></i> Movimientos Recientes</h3>
+                    </div>
                     <div class="card-actions">
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
@@ -230,7 +258,10 @@
             <!-- Space Optimization Card -->
             <div class="dashboard-card" id="spaceOptimizationCard">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-warehouse"></i> Optimización de Espacio</h3>
+                    <div class="card-heading">
+                        <span class="card-eyebrow">Espacio</span>
+                        <h3 class="card-title"><i class="fas fa-warehouse"></i> Optimización de Espacio</h3>
+                    </div>
                     <div class="card-actions">
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
@@ -244,7 +275,10 @@
             <!-- High Rotation Card -->
             <div class="dashboard-card" id="highRotationCard">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-sync-alt"></i> Mayor Rotación 24h</h3>
+                    <div class="card-heading">
+                        <span class="card-eyebrow">Inventario</span>
+                        <h3 class="card-title"><i class="fas fa-sync-alt"></i> Mayor Rotación 24h</h3>
+                    </div>
                     <div class="card-actions">
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
@@ -257,7 +291,10 @@
             <!-- Zone Capacity Card -->
             <div class="dashboard-card" id="zoneCapacityCard">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Zonas con Capacidad Reducida</h3>
+                    <div class="card-heading">
+                        <span class="card-eyebrow">Capacidad</span>
+                        <h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Zonas con Capacidad Reducida</h3>
+                    </div>
                     <div class="card-actions">
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
@@ -270,7 +307,10 @@
             <!-- Employee Access Card -->
             <div class="dashboard-card" id="employeeAccessCard">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-user-clock"></i> Accesos Recientes</h3>
+                    <div class="card-heading">
+                        <span class="card-eyebrow">Usuarios</span>
+                        <h3 class="card-title"><i class="fas fa-user-clock"></i> Accesos Recientes</h3>
+                    </div>
                     <div class="card-actions">
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
@@ -278,6 +318,7 @@
                 <ul class="activity-list" id="accessLogsList">
                     <!-- Filled dynamically -->
                 </ul>
+            </div>
             </div>
         </div>
     </div>
