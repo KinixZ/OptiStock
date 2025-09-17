@@ -431,7 +431,15 @@ img {
 .header-stats {
     display: grid;
     gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, 1fr); /* Siempre 3 columnas en escritorio */
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .header-stats {
+        grid-template-columns: 1fr; /* Apilado solo en móvil */
+    }
 }
 
 .stat-card {
