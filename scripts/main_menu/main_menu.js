@@ -368,7 +368,9 @@ const tutorialSteps = [
     {
         title: "Dashboard Principal",
         content: "Aquí encontrarás un resumen visual de las métricas más importantes: productos con stock bajo, movimientos recientes y accesos de empleados.",
-        element: document.querySelector('.dashboard-grid')
+        element: document.querySelector('.dashboard-grid'),
+        centerCard: true,
+        preventScroll: true
     },
     {
         title: "Generación de Reportes",
@@ -468,29 +470,37 @@ function showTutorialStep(step) {
         tutorialOverlayBg.appendChild(tutorialHole);
 
         // Position card near the element
-        const cardWidth = Math.min(tutorialCard.offsetWidth || 480, window.innerWidth - 40);
-        const cardLeft = Math.min(
-            window.innerWidth - cardWidth - 20,
-            Math.max(20, rect.left + (rect.width / 2) - (cardWidth / 2))
-        );
-
-        const cardTop = rect.bottom + 20;
-        if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
-            // If card doesn't fit below, position it above
-            tutorialCard.style.top = `${rect.top - tutorialCard.offsetHeight - 20}px`;
+        if (stepData.centerCard) {
+            tutorialCard.style.top = '50%';
+            tutorialCard.style.left = '50%';
+            tutorialCard.style.transform = 'translate(-50%, -50%)';
         } else {
-            tutorialCard.style.top = `${cardTop}px`;
-        }
-        tutorialCard.style.left = `${cardLeft}px`;
-        tutorialCard.style.transform = 'none';
+            const cardWidth = Math.min(tutorialCard.offsetWidth || 480, window.innerWidth - 40);
+            const cardLeft = Math.min(
+                window.innerWidth - cardWidth - 20,
+                Math.max(20, rect.left + (rect.width / 2) - (cardWidth / 2))
+            );
 
-        // Scroll element into view if needed
-        setTimeout(() => {
-            stepData.element.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }, 300);
+            const cardTop = rect.bottom + 20;
+            if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
+                // If card doesn't fit below, position it above
+                tutorialCard.style.top = `${rect.top - tutorialCard.offsetHeight - 20}px`;
+            } else {
+                tutorialCard.style.top = `${cardTop}px`;
+            }
+            tutorialCard.style.left = `${cardLeft}px`;
+            tutorialCard.style.transform = 'none';
+        }
+
+        if (!stepData.preventScroll) {
+            // Scroll element into view if needed
+            setTimeout(() => {
+                stepData.element.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 300);
+        }
     } else {
         // Center card for introductory steps
         tutorialCard.style.top = '50%';
