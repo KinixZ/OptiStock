@@ -1,4 +1,5 @@
 // Toggle sidebar collapse/expand
+const body = document.body;
 const menuToggle = document.getElementById('menuToggle');
 const sidebar = document.querySelector('.sidebar');
 const accessLogsList = document.getElementById('accessLogsList');
@@ -308,30 +309,32 @@ function loadAccessLogs() {
 
 
 // Toggle sidebar on button click
-menuToggle.addEventListener('click', function() {
-    // On mobile, just show/hide the sidebar
-    if (window.innerWidth <= 992) {
-        sidebar.classList.toggle('active');
-    } 
-    // On desktop, toggle collapsed state
-    else {
-        sidebar.classList.toggle('collapsed');
-    }
-});
+if (menuToggle && sidebar) {
+    menuToggle.addEventListener('click', function() {
+        if (window.innerWidth <= 992) {
+            const isActive = sidebar.classList.toggle('active');
+            body.classList.toggle('sidebar-open', isActive);
+        }
+    });
+}
 
 // Close sidebar when clicking outside on mobile
 document.addEventListener('click', function(e) {
-    if (window.innerWidth <= 992 && 
-        !sidebar.contains(e.target) && 
+    if (!sidebar || !menuToggle) return;
+    if (window.innerWidth <= 992 &&
+        !sidebar.contains(e.target) &&
         !menuToggle.contains(e.target)) {
         sidebar.classList.remove('active');
+        body.classList.remove('sidebar-open');
     }
 });
 
 // Handle window resize
 window.addEventListener('resize', function() {
+    if (!sidebar) return;
     if (window.innerWidth > 992) {
         sidebar.classList.remove('active');
+        body.classList.remove('sidebar-open');
     }
 });
 
