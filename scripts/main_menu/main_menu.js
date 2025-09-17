@@ -353,7 +353,7 @@ const tutorialSteps = [
     {
         title: "Áreas y Zonas de Almacén",
         content: "Desde este módulo podrás gestionar todas las áreas y zonas de tu almacén, asignar ubicaciones y configurar la distribución física de tus productos.",
-        element: document.querySelector('.sidebar-menu a[href="pages/almacen/areas_zonas.html"]')
+        element: document.querySelector('.sidebar-menu a[data-page="area_almac_v2/gestion_areas_zonas.html"]')
     },
     {
         title: "Gestión de Inventario",
@@ -363,7 +363,7 @@ const tutorialSteps = [
     {
         title: "Administración de Usuarios",
         content: "Gestiona los accesos, permisos y roles de todos los usuarios del sistema. Asigna responsabilidades y controla quién puede realizar cada operación.",
-        element: document.querySelector('.sidebar-menu a[href="pages/usuarios/administracion_usuarios.html"]')
+        element: document.querySelector('.sidebar-menu a[data-page="admin_usuar/administracion_usuarios.html"]')
     },
     {
         title: "Dashboard Principal",
@@ -373,7 +373,7 @@ const tutorialSteps = [
     {
         title: "Generación de Reportes",
         content: "Crea reportes detallados de inventario, movimientos y cualquier otra información relevante para la toma de decisiones.",
-        element: document.querySelector('.sidebar-menu a[href="pages/reports/reportes.html"]')
+        element: document.querySelector('.sidebar-menu a[data-page="reports/reportes.html"]')
     },
     {
         title: "Personalización",
@@ -421,18 +421,25 @@ function showTutorialStep(step) {
 
     currentStep = step;
     const stepData = tutorialSteps[step];
-    
+
     // Update content
     tutorialTitle.textContent = stepData.title;
     tutorialContent.innerHTML = `<p>${stepData.content}</p>`;
     tutorialIndicator.textContent = `Paso ${step + 1} de ${tutorialSteps.length}`;
-    
+
     // Update next button text for last step
     if (step === tutorialSteps.length - 1) {
         nextTutorial.textContent = 'Finalizar';
     } else {
         nextTutorial.textContent = 'Siguiente';
     }
+
+    // Reset card positioning styles before applying new values
+    tutorialCard.style.transform = 'none';
+    tutorialCard.style.top = '';
+    tutorialCard.style.left = '';
+    tutorialCard.style.right = '';
+    tutorialCard.style.bottom = '';
 
     // Remove previous spotlight
     document.querySelectorAll('.tutorial-spotlight').forEach(el => {
@@ -449,7 +456,7 @@ function showTutorialStep(step) {
     if (stepData.element) {
         // Add spotlight class to element
         stepData.element.classList.add('tutorial-spotlight');
-        
+
         // Create hole in overlay
         const rect = stepData.element.getBoundingClientRect();
         tutorialHole = document.createElement('div');
@@ -459,14 +466,14 @@ function showTutorialStep(step) {
         tutorialHole.style.left = `${rect.left}px`;
         tutorialHole.style.top = `${rect.top}px`;
         tutorialOverlayBg.appendChild(tutorialHole);
-        
+
         // Position card near the element
-        const cardWidth = 500;
+        const cardWidth = Math.min(tutorialCard.offsetWidth || 480, window.innerWidth - 40);
         const cardLeft = Math.min(
             window.innerWidth - cardWidth - 20,
             Math.max(20, rect.left + (rect.width / 2) - (cardWidth / 2))
         );
-        
+
         const cardTop = rect.bottom + 20;
         if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
             // If card doesn't fit below, position it above
@@ -475,7 +482,8 @@ function showTutorialStep(step) {
             tutorialCard.style.top = `${cardTop}px`;
         }
         tutorialCard.style.left = `${cardLeft}px`;
-        
+        tutorialCard.style.transform = 'none';
+
         // Scroll element into view if needed
         setTimeout(() => {
             stepData.element.scrollIntoView({
