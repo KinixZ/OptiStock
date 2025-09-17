@@ -379,11 +379,6 @@ const tutorialSteps = [
         title: "Personalización",
         content: "Como administrador, puedes personalizar el sistema cambiando colores, reorganizando accesos rápidos y adaptando la interfaz a las necesidades de tu empresa.",
         element: document.querySelector('.sidebar-footer .btn')
-    },
-    {
-        title: "¡Todo listo!",
-        content: "Has recorrido las funciones principales de OPTISTOCK. Pulsa \"Finalizar\" para cerrar el tutorial y empezar a utilizar la plataforma.",
-        element: null
     }
 ];
 
@@ -473,21 +468,12 @@ function showTutorialStep(step) {
         tutorialOverlayBg.appendChild(tutorialHole);
 
         // Position card near the element
-        const viewportPadding = 20;
-        const cardWidth = Math.min(
-            tutorialCard.offsetWidth || 480,
-            window.innerWidth - viewportPadding * 2
-        );
         const cardWidth = Math.min(tutorialCard.offsetWidth || 480, window.innerWidth - 40);
         const cardLeft = Math.min(
-            window.innerWidth - cardWidth - viewportPadding,
-            Math.max(viewportPadding, rect.left + (rect.width / 2) - (cardWidth / 2))
+            window.innerWidth - cardWidth - 20,
+            Math.max(20, rect.left + (rect.width / 2) - (cardWidth / 2))
         );
 
-        const cardHeight = tutorialCard.offsetHeight || 0;
-        let cardTop = rect.bottom + viewportPadding;
-        if (cardTop + cardHeight > window.innerHeight - viewportPadding) {
-            cardTop = rect.top - cardHeight - viewportPadding;
         const cardTop = rect.bottom + 20;
         if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
             // If card doesn't fit below, position it above
@@ -495,11 +481,6 @@ function showTutorialStep(step) {
         } else {
             tutorialCard.style.top = `${cardTop}px`;
         }
-
-        const maxTop = Math.max(viewportPadding, window.innerHeight - cardHeight - viewportPadding);
-        cardTop = Math.max(viewportPadding, Math.min(cardTop, maxTop));
-
-        tutorialCard.style.top = `${cardTop}px`;
         tutorialCard.style.left = `${cardLeft}px`;
         tutorialCard.style.transform = 'none';
 
