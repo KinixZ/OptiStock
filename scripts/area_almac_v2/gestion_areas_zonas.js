@@ -9,8 +9,6 @@ let editZoneId = null;
   const zonaBtn      = document.getElementById('nuevaZona');
   const formArea     = document.getElementById('formArea');
   const formZona     = document.getElementById('formZona');
-  const resumenAreas = document.getElementById('resumenAreas');
-  const resumenZonas = document.getElementById('resumenZonas');
   const areaNombre   = document.getElementById('areaNombre');
   const areaDesc     = document.getElementById('areaDescripcion');
   const areaLargo    = document.getElementById('areaLargo');
@@ -25,16 +23,17 @@ let editZoneId = null;
   const volumenZona  = document.getElementById('zonaVolumen');
   const zonaAreaSel  = document.getElementById('zonaArea');
   const zonaTipoSel  = document.getElementById('zonaTipo');
-  const tablaAreasBody = document.querySelector('#tablaAreas tbody');
+  const tablaAreasBody        = document.querySelector('#tablaAreas tbody');
   const tablaZonasBody        = document.querySelector('#tablaZonas tbody');
   const tablaZonasSinAreaBody = document.querySelector('#tablaZonasSinArea tbody');
-  const zonaSubniv   = document.getElementById('zonaSubniveles');
-  const zonaDist     = document.getElementById('zonaDistancia');
+  const totalAreasEl          = document.getElementById('totalAreas');
+  const totalZonasEl          = document.getElementById('totalZonas');
+  const zonasSinAreaEl        = document.getElementById('zonasSinArea');
 
   const API_BASE     = '../../scripts/php';
   const EMP_ID       = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
 
- const tiposZona = [
+  const tiposZona = [
     'Rack', 'Mostrador', 'Caja', 'Estantería',
     'Refrigeración', 'Congelador', 'Piso', 'Contenedor',
     'Palet', 'Carro', 'Cajón', 'Jaula', 'Estiba',
@@ -75,6 +74,20 @@ let editZoneId = null;
     volumenZona.textContent = v.toFixed(2);
   }
 
+  function activarFormulario(tipo) {
+    if (tipo === 'area') {
+      formArea.classList.remove('d-none');
+      formZona.classList.add('d-none');
+      areaBtn.setAttribute('aria-pressed', 'true');
+      zonaBtn.setAttribute('aria-pressed', 'false');
+    } else {
+      formZona.classList.remove('d-none');
+      formArea.classList.add('d-none');
+      zonaBtn.setAttribute('aria-pressed', 'true');
+      areaBtn.setAttribute('aria-pressed', 'false');
+    }
+  }
+
   // —————— CRUD Áreas ——————
   async function fetchAreas() {
     const res = await fetch(`${API_BASE}/guardar_areas.php?empresa_id=${EMP_ID}`);
@@ -82,40 +95,59 @@ let editZoneId = null;
   }
 
 async function renderAreas() {
-  // 1) Traer datos de áreas y zonas
-  const [areas, zonas] = await Promise.all([ fetchAreas(), fetchZonas() ]);
-  // 2) Contar cuántas zonas hay por área
+  const [areas, zonas] = await Promise.all([fetchAreas(), fetchZonas()]);
+
   const zonasPorArea = zonas.reduce((acc, z) => {
-    acc[z.area_id] = (acc[z.area_id] || 0) + 1;
+    const areaId = z.area_id || 0;
+    acc[areaId] = (acc[areaId] || 0) + 1;
     return acc;
   }, {});
 
-  // 3) Poblar la tabla de áreas
-  tablaAreasBody.innerHTML = '';
-areas.forEach(a => {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td>${a.nombre}</td>
-    <td>${a.descripcion}</td>
-    <td>${a.ancho}×${a.largo}×${a.alto}</td>
-    <td>${parseFloat(a.volumen).toFixed(2)}</td>
-    <td>${zonasPorArea[a.id]||0}</td>
-    <td>
-      <button class="btn btn-sm btn-primary me-1 btn-edit-area" data-id="${a.id}">Editar</button>
-      <button class="btn btn-sm btn-danger btn-delete-area" data-id="${a.id}">Eliminar</button>
-    </td>
-  `;
-  tablaAreasBody.appendChild(tr);
-});
+  const zonasSinAsignar = zonasPorArea[0] || 0;
 
-  // 4) También rellenamos el <select> de zonas
-  zonaAreaSel.innerHTML = '<option value="">Seleccione</option>';
+  totalAreasEl.textContent = areas.length;
+  totalZonasEl.textContent = zonas.length;
+  zonasSinAreaEl.textContent = zonasSinAsignar;
+
+  tablaAreasBody.innerHTML = '';
+
+  if (!areas.length) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.className = 'empty-row';
+    emptyRow.innerHTML = '<td colspan="6">No hay áreas registradas.</td>';
+    tablaAreasBody.appendChild(emptyRow);
+  } else {
+    areas.forEach(a => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${a.nombre}</td>
+        <td>${a.descripcion}</td>
+        <td>${a.ancho}×${a.largo}×${a.alto}</td>
+        <td>${parseFloat(a.volumen).toFixed(2)}</td>
+        <td>${zonasPorArea[a.id] || 0}</td>
+        <td>
+          <div class="table-actions">
+            <button class="table-action table-action--edit" data-action="edit-area" data-id="${a.id}">Editar</button>
+            <button class="table-action table-action--delete" data-action="delete-area" data-id="${a.id}">Eliminar</button>
+          </div>
+        </td>
+      `;
+      tablaAreasBody.appendChild(tr);
+    });
+  }
+
+  const selectedArea = zonaAreaSel.value;
+  zonaAreaSel.innerHTML = '<option value="">Seleccione un área</option>';
   areas.forEach(a => {
-    const o = document.createElement('option');
-    o.value = a.id;
-    o.textContent = a.nombre;
-    zonaAreaSel.appendChild(o);
+    const option = document.createElement('option');
+    option.value = a.id;
+    option.textContent = a.nombre;
+    zonaAreaSel.appendChild(option);
   });
+
+  if (selectedArea) {
+    zonaAreaSel.value = selectedArea;
+  }
 }
 
 
@@ -150,8 +182,7 @@ formArea.addEventListener('submit', async e => {
       formArea.reset();
       calcularVolumenArea();
       editAreaId = null;
-      formArea.classList.add('d-none');
-      // recarga
+      activarFormulario('area');
       await renderAreas();
       await renderZonas();
     } else {
@@ -170,48 +201,65 @@ formArea.addEventListener('submit', async e => {
 
 
 async function renderZonas() {
-  // 1) Traer datos
-  const [zonas, areas] = await Promise.all([ fetchZonas(), fetchAreas() ]);
+  const [zonas, areas] = await Promise.all([fetchZonas(), fetchAreas()]);
   const areasMap = Object.fromEntries(areas.map(a => [a.id, a.nombre]));
 
-  // 2) Separar asignadas / sin asignar
-  const zonasAsignadas    = zonas.filter(z => z.area_id && z.area_id > 0);
-  const zonasSinAsignar   = zonas.filter(z => !z.area_id || z.area_id === 0);
+  const zonasAsignadas  = zonas.filter(z => z.area_id && z.area_id > 0);
+  const zonasSinAsignar = zonas.filter(z => !z.area_id || z.area_id === 0);
 
-  // 3) Poblar tabla de Zonas asignadas
+  totalZonasEl.textContent = zonas.length;
+  zonasSinAreaEl.textContent = zonasSinAsignar.length;
+
   tablaZonasBody.innerHTML = '';
-  zonasAsignadas.forEach(z => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${z.nombre}</td>
-      <td>${areasMap[z.area_id] || z.area_id}</td>
-      <td>${z.ancho}×${z.largo}×${z.alto}</td>
-      <td>${parseFloat(z.volumen).toFixed(2)}</td>
-      <td>${z.tipo_almacenamiento}</td>
-      <td>
-        <button class="btn btn-sm btn-primary me-1 btn-edit-zone" data-id="${z.id}">Editar</button>
-        <button class="btn btn-sm btn-danger btn-delete-zone" data-id="${z.id}">Eliminar</button>
-      </td>
-    `;
-    tablaZonasBody.appendChild(tr);
-  });
- // 4) Poblar tabla de Zonas sin asignar
-tablaZonasSinAreaBody.innerHTML = '';
-  zonasSinAsignar.forEach(z => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${z.nombre}</td>
-      <td>${z.ancho}×${z.largo}×${z.alto}</td>
-      <td>${parseFloat(z.volumen).toFixed(2)}</td>
-      <td>${z.tipo_almacenamiento}</td>
-      <td>
-        <button class="btn btn-sm btn-primary me-1 btn-edit-zone" data-id="${z.id}">Editar</button>
-        <button class="btn btn-sm btn-danger btn-delete-zone" data-id="${z.id}">Eliminar</button>
-      </td>
-    `;
-    tablaZonasSinAreaBody.appendChild(tr);
-  });
+  if (!zonasAsignadas.length) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.className = 'empty-row';
+    emptyRow.innerHTML = '<td colspan="6">No hay zonas asignadas a un área.</td>';
+    tablaZonasBody.appendChild(emptyRow);
+  } else {
+    zonasAsignadas.forEach(z => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${z.nombre}</td>
+        <td>${areasMap[z.area_id] || z.area_id}</td>
+        <td>${z.ancho}×${z.largo}×${z.alto}</td>
+        <td>${parseFloat(z.volumen).toFixed(2)}</td>
+        <td>${z.tipo_almacenamiento}</td>
+        <td>
+          <div class="table-actions">
+            <button class="table-action table-action--edit" data-action="edit-zone" data-id="${z.id}">Editar</button>
+            <button class="table-action table-action--delete" data-action="delete-zone" data-id="${z.id}">Eliminar</button>
+          </div>
+        </td>
+      `;
+      tablaZonasBody.appendChild(tr);
+    });
+  }
 
+  tablaZonasSinAreaBody.innerHTML = '';
+  if (!zonasSinAsignar.length) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.className = 'empty-row';
+    emptyRow.innerHTML = '<td colspan="5">No hay zonas pendientes de asignar.</td>';
+    tablaZonasSinAreaBody.appendChild(emptyRow);
+  } else {
+    zonasSinAsignar.forEach(z => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${z.nombre}</td>
+        <td>${z.ancho}×${z.largo}×${z.alto}</td>
+        <td>${parseFloat(z.volumen).toFixed(2)}</td>
+        <td>${z.tipo_almacenamiento}</td>
+        <td>
+          <div class="table-actions">
+            <button class="table-action table-action--edit" data-action="edit-zone" data-id="${z.id}">Editar</button>
+            <button class="table-action table-action--delete" data-action="delete-zone" data-id="${z.id}">Eliminar</button>
+          </div>
+        </td>
+      `;
+      tablaZonasSinAreaBody.appendChild(tr);
+    });
+  }
 }
 
 async function editArea(id) {
@@ -219,8 +267,7 @@ async function editArea(id) {
   const res = await fetch(`${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`);
   const a   = await res.json();
   // 2) Mostrar form y rellenar
-  formArea.classList.remove('d-none');
-  formZona.classList.add('d-none');
+  activarFormulario('area');
   areaNombre.value = a.nombre;
   areaDesc.value   = a.descripcion;
   areaLargo.value  = a.largo;
@@ -233,8 +280,7 @@ async function editArea(id) {
 async function editZone(id) {
   const res = await fetch(`${API_BASE}/guardar_zonas.php?id=${id}&empresa_id=${EMP_ID}`);
   const z   = await res.json();
-  formZona.classList.remove('d-none');
-  formArea.classList.add('d-none');
+  activarFormulario('zona');
   zonaNombre.value = z.nombre;
   zonaDesc.value   = z.descripcion;
   zonaLargo.value  = z.largo;
@@ -277,7 +323,7 @@ formZona.addEventListener('submit', async e => {
       formZona.reset();
       calcularVolumenZona();
       editZoneId = null;
-      formZona.classList.add('d-none');
+      activarFormulario('zona');
       await renderZonas();
       await renderAreas();
     } else {
@@ -349,39 +395,43 @@ async function deleteZone(id) {
 
   // —————— Botones de alternar vista ——————
   areaBtn.addEventListener('click', () => {
-    formArea.classList.remove('d-none');
-    formZona.classList.add('d-none');
+    activarFormulario('area');
     renderAreas();
   });
   zonaBtn.addEventListener('click', () => {
-    formZona.classList.remove('d-none');
-    formArea.classList.add('d-none');
+    activarFormulario('zona');
     renderAreas();
     renderZonas();
   });
 
 // Áreas: editar / borrar
 tablaAreasBody.addEventListener('click', e => {
-  const id = e.target.dataset.id;
-  if (!id) return;
-  if (e.target.matches('.btn-edit-area'))  editArea(id);
-  if (e.target.matches('.btn-delete-area')) deleteArea(id);
+  const button = e.target.closest('.table-action');
+  if (!button) return;
+  const { id, action } = button.dataset;
+  if (!id || !action) return;
+  if (action === 'edit-area')  editArea(id);
+  if (action === 'delete-area') deleteArea(id);
 });
 
 // Zonas: editar / borrar
 tablaZonasBody.addEventListener('click', e => {
-  const id = e.target.dataset.id;
-  if (!id) return;
-  if (e.target.matches('.btn-edit-zone'))  editZone(id);
-  if (e.target.matches('.btn-delete-zone')) deleteZone(id);
+  const button = e.target.closest('.table-action');
+  if (!button) return;
+  const { id, action } = button.dataset;
+  if (!id || !action) return;
+  if (action === 'edit-zone')  editZone(id);
+  if (action === 'delete-zone') deleteZone(id);
 });
 
 // Zonas sin asignar: editar / borrar
 tablaZonasSinAreaBody.addEventListener('click', e => {
-  const id = e.target.dataset.id;
-  if (!id) return;
-  if (e.target.matches('.btn-edit-zone'))  editZone(id);
-  if (e.target.matches('.btn-delete-zone')) deleteZone(id);
+  const button = e.target.closest('.table-action');
+  if (!button) return;
+  const { id, action } = button.dataset;
+  if (!id || !action) return;
+  if (action === 'edit-zone')  editZone(id);
+  if (action === 'delete-zone') deleteZone(id);
 });
 
   // —————— Eventos de volumen en vivo ——————
@@ -389,6 +439,7 @@ tablaZonasSinAreaBody.addEventListener('click', e => {
   formZona.addEventListener('input', calcularVolumenZona);
 
   // —————— Inicialización ——————
+  activarFormulario('area');
   llenarTipos();
   calcularVolumenArea();
   calcularVolumenZona();
