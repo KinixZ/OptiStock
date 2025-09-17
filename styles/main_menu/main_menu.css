@@ -900,6 +900,11 @@ img {
     .topbar {
         left: 0;
         padding: 0 24px;
+    }
+
+    .content {
+        margin-left: 0;
+    }
 }
 
 /* Modal */
@@ -963,11 +968,15 @@ img {
         width: 240px;
     }
 
-    .topbar {
+    .content {
+        margin-left: 0;
+    }
+
+    body.sidebar-open .topbar {
         left: 240px;
     }
 
-    .content {
+    body.sidebar-open .content {
         margin-left: 240px;
     }
 
