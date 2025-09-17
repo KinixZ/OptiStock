@@ -373,13 +373,6 @@ const tutorialSteps = [
         element: document.querySelector('.sidebar-menu a[data-page="admin_usuar/administracion_usuarios.html"]')
     },
     {
-        title: "Dashboard Principal",
-        content: "Aquí encontrarás un resumen visual de las métricas más importantes: productos con stock bajo, movimientos recientes y accesos de empleados.",
-        element: document.querySelector('.dashboard-grid'),
-        centerCard: true,
-        preventScroll: true
-    },
-    {
         title: "Generación de Reportes",
         content: "Crea reportes detallados de inventario, movimientos y cualquier otra información relevante para la toma de decisiones.",
         element: document.querySelector('.sidebar-menu a[data-page="reports/reportes.html"]')
