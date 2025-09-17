@@ -1,28 +1,4 @@
-:root {
-    --page-bg: #f5f6fb;
-    --card-bg: #ffffff;
-    --border-color: #e7e9f5;
-    --text-color: #1f2937;
-    --muted-color: #6b7280;
-    --primary-color: #7056ff;
-    --primary-soft: rgba(112, 86, 255, 0.08);
-    --accent-color: #00c4cc;
-    --danger-color: #ff6b6b;
-    --warning-color: #f7b500;
-    --success-color: #16a34a;
-    --shadow-soft: 0 18px 40px -28px rgba(14, 20, 56, 0.55);
-    --radius-md: 16px;
-    --radius-lg: 22px;
-    --radius-pill: 999px;
-    --font-main: "Poppins", sans-serif;
-    --sidebar-color: #171f34;
-    --topbar-color: linear-gradient(90deg, #0fb4d4 0%, #ff6f91 45%, #ff9671 100%);
-    --sidebar-text-color: #ffffff;
-    --topbar-text-color: #ffffff;
-    --sidebar-width: 280px;
-    --topbar-height: 74px;
-    --transition-speed: 0.3s;
-}
+@import url("../theme/palette.css");
 
 * {
     margin: 0;
@@ -321,7 +297,7 @@ img {
 }
 
 .dropdown-item:hover {
-    background: rgba(112, 86, 255, 0.08);
+    background: var(--primary-surface-extra);
 }
 
 .user-profile .dropdown:hover .dropdown-menu,
@@ -348,38 +324,12 @@ img {
 
 .page-header {
     position: relative;
-    background: linear-gradient(135deg, #dff3ff 0%, #f1e5ff 50%, #ffe3f1 100%);
+    background: var(--header-gradient);
     border-radius: var(--radius-lg);
     padding: clamp(1.8rem, 3vw, 2.6rem);
     border: none;
     box-shadow: 0 35px 65px -45px rgba(15, 40, 65, 0.45);
     overflow: hidden;
-}
-
-.page-header::before,
-.page-header::after {
-    content: "";
-    position: absolute;
-    border-radius: 40%;
-    filter: blur(0.4px);
-    opacity: 0.45;
-    pointer-events: none;
-}
-
-.page-header::before {
-    width: 260px;
-    height: 260px;
-    background: radial-gradient(circle, rgba(255, 111, 145, 0.35) 0%, transparent 65%);
-    top: -110px;
-    right: -80px;
-}
-
-.page-header::after {
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle, rgba(15, 180, 212, 0.38) 0%, transparent 70%);
-    bottom: -140px;
-    left: -120px;
 }
 
 .header-eyebrow {
@@ -537,22 +487,22 @@ img {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), #8a75ff);
+    background: var(--primary-color);
     color: #fff;
 }
 
 .btn-success {
-    background: linear-gradient(135deg, var(--success-color), #22c55e);
+    background: var(--success-color);
     color: #fff;
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--danger-color), #f87171);
+    background: var(--danger-color);
     color: #fff;
 }
 
 .btn-warning {
-    background: linear-gradient(135deg, var(--warning-color), #ff8f00);
+    background: var(--warning-color);
     color: #fff;
 }
 
@@ -624,7 +574,7 @@ img {
 }
 
 .card-action-btn {
-    background: rgba(112, 86, 255, 0.08);
+    background: var(--primary-surface-extra);
     border: none;
     color: var(--primary-color);
     width: 38px;
@@ -636,7 +586,7 @@ img {
 
 .card-action-btn:hover {
     transform: translateY(-2px);
-    background: rgba(112, 86, 255, 0.16);
+    background: rgba(255, 111, 145, 0.16);
 }
 
 /* Lists */
@@ -702,7 +652,7 @@ img {
     height: 44px;
     border-radius: 50%;
     border-radius: 16px;
-    background: rgba(112, 86, 255, 0.12);
+    background: var(--primary-surface);
     color: var(--primary-color);
     display: flex;
     align-items: center;
@@ -745,7 +695,7 @@ img {
 
 .empty-state i {
     font-size: 2rem;
-    color: rgba(112, 86, 255, 0.35);
+    color: rgba(255, 111, 145, 0.35);
     margin-bottom: 12px;
 }
 
@@ -758,13 +708,13 @@ img {
 
 @keyframes pulse {
     0% {
-        box-shadow: 0 0 0 0 rgba(112, 86, 255, 0.45);
+        box-shadow: 0 0 0 0 rgba(255, 111, 145, 0.45);
     }
     70% {
-        box-shadow: 0 0 0 18px rgba(112, 86, 255, 0);
+        box-shadow: 0 0 0 18px rgba(255, 111, 145, 0);
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(112, 86, 255, 0);
+        box-shadow: 0 0 0 0 rgba(255, 111, 145, 0);
     }
 }
 
@@ -863,7 +813,7 @@ img {
 }
 
 .tutorial-skip {
-    background: rgba(112, 86, 255, 0.1);
+    background: rgba(255, 111, 145, 0.1);
     color: var(--primary-color);
 }
 
