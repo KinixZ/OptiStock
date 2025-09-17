@@ -37,6 +37,21 @@ body {
     line-height: 1.6;
 }
 
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-speed) ease;
+    z-index: 60;
+}
+
+body.sidebar-open::before {
+    opacity: 1;
+}
+
 img {
     max-width: 100%;
     display: block;
@@ -56,9 +71,8 @@ img {
     z-index: 100;
     display: flex;
     flex-direction: column;
-    transition: width var(--transition-speed) ease, transform var(--transition-speed) ease;
+    transition: transform var(--transition-speed) ease, width var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
     transform: translateX(0);
-    transition: width var(--transition-speed) ease;
     border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
     overflow: hidden;
 }
