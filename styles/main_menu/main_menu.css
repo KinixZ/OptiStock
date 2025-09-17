@@ -324,38 +324,12 @@ img {
 
 .page-header {
     position: relative;
-    background: linear-gradient(135deg, #dff3ff 0%, #f1e5ff 50%, #ffe3f1 100%);
+    background: var(--header-gradient);
     border-radius: var(--radius-lg);
     padding: clamp(1.8rem, 3vw, 2.6rem);
     border: none;
     box-shadow: 0 35px 65px -45px rgba(15, 40, 65, 0.45);
     overflow: hidden;
-}
-
-.page-header::before,
-.page-header::after {
-    content: "";
-    position: absolute;
-    border-radius: 40%;
-    filter: blur(0.4px);
-    opacity: 0.45;
-    pointer-events: none;
-}
-
-.page-header::before {
-    width: 260px;
-    height: 260px;
-    background: radial-gradient(circle, rgba(255, 111, 145, 0.35) 0%, transparent 65%);
-    top: -110px;
-    right: -80px;
-}
-
-.page-header::after {
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle, rgba(15, 180, 212, 0.38) 0%, transparent 70%);
-    bottom: -140px;
-    left: -120px;
 }
 
 .header-eyebrow {
@@ -513,22 +487,22 @@ img {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), #8a75ff);
+    background: var(--primary-color);
     color: #fff;
 }
 
 .btn-success {
-    background: linear-gradient(135deg, var(--success-color), #22c55e);
+    background: var(--success-color);
     color: #fff;
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--danger-color), #f87171);
+    background: var(--danger-color);
     color: #fff;
 }
 
 .btn-warning {
-    background: linear-gradient(135deg, var(--warning-color), #ff8f00);
+    background: var(--warning-color);
     color: #fff;
 }
 

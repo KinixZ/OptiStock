@@ -227,6 +227,7 @@ img {
 }
 
 .panel-card {
+  background: var(--primary-surface);
   background: linear-gradient(180deg, rgba(255, 111, 145, 0.06), rgba(255, 255, 255, 0.95));
   border: 1px solid rgba(255, 111, 145, 0.14);
   border-radius: var(--radius-md);
@@ -316,7 +317,7 @@ img {
 }
 
 .btn.btn-primary {
-  background: linear-gradient(135deg, var(--primary-color), #8c75ff);
+  background: var(--primary-color);
   border: none;
   padding: 0.65rem 1.4rem;
   border-radius: var(--radius-pill);
@@ -326,7 +327,7 @@ img {
 }
 
 .btn.btn-primary:hover {
-  background: linear-gradient(135deg, #8c75ff, var(--primary-color));
+  filter: brightness(1.05);
 }
 
 .btn.btn-secondary {
@@ -509,6 +510,7 @@ img {
   width: 100%;
   min-height: 320px;
   border-radius: var(--radius-md);
+  background: var(--primary-surface);
   background: repeating-linear-gradient(
       135deg,
       rgba(255, 111, 145, 0.08),

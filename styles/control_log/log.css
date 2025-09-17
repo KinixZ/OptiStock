@@ -308,7 +308,7 @@ body {
 .log-table thead th {
   position: sticky;
   top: 0;
-  background: linear-gradient(135deg, var(--primary-color), #8a75ff);
+  background: var(--primary-color);
   color: white;
   font-weight: 600;
   text-align: left;
