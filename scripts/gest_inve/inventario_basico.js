@@ -28,6 +28,23 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
   const subcategoriaFormContainer = document.getElementById('subcategoriaFormContainer');
 
+  const tabButtons = {
+    producto: btnProductos,
+    categoria: btnCategorias,
+    subcategoria: btnSubcategorias
+  };
+
+  const tabContainers = {
+    producto: productoFormContainer,
+    categoria: categoriaFormContainer,
+    subcategoria: subcategoriaFormContainer
+  };
+
+  const resumenProductosEl = document.getElementById('resumenProductos');
+  const resumenCategoriasEl = document.getElementById('resumenCategorias');
+  const resumenCriticosEl = document.getElementById('resumenCriticos');
+  const tablaDescripcionEl = document.getElementById('tablaResumenDescripcion');
+
 async function fetchAPI(url, method = 'GET', data) {
   const options = { method };
   if (data) {
@@ -59,24 +76,74 @@ async function fetchAPI(url, method = 'GET', data) {
   return payload;
 }
 
-  function showToast(message) {
+  function showToast(message, type = 'info') {
+    if (type === 'success' && typeof window.toastOk === 'function') {
+      window.toastOk(message);
+      return;
+    }
+    if (type === 'error' && typeof window.toastError === 'function') {
+      window.toastError(message);
+      return;
+    }
+    if (typeof window.toastInfo === 'function') {
+      window.toastInfo(message);
+      return;
+    }
+
     const toast = document.createElement('div');
-    toast.className = 'toast-message';
+    toast.className = `toast-message toast-${type}`;
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   }
 
+  function actualizarIndicadores() {
+    if (resumenProductosEl) {
+      resumenProductosEl.textContent = productos.length;
+    }
+    if (resumenCategoriasEl) {
+      resumenCategoriasEl.textContent = categorias.length;
+    }
+    if (resumenCriticosEl) {
+      const criticos = productos.filter(p => {
+        const stock = parseInt(p.stock, 10) || 0;
+        const minimo = parseInt(p.stock_minimo, 10);
+        if (Number.isFinite(minimo) && minimo > 0) {
+          return stock <= minimo;
+        }
+        return stock <= 5;
+      }).length;
+      resumenCriticosEl.textContent = criticos;
+    }
+  }
+
   function mostrar(seccion) {
-    productoFormContainer.classList.add('d-none');
-    categoriaFormContainer.classList.add('d-none');
-    subcategoriaFormContainer.classList.add('d-none');
+    Object.values(tabContainers).forEach(container => {
+      if (container) {
+        container.classList.add('d-none');
+      }
+    });
+
+    Object.values(tabButtons).forEach(button => {
+      if (button) {
+        button.classList.remove('active');
+        button.setAttribute('aria-selected', 'false');
+      }
+    });
 
     vistaActual = seccion;
     renderResumen();
-    if (seccion === 'producto') productoFormContainer.classList.remove('d-none');
-    if (seccion === 'categoria') categoriaFormContainer.classList.remove('d-none');
-    if (seccion === 'subcategoria') subcategoriaFormContainer.classList.remove('d-none');
+
+    const activeContainer = tabContainers[seccion];
+    if (activeContainer) {
+      activeContainer.classList.remove('d-none');
+    }
+
+    const activeButton = tabButtons[seccion];
+    if (activeButton) {
+      activeButton.classList.add('active');
+      activeButton.setAttribute('aria-selected', 'true');
+    }
   }
 
   btnProductos.addEventListener('click', () => mostrar('producto'));
@@ -109,6 +176,19 @@ prodCategoria.addEventListener('change', () => {
   let movTipo      = '';
   const qrReader   = document.getElementById('qrReader');
   let qrScanner;
+  const scanModalElement = document.getElementById('scanModal');
+  const scanModal = scanModalElement ? new bootstrap.Modal(scanModalElement) : null;
+
+  scanModalElement?.addEventListener('hidden.bs.modal', async () => {
+    if (qrScanner) {
+      try {
+        await qrScanner.stop();
+      } catch (error) {
+        console.warn('No se pudo detener el escáner', error);
+      }
+    }
+    qrReader?.classList.add('d-none');
+  });
 
 function poblarSelectProductos() {
   movProdSel.innerHTML = '<option value="">Seleccione producto</option>';
@@ -120,43 +200,71 @@ function poblarSelectProductos() {
   });
 }
 
-btnScanQR.addEventListener('click', async () => {
-  if (!navigator.mediaDevices || !isSecureContext) {
-    alert('La cámara no es compatible o se requiere HTTPS/localhost');
+btnScanQR?.addEventListener('click', async () => {
+  if (!navigator.mediaDevices || !window.isSecureContext) {
+    showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
     return;
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
     stream.getTracks().forEach(track => track.stop());
   } catch (e) {
-    alert('Permiso de cámara denegado o no disponible');
+    showToast('Permiso de cámara denegado o no disponible', 'error');
     return;
   }
-  qrReader.classList.remove('d-none');
+
+  if (!scanModal) {
+    showToast('No se pudo abrir el escáner QR', 'error');
+    return;
+  }
+
+  qrReader?.classList.remove('d-none');
   scanModal.show();
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
   }
-  qrScanner.start(
-    { facingMode: { ideal: 'environment' } },
-    { fps: 10, qrbox: 250 },
-    async decodedText => {
-      await qrScanner.stop();
-      qrReader.classList.add('d-none');
-      const productoId = parseInt(decodedText, 10);
-      fetch('../../scripts/php/guardar_movimientos.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
-      })
-      .then(r => r.json())
-      .then(() => alert('Movimiento registrado'))
-      .catch(() => alert('Error al registrar movimiento'));
-    }
-  ).catch(() => {
-    qrReader.classList.add('d-none');
-    alert('Error al iniciar la cámara');
-  });
+
+  qrScanner
+    .start(
+      { facingMode: { ideal: 'environment' } },
+      { fps: 10, qrbox: 250 },
+      async decodedText => {
+        await qrScanner.stop();
+        qrReader?.classList.add('d-none');
+        scanModal?.hide();
+
+        const productoId = parseInt(decodedText, 10);
+        if (!Number.isFinite(productoId)) {
+          showToast('Código QR no reconocido', 'error');
+          return;
+        }
+
+        try {
+          const response = await fetch('../../scripts/php/guardar_movimientos.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al registrar movimiento');
+          }
+
+          await response.json();
+          await cargarProductos();
+          renderResumen();
+          showToast('Movimiento registrado', 'success');
+        } catch (error) {
+          console.error(error);
+          showToast('Error al registrar movimiento', 'error');
+        }
+      }
+    )
+    .catch(() => {
+      qrReader?.classList.add('d-none');
+      scanModal?.hide();
+      showToast('Error al iniciar la cámara', 'error');
+    });
 });
 
  btnIngreso.addEventListener('click', () => {
@@ -218,21 +326,23 @@ function actualizarSelectZonas() {
   async function cargarCategorias() {
     categorias.length = 0;
     const datos = await fetchAPI(
-    `${API.categorias}?empresa_id=${EMP_ID}`
-  );
+      `${API.categorias}?empresa_id=${EMP_ID}`
+    );
     datos.forEach(c => categorias.push(c));
     actualizarSelectCategorias();
+    actualizarIndicadores();
   }
 
   async function cargarSubcategorias() {
-  subcategorias.length = 0;
-  const datos = await fetchAPI(
-    `${API.subcategorias}?empresa_id=${EMP_ID}`
-  );
-  datos.forEach(s => subcategorias.push(s));
-  // Al iniciar, ninguna categoría está elegida → sólo placeholder
-  actualizarSelectSubcategorias(null);
-}
+    subcategorias.length = 0;
+    const datos = await fetchAPI(
+      `${API.subcategorias}?empresa_id=${EMP_ID}`
+    );
+    datos.forEach(s => subcategorias.push(s));
+    // Al iniciar, ninguna categoría está elegida → sólo placeholder
+    actualizarSelectSubcategorias(null);
+    actualizarIndicadores();
+  }
 
 async function cargarZonas() {
    zonas.length = 0;
@@ -245,7 +355,7 @@ movGuardar.addEventListener('click', async () => {
   const prodId = parseInt(movProdSel.value, 10);
   const qty    = parseInt(movCant.value, 10);
   if (!prodId || qty <= 0) {
-    alert('Selecciona un producto y cantidad válida');
+    showToast('Selecciona un producto y una cantidad válida', 'error');
     return;
   }
   // POST a nuevo endpoint
@@ -258,16 +368,16 @@ movGuardar.addEventListener('click', async () => {
     movModal.hide();
     await cargarProductos();
     renderResumen();
-    showToast(`Movimiento ${movTipo} registrado`);
+    showToast(`Movimiento ${movTipo} registrado`, 'success');
   } catch (err) {
     console.error(err);
-    showToast('Error al registrar movimiento: ' + err.message);
+    showToast('Error al registrar movimiento: ' + err.message, 'error');
   }
 });
 
   async function cargarProductos() {
-     productos.length = 0;
-  const datos = await fetchAPI(`${API.productos}?empresa_id=${EMP_ID}`);
+    productos.length = 0;
+    const datos = await fetchAPI(`${API.productos}?empresa_id=${EMP_ID}`);
     datos.forEach(p => {
       // Asegurarnos que son números
       const x = parseFloat(p.dim_x) || 0;
@@ -276,16 +386,34 @@ movGuardar.addEventListener('click', async () => {
       // Calcular volumen en cm³
       const volumen = x * y * z;
       // Formatear con dos decimales, o vacío si falta algún dato
-      p.volumen = (volumen > 0)
-        ? volumen.toFixed(2) + ' cm³'
-        : '';
+      p.volumen = volumen > 0 ? volumen.toFixed(2) + ' cm³' : '';
       productos.push(p);
     });
+    actualizarIndicadores();
   }
 
   function renderResumen() {
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
+
+    if (tablaDescripcionEl) {
+      if (vistaActual === 'producto') {
+        const count = productos.length;
+        tablaDescripcionEl.textContent = count
+          ? `${count} producto${count === 1 ? '' : 's'} registrados`
+          : 'Sin productos disponibles';
+      } else if (vistaActual === 'categoria') {
+        const count = categorias.length;
+        tablaDescripcionEl.textContent = count
+          ? `${count} categoría${count === 1 ? '' : 's'} disponibles`
+          : 'Sin categorías registradas';
+      } else {
+        const count = subcategorias.length;
+        tablaDescripcionEl.textContent = count
+          ? `${count} subcategoría${count === 1 ? '' : 's'} registradas`
+          : 'Sin subcategorías registradas';
+      }
+    }
 
 if (vistaActual === 'producto') {
   tablaHead.innerHTML = `
@@ -374,14 +502,19 @@ const sub = p.subcategoria_nombre || '';
         tablaResumen.appendChild(tr);
       });
     }
+
+    actualizarIndicadores();
   }
 
 catForm.addEventListener('submit', async e => {
   e.preventDefault();
   // 1) Leer campos
-  const nombre      = document.getElementById('catNombre').value.trim();
+  const nombre = document.getElementById('catNombre').value.trim();
   const descripcion = document.getElementById('catDescripcion').value.trim();
-  if (!nombre) { alert('El nombre es obligatorio'); return; }
+  if (!nombre) {
+    showToast('El nombre es obligatorio', 'error');
+    return;
+  }
 
   // 2) Payload con empresa
   const payload = { nombre, descripcion, empresa_id: EMP_ID };
@@ -394,14 +527,14 @@ catForm.addEventListener('submit', async e => {
         'PUT',
         payload
       );
-      showToast('Categoría editada correctamente');
+      showToast('Categoría editada correctamente', 'success');
     } else {
       await fetchAPI(
         `${API.categorias}?empresa_id=${EMP_ID}`,
         'POST',
         payload
       );
-      showToast('Categoría guardada correctamente');
+      showToast('Categoría guardada correctamente', 'success');
     }
 
     // 4) Reset y recarga
@@ -410,7 +543,7 @@ catForm.addEventListener('submit', async e => {
 
   } catch (err) {
     console.error(err);
-    showToast('Error guardando categoría: ' + err.message);
+    showToast('Error guardando categoría: ' + err.message, 'error');
   }
 });
 
@@ -418,11 +551,17 @@ catForm.addEventListener('submit', async e => {
 subcatForm.addEventListener('submit', async e => {
   e.preventDefault();
   // 1) Leer campos
-const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
-const nombre       = document.getElementById('subcatNombre').value.trim();
-const descripcion  = document.getElementById('subcatDescripcion').value.trim();
-if (!categoria_id) { alert('Selecciona una categoría'); return; }
-if (!nombre)       { alert('El nombre es obligatorio');     return; }
+  const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
+  const nombre = document.getElementById('subcatNombre').value.trim();
+  const descripcion = document.getElementById('subcatDescripcion').value.trim();
+  if (!categoria_id) {
+    showToast('Selecciona una categoría', 'error');
+    return;
+  }
+  if (!nombre) {
+    showToast('El nombre es obligatorio', 'error');
+    return;
+  }
   // 2) Payload con empresa
   const payload = { categoria_id, nombre, descripcion, empresa_id: EMP_ID };
 
@@ -434,14 +573,14 @@ if (!nombre)       { alert('El nombre es obligatorio');     return; }
         'PUT',
         payload
       );
-      showToast('Subcategoría editada correctamente');
+      showToast('Subcategoría editada correctamente', 'success');
     } else {
       await fetchAPI(
         `${API.subcategorias}?empresa_id=${EMP_ID}`,
         'POST',
         payload
       );
-      showToast('Subcategoría guardada correctamente');
+      showToast('Subcategoría guardada correctamente', 'success');
     }
 
     // 4) Reset y recarga
@@ -450,7 +589,7 @@ if (!nombre)       { alert('El nombre es obligatorio');     return; }
 
   } catch (err) {
     console.error(err);
-    showToast('Error guardando subcategoría: ' + err.message);
+    showToast('Error guardando subcategoría: ' + err.message, 'error');
   }
 });
 
@@ -471,11 +610,11 @@ prodForm.addEventListener('submit', async e => {
 
     // Validaciones mínimas
     if (!nombre) {
-      alert('El nombre es obligatorio');
+      showToast('El nombre es obligatorio', 'error');
       return;
     }
     if (!categoria_id) {
-      alert('Selecciona una categoría');
+      showToast('Selecciona una categoría', 'error');
       return;
     }
 
@@ -491,7 +630,7 @@ if (editProdId) {
     'PUT',
     {...data, empresa_id: EMP_ID}
   );
-  showToast('Producto editado correctamente');
+  showToast('Producto editado correctamente', 'success');
   editProdId = null;
 } else {
   // POST con filtro por empresa
@@ -500,7 +639,7 @@ if (editProdId) {
     'POST',
     {...data, empresa_id: EMP_ID}
   );
-  showToast('Producto guardado correctamente');
+  showToast('Producto guardado correctamente', 'success');
 }
 
       // 3) Reset y recarga de datos
@@ -511,7 +650,7 @@ if (editProdId) {
 
     } catch (err) {
       console.error(err);
-      showToast('Error al guardar producto: ' + err.message);
+      showToast('Error al guardar producto: ' + err.message, 'error');
     }
   });
 
@@ -671,7 +810,7 @@ if (accion === 'del') {
     await cargarProductos();
     await cargarZonas();
     renderResumen();
-    showToast('Resumen recargado');
+    showToast('Resumen recargado', 'info');
   });
 
   (async function init() {
