@@ -420,12 +420,8 @@ img {
     position: relative;
     z-index: 1;
     margin-top: 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: flex-start;
+    display: grid;
+    gap: clamp(1.25rem, 2.5vw, 2rem);
 }
 
 .header-stats {
@@ -491,6 +487,10 @@ img {
     width: 100%;
     align-items: flex-start;
     min-width: 260px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: var(--radius-md);
+    padding: 1.2rem 1.4rem;
+    box-shadow: 0 24px 48px -38px rgba(31, 37, 56, 0.5);
 }
 
 .actions-title {
@@ -507,6 +507,18 @@ img {
     flex-wrap: wrap;
     gap: 0.75rem;
     width: 100%;
+}
+
+@media (min-width: 992px) {
+    .header-bottom {
+        grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr);
+        align-items: stretch;
+    }
+
+    .header-actions {
+        align-self: stretch;
+        justify-content: space-between;
+    }
 }
 
 .btn {
