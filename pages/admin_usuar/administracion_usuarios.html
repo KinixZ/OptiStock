@@ -20,27 +20,36 @@
         Supervisa y controla a los colaboradores de tu empresa desde un panel moderno inspirado en el registro de actividades.
       </p>
 
-      <div class="header-bottom">
-        <div class="header-stats">
-          <div class="stat-card">
-            <span class="stat-label">Usuarios activos</span>
-            <strong class="stat-value" id="totalUsuarios">0</strong>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Roles registrados</span>
-            <strong class="stat-value" id="totalRoles">0</strong>
-          </div>
+      <div class="header-main">
+        <div class="header-highlights">
+          <article class="highlight-card">
+            <span class="card-label">Usuarios activos</span>
+            <span class="card-title" id="totalUsuarios">0</span>
+            <span class="card-subtitle">Colaboradores registrados en la empresa</span>
+          </article>
+          <article class="highlight-card">
+            <span class="card-label">Roles registrados</span>
+            <span class="card-title" id="totalRoles">0</span>
+            <span class="card-subtitle">Perfiles configurados para tu equipo</span>
+          </article>
+          <article class="highlight-card highlight-card--muted">
+            <span class="card-label">Última actualización</span>
+            <span class="card-meta" id="ultimaActualizacion">—</span>
+            <span class="card-subtitle">Fecha y hora del último registro</span>
+          </article>
         </div>
 
-        <a href="../admin_usuar/registro_usuario_empresa.html" class="cta-button">
-          <span class="cta-button__icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </span>
-          <span class="cta-button__label">Crear nuevo usuario</span>
-        </a>
+        <div class="header-cta">
+          <a href="../admin_usuar/registro_usuario_empresa.html" class="cta-button">
+            <span class="cta-button__icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </span>
+            <span class="cta-button__label">Crear nuevo usuario</span>
+          </a>
+        </div>
       </div>
     </section>
 
