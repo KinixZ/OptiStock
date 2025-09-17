@@ -751,10 +751,19 @@ img {
     border-radius: var(--radius-lg);
     padding: 32px;
     max-width: 480px;
+    width: min(480px, calc(100vw - 40px));
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
     box-shadow: var(--shadow-soft);
     pointer-events: auto;
     position: absolute;
     animation: fadeIn 0.3s ease;
+}
+
+@media (max-width: 480px) {
+    .tutorial-card {
+        padding: 24px;
+    }
 }
 
 @keyframes fadeIn {

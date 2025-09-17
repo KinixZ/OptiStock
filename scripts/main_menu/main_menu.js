@@ -343,46 +343,51 @@ const tutorialSteps = [
     {
         title: "Bienvenido a OPTISTOCK",
         content: "Este tutorial te guiará por las principales funciones del sistema. OPTISTOCK es una solución completa para la gestión de almacenes que te ayudará a optimizar tus operaciones.",
-        element: null
+        selector: null
     },
     {
         title: "Funciones Rápidas Flash",
         content: "Los botones 'Ingreso Flash' y 'Egreso Flash' te permiten registrar movimientos de productos ya existentes de manera rápida mediante escaneo de códigos QR o barras.",
-        element: document.querySelector('.quick-actions')
+        selector: '.quick-actions'
     },
     {
         title: "Áreas y Zonas de Almacén",
         content: "Desde este módulo podrás gestionar todas las áreas y zonas de tu almacén, asignar ubicaciones y configurar la distribución física de tus productos.",
+        selector: '.sidebar-menu a[data-page="area_almac_v2/gestion_areas_zonas.html"]'
         element: document.querySelector('.sidebar-menu a[data-page="area_almac_v2/gestion_areas_zonas.html"]')
     },
     {
         title: "Gestión de Inventario",
         content: "El corazón del sistema. Aquí podrás registrar nuevos productos, actualizar existencias, realizar transferencias y gestionar todo tu inventario de manera eficiente.",
-        element: document.querySelector('.sidebar-menu a[data-page="gest_inve/inventario_basico.html"]')
+        selector: '.sidebar-menu a[data-page="gest_inve/inventario_basico.html"]'
     },
     {
         title: "Administración de Usuarios",
         content: "Gestiona los accesos, permisos y roles de todos los usuarios del sistema. Asigna responsabilidades y controla quién puede realizar cada operación.",
+        selector: '.sidebar-menu a[data-page="admin_usuar/administracion_usuarios.html"]'
         element: document.querySelector('.sidebar-menu a[data-page="admin_usuar/administracion_usuarios.html"]')
     },
     {
         title: "Dashboard Principal",
         content: "Aquí encontrarás un resumen visual de las métricas más importantes: productos con stock bajo, movimientos recientes y accesos de empleados.",
-        element: document.querySelector('.dashboard-grid')
+        selector: '.dashboard-grid'
     },
     {
         title: "Generación de Reportes",
         content: "Crea reportes detallados de inventario, movimientos y cualquier otra información relevante para la toma de decisiones.",
+        selector: '.sidebar-menu a[data-page="reports/reportes.html"]'
         element: document.querySelector('.sidebar-menu a[data-page="reports/reportes.html"]')
     },
     {
         title: "Personalización",
         content: "Como administrador, puedes personalizar el sistema cambiando colores, reorganizando accesos rápidos y adaptando la interfaz a las necesidades de tu empresa.",
+        selector: '.sidebar-footer .btn'
         element: document.querySelector('.sidebar-footer .btn')
     },
     {
         title: "¡Todo listo!",
         content: "Has recorrido las funciones principales de OPTISTOCK. Pulsa \"Finalizar\" para cerrar el tutorial y empezar a utilizar la plataforma.",
+        selector: null
         element: null
     }
 ];
@@ -399,6 +404,18 @@ const nextTutorial = document.getElementById('nextTutorial');
 const skipTutorial = document.getElementById('skipTutorial');
 const closeTutorial = document.getElementById('closeTutorial');
 let tutorialHole = null;
+let currentStepTarget = null;
+let layoutRafId = null;
+let autoScrollTimeout = null;
+
+function isTutorialVisible() {
+    return tutorialOverlayBg && tutorialOverlayBg.style.display === 'block';
+}
+
+function needsAutoScroll(rect) {
+    const padding = 32;
+    return rect.top < padding || rect.bottom > window.innerHeight - padding;
+}
 
 // Show tutorial only the first time each user logs in
 function checkFirstVisit() {
@@ -412,9 +429,11 @@ function checkFirstVisit() {
 // Start the tutorial
 function startTutorial() {
     currentStep = 0;
-    showTutorialStep(currentStep);
     tutorialOverlayBg.style.display = 'block';
     tutorialCardContainer.style.display = 'flex';
+    requestAnimationFrame(() => {
+        showTutorialStep(currentStep);
+    });
 }
 
 // Show specific tutorial step
@@ -426,6 +445,19 @@ function showTutorialStep(step) {
 
     currentStep = step;
     const stepData = tutorialSteps[step];
+
+    tutorialTitle.textContent = stepData.title;
+    tutorialContent.innerHTML = `<p>${stepData.content}</p>`;
+    tutorialIndicator.textContent = `Paso ${step + 1} de ${tutorialSteps.length}`;
+    nextTutorial.textContent = step === tutorialSteps.length - 1 ? 'Finalizar' : 'Siguiente';
+
+    tutorialCard.style.transform = 'none';
+    tutorialCard.style.top = '';
+    tutorialCard.style.left = '';
+    tutorialCard.style.right = '';
+    tutorialCard.style.bottom = '';
+    tutorialCard.style.width = '';
+
 
     // Update content
     tutorialTitle.textContent = stepData.title;
@@ -451,12 +483,88 @@ function showTutorialStep(step) {
         el.classList.remove('tutorial-spotlight');
     });
 
-    // Remove previous hole
     if (tutorialHole) {
         tutorialHole.remove();
         tutorialHole = null;
     }
 
+    currentStepTarget = null;
+    if (stepData.selector) {
+        const target = document.querySelector(stepData.selector);
+        if (target) {
+            currentStepTarget = target;
+            target.classList.add('tutorial-spotlight');
+        }
+    }
+
+    const autoScroll = currentStepTarget ? needsAutoScroll(currentStepTarget.getBoundingClientRect()) : false;
+    scheduleTutorialLayoutUpdate(autoScroll);
+}
+
+function scheduleTutorialLayoutUpdate(shouldScroll = false) {
+    if (!isTutorialVisible()) return;
+
+    if (layoutRafId) {
+        cancelAnimationFrame(layoutRafId);
+    }
+    if (autoScrollTimeout) {
+        clearTimeout(autoScrollTimeout);
+        autoScrollTimeout = null;
+    }
+
+    layoutRafId = requestAnimationFrame(() => {
+        layoutRafId = null;
+        updateTutorialLayout();
+
+        if (shouldScroll && currentStepTarget) {
+            currentStepTarget.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'center'
+            });
+            autoScrollTimeout = window.setTimeout(() => {
+                updateTutorialLayout();
+                autoScrollTimeout = null;
+            }, 360);
+        }
+    });
+}
+
+function updateTutorialLayout() {
+    if (!isTutorialVisible()) return;
+
+    if (!currentStepTarget || !document.body.contains(currentStepTarget)) {
+        currentStepTarget = null;
+    }
+
+    const viewportPadding = 20;
+    const cardRect = tutorialCard.getBoundingClientRect();
+    const fallbackWidth = Math.min(480, Math.max(window.innerWidth - viewportPadding * 2, 0));
+    const cardWidth = cardRect.width || (fallbackWidth > 0 ? fallbackWidth : 320);
+    const availableHeight = Math.max(window.innerHeight - viewportPadding * 2, 160);
+    const cardHeight = Math.min(cardRect.height || availableHeight, availableHeight);
+
+    if (currentStepTarget) {
+        const rect = currentStepTarget.getBoundingClientRect();
+
+        if (!tutorialHole) {
+            tutorialHole = document.createElement('div');
+            tutorialHole.className = 'tutorial-hole';
+            tutorialOverlayBg.appendChild(tutorialHole);
+        }
+
+        if (rect.width === 0 && rect.height === 0) {
+            tutorialHole.remove();
+            tutorialHole = null;
+            currentStepTarget.classList.remove('tutorial-spotlight');
+            currentStepTarget = null;
+            tutorialCard.style.top = '50%';
+            tutorialCard.style.left = '50%';
+            tutorialCard.style.transform = 'translate(-50%, -50%)';
+            return;
+        }
+
+        tutorialHole.style.display = 'block';
     // Highlight element if specified
     if (stepData.element) {
         // Add spotlight class to element
@@ -470,6 +578,21 @@ function showTutorialStep(step) {
         tutorialHole.style.height = `${rect.height}px`;
         tutorialHole.style.left = `${rect.left}px`;
         tutorialHole.style.top = `${rect.top}px`;
+
+        let cardTop = rect.bottom + viewportPadding;
+        const maxTop = window.innerHeight - viewportPadding - cardHeight;
+        if (cardTop > maxTop) {
+            cardTop = rect.top - cardHeight - viewportPadding;
+        }
+        cardTop = Math.max(viewportPadding, Math.min(cardTop, maxTop));
+
+        let cardLeft = rect.left + (rect.width / 2) - (cardWidth / 2);
+        const maxLeft = window.innerWidth - viewportPadding - cardWidth;
+        cardLeft = Math.max(viewportPadding, Math.min(cardLeft, maxLeft));
+
+        tutorialCard.style.top = `${Math.round(cardTop)}px`;
+        tutorialCard.style.left = `${Math.round(cardLeft)}px`;
+        tutorialCard.style.transform = 'none';
         tutorialOverlayBg.appendChild(tutorialHole);
 
         // Position card near the element
@@ -511,7 +634,10 @@ function showTutorialStep(step) {
             });
         }, 300);
     } else {
-        // Center card for introductory steps
+        if (tutorialHole) {
+            tutorialHole.remove();
+            tutorialHole = null;
+        }
         tutorialCard.style.top = '50%';
         tutorialCard.style.left = '50%';
         tutorialCard.style.transform = 'translate(-50%, -50%)';
@@ -529,6 +655,24 @@ function endTutorial() {
         tutorialHole.remove();
         tutorialHole = null;
     }
+    if (layoutRafId) {
+        cancelAnimationFrame(layoutRafId);
+        layoutRafId = null;
+    }
+    if (autoScrollTimeout) {
+        clearTimeout(autoScrollTimeout);
+        autoScrollTimeout = null;
+    }
+
+    currentStepTarget = null;
+
+    tutorialCard.style.transform = 'none';
+    tutorialCard.style.top = '';
+    tutorialCard.style.left = '';
+    tutorialCard.style.right = '';
+    tutorialCard.style.bottom = '';
+    tutorialCard.style.width = '';
+
     const userId = localStorage.getItem('usuario_id');
     if (userId) {
         localStorage.setItem(`tutorialShown_${userId}`, 'true');
@@ -548,14 +692,14 @@ window.addEventListener('DOMContentLoaded', checkFirstVisit);
 
 // Reposition tutorial elements when the viewport changes
 window.addEventListener('resize', () => {
-    if (tutorialOverlayBg.style.display === 'block') {
-        showTutorialStep(currentStep);
+    if (isTutorialVisible()) {
+        scheduleTutorialLayoutUpdate();
     }
 });
 
 window.addEventListener('scroll', () => {
-    if (tutorialOverlayBg.style.display === 'block') {
-        showTutorialStep(currentStep);
+    if (isTutorialVisible()) {
+        scheduleTutorialLayoutUpdate();
     }
 }, true);
 
