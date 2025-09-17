@@ -21,8 +21,8 @@
   <link rel="stylesheet" href="../../styles/account_suscrip/account_suscrip.css" />
 </head>
 <body>
-  <div class="account-page container-fluid py-4 px-3 px-md-4">
-    <section class="page-header">
+  <main class="account-page container-fluid py-4 px-3 px-md-4">
+    <header class="page-header">
       <span class="header-eyebrow">Centro de control</span>
       <h1 class="header-title">Configuración de cuenta</h1>
       <p class="header-description">
@@ -40,9 +40,6 @@
                 alt="Foto de perfil"
                 width="84"
                 height="84"
-                width="80"
-                height="80"
-
               />
             </div>
             <div class="profile-card__info">
@@ -63,9 +60,6 @@
                 alt="Logo de la empresa"
                 width="92"
                 height="92"
-                width="56"
-                height="56"
-
               />
             </div>
             <div class="company-card__info">
@@ -91,13 +85,14 @@
           </ul>
         </article>
       </div>
-    </section>
+    </header>
 
-    <section class="account-panel">
-      <nav class="account-menu">
-        <span class="menu-eyebrow">Secciones</span>
-        <ul>
-          <li class="active" data-target="secUser">
+    <div class="account-layout">
+      <aside class="account-sidebar">
+        <nav class="account-menu" aria-label="Secciones de cuenta">
+          <span class="menu-eyebrow">Secciones</span>
+          <ul>
+            <li class="active" data-target="secUser">
             <span class="menu-icon" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                 <circle cx="12" cy="8" r="4"></circle>
@@ -150,8 +145,9 @@
           </li>
         </ul>
       </nav>
+      </aside>
 
-      <div class="account-content">
+      <div class="account-main">
         <section id="secUser" class="account-section active">
           <header class="section-header">
             <span class="section-eyebrow">Perfil</span>
@@ -206,9 +202,6 @@
                 alt="Logo de la empresa"
                 width="112"
                 height="112"
-                width="72"
-                height="72"
-
               />
             </div>
             <div class="company-summary__info">
@@ -233,25 +226,6 @@
         </section>
 
         <section id="secSuscripcion" class="account-section">
-          <span class="fw-bold d-block mb-2">Suscripción actual</span>
-
-          <div class="subscription-card">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="fw-bold">Estado:</span>
-              <span id="subscriptionStatusBadge" class="badge rounded-pill bg-secondary">Inactivo (0)</span>
-            </div>
-            <p class="mb-1"><strong>Última renovación:</strong> <span id="subscriptionLastRenewal">-</span></p>
-            <p class="mb-0"><strong>Próxima renovación:</strong> <span id="subscriptionNextRenewal">-</span></p>
-          </div>
-
-          <div id="subscriptionMessage" class="alert alert-warning d-none mt-3" role="alert"></div>
-
-          <div class="subscription-actions mt-3">
-            <button class="btn btn-success" id="btnSubscriptionToggle">Activar suscripción</button>
-            <button class="btn btn-outline-primary" id="btnSubscriptionRenew">Renovar por un mes</button>
-          </div>
-
-          <p class="subscription-note text-muted mt-2">Esta suscripción se guarda en este navegador y cambia el estado entre 0 (inactivo) y 1 (activo). Renueva cada mes con un solo clic.</p>
           <header class="section-header">
             <span class="section-eyebrow">Suscripción</span>
             <h2 class="section-title">Plan y facturación</h2>
@@ -260,19 +234,43 @@
             </p>
           </header>
 
-          <div class="plan-overview">
-            <div>
-              <span class="info-label">Plan actual</span>
-              <strong class="info-value" data-field="planActual">Gratuito</strong>
-            </div>
-            <div>
-              <span class="info-label">Renovación</span>
-              <strong class="info-value" data-field="fechaRenovacion">—</strong>
-            </div>
-            <div>
-              <span class="info-label">Método de pago</span>
-              <strong class="info-value" data-field="metodoPago">—</strong>
-            </div>
+          <div class="subscription-grid">
+            <article class="subscription-card">
+              <header class="subscription-card__header">
+                <span class="subscription-card__title">Suscripción actual</span>
+                <span id="subscriptionStatusBadge" class="badge rounded-pill bg-secondary">Inactivo (0)</span>
+              </header>
+              <dl class="subscription-card__details">
+                <div class="subscription-card__row">
+                  <dt>Última renovación</dt>
+                  <dd id="subscriptionLastRenewal">-</dd>
+                </div>
+                <div class="subscription-card__row">
+                  <dt>Próxima renovación</dt>
+                  <dd id="subscriptionNextRenewal">-</dd>
+                </div>
+              </dl>
+              <div id="subscriptionMessage" class="alert alert-warning d-none" role="alert"></div>
+              <div class="subscription-actions">
+                <button class="btn btn-success" id="btnSubscriptionToggle">Activar suscripción</button>
+                <button class="btn btn-outline-primary" id="btnSubscriptionRenew">Renovar por un mes</button>
+              </div>
+            </article>
+
+            <article class="plan-overview">
+              <div class="plan-overview__item">
+                <span class="info-label">Plan actual</span>
+                <strong class="info-value" data-field="planActual">Gratuito</strong>
+              </div>
+              <div class="plan-overview__item">
+                <span class="info-label">Renovación</span>
+                <strong class="info-value" data-field="fechaRenovacion">—</strong>
+              </div>
+              <div class="plan-overview__item">
+                <span class="info-label">Método de pago</span>
+                <strong class="info-value" data-field="metodoPago">—</strong>
+              </div>
+            </article>
           </div>
 
           <div class="section-actions section-actions--stack">
@@ -296,6 +294,10 @@
               <span class="btn-chip__label">Cancelar suscripción</span>
             </button>
           </div>
+
+          <p class="subscription-note text-muted">
+            Esta suscripción se guarda en este navegador y cambia el estado entre 0 (inactivo) y 1 (activo). Renueva cada mes con un solo clic.
+          </p>
         </section>
 
         <section id="secPlanes" class="account-section">
@@ -337,8 +339,8 @@
           </div>
         </section>
       </div>
-    </section>
-  </div>
+    </div>
+  </main>
 
   <div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
