@@ -412,8 +412,9 @@ const FormController = {
         await AppUtils.fetchAPI(AppConfig.API.productos, 'POST', data);
         AppUtils.showAlert('Producto creado', 'success');
       }
-      
+
       this.resetForm(form);
+      ModalController.closeProducto();
       await DataController.loadProductos();
     } catch (error) {
       console.error('Error guardando producto:', error);
@@ -469,10 +470,44 @@ const FormController = {
     form.querySelector('#productoDimX').value = item.dim_x || '';
     form.querySelector('#productoDimY').value = item.dim_y || '';
     form.querySelector('#productoDimZ').value = item.dim_z || '';
-    
-    // Cambiar a pestaña de productos
-    TabController.switchTab('productos');
 
+    ModalController.openProducto('Editar producto');
+  }
+};
+
+// Controlador de modales
+const ModalController = {
+  productoModal: null,
+  productoTitle: null,
+
+  init() {
+    const modalElement = document.getElementById('productoModal');
+    if (!modalElement || typeof bootstrap === 'undefined') return;
+
+    this.productoModal = new bootstrap.Modal(modalElement);
+    this.productoTitle = modalElement.querySelector('.modal-title');
+
+    modalElement.addEventListener('hidden.bs.modal', () => {
+      const form = document.querySelector(AppConfig.selectors.forms.producto);
+      if (form) FormController.resetForm(form);
+      this.setProductoTitle('Nuevo producto');
+    });
+  },
+
+  setProductoTitle(text) {
+    if (this.productoTitle) {
+      this.productoTitle.textContent = text;
+    }
+  },
+
+  openProducto(title = 'Nuevo producto') {
+    if (!this.productoModal) return;
+    this.setProductoTitle(title);
+    this.productoModal.show();
+  },
+
+  closeProducto() {
+    this.productoModal?.hide();
   }
 };
 
@@ -482,13 +517,22 @@ const TabController = {
     document.querySelectorAll(AppConfig.selectors.tabs).forEach(tab => {
       tab.addEventListener('click', () => this.switchTab(tab.dataset.tab));
     });
-    
+
     // Botones "Nuevo"
     document.querySelectorAll(AppConfig.selectors.addButtons).forEach(btn => {
       const panelId = btn.closest('.tab-panel')?.id;
+      if (panelId === 'productos') {
+        btn.addEventListener('click', () => {
+          const form = document.querySelector(AppConfig.selectors.forms.producto);
+          if (form) FormController.resetForm(form);
+          ModalController.openProducto('Nuevo producto');
+        });
+        return;
+      }
+
       btn.addEventListener('click', () => {
         this.switchTab(panelId);
-        const formSelector = AppConfig.selectors.forms[panelId.slice(0, -1)]; // elimina 's' final
+        const formSelector = AppConfig.selectors.forms[panelId?.slice(0, -1)]; // elimina 's' final
         const form = document.querySelector(formSelector);
         if (form) FormController.resetForm(form);
       });
@@ -642,6 +686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     TabController.init();
     FormController.initForms();
+    ModalController.init();
     ExportController.init();
     SearchController.init();
 
