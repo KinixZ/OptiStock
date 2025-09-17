@@ -146,9 +146,9 @@ async function fetchAPI(url, method = 'GET', data) {
     }
   }
 
-  btnProductos.addEventListener('click', () => mostrar('producto'));
-  btnCategorias.addEventListener('click', () => mostrar('categoria'));
-  btnSubcategorias.addEventListener('click', () => mostrar('subcategoria'));
+  btnProductos?.addEventListener('click', () => mostrar('producto'));
+  btnCategorias?.addEventListener('click', () => mostrar('categoria'));
+  btnSubcategorias?.addEventListener('click', () => mostrar('subcategoria'));
 
   const prodForm = document.getElementById('productoForm');
   const catForm = document.getElementById('categoriaForm');
@@ -156,7 +156,7 @@ async function fetchAPI(url, method = 'GET', data) {
   const prodCategoria = document.getElementById('prodCategoria');
   const prodSubcategoria = document.getElementById('prodSubcategoria');
  // Cada vez que cambie la categoría, repoblamos el select de subcategorías
-prodCategoria.addEventListener('change', () => {
+prodCategoria?.addEventListener('change', () => {
   // parseInt devuelve NaN si está vacío; con || null forzamos null
   const catId = parseInt(prodCategoria.value) || null;
   actualizarSelectSubcategorias(catId);
@@ -168,7 +168,8 @@ prodCategoria.addEventListener('change', () => {
   const btnScanQR = document.getElementById('btnScanQR');
   const btnIngreso = document.getElementById('btnIngreso');
   const btnEgreso  = document.getElementById('btnEgreso');
-  const movModal   = new bootstrap.Modal(document.getElementById('movimientoModal'));
+  const movimientoModalElement = document.getElementById('movimientoModal');
+  const movModal   = movimientoModalElement ? new bootstrap.Modal(movimientoModalElement) : null;
   const movTitle   = document.getElementById('movimientoTitle');
   const movProdSel = document.getElementById('movProdSelect');
   const movCant    = document.getElementById('movCantidad');
@@ -191,6 +192,7 @@ prodCategoria.addEventListener('change', () => {
   });
 
 function poblarSelectProductos() {
+  if (!movProdSel) return;
   movProdSel.innerHTML = '<option value="">Seleccione producto</option>';
   productos.forEach(p => {
     const opt = document.createElement('option');
@@ -267,18 +269,26 @@ btnScanQR?.addEventListener('click', async () => {
     });
 });
 
- btnIngreso.addEventListener('click', () => {
+ btnIngreso?.addEventListener('click', () => {
+    if (!movModal || !movTitle || !movCant) {
+      console.warn('Modal de movimientos no disponible.');
+      return;
+    }
     movTipo = 'ingreso';
     movTitle.textContent = 'Registrar Ingreso';
     poblarSelectProductos();
-    movCant.value = '';
+    if (movCant) movCant.value = '';
     movModal.show();
   });
-  btnEgreso.addEventListener('click', () => {
+  btnEgreso?.addEventListener('click', () => {
+    if (!movModal || !movTitle || !movCant) {
+      console.warn('Modal de movimientos no disponible.');
+      return;
+    }
     movTipo = 'egreso';
     movTitle.textContent = 'Registrar Egreso';
     poblarSelectProductos();
-    movCant.value = '';
+    if (movCant) movCant.value = '';
     movModal.show();
   });
 
@@ -288,6 +298,7 @@ btnScanQR?.addEventListener('click', async () => {
 
   function actualizarSelectCategorias() {
     [prodCategoria, subcatCategoria].forEach(select => {
+      if (!select) return;
       select.innerHTML = '<option value="">Seleccione categoría</option>';
       categorias.forEach(c => {
         const opt = document.createElement('option');
@@ -299,6 +310,7 @@ btnScanQR?.addEventListener('click', async () => {
   }
 
 function actualizarSelectSubcategorias(categoriaId) {
+  if (!prodSubcategoria) return;
   prodSubcategoria.innerHTML = '<option value="">Seleccione subcategoría</option>';
   // Si no hay categoría elegida, salimos con sólo el placeholder
   if (!categoriaId) return;
@@ -314,6 +326,7 @@ function actualizarSelectSubcategorias(categoriaId) {
 }
 
 function actualizarSelectZonas() {
+   if (!prodZona) return;
    prodZona.innerHTML = '<option value="">Seleccione zona</option>';
    zonas.forEach(z => {
      const opt = document.createElement('option');
@@ -351,7 +364,11 @@ async function cargarZonas() {
   actualizarSelectZonas();
  }
 
-movGuardar.addEventListener('click', async () => {
+movGuardar?.addEventListener('click', async () => {
+  if (!movProdSel || !movCant) {
+    console.warn('Formulario de movimiento incompleto.');
+    return;
+  }
   const prodId = parseInt(movProdSel.value, 10);
   const qty    = parseInt(movCant.value, 10);
   if (!prodId || qty <= 0) {
@@ -365,7 +382,7 @@ movGuardar.addEventListener('click', async () => {
   'POST',
   { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo: movTipo }
 );
-    movModal.hide();
+    movModal?.hide();
     await cargarProductos();
     renderResumen();
     showToast(`Movimiento ${movTipo} registrado`, 'success');
@@ -393,6 +410,10 @@ movGuardar.addEventListener('click', async () => {
   }
 
   function renderResumen() {
+    if (!tablaResumen || !tablaHead) {
+      console.warn('Tabla de resumen no disponible en la vista actual.');
+      return;
+    }
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
 
@@ -506,7 +527,7 @@ const sub = p.subcategoria_nombre || '';
     actualizarIndicadores();
   }
 
-catForm.addEventListener('submit', async e => {
+catForm?.addEventListener('submit', async e => {
   e.preventDefault();
   // 1) Leer campos
   const nombre = document.getElementById('catNombre').value.trim();
@@ -548,7 +569,7 @@ catForm.addEventListener('submit', async e => {
 });
 
 
-subcatForm.addEventListener('submit', async e => {
+subcatForm?.addEventListener('submit', async e => {
   e.preventDefault();
   // 1) Leer campos
   const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
@@ -594,7 +615,7 @@ subcatForm.addEventListener('submit', async e => {
 });
 
 
-prodForm.addEventListener('submit', async e => {
+prodForm?.addEventListener('submit', async e => {
     e.preventDefault();
 
     // 1) Leer campos de forma fiable
@@ -618,7 +639,7 @@ prodForm.addEventListener('submit', async e => {
       return;
     }
 
-    const data = { nombre, descripcion, categoria_id, subcategoria_id, zona_id: parseInt(prodZona.value) || null,
+    const data = { nombre, descripcion, categoria_id, subcategoria_id, zona_id: prodZona ? (parseInt(prodZona.value) || null) : null,
                    stock, precio_compra, dim_x, dim_y, dim_z };
 
     try {
@@ -654,10 +675,12 @@ if (editProdId) {
     }
   });
 
-tablaResumen.addEventListener('click', async e => {
-  const id     = parseInt(e.target.dataset.id, 10);
-  const tipo   = e.target.dataset.tipo;
-  const accion = e.target.dataset.accion;
+  tablaResumen?.addEventListener('click', async e => {
+  const target = e.target instanceof HTMLElement ? e.target : null;
+  if (!target) return;
+  const id     = parseInt(target.dataset.id, 10);
+  const tipo   = target.dataset.tipo;
+  const accion = target.dataset.accion;
   if (!accion) return;
 
   if (accion === 'qr' && tipo === 'producto') {
