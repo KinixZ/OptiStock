@@ -56,6 +56,8 @@ let colorTopbarSeleccionado = getComputedStyle(document.documentElement)
     .getPropertyValue('--topbar-color')
     .trim();
 
+applyBrandPalette(colorTopbarSeleccionado);
+
 
 // Request browser permission for push notifications
 function requestPushPermission() {
@@ -93,6 +95,58 @@ function getContrastingColor(hexColor) {
     const b = parseInt(hexColor.slice(5, 7), 16);
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
     return brightness > 128 ? '#000000' : '#ffffff';
+}
+
+function hexToRgb(hexColor) {
+    if (!hexColor) return null;
+    let normalized = hexColor.trim();
+    if (normalized.startsWith('#')) normalized = normalized.slice(1);
+    if (normalized.length !== 6) return null;
+    const intValue = parseInt(normalized, 16);
+    if (Number.isNaN(intValue)) return null;
+    return {
+        r: (intValue >> 16) & 255,
+        g: (intValue >> 8) & 255,
+        b: intValue & 255
+    };
+}
+
+function rgbToHex({ r, g, b }) {
+    const clamp = value => Math.max(0, Math.min(255, Math.round(value)));
+    const toHex = value => clamp(value).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function mixColors(colorA, colorB, weight = 0.5) {
+    const rgbA = hexToRgb(colorA);
+    const rgbB = hexToRgb(colorB);
+    if (!rgbA || !rgbB) return colorA;
+    const ratio = Math.min(Math.max(weight, 0), 1);
+    const inverse = 1 - ratio;
+    return rgbToHex({
+        r: rgbA.r * ratio + rgbB.r * inverse,
+        g: rgbA.g * ratio + rgbB.g * inverse,
+        b: rgbA.b * ratio + rgbB.b * inverse
+    });
+}
+
+function applyBrandPalette(baseHex) {
+    if (!baseHex || !/^#([0-9a-f]{6})$/i.test(baseHex)) return;
+    const baseRgb = hexToRgb(baseHex);
+    if (!baseRgb) return;
+    const rgbString = `${baseRgb.r}, ${baseRgb.g}, ${baseRgb.b}`;
+    const contrast = getContrastingColor(baseHex);
+    const headerBackground = mixColors(baseHex, '#ffffff', 0.32);
+    const headerText = getContrastingColor(headerBackground);
+    const headerTextRgb = hexToRgb(headerText) || { r: 31, g: 37, b: 56 };
+
+    document.documentElement.style.setProperty('--brand-color', baseHex);
+    document.documentElement.style.setProperty('--brand-color-rgb', rgbString);
+    document.documentElement.style.setProperty('--brand-contrast', contrast);
+    document.documentElement.style.setProperty('--header-background', headerBackground);
+    document.documentElement.style.setProperty('--header-text-color', headerText);
+    document.documentElement.style.setProperty('--header-text-color-rgb', `${headerTextRgb.r}, ${headerTextRgb.g}, ${headerTextRgb.b}`);
+    document.documentElement.style.setProperty('--header-muted-color', `rgba(${headerTextRgb.r}, ${headerTextRgb.g}, ${headerTextRgb.b}, 0.72)`);
 }
 
 
@@ -726,6 +780,7 @@ document.querySelectorAll('#sidebarColors button').forEach(btn => {
         document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
         const topbarText = getContrastingColor(colorTopbarSeleccionado);
         document.documentElement.style.setProperty('--topbar-text-color', topbarText);
+        applyBrandPalette(colorTopbarSeleccionado);
     });
 });
 
@@ -737,6 +792,7 @@ document.querySelectorAll('#topbarColors button').forEach(btn => {
         document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
         const textColor = getContrastingColor(colorTopbarSeleccionado);
         document.documentElement.style.setProperty('--topbar-text-color', textColor);
+        applyBrandPalette(colorTopbarSeleccionado);
     });
 });
 
@@ -949,6 +1005,7 @@ function cargarConfiguracionVisual(idEmpresa) {
                 document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
                 const btn = document.querySelector(`#topbarColors button[data-color="${config.color_topbar}"]`);
                 if (btn) btn.style.border = '3px solid black';
+                applyBrandPalette(config.color_topbar);
             }
 
             if (config.orden_sidebar) {
