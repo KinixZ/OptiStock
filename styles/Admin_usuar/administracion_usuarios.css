@@ -29,6 +29,16 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+
+.page-header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--header-radial);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 .header-eyebrow {
   display: inline-flex;
   align-items: center;

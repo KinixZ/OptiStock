@@ -5,6 +5,12 @@
   --logo-card-size: clamp(78px, 20vw, 92px);
   --logo-summary-size: clamp(92px, 24vw, 112px);
   --image-shell-bg: #ffffff;
+  --image-shell-bg: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(15, 180, 212, 0.12) 45%,
+    rgba(255, 111, 145, 0.18) 100%
+  );
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -40,6 +46,15 @@ img {
   overflow: hidden;
   border: 1px solid var(--primary-border-soft);
   box-shadow: var(--shadow-soft);
+}
+
+.page-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--header-radial);
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 .header-eyebrow {

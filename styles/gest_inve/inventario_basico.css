@@ -34,6 +34,15 @@ img {
   box-shadow: var(--shadow-soft);
 }
 
+.page-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--header-radial);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 .header-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -219,6 +228,7 @@ img {
 
 .panel-card {
   background: var(--primary-surface);
+  background: linear-gradient(180deg, rgba(255, 111, 145, 0.06), rgba(255, 255, 255, 0.95));
   border: 1px solid rgba(255, 111, 145, 0.14);
   border-radius: var(--radius-md);
   padding: clamp(1.25rem, 2.5vw, 1.75rem);
@@ -501,6 +511,14 @@ img {
   min-height: 320px;
   border-radius: var(--radius-md);
   background: var(--primary-surface);
+  background: repeating-linear-gradient(
+      135deg,
+      rgba(255, 111, 145, 0.08),
+      rgba(255, 111, 145, 0.08) 12px,
+      rgba(15, 180, 212, 0.08) 12px,
+      rgba(15, 180, 212, 0.08) 24px
+    ),
+    #fff;
   border: 1px dashed rgba(255, 111, 145, 0.35);
   display: grid;
   place-items: center;
