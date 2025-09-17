@@ -478,6 +478,7 @@ function showTutorialStep(step) {
             tutorialCard.offsetWidth || 480,
             window.innerWidth - viewportPadding * 2
         );
+        const cardWidth = Math.min(tutorialCard.offsetWidth || 480, window.innerWidth - 40);
         const cardLeft = Math.min(
             window.innerWidth - cardWidth - viewportPadding,
             Math.max(viewportPadding, rect.left + (rect.width / 2) - (cardWidth / 2))
@@ -487,6 +488,12 @@ function showTutorialStep(step) {
         let cardTop = rect.bottom + viewportPadding;
         if (cardTop + cardHeight > window.innerHeight - viewportPadding) {
             cardTop = rect.top - cardHeight - viewportPadding;
+        const cardTop = rect.bottom + 20;
+        if (cardTop + tutorialCard.offsetHeight > window.innerHeight) {
+            // If card doesn't fit below, position it above
+            tutorialCard.style.top = `${rect.top - tutorialCard.offsetHeight - 20}px`;
+        } else {
+            tutorialCard.style.top = `${cardTop}px`;
         }
 
         const maxTop = Math.max(viewportPadding, window.innerHeight - cardHeight - viewportPadding);
