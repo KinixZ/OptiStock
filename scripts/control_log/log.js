@@ -78,6 +78,37 @@
             .replace(/'/g, '&#39;');
     }
 
+    function limpiarIdentificadores(texto = '') {
+        if (!texto) {
+            return '';
+        }
+
+        let limpio = String(texto);
+
+        const patrones = [
+            /\b(producto)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(empresa)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(usuario)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(area)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(área)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(zona)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(categoría)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(categoria)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(subcategoría)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(subcategoria)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(proveedor)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi,
+            /\b(cliente)(?:\s+(?:con\s+)?(?:id|n[úu]mero)\s*[:#-]?)?\s+\d+\b/gi
+        ];
+
+        patrones.forEach(regex => {
+            limpio = limpio.replace(regex, (_, entidad) => entidad);
+        });
+
+        limpio = limpio.replace(/\bID\s*[:#-]?\s*\d+\b/gi, 'ID');
+
+        return limpio.replace(/\s{2,}/g, ' ').trim();
+    }
+
     function convertirFechaHoraZona(fecha, hora) {
         if (!fecha) {
             return { fechaLocal: '', horaLocal: '' };
@@ -316,7 +347,8 @@
             const usuario = escapeHtml(reg?.usuario || '');
             const rol = escapeHtml(reg?.rol || '');
             const modulo = escapeHtml(reg?.modulo || '');
-            const accion = escapeHtml(reg?.accion || '');
+            const accionLimpia = limpiarIdentificadores(reg?.accion || '');
+            const accion = escapeHtml(accionLimpia);
 
             const horaLabel = timeZoneLabel ? `Horario ${timeZoneLabel}` : '';
             const horaTitleAttr = horaLabel ? ` title="${escapeHtml(horaLabel)}"` : '';
