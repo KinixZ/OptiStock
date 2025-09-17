@@ -27,14 +27,15 @@ body {
   overflow: hidden;
   border: 1px solid var(--primary-border-soft);
   box-shadow: var(--shadow-soft);
+  color: var(--header-text-color);
 }
 
 .page-header::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--header-radial);
-  opacity: 0.8;
+  background: transparent;
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -42,8 +43,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--primary-color);
+  background: var(--header-eyebrow-bg);
+  color: var(--header-eyebrow-text);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -58,7 +59,7 @@ body {
   margin: 1rem 0 0.5rem;
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   font-weight: 700;
-  color: #171f34;
+  color: var(--header-text-color);
   position: relative;
   z-index: 1;
 }
@@ -66,7 +67,8 @@ body {
 .header-description {
   margin: 0;
   font-size: 0.95rem;
-  color: var(--muted-color);
+  color: var(--header-text-color);
+  opacity: 0.85;
   max-width: 620px;
   position: relative;
   z-index: 1;
