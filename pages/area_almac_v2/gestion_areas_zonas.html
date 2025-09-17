@@ -1,161 +1,203 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestión de Áreas y Zonas</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="../../styles/Area_almac_v2/gestion_areas_zonas.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/Area_almac_v2/gestion_areas_zonas.css" />
   <script defer src="../../scripts/area_almac_v2/gestion_areas_zonas.js"></script>
 </head>
-<body class="p-4">
-  <div class="container">
-    <h1 class="mb-4">Gestión de Áreas y Zonas</h1>
+<body>
+  <div class="warehouse-page">
+    <section class="page-header">
+      <span class="header-eyebrow">Infraestructura</span>
+      <h1 class="header-title">Gestión de áreas y zonas</h1>
+      <p class="header-description">
+        Organiza tu almacén con la misma experiencia visual de los módulos de inventario y bitácora. Registra áreas, agrega zonas
+        y mantén actualizado el mapa logístico de tu operación.
+      </p>
 
-    <!-- Botones de selección -->
-    <div class="mb-4">
-      <button id="nuevaArea" class="btn btn-primary me-2">Registrar nueva Área</button>
-      <button id="nuevaZona" class="btn btn-secondary">Registrar nueva Zona</button>
-    </div>
+      <div class="header-highlights">
+        <article class="highlight-card">
+          <span class="card-label">Áreas activas</span>
+          <strong class="card-title" id="totalAreas">0</strong>
+          <span class="card-subtitle">Espacios principales definidos</span>
+        </article>
+        <article class="highlight-card">
+          <span class="card-label">Zonas creadas</span>
+          <strong class="card-title" id="totalZonas">0</strong>
+          <span class="card-subtitle">Segmentos operativos</span>
+        </article>
+        <article class="highlight-card">
+          <span class="card-label">Zonas sin área</span>
+          <strong class="card-title" id="zonasSinArea">0</strong>
+          <span class="card-subtitle">Pendientes de asignar</span>
+        </article>
+      </div>
+    </section>
 
-    <!-- Formularios a ancho completo -->
-    <div id="formularios">
-      <!-- Formulario Áreas -->
-      <form id="formArea" class="mb-4">
-        <h2 class="h5 mb-3">Nueva Área</h2>
-        <div class="mb-2">
-          <label for="areaNombre" class="form-label">Nombre</label>
-          <input type="text" id="areaNombre" class="form-control" required>
+    <section class="warehouse-shell">
+      <div class="shell-header">
+        <div class="shell-header__info">
+          <span class="shell-eyebrow">Mapa logístico</span>
+          <h2 class="shell-title">Controla ubicaciones y espacios del almacén</h2>
+          <p class="shell-subtitle">
+            Alterna entre formularios y consulta los resúmenes generales desde una vista limpia y moderna coherente con el resto del sistema.
+          </p>
         </div>
-        <div class="mb-2">
-          <label for="areaDescripcion" class="form-label">Descripción</label>
-          <textarea id="areaDescripcion" class="form-control" rows="3" required></textarea>
+        <div class="shell-header__actions">
+          <button id="nuevaArea" class="shell-action shell-action--primary">Registrar nueva área</button>
+          <button id="nuevaZona" class="shell-action">Registrar nueva zona</button>
         </div>
-        <div class="mb-2">
-          <label class="form-label">Dimensiones (m)</label>
-          <div class="d-flex gap-2">
-            <input type="number" id="areaLargo" class="form-control" placeholder="Largo" min="0" step="0.01" required>
-            <input type="number" id="areaAncho" class="form-control" placeholder="Ancho" min="0" step="0.01" required>
-            <input type="number" id="areaAlto" class="form-control" placeholder="Alto" min="0" step="0.01" required>
+      </div>
+
+      <div class="shell-grid">
+        <div class="summary-stack">
+          <section id="resumenAreas" class="data-card" aria-labelledby="tituloAreas">
+            <header class="data-card__header">
+              <span class="summary-eyebrow">Vista general</span>
+              <h3 id="tituloAreas" class="data-card__title">Áreas registradas</h3>
+              <p class="data-card__description">Detalle de dimensiones, volumen calculado y zonas asociadas.</p>
+            </header>
+            <div class="table-wrapper">
+              <table id="tablaAreas" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Área</th>
+                    <th>Descripción</th>
+                    <th>Dimensiones (m)</th>
+                    <th>Volumen (m³)</th>
+                    <th># Zonas</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="resumenZonas" class="data-card" aria-labelledby="tituloZonas">
+            <header class="data-card__header">
+              <span class="summary-eyebrow">Zonas asignadas</span>
+              <h3 id="tituloZonas" class="data-card__title">Resumen de zonas</h3>
+              <p class="data-card__description">Zonas vinculadas a un área específica y su tipo de almacenamiento.</p>
+            </header>
+            <div class="table-wrapper">
+              <table id="tablaZonas" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Zona</th>
+                    <th>Área</th>
+                    <th>Dimensiones (m)</th>
+                    <th>Volumen (m³)</th>
+                    <th>Tipo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="resumenZonasSinArea" class="data-card" aria-labelledby="tituloZonasSinArea">
+            <header class="data-card__header">
+              <span class="summary-eyebrow">Pendientes</span>
+              <h3 id="tituloZonasSinArea" class="data-card__title">Zonas sin asignar</h3>
+              <p class="data-card__description">Revisa qué zonas necesitan asociarse a un área para mantener el control.</p>
+            </header>
+            <div class="table-wrapper">
+              <table id="tablaZonasSinArea" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Zona</th>
+                    <th>Dimensiones (m)</th>
+                    <th>Volumen (m³)</th>
+                    <th>Tipo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="forms-card">
+          <div class="form-toggle">
+            <span class="form-toggle__label">Completa la información para registrar nuevos espacios.</span>
           </div>
-        </div>
-        <div class="mb-3">
-          <p>Volumen: <span id="areaVolumen">0</span> m³</p>
-        </div>
-        <button type="submit" class="btn btn-success w-100">Guardar Área</button>
-      </form>
-      
-      <!-- Formulario Zonas -->
-      <form id="formZona" class="mb-4 d-none">
-        <h2 class="h5 mb-3">Nueva Zona</h2>
-        <div class="mb-2">
-          <label for="zonaNombre" class="form-label">Nombre</label>
-          <input type="text" id="zonaNombre" class="form-control" required>
-        </div>
-        <div class="mb-2">
-          <label for="zonaArea" class="form-label">Área</label>
-          <select id="zonaArea" class="form-select" required></select>
-        </div>
-        <div class="mb-2">
-          <label for="zonaDescripcion" class="form-label">Descripción</label>
-          <textarea id="zonaDescripcion" class="form-control" rows="3" required></textarea>
-        </div>
-        <div class="mb-2">
-          <label class="form-label">Dimensiones (m)</label>
-          <div class="d-flex gap-2">
-            <input type="number" id="zonaLargo" class="form-control" placeholder="Largo" min="0" step="0.01" required>
-            <input type="number" id="zonaAncho" class="form-control" placeholder="Ancho" min="0" step="0.01" required>
-            <input type="number" id="zonaAlto" class="form-control" placeholder="Alto" min="0" step="0.01" required>
-          </div>
-        </div>
-        <div class="mb-3">
-          <p>Volumen: <span id="zonaVolumen">0</span> m³</p>
-        </div>
-        <div class="mb-2">
-          <label for="zonaTipo" class="form-label">Tipo de Zona</label>
-          <select id="zonaTipo" class="form-select" required></select>
-        </div>
-        <div class="mb-2">
-          <label for="zonaSubniveles" class="form-label">Subniveles</label>
-          <input type="number" id="zonaSubniveles" class="form-control" min="0" value="0">
-        </div>
-        <div class="mb-3">
-          <label for="zonaDistancia" class="form-label">Distancia entre subniveles (cm)</label>
-          <input type="number" id="zonaDistancia" class="form-control" min="0" step="0.1" value="0">
-        </div>
-        <button type="submit" class="btn btn-success w-100">Guardar Zona</button>
-      </form>
-    </div>
 
-    <!-- Sección resumen Áreas con sus Zonas -->
-    <section id="resumenAreas" class="mb-5">
-  <h2 class="h5 mb-3">Resumen de Áreas</h2>
-  <div class="table-responsive">
-    <table id="tablaAreas" class="table table-striped align-middle">
-      <thead>
-        <tr>
-          <th>Área</th>
-          <th>Descripción</th>
-          <th>Dimensiones (m)</th>
-          <th>Volumen (m³)</th>
-          <th># Zonas</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- filas generadas por JS -->
-      </tbody>
-    </table>
+          <form id="formArea" class="formulario" autocomplete="off">
+            <h4>Registrar área de almacén</h4>
+            <div class="form-group">
+              <label for="areaNombre">Nombre del área</label>
+              <input type="text" id="areaNombre" placeholder="Nombre del área" required />
+            </div>
+            <div class="form-group">
+              <label for="areaDescripcion">Descripción</label>
+              <textarea id="areaDescripcion" rows="3" placeholder="Uso o características del área" required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Dimensiones físicas (m)</label>
+              <div class="dimension-row">
+                <input type="number" id="areaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
+                <input type="number" id="areaLargo" placeholder="Largo" min="0.01" step="0.01" required />
+                <input type="number" id="areaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+              </div>
+            </div>
+            <p class="form-helper">Volumen estimado: <span id="areaVolumen">0</span> m³</p>
+            <div class="form-actions">
+              <button type="submit" class="shell-action shell-action--primary">Guardar área</button>
+            </div>
+          </form>
+
+          <form id="formZona" class="formulario d-none" autocomplete="off">
+            <h4>Registrar zona de almacenamiento</h4>
+            <div class="form-group">
+              <label for="zonaNombre">Nombre de la zona</label>
+              <input type="text" id="zonaNombre" placeholder="Nombre de la zona" required />
+            </div>
+            <div class="form-group">
+              <label for="zonaArea">Área asociada</label>
+              <select id="zonaArea" required>
+                <option value="">Seleccione un área</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="zonaDescripcion">Descripción</label>
+              <textarea id="zonaDescripcion" rows="3" placeholder="Uso específico o notas" required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Dimensiones físicas (m)</label>
+              <div class="dimension-row">
+                <input type="number" id="zonaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
+                <input type="number" id="zonaLargo" placeholder="Largo" min="0.01" step="0.01" required />
+                <input type="number" id="zonaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="zonaTipo">Tipo de almacenamiento</label>
+              <select id="zonaTipo" required></select>
+            </div>
+            <div class="form-group">
+              <label for="zonaSubniveles">Cantidad de subniveles</label>
+              <input type="number" id="zonaSubniveles" min="0" step="1" value="0" />
+            </div>
+            <div class="form-group">
+              <label for="zonaDistancia">Distancia entre subniveles (cm)</label>
+              <input type="number" id="zonaDistancia" min="0" step="0.1" value="0" />
+            </div>
+            <p class="form-helper">Volumen estimado: <span id="zonaVolumen">0</span> m³</p>
+            <div class="form-actions">
+              <button type="submit" class="shell-action shell-action--primary">Guardar zona</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </section>
   </div>
-</section>
-
-    <!-- Sección resumen Zonas -->
-    <section id="resumenZonas" class="mb-5">
-  <h2 class="h5 mb-3">Resumen de Zonas</h2>
-  <div class="table-responsive">
-    <table id="tablaZonas" class="table table-striped align-middle">
-      <thead>
-        <tr>
-          <th>Zona</th>
-          <th>Área</th>
-          <th>Dimensiones (m)</th>
-          <th>Volumen (m³)</th>
-          <th>Tipo</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- filas generadas por JS -->
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- Sección Zonas sin asignar -->
-<section id="resumenZonasSinArea" class="mb-5">
-  <h2 class="h5 mb-3">Zonas sin asignar a un área</h2>
-  <div class="table-responsive">
-    <table id="tablaZonasSinArea" class="table table-striped align-middle">
-      <thead>
-        <tr>
-          <th>Zona</th>
-          <th>Dimensiones (m)</th>
-          <th>Volumen (m³)</th>
-          <th>Tipo</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- filas JS -->
-      </tbody>
-    </table>
-  </div>
-</section>
-
-
-  </div>
-  <!-- Bootstrap JS para componentes -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
