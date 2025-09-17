@@ -346,6 +346,13 @@ const tutorialSteps = [
         element: null
     },
     {
+        title: "Dashboard Principal",
+        content: "Aquí encontrarás un resumen visual de las métricas más importantes: productos con stock bajo, movimientos recientes y accesos de empleados.",
+        element: document.querySelector('.dashboard-grid'),
+        centerCard: true,
+        preventScroll: true
+    },
+    {
         title: "Funciones Rápidas Flash",
         content: "Los botones 'Ingreso Flash' y 'Egreso Flash' te permiten registrar movimientos de productos ya existentes de manera rápida mediante escaneo de códigos QR o barras.",
         element: document.querySelector('.quick-actions')
