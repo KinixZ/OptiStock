@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const guardarProgramacionBtn = document.getElementById('guardarProgramacion');
   const cancelarProgramacionBtn = document.getElementById('cancelarProgramacion');
   const intervaloSelect = document.getElementById('intervalo');
+  const modalBackdrop = modal?.querySelector('[data-close="modal"]');
+  const modalContent = modal?.querySelector('.modal__content');
   const graficaCanvas = document.getElementById('graficaTendencias');
   const ctxGrafica = graficaCanvas ? graficaCanvas.getContext('2d') : null;
 
@@ -50,18 +52,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('generarExcel')?.addEventListener('click', () => exportar('excel'));
 
   if (programarBtn && modal) {
-    programarBtn.addEventListener('click', () => {
-      modal.style.display = 'flex';
-    });
+    programarBtn.addEventListener('click', () => toggleModal(true));
   }
 
   guardarProgramacionBtn?.addEventListener('click', guardarProgramacion);
 
-  if (cancelarProgramacionBtn && modal) {
-    cancelarProgramacionBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
+  if (cancelarProgramacionBtn) {
+    cancelarProgramacionBtn.addEventListener('click', () => toggleModal(false));
   }
+
+  modalBackdrop?.addEventListener('click', () => toggleModal(false));
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && modal?.getAttribute('aria-hidden') === 'false') {
+      toggleModal(false);
+    }
+  });
 
   modulos.forEach(modulo => modulo.addEventListener('change', actualizarVista));
   [fInicio, fFin, fCategoria, fZona].forEach(input => {
@@ -153,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     metricasDiv.innerHTML = '';
 
     if (datos.length === 0) {
+      metricasDiv.innerHTML = '<p class="metrics-empty">Ajusta los filtros para ver información resumida.</p>';
       metricasDiv.innerHTML = '<p class="mensaje-vacio">Ajusta los filtros para ver información resumida.</p>';
       return;
     }
@@ -466,9 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const val = intervaloSelect.value;
     localStorage.setItem('reportInterval', val);
     configurarProgramacion();
-    if (modal) {
-      modal.style.display = 'none';
-    }
+    toggleModal(false);
   }
 
   function cargarProgramacion() {
@@ -542,5 +547,19 @@ document.addEventListener('DOMContentLoaded', () => {
         img.onload();
       }
     });
+  }
+
+  function toggleModal(mostrar) {
+    if (!modal) {
+      return;
+    }
+
+    modal.setAttribute('aria-hidden', mostrar ? 'false' : 'true');
+
+    if (mostrar) {
+      (modalContent || modal).focus({ preventScroll: true });
+    } else {
+      programarBtn?.focus({ preventScroll: true });
+    }
   }
 });
