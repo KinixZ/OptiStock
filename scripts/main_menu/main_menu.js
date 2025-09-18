@@ -11,53 +11,6 @@ const alertMovCriticos = document.getElementById('alertMovCriticos');
 const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
-const searchWrapper = document.querySelector('.search-wrapper');
-const searchToggle = document.getElementById('searchToggle');
-const searchClose = document.getElementById('searchClose');
-const searchInput = document.querySelector('#topbarSearch input');
-
-function closeSearchOverlay() {
-    if (!searchWrapper) return;
-    searchWrapper.classList.remove('active');
-    body.classList.remove('search-open');
-    if (searchToggle) {
-        searchToggle.setAttribute('aria-expanded', 'false');
-    }
-}
-
-if (searchToggle && searchWrapper) {
-    searchToggle.addEventListener('click', () => {
-        const isActive = searchWrapper.classList.toggle('active');
-        body.classList.toggle('search-open', isActive);
-        searchToggle.setAttribute('aria-expanded', String(isActive));
-        if (isActive && searchInput) {
-            setTimeout(() => searchInput.focus(), 60);
-        }
-    });
-}
-
-if (searchClose) {
-    searchClose.addEventListener('click', closeSearchOverlay);
-}
-
-document.addEventListener('click', event => {
-    if (!searchWrapper || !searchWrapper.classList.contains('active')) return;
-    if (!searchWrapper.contains(event.target)) {
-        closeSearchOverlay();
-    }
-});
-
-document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') {
-        closeSearchOverlay();
-    }
-});
-
-window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-        closeSearchOverlay();
-    }
-});
 const topbarSearchInput = document.querySelector('.topbar .search-bar input');
 const topbarSearchIcon = document.querySelector('.topbar .search-bar i');
 
