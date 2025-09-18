@@ -378,8 +378,17 @@ const tutorialSteps = [
         element: document.querySelector('.sidebar-menu a[data-page="reports/reportes.html"]')
     },
     {
+        title: "Registro de Actividades",
+        content: "Supervisa todas las actividades realizadas en la pagina por ti y por otros empleados que se vayan sumando a tu empresa.",
+        element: document.querySelector('.sidebar-menu a[data-page="control_log/log.html"]')
+    },{
+        title: "Cuenta",
+        content: "Visualiza y modifica tu informacion y la de tu empresa. Cambia tu foto de perfil o el logotipo de tu empresa desde aca.",
+        element: document.querySelector('.sidebar-menu a[data-page="account_suscrip/account_suscrip.html"]')
+    },
+    {
         title: "Personalización",
-        content: "Como administrador, puedes personalizar el sistema cambiando colores, reorganizando accesos rápidos y adaptando la interfaz a las necesidades de tu empresa.",
+        content: "Puedes personalizar el sistema cambiando colores, reorganizando accesos rápidos y adaptando la interfaz a las necesidades de tu empresa.",
         element: document.querySelector('.sidebar-footer .btn')
     }
 ];
