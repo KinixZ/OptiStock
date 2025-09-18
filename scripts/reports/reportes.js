@@ -27,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const intervaloSelect = document.getElementById('intervalo');
   const ctxGrafica = document.getElementById('graficaTendencias').getContext('2d');
 
+  const estilos = getComputedStyle(document.documentElement);
+  const colorTexto = estilos.getPropertyValue('--text-color').trim() || '#1f2937';
+  const colorBordes = estilos.getPropertyValue('--border-color').trim() || '#e7e9f5';
+  const colorPrimario = estilos.getPropertyValue('--primary-color').trim() || '#ff6f91';
+  const superficiePrimaria = estilos.getPropertyValue('--primary-surface-strong').trim() || 'rgba(255, 111, 145, 0.18)';
+  const colorTenue = estilos.getPropertyValue('--muted-color').trim() || '#6b7280';
+
   let grafica = null;
   let programacion = null;
   let datosFiltrados = [];
@@ -127,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     metricasDiv.innerHTML = '';
 
     if (datos.length === 0) {
+      metricasDiv.innerHTML = '<p class="empty-message">Ajusta los filtros para ver información resumida.</p>';
       metricasDiv.innerHTML = '<p class="mensaje-vacio">Ajusta los filtros para ver información resumida.</p>';
       return;
     }
@@ -153,6 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function crearTarjetaMetrica(titulo, valor) {
+    const tarjeta = document.createElement('article');
+    tarjeta.className = 'metric-card';
+    tarjeta.innerHTML = `
+      <span class="metric-card__label">${titulo}</span>
+      <strong class="metric-card__value">${valor}</strong>
+    `;
     const tarjeta = document.createElement('div');
     tarjeta.className = 'metric-card';
     tarjeta.innerHTML = `<span class="metric-title">${titulo}</span><strong>${valor}</strong>`;
@@ -185,6 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
           datasets: [{
             label: 'Cantidad de movimientos',
             data: valores,
+            borderColor: colorPrimario,
+            backgroundColor: superficiePrimaria,
             borderColor: '#0d6efd',
             backgroundColor: 'rgba(13, 110, 253, 0.15)',
             tension: 0.25,
@@ -192,6 +208,28 @@ document.addEventListener('DOMContentLoaded', () => {
           }]
         },
         options: {
+          plugins: {
+            legend: {
+              labels: {
+                color: colorTexto
+              }
+            },
+            tooltip: {
+              backgroundColor: colorPrimario,
+              titleColor: '#ffffff',
+              bodyColor: '#ffffff'
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: colorTenue },
+              grid: { color: colorBordes }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: colorTenue },
+              grid: { color: colorBordes }
+            }
           scales: {
             y: { beginAtZero: true }
           }
@@ -307,11 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${registro.id}</td>
         <td>${formatearFechaHora(registro.fecha)}</td>
         <td>${registro.modulos} · ${registro.registros} registro${registro.registros === 1 ? '' : 's'}</td>
+        <td><button class="link-button" data-id="${registro.id}">Compartir</button></td>
         <td><button class="btn-share" data-id="${registro.id}">Compartir</button></td>
       `;
       historialBody.appendChild(tr);
     });
 
+    historialBody.querySelectorAll('.link-button').forEach(btn => {
     historialBody.querySelectorAll('.btn-share').forEach(btn => {
       btn.addEventListener('click', () => compartir(btn.dataset.id));
     });
