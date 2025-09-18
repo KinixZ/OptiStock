@@ -82,3 +82,42 @@ a {
 a:hover {
     text-decoration: underline;
 }
+
+@media (max-width: 768px) {
+    body {
+        padding: 40px 16px;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .container {
+        margin: 40px auto;
+        padding: 28px 22px;
+        width: 100%;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        margin: 20px auto;
+        padding: 22px 18px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    input,
+    button {
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    label {
+        font-size: 13px;
+    }
+}

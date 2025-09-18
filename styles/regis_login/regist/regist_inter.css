@@ -31,3 +31,39 @@ p {
     margin-top: 15px;
     font-size: 16px;
 }
+
+@media (max-width: 768px) {
+    body {
+        padding: 40px 16px;
+        min-height: 100vh;
+    }
+
+    .container {
+        margin: 60px auto;
+        padding: 24px;
+        width: 100%;
+    }
+
+    p {
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 30px 12px;
+    }
+
+    .container {
+        margin: 30px auto;
+        padding: 20px;
+    }
+
+    h3 {
+        font-size: 1.35rem;
+    }
+
+    p {
+        font-size: 14px;
+    }
+}

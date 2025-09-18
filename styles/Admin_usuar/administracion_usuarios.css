@@ -667,6 +667,20 @@ body {
 }
 
 @media (max-width: 576px) {
+  .users-page {
+    padding: 0 16px;
+  }
+
+  .page-header,
+  .filters-card,
+  .table-card {
+    padding: 1.3rem;
+  }
+
+  .header-title {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+
   .filters-actions {
     flex-direction: column;
     align-items: stretch;
