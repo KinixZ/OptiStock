@@ -3,221 +3,173 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Centro de reportes</title>
+  <title>Reportes · OptiStock</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../../styles/reports/reportes.css" />
 </head>
 <body>
-  <main class="reports-page">
-    <div class="reports-container">
-      <section class="page-hero">
-        <span class="hero-eyebrow">Analítica</span>
-        <h1 class="hero-title">Reportes y métricas</h1>
-        <p class="hero-description">
-          Configura reportes personalizados con los mismos tonos y acabados visuales que el resto de OptiStock. Activa filtros,
-          consulta tendencias y descarga la información en un par de clics.
+  <main class="report-layout">
+    <section class="report-hero">
+      <div class="report-hero__content">
+        <p class="report-hero__badge">Centro de análisis</p>
+        <h1 class="report-hero__title">Reportes</h1>
+        <p class="report-hero__subtitle">
+          Reúne métricas clave de inventarios, usuarios y áreas de trabajo. Ajusta los filtros, visualiza las tendencias y exporta tus hallazgos en PDF o Excel sin salir de la plataforma.
         </p>
-        <div id="metricas" class="hero-metrics"></div>
-      </section>
+        <div id="metricas" class="metrics-grid" aria-live="polite"></div>
+      </div>
+      <div class="report-hero__brand" aria-hidden="true">
+        <img src="../../images/optistockLogo.png" alt="" />
+      </div>
+    </section>
 
-      <section class="reports-shell">
-        <div class="shell-grid">
-          <aside class="filters-card" aria-labelledby="tituloFiltros">
-            <header class="card-header">
-              <span class="card-eyebrow">Configuración</span>
-              <h2 id="tituloFiltros" class="card-title">Filtra tu reporte</h2>
-              <p class="card-description">Combina módulos, fechas y atributos para ajustar la información exportada.</p>
-            </header>
-  <!-- Métricas resumidas -->
-  <div id="metricas" class="metricas-grid mb-3"></div>
-
-            <div class="filters-group">
-              <span class="field-label">Módulos</span>
-              <div class="chip-group">
-                <label class="chip-option"><input type="checkbox" class="modulo" value="inventarios" /> <span>Inventarios</span></label>
-                <label class="chip-option"><input type="checkbox" class="modulo" value="usuarios" /> <span>Usuarios</span></label>
-                <label class="chip-option"><input type="checkbox" class="modulo" value="areas" /> <span>Áreas</span></label>
-                <label class="chip-option"><input type="checkbox" class="modulo" value="zonas" /> <span>Zonas</span></label>
-              </div>
-            </div>
-
-            <div class="filters-grid">
-              <label class="field">
-                <span class="field-label">Desde</span>
-                <input type="date" id="fInicio" />
-              </label>
-              <label class="field">
-                <span class="field-label">Hasta</span>
-                <input type="date" id="fFin" />
-              </label>
-              <label class="field">
-                <span class="field-label">Categoría</span>
-                <input type="text" id="fCategoria" placeholder="Todas" />
-              </label>
-              <label class="field">
-                <span class="field-label">Zona</span>
-                <input type="text" id="fZona" placeholder="Todas" />
-              </label>
-              <label class="field">
-                <span class="field-label">Rol</span>
-                <select id="fRol">
-                  <option value="">Todos</option>
-                  <option value="administrador">Administrador</option>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="almacenista">Almacenista</option>
-                  <option value="mantenimiento">Mantenimiento</option>
-                  <option value="etiquetador">Etiquetador</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="action-buttons">
-              <button id="generarPdf" class="action-btn action-btn--primary">Exportar PDF</button>
-              <button id="generarExcel" class="action-btn">Exportar Excel</button>
-              <button id="programarBtn" class="action-btn action-btn--ghost">Programar automático</button>
-            </div>
-          </aside>
-
-          <article class="chart-card" aria-labelledby="tituloGrafica">
-            <header class="card-header">
-              <span class="card-eyebrow">Tendencias</span>
-              <h2 id="tituloGrafica" class="card-title">Movimientos por mes</h2>
-              <p class="card-description">Observa la evolución de los registros incluidos en tu filtro actual.</p>
-            </header>
-            <canvas id="graficaTendencias" height="180"></canvas>
-          </article>
-        </div>
-
-        <article class="results-card" aria-labelledby="tituloResultados">
-          <header class="card-header">
-            <span class="card-eyebrow">Detalle</span>
-            <div class="card-header__row">
-              <h2 id="tituloResultados" class="card-title">Registros filtrados</h2>
-              <span id="estadoResultados" class="results-counter">0 registros encontrados.</span>
-            </div>
-            <p class="card-description">Consulta los movimientos que cumplen con los criterios seleccionados.</p>
-          </header>
-          <div class="table-wrapper">
-            <table id="tablaResultados" class="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Módulo</th>
-                  <th>Fecha</th>
-                  <th>Categoría</th>
-                  <th>Zona</th>
-                  <th>Rol</th>
-                  <th>Detalle</th>
-                  <th class="text-end">Cantidad</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-            <p id="sinDatos" class="empty-message">No hay movimientos que coincidan con los filtros seleccionados.</p>
-          </div>
-        </article>
-      </section>
-
-      <section class="history-card" aria-labelledby="tituloHistorial">
-        <header class="card-header">
-          <span class="card-eyebrow">Historial</span>
-          <h2 id="tituloHistorial" class="card-title">Reportes generados</h2>
-          <p class="card-description">Guarda hasta 20 exportaciones recientes para volver a compartirlas.</p>
+    <section class="report-panels">
+      <aside class="filter-panel" aria-labelledby="panelFiltrosTitulo">
+        <header class="panel-heading">
+          <h2 id="panelFiltrosTitulo">Arma tu reporte</h2>
+          <p>Selecciona los módulos y el rango de fechas que deseas analizar.</p>
         </header>
-        <div class="table-wrapper">
-          <table id="tablaHistorial" class="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Fecha</th>
-                <th>Resumen</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <form class="filters-form" autocomplete="off">
+          <fieldset class="filters-form__group">
+            <legend>Módulos</legend>
+            <label class="chip">
+              <input type="checkbox" class="modulo" value="inventarios" />
+              <span>Inventarios</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" class="modulo" value="usuarios" />
+              <span>Usuarios</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" class="modulo" value="areas" />
+              <span>Áreas</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" class="modulo" value="zonas" />
+              <span>Zonas</span>
+            </label>
+          </fieldset>
+
+          <div class="filters-grid">
+            <label class="field">
+              <span>Desde</span>
+              <input type="date" id="fInicio" />
+            </label>
+            <label class="field">
+              <span>Hasta</span>
+              <input type="date" id="fFin" />
+            </label>
+            <label class="field">
+              <span>Categoría</span>
+              <input type="text" id="fCategoria" placeholder="Todas" />
+            </label>
+            <label class="field">
+              <span>Zona</span>
+              <input type="text" id="fZona" placeholder="Todas" />
+            </label>
+            <label class="field">
+              <span>Rol</span>
+              <select id="fRol">
+                <option value="">Todos</option>
+                <option value="administrador">Administrador</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="almacenista">Almacenista</option>
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="etiquetador">Etiquetador</option>
+              </select>
+            </label>
+          </div>
+        </form>
+        <div class="filters-actions">
+          <button id="generarPdf" type="button" class="btn btn--primary">Exportar PDF</button>
+          <button id="generarExcel" type="button" class="btn">Exportar Excel</button>
+          <button id="programarBtn" type="button" class="btn btn--ghost">Programar reporte</button>
         </div>
+      </aside>
+
+      <section class="chart-panel" aria-labelledby="panelGraficaTitulo">
+        <header class="panel-heading">
+          <h2 id="panelGraficaTitulo">Tendencia de movimientos</h2>
+          <p>Observa la cantidad total registrada por mes según tus filtros.</p>
+        </header>
+        <canvas id="graficaTendencias" height="200" role="img" aria-label="Gráfica de tendencia de movimientos"></canvas>
       </section>
-    </div>
+    </section>
+
+    <section class="report-results" aria-labelledby="panelResultadosTitulo">
+      <header class="panel-heading">
+        <h2 id="panelResultadosTitulo">Registros filtrados</h2>
+        <p id="estadoResultados" class="results-summary" aria-live="polite">Aplica filtros para comenzar.</p>
+      </header>
+      <div class="table-wrapper">
+        <table id="tablaResultados" class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Módulo</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Categoría</th>
+              <th scope="col">Zona</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Detalle</th>
+              <th scope="col" class="text-end">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="sinDatos" class="empty-message">No hay coincidencias con los filtros seleccionados.</p>
+      </div>
+    </section>
+
+    <section class="report-history" aria-labelledby="panelHistorialTitulo">
+      <header class="panel-heading">
+        <h2 id="panelHistorialTitulo">Historial de exportaciones</h2>
+        <p>Los últimos 20 reportes generados se guardan para volver a compartirlos.</p>
+      </header>
+      <div class="table-wrapper">
+        <table id="tablaHistorial" class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Folio</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Resumen</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
-  <div id="modalProgramar" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloProgramacion">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h3 id="tituloProgramacion">Programar reportes</h3>
-        <p>Elige la frecuencia con la que deseas generar automáticamente un PDF.</p>
+  <div id="modalProgramar" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo" aria-hidden="true" tabindex="-1">
+    <div class="modal__backdrop" data-close="modal"></div>
+    <div class="modal__content" role="document" tabindex="-1">
+      <header class="modal__header">
+        <h3 id="modalTitulo">Programar reporte automático</h3>
+        <p>Elige cada cuánto tiempo quieres generar un PDF con los filtros actuales.</p>
       </header>
       <label class="field">
-        <span class="field-label">Frecuencia</span>
+        <span>Frecuencia</span>
         <select id="intervalo">
           <option value="diario">Diario</option>
           <option value="semanal">Semanal</option>
           <option value="mensual">Mensual</option>
         </select>
       </label>
-      <div class="modal-actions">
-        <button id="guardarProgramacion" class="action-btn action-btn--primary">Guardar</button>
-        <button id="cancelarProgramacion" class="action-btn">Cancelar</button>
+      <div class="modal__actions">
+        <button id="guardarProgramacion" type="button" class="btn btn--primary">Guardar</button>
+        <button id="cancelarProgramacion" type="button" class="btn">Cancelar</button>
       </div>
     </div>
-    <button id="generarPdf" class="btn btn-primary me-2">Exportar PDF</button>
-    <button id="generarExcel" class="btn btn-secondary me-2">Exportar Excel</button>
-    <button id="programarBtn" class="btn btn-warning">Programar automático</button>
   </div>
 
-  <!-- Resultados -->
-  <div id="estadoResultados" class="estado-resultados mb-2"></div>
-  <div class="tabla-resultados mb-4">
-    <table id="tablaResultados" class="table table-bordered table-sm">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Módulo</th>
-          <th>Fecha</th>
-          <th>Categoría</th>
-          <th>Zona</th>
-          <th>Rol</th>
-          <th>Detalle</th>
-          <th>Cantidad</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p id="sinDatos" class="mensaje-vacio">No hay movimientos que coincidan con los filtros seleccionados.</p>
-  </div>
-
-  <!-- Historial -->
-  <h5>Historial de Reportes</h5>
-  <table id="tablaHistorial" class="table table-bordered table-sm">
-    <thead>
-      <tr><th>ID</th><th>Fecha</th><th>Módulos</th><th>Acciones</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<!-- Modal de programación -->
-<div id="modalProgramar" class="modal">
-  <div class="modal-content">
-    <label>Intervalo
-      <select id="intervalo">
-        <option value="diario">Diario</option>
-        <option value="semanal">Semanal</option>
-        <option value="mensual">Mensual</option>
-      </select>
-    </label>
-    <div class="mt-3 text-end">
-      <button id="guardarProgramacion" class="btn btn-primary me-2">Guardar</button>
-      <button id="cancelarProgramacion" class="btn btn-secondary">Cancelar</button>
-    </div>
-  </div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha512-oBr+gwxObn2ymlk/wEYBLETymFcpnSUsctNk6heAQ7Ez+KQEiC5EvhczHxVn9Yx8RJWb1x1o1t4bm/FYnSX8mg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/FZqqw9zM+dAf5BgU984wgKLF6ig84yYI6FqdtYYdlcYNSeNBY0d5hDOGOZa2m30IZHuZOKA8J1Bs8LZp+e7Bw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js" integrity="sha512-SLzeps2sonMSKcwk5Y8ZndKyVKoU9pYNCXS6/4FwXk4Hknc0NrF4Pjk6HoydxHDBPPfQtbDNRsTA70vsK1tn4w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" integrity="sha384-S1RyhokW2N1DbStO2Qd6hw2yYB9H9n1tFoZT3zh7+BTtPlqvGjufH6G+j6lJzi10" crossorigin="anonymous"></script>
   <script src="../../scripts/reports/reportes.js"></script>
 </body>
 </html>

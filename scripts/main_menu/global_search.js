@@ -30,6 +30,68 @@ if (searchInput) {
     } else {
         setTimeout(() => searchInput.focus(), 120);
     }
+const body = document.body;
+const sidebar = document.querySelector('.sidebar');
+const menuToggle = document.getElementById('menuToggle');
+const searchInput = document.getElementById('globalSearchInput');
+const searchResultsContainer = document.getElementById('searchResults');
+const resultsCount = document.getElementById('resultsCount');
+const quickLinks = document.getElementById('quickLinks');
+const summaryDescription = document.querySelector('.summary-description');
+
+const params = new URLSearchParams(window.location.search);
+const initialQuery = (params.get('q') || '').trim();
+if (searchInput && initialQuery) {
+    searchInput.value = initialQuery;
+}
+
+if (menuToggle && sidebar) {
+    menuToggle.addEventListener('click', () => {
+        if (window.innerWidth <= 992) {
+            const isActive = sidebar.classList.toggle('active');
+            body.classList.toggle('sidebar-open', isActive);
+        }
+    });
+
+    document.addEventListener('click', event => {
+        if (window.innerWidth > 992) return;
+        if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+            sidebar.classList.remove('active');
+            body.classList.remove('sidebar-open');
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 992) {
+            sidebar.classList.remove('active');
+            body.classList.remove('sidebar-open');
+        }
+    });
+}
+
+const userNameEl = document.querySelector('.user-name');
+const userRoleEl = document.querySelector('.user-role');
+const userImgEl = document.querySelector('.user-profile img');
+
+if (userNameEl) {
+    const nombre = localStorage.getItem('usuario_nombre');
+    if (nombre) userNameEl.textContent = nombre;
+}
+
+if (userRoleEl) {
+    const rol = localStorage.getItem('usuario_rol');
+    if (rol) userRoleEl.textContent = rol;
+}
+
+if (userImgEl) {
+    let fotoPerfil = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
+    if (fotoPerfil && !fotoPerfil.startsWith('/')) {
+        fotoPerfil = '/' + fotoPerfil;
+    }
+    userImgEl.onerror = () => {
+        userImgEl.src = '/images/profile.jpg';
+    };
+    userImgEl.src = fotoPerfil;
 }
 
 function normalizeHex(hexColor) {

@@ -480,6 +480,37 @@ img {
 }
 
 @media (max-width: 576px) {
+  .warehouse-page {
+    padding: 0 16px;
+  }
+
+  .page-header {
+    padding: 1.6rem;
+  }
+
+  .header-title {
+    font-size: clamp(1.45rem, 5vw, 2rem);
+  }
+
+  .shell-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .shell-header__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .shell-action {
+    width: 100%;
+  }
+
+  .highlight-card {
+    padding: 1rem;
+  }
+
   .dimension-row,
   .sublevels-container > div {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
