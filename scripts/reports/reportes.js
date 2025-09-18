@@ -153,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
     metricasDiv.innerHTML = '';
 
     if (datos.length === 0) {
-      metricasDiv.innerHTML = '<p class="empty-message">Ajusta los filtros para ver información resumida.</p>';
       metricasDiv.innerHTML = '<p class="mensaje-vacio">Ajusta los filtros para ver información resumida.</p>';
       return;
     }
@@ -186,9 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
       <span class="metric-card__label">${titulo}</span>
       <strong class="metric-card__value">${valor}</strong>
     `;
-    const tarjeta = document.createElement('div');
-    tarjeta.className = 'metric-card';
-    tarjeta.innerHTML = `<span class="metric-title">${titulo}</span><strong>${valor}</strong>`;
     return tarjeta;
   }
 
@@ -224,8 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
             data: valores,
             borderColor: colorPrimario,
             backgroundColor: superficiePrimaria,
-            borderColor: '#0d6efd',
-            backgroundColor: 'rgba(13, 110, 253, 0.15)',
             tension: 0.25,
             fill: true
           }]
@@ -253,8 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
               ticks: { color: colorTenue },
               grid: { color: colorBordes }
             }
-          scales: {
-            y: { beginAtZero: true }
           }
         }
       });
@@ -265,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function exportar(tipo) {
+  async function exportar(tipo) {
     const filtros = actualizarVista();
     if (datosFiltrados.length === 0) {
       alert('No hay información para exportar con los filtros seleccionados.');
@@ -274,21 +266,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const id = 'REP-' + Date.now();
     if (tipo === 'pdf') {
-      exportarPDF(id, filtros, datosFiltrados);
+      await exportarPDF(id, filtros, datosFiltrados);
     } else {
       exportarExcel(id, filtros, datosFiltrados);
     }
     guardarHistorial(id, filtros, datosFiltrados.length);
   }
 
-  function exportarPDF(id, filtros, datos) {
+  async function exportarPDF(id, filtros, datos) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    doc.setFontSize(14);
-    doc.text('Reporte ' + id, 10, 10);
-    doc.setFontSize(11);
-    doc.text('Generado: ' + new Date().toLocaleString(), 10, 18);
+    const paginaAncho = doc.internal.pageSize.getWidth();
+    const paginaAlto = doc.internal.pageSize.getHeight();
+
+    let logoDataUrl = null;
+    try {
+      logoDataUrl = await cargarImagenBase64('images/optistockLogo.png');
+    } catch (error) {
+      console.warn('No se pudo cargar el logotipo para el PDF.', error);
+    }
+
+    if (logoDataUrl) {
+      const marcaAguaEstado = doc.GState ? new doc.GState({ opacity: 0.06 }) : null;
+      if (marcaAguaEstado) {
+        doc.setGState(marcaAguaEstado);
+      }
+      const marcaAguaTam = paginaAncho * 0.65;
+      const marcaAguaX = (paginaAncho - marcaAguaTam) / 2;
+      const marcaAguaY = (paginaAlto - marcaAguaTam) / 2;
+      doc.addImage(logoDataUrl, 'PNG', marcaAguaX, marcaAguaY, marcaAguaTam, marcaAguaTam, undefined, 'SLOW');
+      if (marcaAguaEstado) {
+        const gStateNormal = new doc.GState({ opacity: 1 });
+        doc.setGState(gStateNormal);
+      }
+    }
+
+    const margenLateral = 14;
+    const encabezadoAltura = 20;
+
+    if (logoDataUrl) {
+      const logoAncho = 28;
+      const logoAlto = 28;
+      doc.addImage(logoDataUrl, 'PNG', margenLateral, 12, logoAncho, logoAlto, undefined, 'FAST');
+      doc.setFontSize(18);
+      doc.setTextColor(31, 41, 55);
+      doc.text('OptiStock', margenLateral + logoAncho + 6, 20);
+      doc.setFontSize(11);
+      doc.setTextColor(107, 114, 128);
+      doc.text('Reporte de actividades', margenLateral + logoAncho + 6, 26);
+    } else {
+      doc.setFontSize(18);
+      doc.setTextColor(31, 41, 55);
+      doc.text('OptiStock - Reporte de actividades', margenLateral, 20);
+    }
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(10);
+    doc.text(`Folio: ${id}`, margenLateral, 42);
+    doc.text(`Generado: ${new Date().toLocaleString()}`, paginaAncho - margenLateral, 42, { align: 'right' });
 
     doc.autoTable({
       head: [['Filtro', 'Valor']],
@@ -299,7 +335,21 @@ document.addEventListener('DOMContentLoaded', () => {
         ['Zona', filtros.zona || 'Todas'],
         ['Rol', filtros.rol || 'Todos']
       ],
-      startY: 26
+      startY: encabezadoAltura + 32,
+      theme: 'grid',
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        textColor: [55, 65, 81]
+      },
+      headStyles: {
+        fillColor: [255, 111, 145],
+        textColor: 255,
+        halign: 'left'
+      },
+      alternateRowStyles: {
+        fillColor: [255, 243, 247]
+      }
     });
 
     doc.autoTable({
@@ -314,9 +364,28 @@ document.addEventListener('DOMContentLoaded', () => {
         item.descripcion,
         item.cantidad
       ]),
-      startY: doc.lastAutoTable.finalY + 6,
-      styles: { fontSize: 9 }
+      startY: doc.lastAutoTable.finalY + 8,
+      styles: {
+        fontSize: 9,
+        cellPadding: 2,
+        textColor: [31, 41, 55]
+      },
+      headStyles: {
+        fillColor: [79, 70, 229],
+        textColor: 255
+      },
+      alternateRowStyles: {
+        fillColor: [237, 233, 254]
+      }
     });
+
+    const pieY = doc.lastAutoTable.finalY + 10;
+    if (pieY < paginaAlto - 12) {
+      doc.setFontSize(9);
+      doc.setTextColor(148, 163, 184);
+      doc.text('OptiStock · Gestión inteligente de inventarios', margenLateral, paginaAlto - 12);
+      doc.text('https://optistock.local', paginaAncho - margenLateral, paginaAlto - 12, { align: 'right' });
+    }
 
     doc.save(id + '.pdf');
   }
@@ -368,13 +437,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${registro.id}</td>
         <td>${formatearFechaHora(registro.fecha)}</td>
         <td>${registro.modulos} · ${registro.registros} registro${registro.registros === 1 ? '' : 's'}</td>
-        <td><button class="link-button" data-id="${registro.id}">Compartir</button></td>
-        <td><button class="btn-share" data-id="${registro.id}">Compartir</button></td>
+        <td><button class="btn-share" data-id="${registro.id}" type="button">Compartir</button></td>
       `;
       historialBody.appendChild(tr);
     });
 
-    historialBody.querySelectorAll('.link-button').forEach(btn => {
     historialBody.querySelectorAll('.btn-share').forEach(btn => {
       btn.addEventListener('click', () => compartir(btn.dataset.id));
     });
@@ -430,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     programacion = setInterval(() => {
-      exportar('pdf');
+      exportar('pdf').catch(error => console.error('Error al generar el reporte programado:', error));
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Reporte generado automáticamente', { body: 'Se creó un PDF con los filtros vigentes.' });
       }
@@ -455,5 +522,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function capitalizar(texto) {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
+  }
+
+  function cargarImagenBase64(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const contexto = canvas.getContext('2d');
+        contexto.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('No se pudo cargar la imagen: ' + src));
+      img.src = src;
+      if (img.complete && img.naturalWidth) {
+        img.onload();
+      }
+    });
   }
 });
