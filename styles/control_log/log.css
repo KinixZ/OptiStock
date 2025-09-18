@@ -532,7 +532,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  min-height: 320px;
+  min-height: 220px;
 }
 
 .insight-chart__header {
@@ -555,8 +555,8 @@ body {
 
 .insight-chart canvas {
   width: 100% !important;
-  height: 100% !important;
-  flex: 1;
+  height: 220px !important;
+  flex: 0 0 auto;
 }
 
 .empty-state {
