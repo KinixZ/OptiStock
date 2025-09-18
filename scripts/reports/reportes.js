@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (datos.length === 0) {
       metricasDiv.innerHTML = '<p class="metrics-empty">Ajusta los filtros para ver información resumida.</p>';
+      metricasDiv.innerHTML = '<p class="mensaje-vacio">Ajusta los filtros para ver información resumida.</p>';
       return;
     }
 
