@@ -1,3 +1,35 @@
+const searchPageRoot = document.getElementById('globalSearchPage');
+if (!searchPageRoot) {
+    if (typeof window.__GLOBAL_SEARCH_INITIAL_QUERY__ === 'string') {
+        delete window.__GLOBAL_SEARCH_INITIAL_QUERY__;
+    }
+    console.warn('Vista de buscador global no encontrada en el DOM.');
+    return;
+}
+
+const searchInput = searchPageRoot.querySelector('#globalSearchInput');
+const searchResultsContainer = searchPageRoot.querySelector('#searchResults');
+const resultsCount = searchPageRoot.querySelector('#resultsCount');
+const quickLinks = searchPageRoot.querySelector('#quickLinks');
+const summaryDescription = searchPageRoot.querySelector('.summary-description');
+
+const params = new URLSearchParams(window.location.search);
+const injectedQuery = typeof window.__GLOBAL_SEARCH_INITIAL_QUERY__ === 'string'
+    ? window.__GLOBAL_SEARCH_INITIAL_QUERY__
+    : '';
+
+if (typeof window.__GLOBAL_SEARCH_INITIAL_QUERY__ === 'string') {
+    delete window.__GLOBAL_SEARCH_INITIAL_QUERY__;
+}
+
+const initialQuery = (params.get('q') || injectedQuery || '').trim();
+
+if (searchInput) {
+    if (initialQuery) {
+        searchInput.value = initialQuery;
+    } else {
+        setTimeout(() => searchInput.focus(), 120);
+    }
 const body = document.body;
 const sidebar = document.querySelector('.sidebar');
 const menuToggle = document.getElementById('menuToggle');
@@ -389,6 +421,8 @@ if (quickLinks) {
         const query = button.getAttribute('data-query');
         if (searchInput) {
             searchInput.value = query;
+            searchInput.focus();
+            searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
         }
         renderResultados(query);
     });

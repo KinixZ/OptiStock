@@ -90,6 +90,12 @@ function sendPushNotification(title, message) {
 }
 
 function openGlobalSearch(query) {
+    const loadInMain = window.__loadGlobalSearchInMain;
+    if (typeof loadInMain === 'function') {
+        loadInMain(query);
+        return;
+    }
+
     const searchUrl = query ? `global_search.html?q=${encodeURIComponent(query)}` : 'global_search.html';
     window.location.href = searchUrl;
 }
@@ -717,8 +723,60 @@ document.addEventListener('movimientoNoAutorizado', e => {
 document.addEventListener("DOMContentLoaded", function () {
     requestPushPermission();
     const mainContent = document.getElementById('mainContent');
+    const sidebarPageLinks = document.querySelectorAll('.sidebar-menu a[data-page]');
     let contenidoInicial = mainContent.innerHTML;
     let estaEnInicio = true;
+
+    function loadGlobalSearchInMain(query = '') {
+        if (!mainContent) return;
+
+        estaEnInicio = false;
+
+        const topbarTitle = document.querySelector('.topbar-title');
+        if (topbarTitle) {
+            topbarTitle.textContent = 'Buscador global';
+        }
+
+        mainContent.innerHTML = `
+            <section class="search-page">
+                <div class="search-placeholder loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h2>Cargando buscador...</h2>
+                    <p>Estamos preparando los resultados más recientes.</p>
+                </div>
+            </section>
+        `;
+
+        fetch('global_search.html')
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(res.statusText || `HTTP ${res.status}`);
+                }
+                return res.text();
+            })
+            .then(html => {
+                mainContent.innerHTML = html;
+                window.__GLOBAL_SEARCH_INITIAL_QUERY__ = query || '';
+
+                const previousScript = document.querySelector('script[data-global-search="true"]');
+                if (previousScript) {
+                    previousScript.remove();
+                }
+
+                const script = document.createElement('script');
+                script.src = '../../scripts/main_menu/global_search.js';
+                script.dataset.globalSearch = 'true';
+                document.body.appendChild(script);
+            })
+            .catch(err => {
+                if (typeof window.__GLOBAL_SEARCH_INITIAL_QUERY__ === 'string') {
+                    delete window.__GLOBAL_SEARCH_INITIAL_QUERY__;
+                }
+                mainContent.innerHTML = `<p>Error cargando la vista de búsqueda: ${err}</p>`;
+            });
+    }
+
+    window.__loadGlobalSearchInMain = loadGlobalSearchInMain;
 
     loadMetrics();
     loadAccessLogs();
@@ -898,13 +956,12 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
     });
 
     // Sidebar: navegación SPA
-    const menuItems = document.querySelectorAll('.sidebar-menu a[data-page]');
-    menuItems.forEach(link => {
+    sidebarPageLinks.forEach(link => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
 
             // Marcar activo
-            menuItems.forEach(i => i.classList.remove('active'));
+            sidebarPageLinks.forEach(i => i.classList.remove('active'));
             this.classList.add('active');
 
             // Cambiar título topbar
