@@ -11,8 +11,6 @@ const alertMovCriticos = document.getElementById('alertMovCriticos');
 const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
-const topbarSearchInput = document.querySelector('.topbar .search-bar input');
-const topbarSearchIcon = document.querySelector('.topbar .search-bar i');
 
 let navegadorTimeZone = null;
 
@@ -87,27 +85,6 @@ function sendPushNotification(title, message) {
     } else {
         alert(message);
     }
-}
-
-function openGlobalSearch(query) {
-    const searchUrl = query ? `global_search.html?q=${encodeURIComponent(query)}` : 'global_search.html';
-    window.location.href = searchUrl;
-}
-
-if (topbarSearchInput) {
-    topbarSearchInput.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            openGlobalSearch(topbarSearchInput.value.trim());
-        }
-    });
-}
-
-if (topbarSearchIcon) {
-    topbarSearchIcon.addEventListener('click', () => {
-        const query = topbarSearchInput ? topbarSearchInput.value.trim() : '';
-        openGlobalSearch(query);
-    });
 }
 
 function getContrastingColor(hexColor) {
