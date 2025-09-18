@@ -1,65 +1,143 @@
-const body = document.body;
-const sidebar = document.querySelector('.sidebar');
-const menuToggle = document.getElementById('menuToggle');
-const searchInput = document.getElementById('globalSearchInput');
-const searchResultsContainer = document.getElementById('searchResults');
-const resultsCount = document.getElementById('resultsCount');
-const quickLinks = document.getElementById('quickLinks');
-const summaryDescription = document.querySelector('.summary-description');
+let body;
+let sidebar;
+let menuToggle;
+let searchInput;
+let searchResultsContainer;
+let resultsCount;
+let quickLinks;
+let summaryDescription;
 
-const params = new URLSearchParams(window.location.search);
-const initialQuery = (params.get('q') || '').trim();
-if (searchInput && initialQuery) {
-    searchInput.value = initialQuery;
-}
+let layoutListenersBound = false;
 
-if (menuToggle && sidebar) {
-    menuToggle.addEventListener('click', () => {
-        if (window.innerWidth <= 992) {
-            const isActive = sidebar.classList.toggle('active');
-            body.classList.toggle('sidebar-open', isActive);
-        }
-    });
-
-    document.addEventListener('click', event => {
-        if (window.innerWidth > 992) return;
-        if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
-            sidebar.classList.remove('active');
-            body.classList.remove('sidebar-open');
-        }
-    });
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 992) {
-            sidebar.classList.remove('active');
-            body.classList.remove('sidebar-open');
-        }
-    });
-}
-
-const userNameEl = document.querySelector('.user-name');
-const userRoleEl = document.querySelector('.user-role');
-const userImgEl = document.querySelector('.user-profile img');
-
-if (userNameEl) {
-    const nombre = localStorage.getItem('usuario_nombre');
-    if (nombre) userNameEl.textContent = nombre;
-}
-
-if (userRoleEl) {
-    const rol = localStorage.getItem('usuario_rol');
-    if (rol) userRoleEl.textContent = rol;
-}
-
-if (userImgEl) {
-    let fotoPerfil = localStorage.getItem('foto_perfil') || '/images/profile.jpg';
-    if (fotoPerfil && !fotoPerfil.startsWith('/')) {
-        fotoPerfil = '/' + fotoPerfil;
+function normalizePageUrlForNavigation(url) {
+    if (!url) return '';
+    let target = url.trim();
+    target = target.replace(/^(\.\.\/)+/, '');
+    target = target.replace(/^\.\//, '');
+    target = target.replace(/^\/+/, '');
+    if (target.startsWith('pages/')) {
+        target = target.slice(6);
     }
-    userImgEl.onerror = () => {
-        userImgEl.src = '/images/profile.jpg';
-    };
-    userImgEl.src = fotoPerfil;
+    return target;
+}
+
+const menuToggleListener = () => {
+    if (!menuToggle || !sidebar || !body) return;
+    if (window.innerWidth <= 992) {
+        const isActive = sidebar.classList.toggle('active');
+        body.classList.toggle('sidebar-open', isActive);
+    }
+};
+
+const documentClickListener = event => {
+    if (!sidebar || !menuToggle || !body) return;
+    if (window.innerWidth > 992) return;
+    if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+        sidebar.classList.remove('active');
+        body.classList.remove('sidebar-open');
+    }
+};
+
+const windowResizeListener = () => {
+    if (!sidebar || !body) return;
+    if (window.innerWidth > 992) {
+        sidebar.classList.remove('active');
+        body.classList.remove('sidebar-open');
+    }
+};
+
+const quickLinksClickListener = event => {
+    const button = event.target.closest('button[data-query]');
+    if (!button) return;
+    const query = button.getAttribute('data-query') || '';
+    if (searchInput) {
+        searchInput.value = query;
+    }
+    renderResultados(query);
+};
+
+const searchInputListener = event => {
+    renderResultados(event.target.value);
+};
+
+const searchInputKeyListener = event => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        renderResultados(event.target.value);
+    }
+};
+
+function cacheDomElements() {
+    body = document.body;
+    sidebar = document.querySelector('.sidebar');
+    menuToggle = document.getElementById('menuToggle');
+    searchInput = document.getElementById('globalSearchInput');
+    searchResultsContainer = document.getElementById('searchResults');
+    resultsCount = document.getElementById('resultsCount');
+    quickLinks = document.getElementById('quickLinks');
+    summaryDescription = document.querySelector('.summary-description');
+}
+
+function resolveInitialQuery(override) {
+    const overrideQuery = (override || '').trim();
+    if (overrideQuery) {
+        try {
+            localStorage.removeItem('pendingGlobalSearchQuery');
+        } catch (error) {
+            console.warn('No se pudo limpiar la consulta pendiente:', error);
+        }
+        return overrideQuery;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const urlQuery = (params.get('q') || '').trim();
+    if (urlQuery) {
+        try {
+            localStorage.removeItem('pendingGlobalSearchQuery');
+        } catch (error) {
+            console.warn('No se pudo limpiar la consulta pendiente:', error);
+        }
+        return urlQuery;
+    }
+
+    try {
+        const storedQuery = (localStorage.getItem('pendingGlobalSearchQuery') || '').trim();
+        if (storedQuery) {
+            localStorage.removeItem('pendingGlobalSearchQuery');
+            return storedQuery;
+        }
+    } catch (error) {
+        console.warn('No se pudo leer la consulta pendiente:', error);
+    }
+
+    return '';
+}
+
+function attachLayoutListeners() {
+    if (layoutListenersBound) return;
+
+    if (menuToggle && sidebar) {
+        menuToggle.addEventListener('click', menuToggleListener);
+    }
+
+    document.addEventListener('click', documentClickListener);
+    window.addEventListener('resize', windowResizeListener);
+
+    layoutListenersBound = true;
+}
+
+function attachSearchListeners() {
+    if (quickLinks && !quickLinks.dataset.globalSearchBound) {
+        quickLinks.addEventListener('click', quickLinksClickListener);
+        quickLinks.dataset.globalSearchBound = 'true';
+    }
+
+    if (searchInput) {
+        searchInput.removeEventListener('input', searchInputListener);
+        searchInput.removeEventListener('keydown', searchInputKeyListener);
+        searchInput.addEventListener('input', searchInputListener);
+        searchInput.addEventListener('keydown', searchInputKeyListener);
+    }
 }
 
 function normalizeHex(hexColor) {
@@ -135,7 +213,8 @@ function applyTopbarColor(color) {
 let searchDataset = [];
 let datasetReady = false;
 let datasetError = null;
-let pendingQuery = initialQuery;
+let pendingQuery = '';
+let searchDataPromise = null;
 
 function mostrarPlaceholder(titulo, descripcion = '', iconClass = 'fa-search') {
     if (!searchResultsContainer) return;
@@ -156,7 +235,7 @@ function normalizarTexto(texto) {
 }
 
 function filtrarResultados(termino) {
-    const terminoNormalizado = normalizarTexto(termino.trim());
+    const terminoNormalizado = normalizarTexto((termino || '').trim());
 
     if (!terminoNormalizado) {
         return searchDataset;
@@ -201,6 +280,41 @@ function crearGrupoHTML(categoria, elementos) {
             </div>
             <a class="item-action" href="${item.url}">${item.accion}</a>
         `;
+
+        const actionLink = li.querySelector('.item-action');
+        if (actionLink) {
+            const normalizedPage = normalizePageUrlForNavigation(item.url);
+            actionLink.addEventListener('click', event => {
+                if (!item.url) {
+                    return;
+                }
+                const navigationEvent = new CustomEvent('navigateToPage', {
+                    detail: {
+                        pageUrl: normalizedPage,
+                        originalUrl: item.url,
+                        source: 'global-search'
+                    },
+                    cancelable: true
+                });
+
+                const prevented = !document.dispatchEvent(navigationEvent);
+                if (prevented) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (normalizedPage) {
+                    try {
+                        localStorage.setItem('cargarVista', normalizedPage);
+                    } catch (error) {
+                        console.warn('No se pudo guardar la vista solicitada:', error);
+                    }
+                    event.preventDefault();
+                    window.location.href = `main_menu.html?load=${encodeURIComponent(normalizedPage)}`;
+                }
+            });
+        }
+
         list.appendChild(li);
     });
 
@@ -211,7 +325,9 @@ function crearGrupoHTML(categoria, elementos) {
 
 function renderResultados(termino) {
     if (!searchResultsContainer || !resultsCount) return;
-    pendingQuery = termino;
+
+    const consulta = (termino || '').toString();
+    pendingQuery = consulta;
 
     if (!datasetReady) {
         mostrarPlaceholder('Cargando datos de tu empresa...', 'Estamos preparando tus registros más recientes.', 'fa-spinner fa-spin');
@@ -225,17 +341,17 @@ function renderResultados(termino) {
         return;
     }
 
-    const consulta = termino.trim();
+    const consultaRecortada = consulta.trim();
     const totalDisponible = searchDataset.length;
-    const resultados = filtrarResultados(consulta);
+    const resultados = filtrarResultados(consultaRecortada);
 
-    if (consulta) {
+    if (consultaRecortada) {
         resultsCount.textContent = resultados.length.toString();
     } else {
         resultsCount.textContent = totalDisponible.toString();
     }
 
-    if (!consulta) {
+    if (!consultaRecortada) {
         mostrarPlaceholder('Comienza a escribir para ver resultados', 'Puedes buscar productos, movimientos, áreas o usuarios de tu equipo.');
         return;
     }
@@ -340,72 +456,96 @@ async function cargarDatosBusqueda(idEmpresa) {
 }
 
 async function initializeSearchPage() {
-    const userId = localStorage.getItem('usuario_id');
-    if (!userId) {
-        datasetReady = true;
-        datasetError = 'Tu sesión expiró. Por favor inicia sesión nuevamente.';
-        renderResultados('');
-        setTimeout(() => {
-            window.location.href = '../../pages/regis_login/login/login.html';
-        }, 2000);
+    if (datasetReady || datasetError) {
+        renderResultados(pendingQuery);
         return;
     }
 
-    let empresaId = localStorage.getItem('id_empresa');
+    if (!searchDataPromise) {
+        searchDataPromise = (async () => {
+            const userId = localStorage.getItem('usuario_id');
+            if (!userId) {
+                datasetReady = true;
+                datasetError = 'Tu sesión expiró. Por favor inicia sesión nuevamente.';
+                renderResultados('');
+                setTimeout(() => {
+                    window.location.href = '../../pages/regis_login/login/login.html';
+                }, 2000);
+                return;
+            }
 
-    try {
-        const response = await fetch('/scripts/php/check_empresa.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario_id: userId })
+            let empresaId = localStorage.getItem('id_empresa');
+
+            try {
+                const response = await fetch('/scripts/php/check_empresa.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario_id: userId })
+                });
+
+                const data = await response.json();
+                if (data.success && data.empresa_id) {
+                    empresaId = data.empresa_id;
+                    localStorage.setItem('id_empresa', data.empresa_id);
+                }
+            } catch (error) {
+                console.warn('No se pudo verificar la empresa del usuario:', error);
+            }
+
+            if (!empresaId) {
+                datasetReady = true;
+                datasetError = 'No encontramos una empresa asociada a tu usuario. Solicita acceso al administrador.';
+                renderResultados('');
+                return;
+            }
+
+            await Promise.all([
+                cargarConfiguracionVisual(empresaId),
+                cargarDatosBusqueda(empresaId)
+            ]);
+        })()
+        .catch(error => {
+            console.error('No se pudo inicializar el buscador global:', error);
+        })
+        .finally(() => {
+            searchDataPromise = null;
         });
-
-        const data = await response.json();
-        if (data.success && data.empresa_id) {
-            empresaId = data.empresa_id;
-            localStorage.setItem('id_empresa', data.empresa_id);
-        }
-    } catch (error) {
-        console.warn('No se pudo verificar la empresa del usuario:', error);
     }
 
-    if (!empresaId) {
-        datasetReady = true;
-        datasetError = 'No encontramos una empresa asociada a tu usuario. Solicita acceso al administrador.';
-        renderResultados('');
-        return;
+    await searchDataPromise;
+}
+
+function initializeGlobalSearchPage(initialQueryOverride = null) {
+    cacheDomElements();
+
+    if (body) {
+        body.classList.add('search-page-body');
     }
 
-    await Promise.all([
-        cargarConfiguracionVisual(empresaId),
-        cargarDatosBusqueda(empresaId)
-    ]);
+    attachLayoutListeners();
+    attachSearchListeners();
+
+    const initialQuery = resolveInitialQuery(initialQueryOverride);
+    pendingQuery = initialQuery;
+
+    if (searchInput) {
+        searchInput.value = initialQuery;
+        searchInput.focus();
+        searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    }
+
+    if (!datasetReady) {
+        mostrarPlaceholder('Cargando datos de tu empresa...', 'Estamos preparando tus registros más recientes.', 'fa-spinner fa-spin');
+    }
+
+    renderResultados(initialQuery);
+    initializeSearchPage();
 }
 
-if (quickLinks) {
-    quickLinks.addEventListener('click', event => {
-        const button = event.target.closest('button[data-query]');
-        if (!button) return;
-        const query = button.getAttribute('data-query');
-        if (searchInput) {
-            searchInput.value = query;
-        }
-        renderResultados(query);
-    });
+window.initializeGlobalSearchPage = initializeGlobalSearchPage;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initializeGlobalSearchPage());
+} else {
+    initializeGlobalSearchPage();
 }
-
-if (searchInput) {
-    searchInput.addEventListener('input', event => {
-        renderResultados(event.target.value);
-    });
-
-    searchInput.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            renderResultados(event.target.value);
-        }
-    });
-}
-
-renderResultados(initialQuery);
-initializeSearchPage();

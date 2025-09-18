@@ -89,27 +89,6 @@ function sendPushNotification(title, message) {
     }
 }
 
-function openGlobalSearch(query) {
-    const searchUrl = query ? `global_search.html?q=${encodeURIComponent(query)}` : 'global_search.html';
-    window.location.href = searchUrl;
-}
-
-if (topbarSearchInput) {
-    topbarSearchInput.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            openGlobalSearch(topbarSearchInput.value.trim());
-        }
-    });
-}
-
-if (topbarSearchIcon) {
-    topbarSearchIcon.addEventListener('click', () => {
-        const query = topbarSearchInput ? topbarSearchInput.value.trim() : '';
-        openGlobalSearch(query);
-    });
-}
-
 function normalizeHex(hexColor) {
     if (!hexColor) return null;
     let hex = hexColor.trim();
@@ -720,6 +699,223 @@ document.addEventListener("DOMContentLoaded", function () {
     let contenidoInicial = mainContent.innerHTML;
     let estaEnInicio = true;
 
+    function removeSearchBodyClass() {
+        document.body.classList.remove('search-page-body');
+    }
+
+    function showSearchLoader(target) {
+        if (!target) return;
+        target.innerHTML = `
+            <div class="search-loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Cargando buscador global...</p>
+            </div>
+        `;
+    }
+
+    function normalizePageUrl(pageUrl) {
+        if (!pageUrl) return '';
+        let normalized = pageUrl.trim();
+        normalized = normalized.replace(/^(\.\.\/)+/, '');
+        normalized = normalized.replace(/^\.\//, '');
+        normalized = normalized.replace(/^\/+/, '');
+        if (normalized.startsWith('pages/')) {
+            normalized = normalized.slice(6);
+        }
+        return normalized;
+    }
+
+    function getTopbarTitleForPage(pageUrl) {
+        const normalized = normalizePageUrl(pageUrl);
+        if (!normalized) return null;
+        const sidebarLink = document.querySelector(`.sidebar-menu a[data-page="${normalized}"]`);
+        if (sidebarLink) {
+            return sidebarLink.textContent.trim();
+        }
+        if (normalized === 'inicio') {
+            return 'Panel de Control Principal';
+        }
+        const name = normalized.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+        return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
+    function executeEmbeddedScripts(container) {
+        if (!container) return;
+        const scripts = container.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            if (oldScript.src) {
+                newScript.async = false;
+                newScript.src = oldScript.src;
+            } else {
+                newScript.textContent = oldScript.textContent;
+            }
+            document.body.appendChild(newScript);
+        });
+    }
+
+    function loadPageIntoMain(pageUrl, options = {}) {
+        const normalized = normalizePageUrl(pageUrl);
+        const { markActive = true, titleOverride = null } = options;
+
+        if (!normalized) {
+            return Promise.resolve();
+        }
+
+        const topbarTitle = document.querySelector('.topbar-title');
+        const resolvedTitle = titleOverride || getTopbarTitleForPage(normalized);
+
+        if (normalized === 'inicio') {
+            if (markActive) {
+                document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
+                const homeLink = document.querySelector('.sidebar-menu a[data-page="inicio"]');
+                if (homeLink) homeLink.classList.add('active');
+            }
+            mainContent.innerHTML = contenidoInicial;
+            restoreHomeData();
+            estaEnInicio = true;
+            removeSearchBodyClass();
+            if (topbarTitle && resolvedTitle) {
+                topbarTitle.textContent = resolvedTitle;
+            }
+            return Promise.resolve();
+        }
+
+        if (estaEnInicio) {
+            saveHomeData();
+            estaEnInicio = false;
+        }
+
+        if (markActive) {
+            document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
+            const matchingLink = document.querySelector(`.sidebar-menu a[data-page="${normalized}"]`);
+            if (matchingLink) {
+                matchingLink.classList.add('active');
+            }
+        }
+
+        removeSearchBodyClass();
+
+        return fetch(`../${normalized}`)
+            .then(res => res.text())
+            .then(html => {
+                mainContent.innerHTML = html;
+                executeEmbeddedScripts(mainContent);
+                if (topbarTitle && resolvedTitle) {
+                    topbarTitle.textContent = resolvedTitle;
+                }
+            })
+            .catch(err => {
+                mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
+            });
+    }
+
+    function ensureGlobalSearchModule(query) {
+        const sanitizedQuery = (query || '').trim();
+
+        if (sanitizedQuery) {
+            localStorage.setItem('pendingGlobalSearchQuery', sanitizedQuery);
+        } else {
+            localStorage.removeItem('pendingGlobalSearchQuery');
+        }
+
+        const invokeInitializer = () => {
+            if (typeof window.initializeGlobalSearchPage === 'function') {
+                window.initializeGlobalSearchPage(sanitizedQuery);
+            }
+        };
+
+        if (typeof window.initializeGlobalSearchPage === 'function') {
+            invokeInitializer();
+            return;
+        }
+
+        const existingLoader = document.querySelector('script[data-global-search-loader="true"]');
+        if (existingLoader) {
+            existingLoader.addEventListener('load', invokeInitializer, { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = '../../scripts/main_menu/global_search.js';
+        script.async = false;
+        script.dataset.globalSearchLoader = 'true';
+        script.onload = invokeInitializer;
+        document.body.appendChild(script);
+    }
+
+    function openGlobalSearch(query) {
+        const sanitizedQuery = (query || '').trim();
+        const topbarTitle = document.querySelector('.topbar-title');
+
+        if (!mainContent) {
+            const searchUrl = sanitizedQuery ? `global_search.html?q=${encodeURIComponent(sanitizedQuery)}` : 'global_search.html';
+            window.location.href = searchUrl;
+            return;
+        }
+
+        if (estaEnInicio) {
+            saveHomeData();
+            estaEnInicio = false;
+        }
+
+        document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
+
+        showSearchLoader(mainContent);
+
+        fetch('../main_menu/global_search.html')
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const incomingMain = doc.querySelector('main');
+                const bodyClasses = doc.body ? Array.from(doc.body.classList) : [];
+
+                removeSearchBodyClass();
+                if (bodyClasses.length) {
+                    document.body.classList.add(...bodyClasses);
+                }
+
+                if (incomingMain) {
+                    mainContent.innerHTML = '';
+                    mainContent.appendChild(incomingMain);
+                } else if (doc.body) {
+                    mainContent.innerHTML = doc.body.innerHTML;
+                } else {
+                    mainContent.innerHTML = html;
+                }
+
+                if (topbarTitle) {
+                    topbarTitle.textContent = 'Buscador global';
+                }
+
+                ensureGlobalSearchModule(sanitizedQuery);
+            })
+            .catch(err => {
+                removeSearchBodyClass();
+                mainContent.innerHTML = `<div class="search-error-state">No se pudo cargar el buscador global. ${err}</div>`;
+            });
+    }
+
+    if (topbarSearchInput) {
+        topbarSearchInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                openGlobalSearch(topbarSearchInput.value.trim());
+            }
+        });
+    }
+
+    if (topbarSearchIcon) {
+        topbarSearchIcon.addEventListener('click', () => {
+            const query = topbarSearchInput ? topbarSearchInput.value.trim() : '';
+            openGlobalSearch(query);
+        });
+    }
+
     loadMetrics();
     loadAccessLogs();
     restoreHomeData();
@@ -913,40 +1109,7 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
 
             const pageUrl = this.getAttribute('data-page');
 
-            if (pageUrl === 'inicio') {
-                mainContent.innerHTML = contenidoInicial;
-                restoreHomeData();
-                estaEnInicio = true;
-                return;
-            }
-
-            if (estaEnInicio) {
-                saveHomeData();
-                estaEnInicio = false;
-            }
-
-            fetch(`../${pageUrl}`)
-                .then(res => res.text())
-                .then(html => {
-                    mainContent.innerHTML = html;
-
-                    const scripts = mainContent.querySelectorAll("script");
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement("script");
-                        Array.from(oldScript.attributes).forEach(attr => {
-                            newScript.setAttribute(attr.name, attr.value);
-                        });
-                        if (oldScript.src) {
-                            newScript.async = false;
-                        } else {
-                            newScript.textContent = oldScript.textContent;
-                        }
-                        document.body.appendChild(newScript);
-                    });
-                })
-                .catch(err => {
-                    mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
-                });
+            loadPageIntoMain(pageUrl, { titleOverride: titulo });
         });
     });
 
@@ -955,78 +1118,27 @@ const params = new URLSearchParams(window.location.search);
 if (params.has("load")) {
     const page = params.get("load");
 
-    // Cambiar el título en la topbar
-    const name = page.split('/').pop().replace('.html', '').replace(/_/g, ' ');
-    document.querySelector('.topbar-title').textContent = name.charAt(0).toUpperCase() + name.slice(1);
-
-    // Cargar el contenido en el mainContent
-    fetch(`../${page}`)
-        .then(res => res.text())
-        .then(html => {
-            const mainContent = document.getElementById("mainContent");
-            mainContent.innerHTML = html;
-            estaEnInicio = false;
-
-            // Ejecutar scripts embebidos si los hay
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(script => {
-                const newScript = document.createElement("script");
-                if (script.src) {
-                    newScript.src = script.src;
-                    newScript.async = false;
-                } else {
-                    newScript.textContent = script.textContent;
-                }
-                document.body.appendChild(newScript);
-            });
-        })
-        .catch(err => {
-            document.getElementById("mainContent").innerHTML = `<p>Error cargando la vista: ${err}</p>`;
-        });
-    }
+    loadPageIntoMain(page, { markActive: true });
+}
 
     // 🟢 Si se solicitó cargar una vista desde el registro, hazlo ahora
 const vistaPendiente = localStorage.getItem('cargarVista');
 if (vistaPendiente) {
     localStorage.removeItem('cargarVista'); // limpiamos
+    loadPageIntoMain(vistaPendiente, { markActive: true });
+}
 
-    // Cargar HTML en mainContent
-    fetch(`../${vistaPendiente}`)
-        .then(res => res.text())
-        .then(html => {
-            const mainContent = document.getElementById("mainContent");
-            mainContent.innerHTML = html;
-            estaEnInicio = false;
-
-            // Ejecutar los scripts externos/internos del HTML cargado
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                Array.from(oldScript.attributes).forEach(attr => {
-                    newScript.setAttribute(attr.name, attr.value);
-                });
-                if (oldScript.src) {
-                    newScript.async = false;
-                } else {
-                    newScript.textContent = oldScript.textContent;
-                }
-                document.body.appendChild(newScript);
-            });
-
-            // Actualizar topbar (opcional)
-            const titulo = vistaPendiente.split('/').pop().replace('.html', '').replace(/_/g, ' ');
-            const topbarTitle = document.querySelector('.topbar-title');
-            if (topbarTitle) {
-                topbarTitle.textContent = titulo.charAt(0).toUpperCase() + titulo.slice(1);
-            }
-        })
-        .catch(err => {
-            const mainContent = document.getElementById("mainContent");
-            if (mainContent) {
-                mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
-            }
+    document.addEventListener('navigateToPage', event => {
+        const detail = event.detail || {};
+        if (!detail.pageUrl) {
+            return;
+        }
+        event.preventDefault();
+        loadPageIntoMain(detail.pageUrl, {
+            titleOverride: detail.titleOverride || detail.title,
+            markActive: detail.markActive !== false
         });
-    }
+    });
 });
 
 function cargarConfiguracionVisual(idEmpresa) {
