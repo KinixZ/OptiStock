@@ -891,11 +891,14 @@ img {
         transform: translateX(0);
     }
     .topbar {
-        padding: 0 24px;
-        padding-left: 24px;
+        padding: 0 18px;
+        padding-left: 18px;
+        height: 68px;
     }
     .content {
         margin-left: 240px;
+        margin-top: 68px;
+        min-height: calc(100vh - 68px);
     }
     .header-bottom {
         display: flex;
@@ -919,13 +922,16 @@ img {
     }
 
     .topbar {
-        padding: 0 20px;
-        padding-left: 20px;
+        padding: 0 16px;
+        padding-left: 16px;
+        height: 64px;
     }
 
     .content {
         margin-left: 0;
         padding: 24px 20px;
+        margin-top: 64px;
+        min-height: calc(100vh - 64px);
     }
 
     .search-bar {
@@ -944,6 +950,26 @@ img {
 
 @media (max-width: 576px) {
     .topbar {
+        padding: 8px 14px;
+        padding-left: 14px;
+        height: 60px;
+        gap: 8px;
+    }
+
+    .topbar-title {
+        font-size: 1rem;
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .topbar-actions {
+        flex: 1;
+        justify-content: flex-end;
+        gap: 8px;
+        min-width: 0;
         flex-wrap: wrap;
         height: auto;
         padding: 12px 16px;
@@ -963,6 +989,35 @@ img {
     .notification-bell,
     .alert-settings,
     .menu-toggle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.95rem;
+    }
+
+    .user-profile {
+        gap: 6px;
+    }
+
+    .user-profile img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .user-info {
+        gap: 0;
+        line-height: 1.1;
+    }
+
+    .user-name {
+        font-size: 0.82rem;
+    }
+
+    .user-role {
+        font-size: 0.68rem;
+    }
+
+    .dropdown-toggle {
+        font-size: 0.85rem;
         width: 36px;
         height: 36px;
     }
@@ -979,6 +1034,8 @@ img {
 
     .content {
         padding: 20px 16px;
+        margin-top: 60px;
+        min-height: calc(100vh - 60px);
     }
 
     .page-header {
