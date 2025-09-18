@@ -1110,6 +1110,42 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
             const pageUrl = this.getAttribute('data-page');
 
             loadPageIntoMain(pageUrl, { titleOverride: titulo });
+            if (pageUrl === 'inicio') {
+                mainContent.innerHTML = contenidoInicial;
+                restoreHomeData();
+                estaEnInicio = true;
+                removeSearchBodyClass();
+                return;
+            }
+
+            if (estaEnInicio) {
+                saveHomeData();
+                estaEnInicio = false;
+            }
+
+            fetch(`../${pageUrl}`)
+                .then(res => res.text())
+                .then(html => {
+                    mainContent.innerHTML = html;
+                    removeSearchBodyClass();
+
+                    const scripts = mainContent.querySelectorAll("script");
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        if (oldScript.src) {
+                            newScript.async = false;
+                        } else {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        document.body.appendChild(newScript);
+                    });
+                })
+                .catch(err => {
+                    mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
+                });
         });
     });
 
@@ -1120,6 +1156,36 @@ if (params.has("load")) {
 
     loadPageIntoMain(page, { markActive: true });
 }
+    // Cambiar el título en la topbar
+    const name = page.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+    document.querySelector('.topbar-title').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+
+    // Cargar el contenido en el mainContent
+    fetch(`../${page}`)
+        .then(res => res.text())
+        .then(html => {
+            const mainContent = document.getElementById("mainContent");
+            mainContent.innerHTML = html;
+            estaEnInicio = false;
+            removeSearchBodyClass();
+
+            // Ejecutar scripts embebidos si los hay
+            const scripts = mainContent.querySelectorAll("script");
+            scripts.forEach(script => {
+                const newScript = document.createElement("script");
+                if (script.src) {
+                    newScript.src = script.src;
+                    newScript.async = false;
+                } else {
+                    newScript.textContent = script.textContent;
+                }
+                document.body.appendChild(newScript);
+            });
+        })
+        .catch(err => {
+            document.getElementById("mainContent").innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+        });
+    }
 
     // 🟢 Si se solicitó cargar una vista desde el registro, hazlo ahora
 const vistaPendiente = localStorage.getItem('cargarVista');
@@ -1137,6 +1203,42 @@ if (vistaPendiente) {
         loadPageIntoMain(detail.pageUrl, {
             titleOverride: detail.titleOverride || detail.title,
             markActive: detail.markActive !== false
+    // Cargar HTML en mainContent
+    fetch(`../${vistaPendiente}`)
+        .then(res => res.text())
+        .then(html => {
+            const mainContent = document.getElementById("mainContent");
+            mainContent.innerHTML = html;
+            estaEnInicio = false;
+            removeSearchBodyClass();
+
+            // Ejecutar los scripts externos/internos del HTML cargado
+            const scripts = mainContent.querySelectorAll("script");
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement("script");
+                Array.from(oldScript.attributes).forEach(attr => {
+                    newScript.setAttribute(attr.name, attr.value);
+                });
+                if (oldScript.src) {
+                    newScript.async = false;
+                } else {
+                    newScript.textContent = oldScript.textContent;
+                }
+                document.body.appendChild(newScript);
+            });
+
+            // Actualizar topbar (opcional)
+            const titulo = vistaPendiente.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+            const topbarTitle = document.querySelector('.topbar-title');
+            if (topbarTitle) {
+                topbarTitle.textContent = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+            }
+        })
+        .catch(err => {
+            const mainContent = document.getElementById("mainContent");
+            if (mainContent) {
+                mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+            }
         });
     });
 });
