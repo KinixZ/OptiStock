@@ -222,10 +222,10 @@ img {
 }
 
 .summary-label {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #0f172a;
+    color: rgba(15, 23, 42, 0.6);
     font-weight: 600;
 }
 
@@ -238,9 +238,9 @@ img {
 
 .summary-description {
     margin: 0;
-    font-size: 1.08rem;
-    line-height: 1.75;
-    color: #0f172a;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(15, 23, 42, 0.72);
 }
 
 .summary-links {
@@ -294,17 +294,17 @@ img {
 }
 
 .search-placeholder h2 {
-    font-size: clamp(1.75rem, 3.4vw, 2.2rem);
-    font-weight: 700;
+    font-size: clamp(1.6rem, 3.2vw, 2rem);
+    font-weight: 600;
     color: #0f172a;
 }
 
 .search-placeholder p {
     max-width: 640px;
     margin: 0 auto;
-    font-size: 1.08rem;
-    line-height: 1.75;
-    color: #0f172a;
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: rgba(15, 23, 42, 0.7);
 }
 
 .search-loading-state,
@@ -416,9 +416,9 @@ img {
 
 .item-content p {
     margin: 0;
-    font-size: 1.05rem;
-    line-height: 1.75;
-    color: #0f172a;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(15, 23, 42, 0.76);
 }
 
 .item-action {

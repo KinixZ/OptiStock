@@ -9,18 +9,6 @@ let summaryDescription;
 
 let layoutListenersBound = false;
 
-function normalizePageUrlForNavigation(url) {
-    if (!url) return '';
-    let target = url.trim();
-    target = target.replace(/^(\.\.\/)+/, '');
-    target = target.replace(/^\.\//, '');
-    target = target.replace(/^\/+/, '');
-    if (target.startsWith('pages/')) {
-        target = target.slice(6);
-    }
-    return target;
-}
-
 const menuToggleListener = () => {
     if (!menuToggle || !sidebar || !body) return;
     if (window.innerWidth <= 992) {
@@ -280,41 +268,6 @@ function crearGrupoHTML(categoria, elementos) {
             </div>
             <a class="item-action" href="${item.url}">${item.accion}</a>
         `;
-
-        const actionLink = li.querySelector('.item-action');
-        if (actionLink) {
-            const normalizedPage = normalizePageUrlForNavigation(item.url);
-            actionLink.addEventListener('click', event => {
-                if (!item.url) {
-                    return;
-                }
-                const navigationEvent = new CustomEvent('navigateToPage', {
-                    detail: {
-                        pageUrl: normalizedPage,
-                        originalUrl: item.url,
-                        source: 'global-search'
-                    },
-                    cancelable: true
-                });
-
-                const prevented = !document.dispatchEvent(navigationEvent);
-                if (prevented) {
-                    event.preventDefault();
-                    return;
-                }
-
-                if (normalizedPage) {
-                    try {
-                        localStorage.setItem('cargarVista', normalizedPage);
-                    } catch (error) {
-                        console.warn('No se pudo guardar la vista solicitada:', error);
-                    }
-                    event.preventDefault();
-                    window.location.href = `main_menu.html?load=${encodeURIComponent(normalizedPage)}`;
-                }
-            });
-        }
-
         list.appendChild(li);
     });
 

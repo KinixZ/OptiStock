@@ -713,106 +713,6 @@ document.addEventListener("DOMContentLoaded", function () {
         `;
     }
 
-    function normalizePageUrl(pageUrl) {
-        if (!pageUrl) return '';
-        let normalized = pageUrl.trim();
-        normalized = normalized.replace(/^(\.\.\/)+/, '');
-        normalized = normalized.replace(/^\.\//, '');
-        normalized = normalized.replace(/^\/+/, '');
-        if (normalized.startsWith('pages/')) {
-            normalized = normalized.slice(6);
-        }
-        return normalized;
-    }
-
-    function getTopbarTitleForPage(pageUrl) {
-        const normalized = normalizePageUrl(pageUrl);
-        if (!normalized) return null;
-        const sidebarLink = document.querySelector(`.sidebar-menu a[data-page="${normalized}"]`);
-        if (sidebarLink) {
-            return sidebarLink.textContent.trim();
-        }
-        if (normalized === 'inicio') {
-            return 'Panel de Control Principal';
-        }
-        const name = normalized.split('/').pop().replace('.html', '').replace(/_/g, ' ');
-        return name.charAt(0).toUpperCase() + name.slice(1);
-    }
-
-    function executeEmbeddedScripts(container) {
-        if (!container) return;
-        const scripts = container.querySelectorAll('script');
-        scripts.forEach(oldScript => {
-            const newScript = document.createElement('script');
-            Array.from(oldScript.attributes).forEach(attr => {
-                newScript.setAttribute(attr.name, attr.value);
-            });
-            if (oldScript.src) {
-                newScript.async = false;
-                newScript.src = oldScript.src;
-            } else {
-                newScript.textContent = oldScript.textContent;
-            }
-            document.body.appendChild(newScript);
-        });
-    }
-
-    function loadPageIntoMain(pageUrl, options = {}) {
-        const normalized = normalizePageUrl(pageUrl);
-        const { markActive = true, titleOverride = null } = options;
-
-        if (!normalized) {
-            return Promise.resolve();
-        }
-
-        const topbarTitle = document.querySelector('.topbar-title');
-        const resolvedTitle = titleOverride || getTopbarTitleForPage(normalized);
-
-        if (normalized === 'inicio') {
-            if (markActive) {
-                document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
-                const homeLink = document.querySelector('.sidebar-menu a[data-page="inicio"]');
-                if (homeLink) homeLink.classList.add('active');
-            }
-            mainContent.innerHTML = contenidoInicial;
-            restoreHomeData();
-            estaEnInicio = true;
-            removeSearchBodyClass();
-            if (topbarTitle && resolvedTitle) {
-                topbarTitle.textContent = resolvedTitle;
-            }
-            return Promise.resolve();
-        }
-
-        if (estaEnInicio) {
-            saveHomeData();
-            estaEnInicio = false;
-        }
-
-        if (markActive) {
-            document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
-            const matchingLink = document.querySelector(`.sidebar-menu a[data-page="${normalized}"]`);
-            if (matchingLink) {
-                matchingLink.classList.add('active');
-            }
-        }
-
-        removeSearchBodyClass();
-
-        return fetch(`../${normalized}`)
-            .then(res => res.text())
-            .then(html => {
-                mainContent.innerHTML = html;
-                executeEmbeddedScripts(mainContent);
-                if (topbarTitle && resolvedTitle) {
-                    topbarTitle.textContent = resolvedTitle;
-                }
-            })
-            .catch(err => {
-                mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
-            });
-    }
-
     function ensureGlobalSearchModule(query) {
         const sanitizedQuery = (query || '').trim();
 
@@ -1109,7 +1009,6 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
 
             const pageUrl = this.getAttribute('data-page');
 
-            loadPageIntoMain(pageUrl, { titleOverride: titulo });
             if (pageUrl === 'inicio') {
                 mainContent.innerHTML = contenidoInicial;
                 restoreHomeData();
@@ -1154,8 +1053,6 @@ const params = new URLSearchParams(window.location.search);
 if (params.has("load")) {
     const page = params.get("load");
 
-    loadPageIntoMain(page, { markActive: true });
-}
     // Cambiar el título en la topbar
     const name = page.split('/').pop().replace('.html', '').replace(/_/g, ' ');
     document.querySelector('.topbar-title').textContent = name.charAt(0).toUpperCase() + name.slice(1);
@@ -1191,18 +1088,7 @@ if (params.has("load")) {
 const vistaPendiente = localStorage.getItem('cargarVista');
 if (vistaPendiente) {
     localStorage.removeItem('cargarVista'); // limpiamos
-    loadPageIntoMain(vistaPendiente, { markActive: true });
-}
 
-    document.addEventListener('navigateToPage', event => {
-        const detail = event.detail || {};
-        if (!detail.pageUrl) {
-            return;
-        }
-        event.preventDefault();
-        loadPageIntoMain(detail.pageUrl, {
-            titleOverride: detail.titleOverride || detail.title,
-            markActive: detail.markActive !== false
     // Cargar HTML en mainContent
     fetch(`../${vistaPendiente}`)
         .then(res => res.text())
@@ -1240,7 +1126,7 @@ if (vistaPendiente) {
                 mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
             }
         });
-    });
+    }
 });
 
 function cargarConfiguracionVisual(idEmpresa) {
