@@ -18,34 +18,35 @@
   <link rel="stylesheet" href="../../styles/control_log/log.css" />
 </head>
 <body>
-  <div class="log-page container py-4">
-    <header class="log-header">
-      <div class="log-header__copy">
-        <p class="log-eyebrow">Registro de actividades</p>
-        <h1 class="log-title">Log de control</h1>
-        <p class="log-description">
-          Monitorea y audita las acciones clave de tu plataforma sin saturar la pantalla.
-        </p>
-      </div>
-      <div class="log-header__stats">
-        <div class="mini-stat">
-          <span class="mini-stat__label">Registros totales</span>
-          <strong class="mini-stat__value" id="totalRegistros">0</strong>
+  <div class="log-page container-fluid py-4 px-3 px-md-4">
+    <section class="page-header">
+      <span class="header-eyebrow">Registro de Actividades</span>
+      <h1 class="header-title">Log de control</h1>
+      <p class="header-description">
+        Monitorea y audita cada acción realizada en tu plataforma para mantener el control de los procesos críticos.
+      </p>
+      <div class="header-stats">
+        <div class="stat-card">
+          <span class="stat-label">Registros totales</span>
+          <strong class="stat-value" id="totalRegistros">0</strong>
         </div>
-        <div class="mini-stat">
-          <span class="mini-stat__label">Última actualización</span>
-          <strong class="mini-stat__value" id="lastUpdated">—</strong>
+        <div class="stat-card">
+          <span class="stat-label">Última actualización</span>
+          <strong class="stat-value" id="lastUpdated">—</strong>
         </div>
       </div>
-    </header>
+    </section>
 
-    <section class="log-controls">
-      <div class="log-controls__heading">
-        <h2>Filtros rápidos</h2>
-        <div class="export-buttons">
+    <section class="filters-card">
+      <div class="filters-heading">
+        <div>
+          <span class="filters-eyebrow">Filtros principales</span>
+          <h2 class="filters-title">Refina el historial por módulo, usuario o rol</h2>
+        </div>
+        <div class="filters-actions">
           <button id="exportPdf" class="btn-icon" title="Exportar PDF">
             <span class="btn-icon__circle">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
                 <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -57,7 +58,7 @@
           </button>
           <button id="exportExcel" class="btn-icon" title="Exportar Excel">
             <span class="btn-icon__circle">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
                 <path d="M8 13h4"></path>
@@ -69,9 +70,10 @@
           </button>
         </div>
       </div>
-      <div class="log-controls__grid">
-        <label class="control-field">
-          <span>Módulo</span>
+
+      <div class="filters-grid">
+        <div class="filter-field">
+          <label for="filtroModulo" class="form-label">Módulo</label>
           <select id="filtroModulo" class="form-select">
             <option value="">Todos los módulos</option>
             <option value="Inventario">Inventario</option>
@@ -80,31 +82,55 @@
             <option value="Zonas">Zonas</option>
             <option value="Reportes">Reportes</option>
           </select>
-        </label>
-        <label class="control-field">
-          <span>Usuario</span>
+        </div>
+        <div class="filter-field">
+          <label for="filtroUsuario" class="form-label">Usuario</label>
           <select id="filtroUsuario" class="form-select">
             <option value="">Todos los usuarios</option>
           </select>
-        </label>
-        <label class="control-field">
-          <span>Rol</span>
+        </div>
+        <div class="filter-field">
+          <label for="filtroRol" class="form-label">Rol</label>
           <select id="filtroRol" class="form-select">
             <option value="">Todos los roles</option>
             <option value="Administrador">Administrador</option>
             <option value="Empleado">Empleado</option>
           </select>
-        </label>
-        <label class="control-field control-field--search">
-          <span>Búsqueda</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-heading">
+        <div>
+          <h2 class="table-title">Historial de actividades recientes</h2>
+          <span class="table-subtitle" id="logCount">Sin registros disponibles</span>
+        </div>
+        <div class="table-tools">
           <div class="search-field">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <circle cx="11" cy="11" r="7"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="search" id="logSearch" placeholder="Buscar en el log" aria-label="Buscar en el log" />
+            <input type="search" id="logSearch" placeholder="Buscar por usuario, módulo o acción" aria-label="Buscar en el log" />
           </div>
-        </label>
+        </div>
+      </div>
+
+      <div class="log-table-wrapper">
+        <table id="logTable" class="log-table">
+          <thead>
+            <tr>
+              <th scope="col">Fecha</th>
+              <th scope="col" id="timeHeader">Hora</th>
+              <th scope="col">Usuario</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Módulo</th>
+              <th scope="col">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
       </div>
       <div class="table-footer">
         <div class="pagination-info" id="paginationInfo" aria-live="polite">Sin registros</div>
@@ -147,58 +173,6 @@
         </article>
       </div>
     </section>
-
-    <div class="log-main">
-      <section class="log-table-card">
-        <header class="log-table-card__header">
-          <div>
-            <h2 class="section-title">Historial reciente</h2>
-            <span class="section-subtitle" id="logCount">Sin registros disponibles</span>
-          </div>
-        </header>
-        <div class="log-table-wrapper">
-          <table id="logTable" class="log-table">
-            <thead>
-              <tr>
-                <th scope="col">Fecha</th>
-                <th scope="col" id="timeHeader">Hora</th>
-                <th scope="col">Usuario</th>
-                <th scope="col">Rol</th>
-                <th scope="col">Módulo</th>
-                <th scope="col">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="logTableBody"></tbody>
-          </table>
-        </div>
-        <footer class="log-table-card__footer">
-          <div class="pagination-info" id="paginationInfo" aria-live="polite">Sin registros</div>
-          <div class="pagination-controls" id="paginationControls" aria-label="Paginación de actividades">
-            <button class="page-btn" type="button" data-action="prev" disabled>
-              <span aria-hidden="true">&larr;</span>
-              <span class="visually-hidden">Página anterior</span>
-            </button>
-            <div class="page-numbers" id="paginationPages"></div>
-            <button class="page-btn" type="button" data-action="next" disabled>
-              <span aria-hidden="true">&rarr;</span>
-              <span class="visually-hidden">Página siguiente</span>
-            </button>
-          </div>
-        </footer>
-      </section>
-
-      <aside class="log-insights">
-        <h2 class="section-title">Insights rápidos</h2>
-        <div class="insight-card">
-          <h3>Actividades en el tiempo</h3>
-          <canvas id="activityTrendChart" height="180" aria-label="Gráfica de actividades por periodo" role="img"></canvas>
-        </div>
-        <div class="insight-card">
-          <h3>Top de usuarios</h3>
-          <canvas id="topUsersChart" height="180" aria-label="Gráfica de usuarios con más actividades" role="img"></canvas>
-        </div>
-      </aside>
-    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
