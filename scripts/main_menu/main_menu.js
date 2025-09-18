@@ -11,6 +11,8 @@ const alertMovCriticos = document.getElementById('alertMovCriticos');
 const alertFallosInventario = document.getElementById('alertFallosInventario');
 const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
+const topbarSearchInput = document.querySelector('.topbar .search-bar input');
+const topbarSearchIcon = document.querySelector('.topbar .search-bar i');
 
 let navegadorTimeZone = null;
 
@@ -87,12 +89,101 @@ function sendPushNotification(title, message) {
     }
 }
 
+function openGlobalSearch(query) {
+    const loadInMain = window.__loadGlobalSearchInMain;
+    if (typeof loadInMain === 'function') {
+        loadInMain(query);
+        return;
+    }
+
+    const searchUrl = query ? `global_search.html?q=${encodeURIComponent(query)}` : 'global_search.html';
+    window.location.href = searchUrl;
+}
+
+if (topbarSearchInput) {
+    topbarSearchInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            openGlobalSearch(topbarSearchInput.value.trim());
+        }
+    });
+}
+
+if (topbarSearchIcon) {
+    topbarSearchIcon.addEventListener('click', () => {
+        const query = topbarSearchInput ? topbarSearchInput.value.trim() : '';
+        openGlobalSearch(query);
+    });
+}
+
+function normalizeHex(hexColor) {
+    if (!hexColor) return null;
+    let hex = hexColor.trim();
+    if (!hex.startsWith('#')) return null;
+    hex = hex.slice(1);
+    if (hex.length === 3) {
+        hex = hex.split('').map(ch => ch + ch).join('');
+    }
+    if (hex.length !== 6) return null;
+    return hex.toLowerCase();
+}
+
 function getContrastingColor(hexColor) {
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
+    const hex = normalizeHex(hexColor);
+    if (!hex) return '#ffffff';
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
     return brightness > 128 ? '#000000' : '#ffffff';
+}
+
+function hexToRgb(hexColor) {
+    const hex = normalizeHex(hexColor);
+    if (!hex) return null;
+    return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16)
+    };
+}
+
+function updatePrimaryPalette(baseColor) {
+    const rgb = hexToRgb(baseColor);
+    if (!rgb) return;
+    const { r, g, b } = rgb;
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty('--primary-color', baseColor);
+    rootStyle.setProperty('--primary-soft', `rgba(${r}, ${g}, ${b}, 0.16)`);
+    rootStyle.setProperty('--primary-border-soft', `rgba(${r}, ${g}, ${b}, 0.12)`);
+    rootStyle.setProperty('--primary-border-strong', `rgba(${r}, ${g}, ${b}, 0.22)`);
+    rootStyle.setProperty('--primary-border-heavy', `rgba(${r}, ${g}, ${b}, 0.32)`);
+    rootStyle.setProperty('--primary-surface-extra', `rgba(${r}, ${g}, ${b}, 0.08)`);
+    rootStyle.setProperty('--primary-surface', `rgba(${r}, ${g}, ${b}, 0.12)`);
+    rootStyle.setProperty('--primary-surface-strong', `rgba(${r}, ${g}, ${b}, 0.18)`);
+    rootStyle.setProperty('--primary-surface-heavy', `rgba(${r}, ${g}, ${b}, 0.24)`);
+    rootStyle.setProperty('--primary-outline', `rgba(${r}, ${g}, ${b}, 0.18)`);
+    rootStyle.setProperty('--primary-outline-strong', `rgba(${r}, ${g}, ${b}, 0.28)`);
+    rootStyle.setProperty('--primary-shadow-soft', `rgba(${r}, ${g}, ${b}, 0.35)`);
+    rootStyle.setProperty('--primary-shadow-strong', `rgba(${r}, ${g}, ${b}, 0.5)`);
+    rootStyle.setProperty('--primary-shadow-heavy', `rgba(${r}, ${g}, ${b}, 0.65)`);
+    rootStyle.setProperty('--header-gradient', baseColor);
+}
+
+function applySidebarColor(color) {
+    if (!color) return;
+    document.documentElement.style.setProperty('--sidebar-color', color);
+    document.documentElement.style.setProperty('--sidebar-text-color', getContrastingColor(color));
+}
+
+function applyTopbarColor(color) {
+    if (!color) return;
+    const textColor = getContrastingColor(color);
+    document.documentElement.style.setProperty('--topbar-color', color);
+    document.documentElement.style.setProperty('--topbar-text-color', textColor);
+    document.documentElement.style.setProperty('--header-text-color', textColor);
+    document.documentElement.style.setProperty('--header-muted-color', textColor);
+    updatePrimaryPalette(color);
 }
 
 
@@ -632,8 +723,60 @@ document.addEventListener('movimientoNoAutorizado', e => {
 document.addEventListener("DOMContentLoaded", function () {
     requestPushPermission();
     const mainContent = document.getElementById('mainContent');
+    const sidebarPageLinks = document.querySelectorAll('.sidebar-menu a[data-page]');
     let contenidoInicial = mainContent.innerHTML;
     let estaEnInicio = true;
+
+    function loadGlobalSearchInMain(query = '') {
+        if (!mainContent) return;
+
+        estaEnInicio = false;
+
+        const topbarTitle = document.querySelector('.topbar-title');
+        if (topbarTitle) {
+            topbarTitle.textContent = 'Buscador global';
+        }
+
+        mainContent.innerHTML = `
+            <section class="search-page">
+                <div class="search-placeholder loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h2>Cargando buscador...</h2>
+                    <p>Estamos preparando los resultados más recientes.</p>
+                </div>
+            </section>
+        `;
+
+        fetch('global_search.html')
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(res.statusText || `HTTP ${res.status}`);
+                }
+                return res.text();
+            })
+            .then(html => {
+                mainContent.innerHTML = html;
+                window.__GLOBAL_SEARCH_INITIAL_QUERY__ = query || '';
+
+                const previousScript = document.querySelector('script[data-global-search="true"]');
+                if (previousScript) {
+                    previousScript.remove();
+                }
+
+                const script = document.createElement('script');
+                script.src = '../../scripts/main_menu/global_search.js';
+                script.dataset.globalSearch = 'true';
+                document.body.appendChild(script);
+            })
+            .catch(err => {
+                if (typeof window.__GLOBAL_SEARCH_INITIAL_QUERY__ === 'string') {
+                    delete window.__GLOBAL_SEARCH_INITIAL_QUERY__;
+                }
+                mainContent.innerHTML = `<p>Error cargando la vista de búsqueda: ${err}</p>`;
+            });
+    }
+
+    window.__loadGlobalSearchInMain = loadGlobalSearchInMain;
 
     loadMetrics();
     loadAccessLogs();
@@ -746,13 +889,11 @@ document.querySelectorAll('#sidebarColors button').forEach(btn => {
         colorSidebarSeleccionado = btn.dataset.color;
         document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
-        document.documentElement.style.setProperty('--sidebar-color', colorSidebarSeleccionado);
-        const textColor = getContrastingColor(colorSidebarSeleccionado);
-        document.documentElement.style.setProperty('--sidebar-text-color', textColor);
+        applySidebarColor(colorSidebarSeleccionado);
 
-        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
-        const topbarText = getContrastingColor(colorTopbarSeleccionado);
-        document.documentElement.style.setProperty('--topbar-text-color', topbarText);
+        if (colorTopbarSeleccionado) {
+            applyTopbarColor(colorTopbarSeleccionado);
+        }
     });
 });
 
@@ -761,9 +902,7 @@ document.querySelectorAll('#topbarColors button').forEach(btn => {
         colorTopbarSeleccionado = btn.dataset.color;
         document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');
         btn.style.border = '3px solid black';
-        document.documentElement.style.setProperty('--topbar-color', colorTopbarSeleccionado);
-        const textColor = getContrastingColor(colorTopbarSeleccionado);
-        document.documentElement.style.setProperty('--topbar-text-color', textColor);
+        applyTopbarColor(colorTopbarSeleccionado);
     });
 });
 
@@ -817,13 +956,12 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
     });
 
     // Sidebar: navegación SPA
-    const menuItems = document.querySelectorAll('.sidebar-menu a[data-page]');
-    menuItems.forEach(link => {
+    sidebarPageLinks.forEach(link => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
 
             // Marcar activo
-            menuItems.forEach(i => i.classList.remove('active'));
+            sidebarPageLinks.forEach(i => i.classList.remove('active'));
             this.classList.add('active');
 
             // Cambiar título topbar
@@ -958,9 +1096,7 @@ function cargarConfiguracionVisual(idEmpresa) {
     .then(({ success, config }) => {
         if (success && config) {
             if (config.color_sidebar) {
-                document.documentElement.style.setProperty('--sidebar-color', config.color_sidebar);
-                const textColor = getContrastingColor(config.color_sidebar);
-                document.documentElement.style.setProperty('--sidebar-text-color', textColor);
+                applySidebarColor(config.color_sidebar);
                 colorSidebarSeleccionado = config.color_sidebar;
                 document.querySelectorAll('#sidebarColors button').forEach(b => b.style.border = '2px solid #ccc');
                 const btn = document.querySelector(`#sidebarColors button[data-color="${config.color_sidebar}"]`);
@@ -968,9 +1104,7 @@ function cargarConfiguracionVisual(idEmpresa) {
 
             }
             if (config.color_topbar) {
-                document.documentElement.style.setProperty('--topbar-color', config.color_topbar);
-                const textColor = getContrastingColor(config.color_topbar);
-                document.documentElement.style.setProperty('--topbar-text-color', textColor);
+                applyTopbarColor(config.color_topbar);
 
                 colorTopbarSeleccionado = config.color_topbar;
                 document.querySelectorAll('#topbarColors button').forEach(b => b.style.border = '2px solid #ccc');

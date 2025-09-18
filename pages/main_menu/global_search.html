@@ -1,0 +1,35 @@
+<section class="search-page" id="globalSearchPage">
+    <header class="search-page-header">
+        <span class="search-eyebrow">Herramientas</span>
+        <h1 class="search-title">Buscador global</h1>
+        <p class="search-lead">Consulta productos, movimientos, usuarios y más desde un único lugar.</p>
+        <div class="search-field">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="globalSearchInput" placeholder="Buscar productos, movimientos, usuarios..." autocomplete="off">
+        </div>
+    </header>
+
+    <section class="search-summary">
+        <article class="search-summary-card">
+            <div class="summary-label">Coincidencias encontradas</div>
+            <div class="summary-value" id="resultsCount">0</div>
+            <p class="summary-description">Actualiza en tiempo real mientras escribes.</p>
+        </article>
+        <article class="search-summary-card">
+            <div class="summary-label">Atajos destacados</div>
+            <ul class="summary-links" id="quickLinks">
+                <li><button data-query="stock bajo">Stock bajo</button></li>
+                <li><button data-query="ingreso">Registrar ingreso</button></li>
+                <li><button data-query="proveedores">Proveedores</button></li>
+            </ul>
+        </article>
+    </section>
+
+    <section class="search-results" id="searchResults">
+        <div class="search-placeholder">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <h2>Comienza a escribir para ver resultados</h2>
+            <p>Puedes buscar productos, movimientos, áreas o usuarios de tu empresa.</p>
+        </div>
+    </section>
+</section>
