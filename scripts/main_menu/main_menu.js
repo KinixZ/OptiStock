@@ -89,27 +89,6 @@ function sendPushNotification(title, message) {
     }
 }
 
-function openGlobalSearch(query) {
-    const searchUrl = query ? `global_search.html?q=${encodeURIComponent(query)}` : 'global_search.html';
-    window.location.href = searchUrl;
-}
-
-if (topbarSearchInput) {
-    topbarSearchInput.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            openGlobalSearch(topbarSearchInput.value.trim());
-        }
-    });
-}
-
-if (topbarSearchIcon) {
-    topbarSearchIcon.addEventListener('click', () => {
-        const query = topbarSearchInput ? topbarSearchInput.value.trim() : '';
-        openGlobalSearch(query);
-    });
-}
-
 function normalizeHex(hexColor) {
     if (!hexColor) return null;
     let hex = hexColor.trim();
@@ -720,6 +699,123 @@ document.addEventListener("DOMContentLoaded", function () {
     let contenidoInicial = mainContent.innerHTML;
     let estaEnInicio = true;
 
+    function removeSearchBodyClass() {
+        document.body.classList.remove('search-page-body');
+    }
+
+    function showSearchLoader(target) {
+        if (!target) return;
+        target.innerHTML = `
+            <div class="search-loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Cargando buscador global...</p>
+            </div>
+        `;
+    }
+
+    function ensureGlobalSearchModule(query) {
+        const sanitizedQuery = (query || '').trim();
+
+        if (sanitizedQuery) {
+            localStorage.setItem('pendingGlobalSearchQuery', sanitizedQuery);
+        } else {
+            localStorage.removeItem('pendingGlobalSearchQuery');
+        }
+
+        const invokeInitializer = () => {
+            if (typeof window.initializeGlobalSearchPage === 'function') {
+                window.initializeGlobalSearchPage(sanitizedQuery);
+            }
+        };
+
+        if (typeof window.initializeGlobalSearchPage === 'function') {
+            invokeInitializer();
+            return;
+        }
+
+        const existingLoader = document.querySelector('script[data-global-search-loader="true"]');
+        if (existingLoader) {
+            existingLoader.addEventListener('load', invokeInitializer, { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = '../../scripts/main_menu/global_search.js';
+        script.async = false;
+        script.dataset.globalSearchLoader = 'true';
+        script.onload = invokeInitializer;
+        document.body.appendChild(script);
+    }
+
+    function openGlobalSearch(query) {
+        const sanitizedQuery = (query || '').trim();
+        const topbarTitle = document.querySelector('.topbar-title');
+
+        if (!mainContent) {
+            const searchUrl = sanitizedQuery ? `global_search.html?q=${encodeURIComponent(sanitizedQuery)}` : 'global_search.html';
+            window.location.href = searchUrl;
+            return;
+        }
+
+        if (estaEnInicio) {
+            saveHomeData();
+            estaEnInicio = false;
+        }
+
+        document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
+
+        showSearchLoader(mainContent);
+
+        fetch('../main_menu/global_search.html')
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const incomingMain = doc.querySelector('main');
+                const bodyClasses = doc.body ? Array.from(doc.body.classList) : [];
+
+                removeSearchBodyClass();
+                if (bodyClasses.length) {
+                    document.body.classList.add(...bodyClasses);
+                }
+
+                if (incomingMain) {
+                    mainContent.innerHTML = '';
+                    mainContent.appendChild(incomingMain);
+                } else if (doc.body) {
+                    mainContent.innerHTML = doc.body.innerHTML;
+                } else {
+                    mainContent.innerHTML = html;
+                }
+
+                if (topbarTitle) {
+                    topbarTitle.textContent = 'Buscador global';
+                }
+
+                ensureGlobalSearchModule(sanitizedQuery);
+            })
+            .catch(err => {
+                removeSearchBodyClass();
+                mainContent.innerHTML = `<div class="search-error-state">No se pudo cargar el buscador global. ${err}</div>`;
+            });
+    }
+
+    if (topbarSearchInput) {
+        topbarSearchInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                openGlobalSearch(topbarSearchInput.value.trim());
+            }
+        });
+    }
+
+    if (topbarSearchIcon) {
+        topbarSearchIcon.addEventListener('click', () => {
+            const query = topbarSearchInput ? topbarSearchInput.value.trim() : '';
+            openGlobalSearch(query);
+        });
+    }
+
     loadMetrics();
     loadAccessLogs();
     restoreHomeData();
@@ -917,6 +1013,7 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 mainContent.innerHTML = contenidoInicial;
                 restoreHomeData();
                 estaEnInicio = true;
+                removeSearchBodyClass();
                 return;
             }
 
@@ -929,6 +1026,7 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 .then(res => res.text())
                 .then(html => {
                     mainContent.innerHTML = html;
+                    removeSearchBodyClass();
 
                     const scripts = mainContent.querySelectorAll("script");
                     scripts.forEach(oldScript => {
@@ -966,6 +1064,7 @@ if (params.has("load")) {
             const mainContent = document.getElementById("mainContent");
             mainContent.innerHTML = html;
             estaEnInicio = false;
+            removeSearchBodyClass();
 
             // Ejecutar scripts embebidos si los hay
             const scripts = mainContent.querySelectorAll("script");
@@ -997,6 +1096,7 @@ if (vistaPendiente) {
             const mainContent = document.getElementById("mainContent");
             mainContent.innerHTML = html;
             estaEnInicio = false;
+            removeSearchBodyClass();
 
             // Ejecutar los scripts externos/internos del HTML cargado
             const scripts = mainContent.querySelectorAll("script");
