@@ -520,7 +520,7 @@ body {
 
 .insights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
@@ -532,10 +532,21 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  min-height: 320px;
+  min-height: 220px;
+}
+
+.insight-chart--wide {
+  grid-column: 1 / -1;
+  min-height: 260px;
 }
 
 .insight-chart__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insight-chart__heading {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -553,10 +564,69 @@ body {
   color: var(--muted-color);
 }
 
+.chart-range-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: #f5f6fb;
+  align-self: flex-start;
+}
+
+.chart-range-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chart-range-btn:hover {
+  background: rgba(108, 93, 211, 0.12);
+  color: #4a3dbd;
+}
+
+.chart-range-btn.is-active {
+  background: #6c5dd3;
+  color: #fff;
+  box-shadow: 0 6px 16px -10px rgba(108, 93, 211, 0.8);
+}
+
+.chart-range-btn:focus-visible {
+  outline: 2px solid rgba(108, 93, 211, 0.6);
+  outline-offset: 2px;
+}
+
 .insight-chart canvas {
   width: 100% !important;
-  height: 100% !important;
-  flex: 1;
+  height: 220px !important;
+  flex: 0 0 auto;
+}
+
+.insight-chart--wide canvas {
+  height: 260px !important;
+}
+
+@media (min-width: 768px) {
+  .insight-chart__header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .insight-chart__heading {
+    flex: 1 1 auto;
+  }
+
+  .chart-range-controls {
+    align-self: center;
+  }
 }
 
 .empty-state {

@@ -157,17 +157,35 @@
         </p>
       </div>
       <div class="insights-grid">
-        <article class="insight-chart">
+        <article class="insight-chart insight-chart--wide">
           <header class="insight-chart__header">
-            <h3 class="insight-chart__title">Actividades en el tiempo</h3>
-            <span class="insight-chart__subtitle">Totales por fecha</span>
+            <div class="insight-chart__heading">
+              <h3 class="insight-chart__title">Actividades en el tiempo</h3>
+              <span class="insight-chart__subtitle">Totales por fecha</span>
+            </div>
+            <div class="chart-range-controls" role="group" aria-label="Filtrar el rango de tiempo">
+              <button type="button" class="chart-range-btn" data-trend-range="week">Semana</button>
+              <button type="button" class="chart-range-btn" data-trend-range="month">Mes</button>
+              <button type="button" class="chart-range-btn is-active" data-trend-range="all">Todo</button>
+            </div>
           </header>
           <canvas id="activityTrendChart" aria-label="Gráfica de actividades por periodo" role="img"></canvas>
         </article>
         <article class="insight-chart">
           <header class="insight-chart__header">
-            <h3 class="insight-chart__title">Usuarios con más actividades</h3>
-            <span class="insight-chart__subtitle">Top 5</span>
+            <div class="insight-chart__heading">
+              <h3 class="insight-chart__title">Actividades por módulo</h3>
+              <span class="insight-chart__subtitle">Distribución de registros</span>
+            </div>
+          </header>
+          <canvas id="moduleActivityChart" aria-label="Gráfica de actividades por módulo" role="img"></canvas>
+        </article>
+        <article class="insight-chart">
+          <header class="insight-chart__header">
+            <div class="insight-chart__heading">
+              <h3 class="insight-chart__title">Usuarios con más actividades</h3>
+              <span class="insight-chart__subtitle">Top 5</span>
+            </div>
           </header>
           <canvas id="topUsersChart" aria-label="Gráfica de usuarios con más actividades" role="img"></canvas>
         </article>
