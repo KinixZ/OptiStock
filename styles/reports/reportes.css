@@ -322,6 +322,71 @@ body {
 }
 
 .modal {
+.metricas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.metric-card {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  min-width: 160px;
+}
+
+.metric-card strong {
+  font-size: 1.3rem;
+  display: block;
+}
+
+.metric-title {
+  display: block;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.estado-resultados {
+  font-weight: 600;
+}
+
+.tabla-resultados {
+  overflow-x: auto;
+}
+
+.tabla-resultados table td,
+.tabla-resultados table th {
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.mensaje-vacio {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+#sinDatos {
+  display: none;
+}
+
+.btn-share {
+  background: none;
+  border: none;
+  color: #0d6efd;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
+.text-end {
+  text-align: right;
+}
+
+#modalProgramar {
   display: none;
   position: fixed;
   inset: 0;

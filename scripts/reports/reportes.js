@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (datos.length === 0) {
       metricasDiv.innerHTML = '<p class="empty-message">Ajusta los filtros para ver información resumida.</p>';
+      metricasDiv.innerHTML = '<p class="mensaje-vacio">Ajusta los filtros para ver información resumida.</p>';
       return;
     }
 
@@ -166,6 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
       <span class="metric-card__label">${titulo}</span>
       <strong class="metric-card__value">${valor}</strong>
     `;
+    const tarjeta = document.createElement('div');
+    tarjeta.className = 'metric-card';
+    tarjeta.innerHTML = `<span class="metric-title">${titulo}</span><strong>${valor}</strong>`;
     return tarjeta;
   }
 
@@ -197,6 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
             data: valores,
             borderColor: colorPrimario,
             backgroundColor: superficiePrimaria,
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.15)',
             tension: 0.25,
             fill: true
           }]
@@ -224,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
               ticks: { color: colorTenue },
               grid: { color: colorBordes }
             }
+          scales: {
+            y: { beginAtZero: true }
           }
         }
       });
@@ -338,11 +346,13 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${formatearFechaHora(registro.fecha)}</td>
         <td>${registro.modulos} · ${registro.registros} registro${registro.registros === 1 ? '' : 's'}</td>
         <td><button class="link-button" data-id="${registro.id}">Compartir</button></td>
+        <td><button class="btn-share" data-id="${registro.id}">Compartir</button></td>
       `;
       historialBody.appendChild(tr);
     });
 
     historialBody.querySelectorAll('.link-button').forEach(btn => {
+    historialBody.querySelectorAll('.btn-share').forEach(btn => {
       btn.addEventListener('click', () => compartir(btn.dataset.id));
     });
   }

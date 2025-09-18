@@ -30,6 +30,8 @@
               <h2 id="tituloFiltros" class="card-title">Filtra tu reporte</h2>
               <p class="card-description">Combina módulos, fechas y atributos para ajustar la información exportada.</p>
             </header>
+  <!-- Métricas resumidas -->
+  <div id="metricas" class="metricas-grid mb-3"></div>
 
             <div class="filters-group">
               <span class="field-label">Módulos</span>
@@ -159,6 +161,56 @@
         <button id="guardarProgramacion" class="action-btn action-btn--primary">Guardar</button>
         <button id="cancelarProgramacion" class="action-btn">Cancelar</button>
       </div>
+    </div>
+    <button id="generarPdf" class="btn btn-primary me-2">Exportar PDF</button>
+    <button id="generarExcel" class="btn btn-secondary me-2">Exportar Excel</button>
+    <button id="programarBtn" class="btn btn-warning">Programar automático</button>
+  </div>
+
+  <!-- Resultados -->
+  <div id="estadoResultados" class="estado-resultados mb-2"></div>
+  <div class="tabla-resultados mb-4">
+    <table id="tablaResultados" class="table table-bordered table-sm">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Módulo</th>
+          <th>Fecha</th>
+          <th>Categoría</th>
+          <th>Zona</th>
+          <th>Rol</th>
+          <th>Detalle</th>
+          <th>Cantidad</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="sinDatos" class="mensaje-vacio">No hay movimientos que coincidan con los filtros seleccionados.</p>
+  </div>
+
+  <!-- Historial -->
+  <h5>Historial de Reportes</h5>
+  <table id="tablaHistorial" class="table table-bordered table-sm">
+    <thead>
+      <tr><th>ID</th><th>Fecha</th><th>Módulos</th><th>Acciones</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Modal de programación -->
+<div id="modalProgramar" class="modal">
+  <div class="modal-content">
+    <label>Intervalo
+      <select id="intervalo">
+        <option value="diario">Diario</option>
+        <option value="semanal">Semanal</option>
+        <option value="mensual">Mensual</option>
+      </select>
+    </label>
+    <div class="mt-3 text-end">
+      <button id="guardarProgramacion" class="btn btn-primary me-2">Guardar</button>
+      <button id="cancelarProgramacion" class="btn btn-secondary">Cancelar</button>
     </div>
   </div>
 
