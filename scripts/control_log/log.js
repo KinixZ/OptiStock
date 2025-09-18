@@ -19,6 +19,7 @@
     const activityTrendCanvas = document.getElementById('activityTrendChart');
     const moduleActivityCanvas = document.getElementById('moduleActivityChart');
     const topUsersCanvas = document.getElementById('topUsersChart');
+    const trendRangeButtons = Array.from(document.querySelectorAll('[data-trend-range]'));
 
     let navegadorTimeZone = null;
 
@@ -60,6 +61,25 @@
         timeHeaderEl.textContent = `Hora (${timeZoneLabel})`;
     }
 
+    trendRangeButtons.forEach(button => {
+        if (button.classList.contains('is-active')) {
+            trendRange = button.dataset.trendRange || trendRange;
+        }
+
+        button.addEventListener('click', () => {
+            const nuevoRango = button.dataset.trendRange || 'all';
+            if (nuevoRango === trendRange) {
+                return;
+            }
+
+            trendRange = nuevoRango;
+            trendRangeButtons.forEach(btn => {
+                btn.classList.toggle('is-active', btn === button);
+            });
+            renderTrendChart();
+        });
+    });
+
     if (!filtroModulo || !filtroUsuario || !filtroRol || !tablaBody) {
         console.warn('La vista del log de control no está disponible. Se omite la inicialización.');
         return;
@@ -82,6 +102,12 @@
     let moduleActivityChart = null;
     let topUsersChart = null;
     let trendLabelsISO = [];
+    let trendSeries = [];
+    let trendRange = 'all';
+    const TREND_RANGE_DAYS = {
+        week: 7,
+        month: 30
+    };
 
     function escapeHtml(valor) {
         return String(valor ?? '')
@@ -207,6 +233,188 @@
             console.warn('No se pudo formatear la fecha en formato completo.', error);
             return fechaISO;
         }
+    }
+
+    function extraerFechaISO(valor) {
+        if (!valor && valor !== 0) {
+            return '';
+        }
+
+        const texto = String(valor).trim();
+        if (!texto) {
+            return '';
+        }
+
+        const isoMatch = texto.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+            return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        }
+
+        const dmyMatch = texto.match(/(\d{2})[\/-](\d{2})[\/-](\d{4})/);
+        if (dmyMatch) {
+            return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
+        }
+
+        return '';
+    }
+
+    function construirSerieDiaria(datos = []) {
+        const totalesPorDia = new Map();
+        let fechaMinima = null;
+        let fechaMaxima = null;
+
+        datos.forEach(registro => {
+            const fechaISO = extraerFechaISO(registro?.fecha);
+            if (!fechaISO) {
+                return;
+            }
+
+            totalesPorDia.set(fechaISO, (totalesPorDia.get(fechaISO) || 0) + 1);
+            if (!fechaMinima || fechaISO < fechaMinima) {
+                fechaMinima = fechaISO;
+            }
+            if (!fechaMaxima || fechaISO > fechaMaxima) {
+                fechaMaxima = fechaISO;
+            }
+        });
+
+        if (!fechaMinima || !fechaMaxima) {
+            return [];
+        }
+
+        const serie = [];
+        let cursor = new Date(`${fechaMinima}T00:00:00Z`);
+        const limite = new Date(`${fechaMaxima}T00:00:00Z`);
+
+        while (!Number.isNaN(cursor.getTime()) && cursor <= limite) {
+            const iso = cursor.toISOString().slice(0, 10);
+            serie.push({
+                iso,
+                etiqueta: formatearDiaMesDesdeISO(iso),
+                total: totalesPorDia.get(iso) || 0
+            });
+            cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+
+        return serie;
+    }
+
+    function obtenerSerieFiltradaPorRango() {
+        if (!Array.isArray(trendSeries) || trendSeries.length === 0) {
+            return [];
+        }
+
+        if (trendRange === 'all' || !TREND_RANGE_DAYS[trendRange]) {
+            return trendSeries.slice();
+        }
+
+        const dias = TREND_RANGE_DAYS[trendRange];
+        const total = trendSeries.length;
+
+        if (total >= dias) {
+            return trendSeries.slice(total - dias);
+        }
+
+        const resultado = trendSeries.slice();
+        const primerElemento = resultado[0];
+
+        if (!primerElemento) {
+            return resultado;
+        }
+
+        let cursor = new Date(`${primerElemento.iso}T00:00:00Z`);
+
+        while (!Number.isNaN(cursor.getTime()) && resultado.length < dias) {
+            cursor.setUTCDate(cursor.getUTCDate() - 1);
+            const iso = cursor.toISOString().slice(0, 10);
+            resultado.unshift({
+                iso,
+                etiqueta: formatearDiaMesDesdeISO(iso),
+                total: 0
+            });
+        }
+
+        return resultado;
+    }
+
+    function renderTrendChart() {
+        if (!activityTrendCanvas || !window.Chart) {
+            return;
+        }
+
+        const Chart = window.Chart;
+        const serie = obtenerSerieFiltradaPorRango();
+        const labels = serie.map(item => item.etiqueta);
+        const dataValues = serie.map(item => item.total);
+
+        trendLabelsISO = serie.map(item => item.iso);
+
+        if (!trendChart) {
+            trendChart = new Chart(activityTrendCanvas, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Actividades',
+                        data: dataValues,
+                        borderColor: '#6c5dd3',
+                        backgroundColor: 'rgba(108, 93, 211, 0.18)',
+                        tension: 0.35,
+                        fill: true,
+                        pointBackgroundColor: '#6c5dd3',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#525a6b'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#525a6b',
+                                precision: 0,
+                                stepSize: 1
+                            },
+                            grid: {
+                                color: 'rgba(82, 90, 107, 0.12)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: context => {
+                                    if (!context?.length) {
+                                        return '';
+                                    }
+                                    const index = context[0].dataIndex;
+                                    const iso = trendLabelsISO[index];
+                                    const titulo = formatearFechaCompletaDesdeISO(iso);
+                                    return titulo || context[0].label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            return;
+        }
+
+        trendChart.data.labels = labels;
+        trendChart.data.datasets[0].data = dataValues;
+        trendChart.update();
     }
 
     function filtrarPorBusqueda(datos = []) {
@@ -371,9 +579,16 @@
         const Chart = window.Chart;
 
         if (activityTrendCanvas) {
-            const trendMap = new Map();
+            trendSeries = construirSerieDiaria(datos);
+            renderTrendChart();
+        }
+
+        if (moduleActivityCanvas) {
+            const modulesMap = new Map();
 
             datos.forEach(reg => {
+                const modulo = reg?.modulo ? String(reg.modulo) : 'Sin módulo';
+                modulesMap.set(modulo, (modulesMap.get(modulo) || 0) + 1);
                 const baseFecha = reg?.fecha ? String(reg.fecha) : '';
                 const conversion = convertirFechaHoraZona(reg?.fecha, reg?.hora);
                 const etiqueta = formatearDiaMesDesdeISO(baseFecha, conversion.fechaLocal) || 'Sin fecha';
@@ -385,18 +600,14 @@
                 trendMap.set(claveOrden, anterior);
             });
 
-            const trendEntries = Array.from(trendMap.entries()).sort(([a], [b]) => {
-                if (!a && !b) {
-                    return 0;
-                }
-                if (!a) {
-                    return 1;
-                }
-                if (!b) {
-                    return -1;
-                }
-                return a.localeCompare(b);
-            });
+            const moduleEntries = Array.from(modulesMap.entries()).sort((a, b) => b[1] - a[1]);
+
+            const labels = moduleEntries.map(([nombre]) => nombre);
+            const dataValues = moduleEntries.map(([, total]) => total);
+
+            if (!moduleActivityChart) {
+                moduleActivityChart = new Chart(moduleActivityCanvas, {
+                    type: 'bar',
 
             trendLabelsISO = trendEntries.map(([clave]) => clave);
             const labels = trendEntries.map(([, value]) => value.etiqueta);
@@ -408,8 +619,11 @@
                     data: {
                         labels,
                         datasets: [{
-                            label: 'Actividades',
+                            label: 'Actividades registradas',
                             data: dataValues,
+                            backgroundColor: '#54d2d2',
+                            borderRadius: 8,
+                            maxBarThickness: 48
                             borderColor: '#6c5dd3',
                             backgroundColor: 'rgba(108, 93, 211, 0.18)',
                             tension: 0.35,
@@ -425,6 +639,14 @@
                         maintainAspectRatio: false,
                         scales: {
                             x: {
+                                ticks: { color: '#525a6b' },
+                                grid: { display: false }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#525a6b', precision: 0, stepSize: 1 },
+                                grid: { color: 'rgba(82, 90, 107, 0.1)' }
+
                                 ticks: {
                                     color: '#525a6b'
                                 },
@@ -463,9 +685,9 @@
                     }
                 });
             } else {
-                trendChart.data.labels = labels;
-                trendChart.data.datasets[0].data = dataValues;
-                trendChart.update();
+                moduleActivityChart.data.labels = labels;
+                moduleActivityChart.data.datasets[0].data = dataValues;
+                moduleActivityChart.update();
             }
         }
 
