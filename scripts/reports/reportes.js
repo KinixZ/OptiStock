@@ -24,8 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const mensajeSinDatos = document.getElementById('sinDatos');
   const historialBody = document.querySelector('#tablaHistorial tbody');
   const modal = document.getElementById('modalProgramar');
+  const programarBtn = document.getElementById('programarBtn');
+  const guardarProgramacionBtn = document.getElementById('guardarProgramacion');
+  const cancelarProgramacionBtn = document.getElementById('cancelarProgramacion');
   const intervaloSelect = document.getElementById('intervalo');
-  const ctxGrafica = document.getElementById('graficaTendencias').getContext('2d');
+  const graficaCanvas = document.getElementById('graficaTendencias');
+  const ctxGrafica = graficaCanvas ? graficaCanvas.getContext('2d') : null;
+
+  if (!metricasDiv || !tablaResultadosBody || !estadoResultados || !mensajeSinDatos || !historialBody || !intervaloSelect) {
+    return;
+  }
 
   const estilos = getComputedStyle(document.documentElement);
   const colorTexto = estilos.getPropertyValue('--text-color').trim() || '#1f2937';
@@ -38,11 +46,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let programacion = null;
   let datosFiltrados = [];
 
-  document.getElementById('generarPdf').addEventListener('click', () => exportar('pdf'));
-  document.getElementById('generarExcel').addEventListener('click', () => exportar('excel'));
-  document.getElementById('programarBtn').addEventListener('click', () => modal.style.display = 'flex');
-  document.getElementById('guardarProgramacion').addEventListener('click', guardarProgramacion);
-  document.getElementById('cancelarProgramacion').addEventListener('click', () => modal.style.display = 'none');
+  document.getElementById('generarPdf')?.addEventListener('click', () => exportar('pdf'));
+  document.getElementById('generarExcel')?.addEventListener('click', () => exportar('excel'));
+
+  if (programarBtn && modal) {
+    programarBtn.addEventListener('click', () => {
+      modal.style.display = 'flex';
+    });
+  }
+
+  guardarProgramacionBtn?.addEventListener('click', guardarProgramacion);
+
+  if (cancelarProgramacionBtn && modal) {
+    cancelarProgramacionBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
 
   modulos.forEach(modulo => modulo.addEventListener('change', actualizarVista));
   [fInicio, fFin, fCategoria, fZona].forEach(input => {
@@ -189,6 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const ordenados = Object.keys(agrupado).sort();
       etiquetas = ordenados.map(formatearMes);
       valores = ordenados.map(clave => agrupado[clave]);
+    }
+
+    if (!ctxGrafica) {
+      return;
     }
 
     if (!grafica) {
@@ -376,7 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const val = intervaloSelect.value;
     localStorage.setItem('reportInterval', val);
     configurarProgramacion();
-    modal.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+    }
   }
 
   function cargarProgramacion() {
