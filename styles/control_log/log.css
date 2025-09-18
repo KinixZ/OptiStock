@@ -520,7 +520,7 @@ body {
 
 .insights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
@@ -532,7 +532,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  min-height: 320px;
+  min-height: 220px;
+}
+
+.insight-chart--wide {
+  grid-column: 1 / -1;
+  min-height: 260px;
 }
 
 .insight-chart__header {
@@ -555,8 +560,12 @@ body {
 
 .insight-chart canvas {
   width: 100% !important;
-  height: 100% !important;
-  flex: 1;
+  height: 220px !important;
+  flex: 0 0 auto;
+}
+
+.insight-chart--wide canvas {
+  height: 260px !important;
 }
 
 .empty-state {

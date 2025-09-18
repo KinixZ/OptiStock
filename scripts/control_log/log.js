@@ -17,6 +17,7 @@
     const prevPageBtn = paginationControlsEl?.querySelector('[data-action="prev"]');
     const nextPageBtn = paginationControlsEl?.querySelector('[data-action="next"]');
     const activityTrendCanvas = document.getElementById('activityTrendChart');
+    const moduleActivityCanvas = document.getElementById('moduleActivityChart');
     const topUsersCanvas = document.getElementById('topUsersChart');
 
     let navegadorTimeZone = null;
@@ -78,7 +79,9 @@
     let terminoBusqueda = '';
     let paginaActual = 1;
     let trendChart = null;
+    let moduleActivityChart = null;
     let topUsersChart = null;
+    let trendLabelsISO = [];
 
     function escapeHtml(valor) {
         return String(valor ?? '')
@@ -160,6 +163,49 @@
         } catch (error) {
             console.warn('No se pudo convertir la fecha y hora al huso horario configurado.', error);
             return { fechaLocal: '', horaLocal: '' };
+        }
+    }
+
+    function formatearDiaMesDesdeISO(fechaISO, respaldo = '') {
+        if (!fechaISO) {
+            return respaldo;
+        }
+
+        const partes = String(fechaISO).split('-');
+        if (partes.length >= 3) {
+            const [anio, mes, dia] = partes;
+            if (dia && mes) {
+                return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}`;
+            }
+        }
+
+        return respaldo || fechaISO;
+    }
+
+    function formatearFechaCompletaDesdeISO(fechaISO) {
+        if (!fechaISO) {
+            return '';
+        }
+
+        try {
+            const date = new Date(`${fechaISO}T00:00:00Z`);
+            if (Number.isNaN(date.getTime())) {
+                return fechaISO;
+            }
+
+            const opciones = {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            };
+            if (navegadorTimeZone) {
+                opciones.timeZone = navegadorTimeZone;
+            }
+
+            return new Intl.DateTimeFormat('es', opciones).format(date);
+        } catch (error) {
+            console.warn('No se pudo formatear la fecha en formato completo.', error);
+            return fechaISO;
         }
     }
 
@@ -318,7 +364,7 @@
     }
 
     function actualizarCharts(datos = []) {
-        if (!window.Chart || (!activityTrendCanvas && !topUsersCanvas)) {
+        if (!window.Chart || (!activityTrendCanvas && !moduleActivityCanvas && !topUsersCanvas)) {
             return;
         }
 
@@ -330,11 +376,12 @@
             datos.forEach(reg => {
                 const baseFecha = reg?.fecha ? String(reg.fecha) : '';
                 const conversion = convertirFechaHoraZona(reg?.fecha, reg?.hora);
-                const etiqueta = conversion.fechaLocal || baseFecha || 'Sin fecha';
+                const etiqueta = formatearDiaMesDesdeISO(baseFecha, conversion.fechaLocal) || 'Sin fecha';
                 const claveOrden = baseFecha || etiqueta;
-                const anterior = trendMap.get(claveOrden) || { etiqueta, total: 0 };
+                const anterior = trendMap.get(claveOrden) || { etiqueta, total: 0, fechaISO: baseFecha };
                 anterior.total += 1;
                 anterior.etiqueta = etiqueta;
+                anterior.fechaISO = baseFecha;
                 trendMap.set(claveOrden, anterior);
             });
 
@@ -351,29 +398,67 @@
                 return a.localeCompare(b);
             });
 
+            trendLabelsISO = trendEntries.map(([clave]) => clave);
             const labels = trendEntries.map(([, value]) => value.etiqueta);
             const dataValues = trendEntries.map(([, value]) => value.total);
 
             if (!trendChart) {
                 trendChart = new Chart(activityTrendCanvas, {
-                    type: 'bar',
+                    type: 'line',
                     data: {
                         labels,
                         datasets: [{
                             label: 'Actividades',
                             data: dataValues,
-                            backgroundColor: '#6c5dd3'
+                            borderColor: '#6c5dd3',
+                            backgroundColor: 'rgba(108, 93, 211, 0.18)',
+                            tension: 0.35,
+                            fill: true,
+                            pointBackgroundColor: '#6c5dd3',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { ticks: { color: '#525a6b' } },
-                            y: { beginAtZero: true, ticks: { color: '#525a6b', precision: 0 } }
+                            x: {
+                                ticks: {
+                                    color: '#525a6b'
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#525a6b',
+                                    precision: 0,
+                                    stepSize: 1
+                                },
+                                grid: {
+                                    color: 'rgba(82, 90, 107, 0.12)'
+                                }
+                            }
                         },
                         plugins: {
-                            legend: { display: false }
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: context => {
+                                        if (!context?.length) {
+                                            return '';
+                                        }
+                                        const index = context[0].dataIndex;
+                                        const iso = trendLabelsISO[index];
+                                        const titulo = formatearFechaCompletaDesdeISO(iso);
+                                        return titulo || context[0].label;
+                                    }
+                                }
+                            }
                         }
                     }
                 });
@@ -381,6 +466,58 @@
                 trendChart.data.labels = labels;
                 trendChart.data.datasets[0].data = dataValues;
                 trendChart.update();
+            }
+        }
+
+        if (moduleActivityCanvas) {
+            const modulesMap = new Map();
+
+            datos.forEach(reg => {
+                const modulo = reg?.modulo ? String(reg.modulo) : 'Sin módulo';
+                modulesMap.set(modulo, (modulesMap.get(modulo) || 0) + 1);
+            });
+
+            const moduleEntries = Array.from(modulesMap.entries()).sort((a, b) => b[1] - a[1]);
+
+            const labels = moduleEntries.map(([nombre]) => nombre);
+            const dataValues = moduleEntries.map(([, total]) => total);
+
+            if (!moduleActivityChart) {
+                moduleActivityChart = new Chart(moduleActivityCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Actividades registradas',
+                            data: dataValues,
+                            backgroundColor: '#54d2d2',
+                            borderRadius: 8,
+                            maxBarThickness: 48
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                ticks: { color: '#525a6b' },
+                                grid: { display: false }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#525a6b', precision: 0, stepSize: 1 },
+                                grid: { color: 'rgba(82, 90, 107, 0.1)' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            } else {
+                moduleActivityChart.data.labels = labels;
+                moduleActivityChart.data.datasets[0].data = dataValues;
+                moduleActivityChart.update();
             }
         }
 
