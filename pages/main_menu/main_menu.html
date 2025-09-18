@@ -54,9 +54,17 @@
         </button>
         <div class="topbar-title">Panel de Control Principal</div>
         <div class="topbar-actions">
-            <div class="search-bar">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Buscar productos, órdenes...">
+            <div class="search-wrapper">
+                <button class="search-toggle" id="searchToggle" type="button" aria-label="Abrir buscador" aria-expanded="false">
+                    <i class="fas fa-search"></i>
+                </button>
+                <div class="search-bar" id="topbarSearch">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar productos, órdenes..." aria-label="Buscar">
+                    <button class="search-close" id="searchClose" type="button" aria-label="Cerrar buscador">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             <div class="notification-bell">
                 <i class="fas fa-bell"></i>
