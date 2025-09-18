@@ -21,6 +21,8 @@
     const topUsersCanvas = document.getElementById('topUsersChart');
     const trendRangeButtons = Array.from(document.querySelectorAll('[data-trend-range]'));
 
+    let trendRange = 'all';
+
     let navegadorTimeZone = null;
 
     try {
@@ -62,23 +64,21 @@
     }
 
     trendRangeButtons.forEach(button => {
-        if (button.classList.contains('is-active')) {
-            trendRange = button.dataset.trendRange || trendRange;
+    if (button.classList.contains('is-active')) {
+        trendRange = button.dataset.trendRange || trendRange;
+    }
+    button.addEventListener('click', () => {
+        const nuevoRango = button.dataset.trendRange || 'all';
+        if (nuevoRango === trendRange) {
+            return;
         }
-
-        button.addEventListener('click', () => {
-            const nuevoRango = button.dataset.trendRange || 'all';
-            if (nuevoRango === trendRange) {
-                return;
-            }
-
-            trendRange = nuevoRango;
-            trendRangeButtons.forEach(btn => {
-                btn.classList.toggle('is-active', btn === button);
-            });
-            renderTrendChart();
+        trendRange = nuevoRango;
+        trendRangeButtons.forEach(btn => {
+            btn.classList.toggle('is-active', btn === button);
         });
+        renderTrendChart();
     });
+});
 
     if (!filtroModulo || !filtroUsuario || !filtroRol || !tablaBody) {
         console.warn('La vista del log de control no está disponible. Se omite la inicialización.');
@@ -103,7 +103,6 @@
     let topUsersChart = null;
     let trendLabelsISO = [];
     let trendSeries = [];
-    let trendRange = 'all';
     const TREND_RANGE_DAYS = {
         week: 7,
         month: 30
