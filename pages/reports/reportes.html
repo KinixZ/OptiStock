@@ -3,7 +3,7 @@
   <h2 class="mb-3">Generación de Reportes</h2>
 
   <!-- Métricas resumidas -->
-  <div id="metricas" class="mb-3"></div>
+  <div id="metricas" class="metricas-grid mb-3"></div>
 
   <!-- Gráfica de tendencias -->
   <canvas id="graficaTendencias" height="120" class="mb-4"></canvas>
@@ -36,6 +36,27 @@
     <button id="generarPdf" class="btn btn-primary me-2">Exportar PDF</button>
     <button id="generarExcel" class="btn btn-secondary me-2">Exportar Excel</button>
     <button id="programarBtn" class="btn btn-warning">Programar automático</button>
+  </div>
+
+  <!-- Resultados -->
+  <div id="estadoResultados" class="estado-resultados mb-2"></div>
+  <div class="tabla-resultados mb-4">
+    <table id="tablaResultados" class="table table-bordered table-sm">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Módulo</th>
+          <th>Fecha</th>
+          <th>Categoría</th>
+          <th>Zona</th>
+          <th>Rol</th>
+          <th>Detalle</th>
+          <th>Cantidad</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="sinDatos" class="mensaje-vacio">No hay movimientos que coincidan con los filtros seleccionados.</p>
   </div>
 
   <!-- Historial -->
