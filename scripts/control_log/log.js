@@ -11,6 +11,13 @@
     const logCountEl = document.getElementById('logCount');
     const lastUpdatedEl = document.getElementById('lastUpdated');
     const timeHeaderEl = document.getElementById('timeHeader');
+    const paginationInfoEl = document.getElementById('paginationInfo');
+    const paginationControlsEl = document.getElementById('paginationControls');
+    const paginationPagesEl = document.getElementById('paginationPages');
+    const prevPageBtn = paginationControlsEl?.querySelector('[data-action="prev"]');
+    const nextPageBtn = paginationControlsEl?.querySelector('[data-action="next"]');
+    const activityTrendCanvas = document.getElementById('activityTrendChart');
+    const topUsersCanvas = document.getElementById('topUsersChart');
 
     let navegadorTimeZone = null;
 
@@ -62,12 +69,16 @@
     const ID_EMPRESA = localStorage.getItem('id_empresa') || '';
     const LOGS_STORAGE_KEY = ID_EMPRESA ? `logsEmpresa_${ID_EMPRESA}` : 'logsEmpresa';
     const FILTERS_STORAGE_KEY = ID_EMPRESA ? `logsFiltros_${ID_EMPRESA}` : 'logsFiltros';
+    const PAGE_SIZE = 10;
 
     let registros = [];
     let filtrosGuardados = {};
     let savedUserFilter = '';
     let actualizandoOpcionesUsuario = false;
     let terminoBusqueda = '';
+    let paginaActual = 1;
+    let trendChart = null;
+    let topUsersChart = null;
 
     function escapeHtml(valor) {
         return String(valor ?? '')
@@ -279,6 +290,7 @@
         }
 
         registros = guardados;
+        paginaActual = 1;
         mostrarRegistros(registros);
     }
 
@@ -305,6 +317,171 @@
         }
     }
 
+    function actualizarCharts(datos = []) {
+        if (!window.Chart || (!activityTrendCanvas && !topUsersCanvas)) {
+            return;
+        }
+
+        const Chart = window.Chart;
+
+        if (activityTrendCanvas) {
+            const trendMap = new Map();
+
+            datos.forEach(reg => {
+                const baseFecha = reg?.fecha ? String(reg.fecha) : '';
+                const conversion = convertirFechaHoraZona(reg?.fecha, reg?.hora);
+                const etiqueta = conversion.fechaLocal || baseFecha || 'Sin fecha';
+                const claveOrden = baseFecha || etiqueta;
+                const anterior = trendMap.get(claveOrden) || { etiqueta, total: 0 };
+                anterior.total += 1;
+                anterior.etiqueta = etiqueta;
+                trendMap.set(claveOrden, anterior);
+            });
+
+            const trendEntries = Array.from(trendMap.entries()).sort(([a], [b]) => {
+                if (!a && !b) {
+                    return 0;
+                }
+                if (!a) {
+                    return 1;
+                }
+                if (!b) {
+                    return -1;
+                }
+                return a.localeCompare(b);
+            });
+
+            const labels = trendEntries.map(([, value]) => value.etiqueta);
+            const dataValues = trendEntries.map(([, value]) => value.total);
+
+            if (!trendChart) {
+                trendChart = new Chart(activityTrendCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Actividades',
+                            data: dataValues,
+                            backgroundColor: '#6c5dd3'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { color: '#525a6b' } },
+                            y: { beginAtZero: true, ticks: { color: '#525a6b', precision: 0 } }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            } else {
+                trendChart.data.labels = labels;
+                trendChart.data.datasets[0].data = dataValues;
+                trendChart.update();
+            }
+        }
+
+        if (topUsersCanvas) {
+            const usersMap = new Map();
+
+            datos.forEach(reg => {
+                const nombre = reg?.usuario ? String(reg.usuario) : 'Sin usuario';
+                usersMap.set(nombre, (usersMap.get(nombre) || 0) + 1);
+            });
+
+            const userEntries = Array.from(usersMap.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            const labels = userEntries.map(([nombre]) => nombre);
+            const dataValues = userEntries.map(([, total]) => total);
+
+            if (!topUsersChart) {
+                topUsersChart = new Chart(topUsersCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Actividades registradas',
+                            data: dataValues,
+                            backgroundColor: ['#6c5dd3', '#ff6f91', '#ffc75f', '#54d2d2', '#845ec2']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#525a6b' }
+                            }
+                        }
+                    }
+                });
+            } else {
+                topUsersChart.data.labels = labels;
+                topUsersChart.data.datasets[0].data = dataValues;
+                topUsersChart.update();
+            }
+        }
+    }
+
+    function actualizarControlesPaginacion(totalFiltrados) {
+        if (!paginationControlsEl || !paginationInfoEl) {
+            return;
+        }
+
+        const totalPaginas = Math.max(1, Math.ceil(totalFiltrados / PAGE_SIZE));
+        paginaActual = Math.min(Math.max(paginaActual, 1), totalPaginas);
+
+        const inicio = totalFiltrados === 0 ? 0 : (paginaActual - 1) * PAGE_SIZE + 1;
+        const fin = totalFiltrados === 0 ? 0 : Math.min(paginaActual * PAGE_SIZE, totalFiltrados);
+
+        paginationInfoEl.textContent = totalFiltrados
+            ? `Mostrando ${inicio}-${fin} de ${totalFiltrados} actividades`
+            : 'Sin actividades para mostrar';
+
+        if (prevPageBtn) {
+            prevPageBtn.disabled = paginaActual <= 1;
+        }
+        if (nextPageBtn) {
+            nextPageBtn.disabled = paginaActual >= totalPaginas || totalFiltrados === 0;
+        }
+
+        if (!paginationPagesEl) {
+            return;
+        }
+
+        paginationPagesEl.innerHTML = '';
+        const maxBotones = 5;
+        let inicioRango = Math.max(1, paginaActual - Math.floor(maxBotones / 2));
+        let finRango = inicioRango + maxBotones - 1;
+
+        if (finRango > totalPaginas) {
+            finRango = totalPaginas;
+            inicioRango = Math.max(1, finRango - maxBotones + 1);
+        }
+
+        for (let i = inicioRango; i <= finRango; i += 1) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `page-number${i === paginaActual ? ' active' : ''}`;
+            button.textContent = i;
+            button.dataset.page = i;
+            button.addEventListener('click', () => {
+                const target = Number(button.dataset.page);
+                if (!Number.isNaN(target) && target !== paginaActual) {
+                    paginaActual = target;
+                    mostrarRegistros(registros);
+                }
+            });
+            paginationPagesEl.appendChild(button);
+        }
+    }
+
     function mostrarRegistros(datos) {
         const fuente = Array.isArray(datos) ? datos : [];
         const filtrados = filtrarPorBusqueda(fuente);
@@ -327,10 +504,18 @@
             tablaBody.appendChild(tr);
 
             actualizarResumen(filtrados);
+            actualizarControlesPaginacion(0);
+            actualizarCharts([]);
             return;
         }
 
-        filtrados.forEach(reg => {
+        const totalFiltrados = filtrados.length;
+        const totalPaginas = Math.max(1, Math.ceil(totalFiltrados / PAGE_SIZE));
+        paginaActual = Math.min(Math.max(paginaActual, 1), totalPaginas);
+        const inicio = (paginaActual - 1) * PAGE_SIZE;
+        const paginaDatos = filtrados.slice(inicio, inicio + PAGE_SIZE);
+
+        paginaDatos.forEach(reg => {
             let fechaTexto = reg?.fecha || '';
             let horaTexto = reg?.hora || '';
 
@@ -366,6 +551,8 @@
         });
 
         actualizarResumen(filtrados);
+        actualizarControlesPaginacion(totalFiltrados);
+        actualizarCharts(filtrados);
     }
 
     function actualizarOpcionesUsuario(usuarios) {
@@ -445,6 +632,7 @@
             }
 
             registros = Array.isArray(data.logs) ? data.logs : [];
+            paginaActual = 1;
             mostrarRegistros(registros);
             guardarRegistrosEnCache(registros);
             guardarFiltros();
@@ -456,11 +644,13 @@
 
     filtroModulo.addEventListener('change', () => {
         guardarFiltros();
+        paginaActual = 1;
         cargarRegistros();
     });
 
     filtroRol.addEventListener('change', () => {
         guardarFiltros();
+        paginaActual = 1;
         cargarRegistros();
     });
 
@@ -469,12 +659,36 @@
             return;
         }
         guardarFiltros();
+        paginaActual = 1;
         cargarRegistros();
     });
 
     if (buscadorInput) {
         buscadorInput.addEventListener('input', () => {
             terminoBusqueda = buscadorInput.value || '';
+            paginaActual = 1;
+            mostrarRegistros(registros);
+        });
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (prevPageBtn.disabled) {
+                return;
+            }
+            if (paginaActual > 1) {
+                paginaActual -= 1;
+                mostrarRegistros(registros);
+            }
+        });
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            if (nextPageBtn.disabled) {
+                return;
+            }
+            paginaActual += 1;
             mostrarRegistros(registros);
         });
     }
