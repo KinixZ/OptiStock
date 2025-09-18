@@ -557,6 +557,18 @@ img {
 }
 
 @media (max-width: 576px) {
+  .inventory-page {
+    padding: 0 16px;
+  }
+
+  .page-header {
+    padding: 1.6rem;
+  }
+
+  .header-title {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+
   .inventory-tabs {
     grid-template-columns: 1fr;
   }

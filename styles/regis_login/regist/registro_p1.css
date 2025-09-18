@@ -33,3 +33,31 @@ body {
     font-size: 14px;
     display: none;
 }
+
+@media (max-width: 768px) {
+    body {
+        padding: 40px 16px;
+        min-height: 100vh;
+    }
+
+    .login-container {
+        width: min(92vw, 360px);
+        padding: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 30px 12px;
+    }
+
+    .login-container {
+        width: 100%;
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .login-container h3 {
+        font-size: 1.25rem;
+    }
+}
