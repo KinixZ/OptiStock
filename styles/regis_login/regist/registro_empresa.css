@@ -72,3 +72,43 @@ button {
 button:hover {
     background-color: #333;
 }
+
+@media (max-width: 768px) {
+    body {
+        padding: 40px 16px;
+    }
+
+    .container {
+        padding: 28px 24px;
+        margin: 40px auto;
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 30px 12px;
+    }
+
+    .container {
+        padding: 22px 18px;
+        margin: 20px auto;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    label {
+        font-size: 13px;
+    }
+
+    input,
+    select,
+    button {
+        font-size: 0.95rem;
+    }
+}

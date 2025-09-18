@@ -453,3 +453,35 @@ body {
     text-align: center;
   }
 }
+
+@media (max-width: 480px) {
+  .page-hero {
+    padding: 26px 18px;
+  }
+
+  .hero-title {
+    font-size: 1.65rem;
+  }
+
+  .hero-description {
+    font-size: 0.95rem;
+  }
+
+  .filters-card,
+  .chart-card,
+  .results-card,
+  .history-card {
+    padding: 18px;
+  }
+
+  .filters-grid,
+  .metricas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field input,
+  .field select {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+}

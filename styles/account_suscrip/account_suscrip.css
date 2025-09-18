@@ -642,6 +642,22 @@ img {
     padding: 0 1rem 2rem;
   }
 
+  .page-header,
+  .highlight-card,
+  .account-menu,
+  .profile-card,
+  .subscription-card {
+    padding: 1.4rem;
+  }
+
+  .header-title {
+    font-size: clamp(1.6rem, 5vw, 2.1rem);
+  }
+
+  .header-highlights {
+    grid-template-columns: 1fr;
+  }
+
   .subscription-card__row {
     flex-direction: column;
     align-items: flex-start;
@@ -653,5 +669,15 @@ img {
 
   .subscription-actions .btn {
     min-width: 100%;
+  }
+
+  .account-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-card__details li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
   }
 }
