@@ -106,6 +106,46 @@
           </div>
         </label>
       </div>
+      <div class="table-footer">
+        <div class="pagination-info" id="paginationInfo" aria-live="polite">Sin registros</div>
+        <div class="pagination-controls" id="paginationControls" aria-label="Paginación de actividades">
+          <button class="page-btn" type="button" data-action="prev" disabled>
+            <span aria-hidden="true">&larr;</span>
+            <span class="visually-hidden">Página anterior</span>
+          </button>
+          <div class="page-numbers" id="paginationPages"></div>
+          <button class="page-btn" type="button" data-action="next" disabled>
+            <span aria-hidden="true">&rarr;</span>
+            <span class="visually-hidden">Página siguiente</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="insights-card">
+      <div class="insights-heading">
+        <span class="insights-eyebrow">Panorama general</span>
+        <h2 class="insights-title">Tendencias y usuarios destacados</h2>
+        <p class="insights-description">
+          Visualiza la evolución de las actividades y los usuarios con más registros para identificar patrones clave.
+        </p>
+      </div>
+      <div class="insights-grid">
+        <article class="insight-chart">
+          <header class="insight-chart__header">
+            <h3 class="insight-chart__title">Actividades en el tiempo</h3>
+            <span class="insight-chart__subtitle">Totales por fecha</span>
+          </header>
+          <canvas id="activityTrendChart" aria-label="Gráfica de actividades por periodo" role="img"></canvas>
+        </article>
+        <article class="insight-chart">
+          <header class="insight-chart__header">
+            <h3 class="insight-chart__title">Usuarios con más actividades</h3>
+            <span class="insight-chart__subtitle">Top 5</span>
+          </header>
+          <canvas id="topUsersChart" aria-label="Gráfica de usuarios con más actividades" role="img"></canvas>
+        </article>
+      </div>
     </section>
 
     <div class="log-main">
