@@ -235,8 +235,20 @@ const DataController = {
 
   updateSummary() {
     const totalProductosEl = document.getElementById('resumenProductos');
+    const totalProductos = AppState.productos.length;
     if (totalProductosEl) {
-      totalProductosEl.textContent = AppState.productos.length;
+      totalProductosEl.textContent = totalProductos;
+    }
+
+    const totalProductosTexto = document.getElementById('resumenTotalProductos');
+    if (totalProductosTexto) {
+      totalProductosTexto.textContent = totalProductos;
+    }
+
+    const totalRegistros = document.getElementById('resumenTotalRegistros');
+    if (totalRegistros) {
+      const etiqueta = totalProductos === 1 ? 'registro' : 'registros';
+      totalRegistros.textContent = `${totalProductos} ${etiqueta}`;
     }
 
     const totalCategoriasEl = document.getElementById('resumenCategorias');
@@ -248,6 +260,99 @@ const DataController = {
     if (criticosEl) {
       const criticos = AppState.productos.filter(p => (Number(p.stock) || 0) <= 5);
       criticosEl.textContent = criticos.length;
+    }
+
+    const resumenBody = document.getElementById('resumenInventarioBody');
+    const resumenVacio = document.getElementById('resumenInventarioVacio');
+    if (resumenBody) {
+      resumenBody.innerHTML = '';
+
+      if (!AppState.productos.length) {
+        if (resumenVacio) {
+          resumenVacio.hidden = false;
+        }
+        return;
+      }
+
+      if (resumenVacio) {
+        resumenVacio.hidden = true;
+      }
+
+      const categoriasMap = new Map(AppState.categorias.map(c => [c.id, c]));
+      const subcategoriasMap = new Map(AppState.subcategorias.map(s => [s.id, s]));
+
+      AppState.productos.forEach(p => {
+        const categoriaNombre = p.categoria_nombre || categoriasMap.get(p.categoria_id)?.nombre || '—';
+        const subcategoriaNombre = p.subcategoria_nombre || subcategoriasMap.get(p.subcategoria_id)?.nombre || '—';
+        const volumen = (Number(p.dim_x) || 0) * (Number(p.dim_y) || 0) * (Number(p.dim_z) || 0);
+        const volumenTexto = volumen
+          ? volumen.toLocaleString('es-ES', { maximumFractionDigits: 2 })
+          : '—';
+        const stockTexto = (Number(p.stock) || 0).toLocaleString('es-ES');
+        const precioNumero = Number(p.precio_compra) || 0;
+        const precioTexto = `$ ${precioNumero.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`;
+        const descripcion = (p.descripcion || '').trim();
+        const descripcionTexto = descripcion
+          ? `${descripcion.slice(0, 60)}${descripcion.length > 60 ? '…' : ''}`
+          : 'Sin descripción';
+        const avatarTexto = (p.nombre || '?')
+          .split(' ')
+          .map(parte => parte.trim()[0])
+          .filter(Boolean)
+          .slice(0, 2)
+          .join('')
+          .toUpperCase() || '?';
+        const qrDisabled = p.codigo_qr ? '' : ' disabled aria-disabled="true"';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="summary-product">
+              <span class="summary-avatar">${avatarTexto}</span>
+              <div class="summary-product__info">
+                <span class="summary-product__name">${p.nombre || 'Sin nombre'}</span>
+                <span class="summary-product__meta">${descripcionTexto}</span>
+              </div>
+            </div>
+          </td>
+          <td>${p.area_nombre || '—'}</td>
+          <td>${p.zona_nombre || '—'}</td>
+          <td>${categoriaNombre}</td>
+          <td>${subcategoriaNombre}</td>
+          <td>${volumenTexto}</td>
+          <td>${stockTexto}</td>
+          <td>${precioTexto}</td>
+          <td>
+            <div class="summary-actions">
+              <button type="button" class="summary-action-btn summary-action-btn--qr"${qrDisabled}>QR</button>
+              <button type="button" class="summary-action-btn summary-action-btn--edit">Editar</button>
+              <button type="button" class="summary-action-btn summary-action-btn--delete">Eliminar</button>
+            </div>
+          </td>
+        `;
+
+        const qrBtn = tr.querySelector('.summary-action-btn--qr');
+        if (qrBtn && p.codigo_qr) {
+          qrBtn.addEventListener('click', () => {
+            window.open(`../../${p.codigo_qr}`, '_blank');
+          });
+        }
+
+        const editBtn = tr.querySelector('.summary-action-btn--edit');
+        if (editBtn) {
+          editBtn.addEventListener('click', () => FormController.editProducto(p));
+        }
+
+        const deleteBtn = tr.querySelector('.summary-action-btn--delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', () => this.deleteProducto(p.id));
+        }
+
+        resumenBody.appendChild(tr);
+      });
     }
   },
 

@@ -38,6 +38,60 @@
       </div>
     </section>
 
+    <section class="inventory-summary" aria-labelledby="resumenInventarioTitulo">
+      <div class="summary-top">
+        <div class="summary-info">
+          <span class="summary-eyebrow">Resumen del inventario</span>
+          <h2 id="resumenInventarioTitulo" class="summary-title">
+            <span id="resumenTotalProductos">0</span> productos registrados
+          </h2>
+          <p class="summary-description">
+            Mantén a la vista el comportamiento de tus existencias y los movimientos más comunes dentro del almacén.
+          </p>
+        </div>
+        <div class="summary-pills" role="list">
+          <button type="button" class="summary-pill summary-pill--in" role="listitem">Ingreso</button>
+          <button type="button" class="summary-pill summary-pill--out" role="listitem">Egreso</button>
+          <button type="button" class="summary-pill summary-pill--reload" role="listitem">Recargar</button>
+          <button type="button" class="summary-pill summary-pill--scan" role="listitem">Escanear</button>
+        </div>
+      </div>
+
+      <div class="summary-table-card">
+        <header class="summary-table-header">
+          <div class="summary-table-status">
+            <span class="status-indicator status-indicator--in">Ingreso</span>
+            <span class="status-indicator status-indicator--out">Egreso</span>
+            <span class="status-indicator status-indicator--reload">Recargar</span>
+            <span class="status-indicator status-indicator--scan">Escanear</span>
+          </div>
+          <span class="summary-records" id="resumenTotalRegistros">0 registros</span>
+        </header>
+
+        <div class="summary-table-wrapper">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th scope="col">Producto</th>
+                <th scope="col">Área</th>
+                <th scope="col">Zona</th>
+                <th scope="col">Categoría</th>
+                <th scope="col">Subcategoría</th>
+                <th scope="col">Volumen (cm³)</th>
+                <th scope="col">Stock</th>
+                <th scope="col">Precio compra</th>
+                <th scope="col" class="summary-actions-header">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="resumenInventarioBody"></tbody>
+          </table>
+          <div id="resumenInventarioVacio" class="summary-empty" hidden>
+            No hay productos registrados todavía.
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="inventory-shell">
       <div class="shell-header">
         <div class="shell-header__info">
