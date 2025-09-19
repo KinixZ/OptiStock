@@ -210,6 +210,25 @@ img {
     gap: 1.5rem;
 }
 
+@media (min-width: 1200px) {
+    .search-page {
+        display: grid;
+        grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+        align-items: flex-start;
+        gap: 2rem;
+    }
+
+    .search-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .search-results {
+        grid-column: 2;
+    }
+}
+
 .search-summary-card {
     background: #ffffff;
     border-radius: var(--radius-lg);
