@@ -1146,9 +1146,10 @@ img {
         height: 68px;
     }
     .content {
-        margin-left: 240px;
+        margin-left: 0;
         margin-top: 68px;
         min-height: calc(100vh - 68px);
+        width: 100%;
     }
     .header-bottom {
         display: flex;
