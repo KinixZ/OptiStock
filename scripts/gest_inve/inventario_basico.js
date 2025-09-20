@@ -183,7 +183,7 @@ prodCategoria?.addEventListener('change', () => {
   let scannerActivo = false;
   let preferredCameraId = null;
   let fallbackCameraId = null;
-  
+
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
       return;
@@ -195,7 +195,6 @@ prodCategoria?.addEventListener('change', () => {
     } finally {
       scannerActivo = false;
     }
-
     try {
       await qrScanner.clear();
     } catch (error) {
@@ -262,6 +261,19 @@ btnScanQR?.addEventListener('click', async () => {
     return;
   }
 
+  let testStream;
+  try {
+    testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+  } catch (error) {
+    console.error('No se pudo obtener permiso para la cámara', error);
+    showToast('Permiso de cámara denegado o no disponible', 'error');
+    return;
+  } finally {
+    if (testStream) {
+      testStream.getTracks().forEach(track => track.stop());
+    }
+  }
+
   let cameras = [];
   try {
     cameras = await Html5Qrcode.getCameras();
@@ -321,7 +333,6 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
     qrReader?.classList.add('d-none');
     scanModal?.hide();
     showToast('Error al iniciar la cámara', 'error');
-
   }
 });
 
