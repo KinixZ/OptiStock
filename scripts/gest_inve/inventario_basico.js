@@ -179,15 +179,64 @@ prodCategoria?.addEventListener('change', () => {
   let qrScanner;
   const scanModalElement = document.getElementById('scanModal');
   const scanModal = scanModalElement ? new bootstrap.Modal(scanModalElement) : null;
+  let iniciarEscaneoPendiente = false;
+  let scannerActivo = false;
+  let preferredCameraId = null;
+  let fallbackCameraId = null;
+
+  async function detenerScanner() {
+    if (!qrScanner || !scannerActivo) {
+      return;
+    }
+    try {
+      await qrScanner.stop();
+    } catch (error) {
+      console.warn('No se pudo detener el escáner', error);
+    } finally {
+      scannerActivo = false;
+    }
+
+    try {
+      await qrScanner.clear();
+    } catch (error) {
+      console.debug('No se pudo limpiar el contenedor del escáner', error);
+    }
+  }
+
+  async function procesarLectura(decodedText) {
+    await detenerScanner();
+    qrReader?.classList.add('d-none');
+    scanModal?.hide();
+
+    const productoId = parseInt(decodedText, 10);
+    if (!Number.isFinite(productoId)) {
+      showToast('Código QR no reconocido', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('../../scripts/php/guardar_movimientos.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al registrar movimiento');
+      }
+
+      await response.json();
+      await cargarProductos();
+      renderResumen();
+      showToast('Movimiento registrado', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Error al registrar movimiento', 'error');
+    }
+  }
 
   scanModalElement?.addEventListener('hidden.bs.modal', async () => {
-    if (qrScanner) {
-      try {
-        await qrScanner.stop();
-      } catch (error) {
-        console.warn('No se pudo detener el escáner', error);
-      }
-    }
+    await detenerScanner();
     qrReader?.classList.add('d-none');
   });
 
@@ -207,66 +256,72 @@ btnScanQR?.addEventListener('click', async () => {
     showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
     return;
   }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-    stream.getTracks().forEach(track => track.stop());
-  } catch (e) {
-    showToast('Permiso de cámara denegado o no disponible', 'error');
-    return;
-  }
 
   if (!scanModal) {
     showToast('No se pudo abrir el escáner QR', 'error');
     return;
   }
 
+  let cameras = [];
+  try {
+    cameras = await Html5Qrcode.getCameras();
+  } catch (error) {
+    console.error('No se pudieron enumerar las cámaras disponibles', error);
+    showToast('No se pudo acceder a la cámara', 'error');
+    return;
+  }
+
+  if (!Array.isArray(cameras) || cameras.length === 0) {
+    showToast('No se detectaron cámaras disponibles', 'error');
+    return;
+  }
+
+  const backRegex = /(back|rear|environment)/i;
+  const backCamera = cameras.find(cam => backRegex.test(cam.label));
+  preferredCameraId = (backCamera || cameras[0]).id;
+  const secondaryCamera = cameras.find(cam => cam.id !== preferredCameraId);
+  fallbackCameraId = secondaryCamera ? secondaryCamera.id : null;
+
+  iniciarEscaneoPendiente = true;
   qrReader?.classList.remove('d-none');
   scanModal.show();
+});
+
+scanModalElement?.addEventListener('shown.bs.modal', async () => {
+  if (!iniciarEscaneoPendiente) return;
+  iniciarEscaneoPendiente = false;
+
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
   }
 
-  qrScanner
-    .start(
-      { facingMode: { ideal: 'environment' } },
-      { fps: 10, qrbox: 250 },
-      async decodedText => {
-        await qrScanner.stop();
-        qrReader?.classList.add('d-none');
-        scanModal?.hide();
+  const startWithCamera = async cameraId => {
+    if (!cameraId) {
+      await qrScanner.start({ facingMode: { ideal: 'environment' } }, { fps: 10, qrbox: 250 }, procesarLectura);
+      return;
+    }
+    await qrScanner.start({ deviceId: { exact: cameraId } }, { fps: 10, qrbox: 250 }, procesarLectura);
+  };
 
-        const productoId = parseInt(decodedText, 10);
-        if (!Number.isFinite(productoId)) {
-          showToast('Código QR no reconocido', 'error');
-          return;
-        }
-
-        try {
-          const response = await fetch('../../scripts/php/guardar_movimientos.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
-          });
-
-          if (!response.ok) {
-            throw new Error('Error al registrar movimiento');
-          }
-
-          await response.json();
-          await cargarProductos();
-          renderResumen();
-          showToast('Movimiento registrado', 'success');
-        } catch (error) {
-          console.error(error);
-          showToast('Error al registrar movimiento', 'error');
-        }
+  try {
+    await startWithCamera(preferredCameraId);
+    scannerActivo = true;
+  } catch (error) {
+    console.warn('No se pudo iniciar la cámara preferida, intentando alternativa.', error);
+    if (fallbackCameraId && fallbackCameraId !== preferredCameraId) {
+      try {
+        await startWithCamera(fallbackCameraId);
+        scannerActivo = true;
+        return;
+      } catch (fallbackError) {
+        console.error('No se pudo iniciar la cámara alternativa', fallbackError);
       }
-    )
-    .catch(() => {
-      qrReader?.classList.add('d-none');
-      scanModal?.hide();
-      showToast('Error al iniciar la cámara', 'error');
-    });
+    }
+
+    qrReader?.classList.add('d-none');
+    scanModal?.hide();
+    showToast('Error al iniciar la cámara', 'error');
+  }
 });
 
  btnIngreso?.addEventListener('click', () => {
