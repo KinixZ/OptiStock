@@ -95,17 +95,17 @@
                     <div class="header-stats">
                         <article class="stat-card">
                             <span class="stat-label">Alertas activas</span>
-                            <span class="stat-value" id="activeAlertsValue">4</span>
+                            <span class="stat-value">4</span>
                             <span class="stat-trend negative"><i class="fas fa-arrow-up"></i> +12%</span>
                         </article>
                         <article class="stat-card">
                             <span class="stat-label">Movimientos hoy</span>
-                            <span class="stat-value" id="movimientosHoyValue">128</span>
+                            <span class="stat-value">128</span>
                             <span class="stat-trend positive"><i class="fas fa-arrow-up"></i> +8%</span>
                         </article>
                         <article class="stat-card">
                             <span class="stat-label">Zonas críticas</span>
-                            <span class="stat-value" id="zonasCriticasValue">2</span>
+                            <span class="stat-value">2</span>
                             <span class="stat-trend neutral"><i class="fas fa-minus"></i> Sin cambios</span>
                         </article>
                     </div>
@@ -119,10 +119,10 @@
                             <button class="btn btn-danger" id="egresoFlashBtn">
                                 <i class="fas fa-bolt"></i> Egreso Flash
                             </button>
-                            <button class="btn btn-primary" id="registrarEntradaBtn">
+                            <button class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt"></i> Registrar Entrada
                             </button>
-                            <button class="btn btn-primary" id="registrarSalidaBtn">
+                            <button class="btn btn-primary">
                                 <i class="fas fa-sign-out-alt"></i> Registrar Salida
                             </button>
                         </div>
@@ -143,7 +143,56 @@
                         <button class="card-action-btn"><i class="fas fa-ellipsis-v"></i></button>
                     </div>
                 </div>
-                <ul class="stock-alert-list"></ul>
+                <ul class="stock-alert-list">
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Baterías AA</div>
+                                <div class="stock-alert-detail">Zona A1 - Estante 3</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">5 unidades</div>
+                    </li>
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Mouse Inalámbrico</div>
+                                <div class="stock-alert-detail">Zona B2 - Estante 1</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">3 unidades</div>
+                    </li>
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Teclados</div>
+                                <div class="stock-alert-detail">Zona C3 - Estante 2</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">2 unidades</div>
+                    </li>
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <div class="stock-alert-icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <div>
+                                <div class="stock-alert-name">Monitor 24"</div>
+                                <div class="stock-alert-detail">Zona D4 - Estante 5</div>
+                            </div>
+                        </div>
+                        <div class="stock-alert-stock">1 unidad</div>
+                    </li>
+                </ul>
             </div>
             
             <!-- Recent Activity Card -->
@@ -157,7 +206,53 @@
                         <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
                     </div>
                 </div>
-                <ul class="activity-list"></ul>
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Ingreso de 50 unidades de Baterías AA</div>
+                            <div class="activity-time">Hace 15 minutos</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Egreso de 2 unidades de Teclados</div>
+                            <div class="activity-time">Hace 1 hora</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Transferencia de 10 Monitores a Zona D4</div>
+                            <div class="activity-time">Hace 3 horas</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Ingreso de 25 Mouse Inalámbricos</div>
+                            <div class="activity-time">Hace 5 horas</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-description">Usuario María García inició sesión</div>
+                            <div class="activity-time">Hace 6 horas</div>
+                        </div>
+                    </li>
+                </ul>
             </div>
             
             <!-- Space Optimization Card -->
@@ -310,50 +405,6 @@
     </div>
   </div>
 </div>
-
-    <div class="dashboard-modal" id="movementModal" role="dialog" aria-modal="true" aria-hidden="true">
-        <div class="dashboard-modal__backdrop" id="movementBackdrop"></div>
-        <div class="dashboard-modal__dialog" role="document">
-            <header class="dashboard-modal__header">
-                <div>
-                    <span class="dashboard-modal__eyebrow" id="movementModalEyebrow">Movimiento</span>
-                    <h2 class="dashboard-modal__title" id="movementModalTitle">Registrar movimiento</h2>
-                </div>
-                <button type="button" class="dashboard-modal__close" id="movementCloseBtn" aria-label="Cerrar ventana">
-                    <i class="fas fa-times"></i>
-                </button>
-            </header>
-            <form class="movement-form" id="movementForm">
-                <div class="movement-form__group">
-                    <label for="movementProduct" class="movement-form__label">Producto</label>
-                    <select id="movementProduct" class="movement-form__select" required></select>
-                </div>
-                <div class="movement-form__group movement-form__group--inline">
-                    <div class="movement-form__field">
-                        <label for="movementUnits" class="movement-form__label">Unidades</label>
-                        <input type="number" id="movementUnits" class="movement-form__input" min="1" step="1" placeholder="0" required>
-                    </div>
-                    <div class="movement-form__field movement-form__field--summary">
-                        <span class="movement-form__summary-label">Stock actual</span>
-                        <span class="movement-form__summary-value" id="movementStockSummary">0</span>
-                    </div>
-                </div>
-                <div class="movement-form__group movement-form__group--area" id="movementAreaGroup">
-                    <label for="movementArea" class="movement-form__label">Área destino</label>
-                    <select id="movementArea" class="movement-form__select"></select>
-                </div>
-                <div class="movement-form__group movement-form__group--area" id="movementZoneGroup">
-                    <label for="movementZone" class="movement-form__label">Zona destino</label>
-                    <select id="movementZone" class="movement-form__select"></select>
-                    <p class="movement-form__help" id="movementZoneHelp">Selecciona una zona dentro del área elegida.</p>
-                </div>
-                <footer class="movement-form__actions">
-                    <button type="submit" class="movement-form__btn movement-form__btn--primary" id="movementSubmit">Guardar</button>
-                    <button type="button" class="movement-form__btn movement-form__btn--ghost" id="movementCancel">Cancelar</button>
-                </footer>
-            </form>
-        </div>
-    </div>
 
     <script src="../../scripts/theme.js"></script>
     <script src="../../scripts/main_menu/main_menu.js"></script>

@@ -168,7 +168,6 @@ prodCategoria?.addEventListener('change', () => {
   const btnScanQR = document.getElementById('btnScanQR');
   const btnIngreso = document.getElementById('btnIngreso');
   const btnEgreso  = document.getElementById('btnEgreso');
-  const btnTransferencia = document.getElementById('btnTransferencia');
   const movimientoModalElement = document.getElementById('movimientoModal');
   const movModal   = movimientoModalElement ? new bootstrap.Modal(movimientoModalElement) : null;
   const movTitle   = document.getElementById('movimientoTitle');
@@ -176,16 +175,6 @@ prodCategoria?.addEventListener('change', () => {
   const movCant    = document.getElementById('movCantidad');
   const movGuardar = document.getElementById('movGuardar');
   let movTipo      = '';
-  const transferModalElement = document.getElementById('transferModal');
-  const transferModal = transferModalElement ? new bootstrap.Modal(transferModalElement) : null;
-  const transferForm = document.getElementById('transferForm');
-  const transferProductoSelect = document.getElementById('transferProducto');
-  const transferCantidadInput = document.getElementById('transferCantidad');
-  const transferStockDisponible = document.getElementById('transferStockDisponible');
-  const transferZonaDestinoSelect = document.getElementById('transferZonaDestino');
-  const transferZonaInfo = document.getElementById('transferZonaInfo');
-  const transferOrigenArea = document.getElementById('transferOrigenArea');
-  const transferOrigenZona = document.getElementById('transferOrigenZona');
   const qrReader   = document.getElementById('qrReader');
   let qrScanner;
   const scanModalElement = document.getElementById('scanModal');
@@ -261,181 +250,6 @@ function poblarSelectProductos() {
     movProdSel.appendChild(opt);
   });
 }
-
-function poblarSelectTransferencia() {
-  if (!transferProductoSelect) return;
-  transferProductoSelect.innerHTML = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Seleccione producto';
-  placeholder.disabled = true;
-  placeholder.selected = true;
-  transferProductoSelect.appendChild(placeholder);
-  productos.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    const stockNumero = parseInt(p.stock, 10);
-    const stockLabel = Number.isFinite(stockNumero) ? stockNumero : p.stock;
-    opt.textContent = `${p.nombre} (Stock: ${stockLabel ?? 0})`;
-    transferProductoSelect.appendChild(opt);
-  });
-}
-
-function poblarZonasDestinoSelect(seleccion = null) {
-  if (!transferZonaDestinoSelect) return;
-  transferZonaDestinoSelect.innerHTML = '';
-  if (!zonas.length) {
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = 'No hay zonas registradas';
-    opt.disabled = true;
-    opt.selected = true;
-    transferZonaDestinoSelect.appendChild(opt);
-    transferZonaDestinoSelect.disabled = true;
-    if (transferZonaInfo) {
-      transferZonaInfo.textContent = 'Registra áreas y zonas para habilitar transferencias.';
-    }
-    return;
-  }
-
-  transferZonaDestinoSelect.disabled = false;
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Selecciona zona destino';
-  placeholder.disabled = true;
-  if (!seleccion) {
-    placeholder.selected = true;
-  }
-  transferZonaDestinoSelect.appendChild(placeholder);
-
-  zonas.forEach(z => {
-    const zonaId = parseInt(z.id, 10);
-    const areaNombre = z.area_nombre || z.nombre_area || z.area || 'Área sin nombre';
-    const zonaNombre = z.nombre || z.zona_nombre || z.nombre_zona || 'Zona sin nombre';
-    const opt = document.createElement('option');
-    opt.value = zonaId;
-    opt.textContent = `${areaNombre} · ${zonaNombre}`;
-    opt.dataset.area = areaNombre;
-    opt.dataset.zona = zonaNombre;
-    if (seleccion && zonaId === seleccion) {
-      opt.selected = true;
-    }
-    transferZonaDestinoSelect.appendChild(opt);
-  });
-
-  if (transferZonaInfo) {
-    transferZonaInfo.textContent = 'Selecciona la zona a la que deseas mover el producto.';
-  }
-}
-
-function resetTransferModal() {
-  if (transferProductoSelect) {
-    transferProductoSelect.selectedIndex = 0;
-  }
-  if (transferCantidadInput) {
-    transferCantidadInput.value = '';
-    transferCantidadInput.removeAttribute('max');
-  }
-  if (transferStockDisponible) {
-    transferStockDisponible.value = '0';
-  }
-  if (transferOrigenArea) {
-    transferOrigenArea.textContent = '—';
-  }
-  if (transferOrigenZona) {
-    transferOrigenZona.textContent = '—';
-  }
-  if (transferZonaDestinoSelect && transferZonaDestinoSelect.options.length) {
-    transferZonaDestinoSelect.selectedIndex = 0;
-  }
-  if (transferZonaInfo) {
-    transferZonaInfo.textContent = 'Selecciona la zona a la que deseas mover el producto.';
-  }
-}
-
-transferProductoSelect?.addEventListener('change', () => {
-  const prodId = parseInt(transferProductoSelect.value, 10);
-  const producto = productos.find(p => parseInt(p.id, 10) === prodId);
-  const stock = producto ? parseInt(producto.stock, 10) || 0 : 0;
-  if (transferStockDisponible) {
-    transferStockDisponible.value = `${stock} ${stock === 1 ? 'unidad' : 'unidades'}`;
-  }
-  if (transferCantidadInput) {
-    transferCantidadInput.value = '';
-    if (stock > 0) {
-      transferCantidadInput.max = String(stock);
-    } else {
-      transferCantidadInput.removeAttribute('max');
-    }
-  }
-  if (transferOrigenArea) {
-    transferOrigenArea.textContent = producto?.area_nombre || 'Sin área';
-  }
-  if (transferOrigenZona) {
-    transferOrigenZona.textContent = producto?.zona_nombre || 'Sin zona';
-  }
-});
-
-transferZonaDestinoSelect?.addEventListener('change', () => {
-  if (!transferZonaInfo) return;
-  const selected = transferZonaDestinoSelect.selectedOptions[0];
-  if (!selected) {
-    transferZonaInfo.textContent = 'Selecciona la zona a la que deseas mover el producto.';
-    return;
-  }
-  const areaDestino = selected.dataset.area;
-  transferZonaInfo.textContent = areaDestino ? `Área destino: ${areaDestino}` : 'Selecciona la zona a la que deseas mover el producto.';
-});
-
-transferModalElement?.addEventListener('hidden.bs.modal', () => {
-  resetTransferModal();
-});
-
-transferForm?.addEventListener('submit', evento => {
-  evento.preventDefault();
-  if (!transferProductoSelect || !transferZonaDestinoSelect) {
-    return;
-  }
-  const prodId = parseInt(transferProductoSelect.value, 10);
-  const zonaId = parseInt(transferZonaDestinoSelect.value, 10);
-  const cantidad = parseInt(transferCantidadInput?.value ?? '0', 10);
-  if (!prodId || !zonaId) {
-    showToast('Selecciona un producto y la zona destino.', 'error');
-    return;
-  }
-  if (!Number.isFinite(cantidad) || cantidad <= 0) {
-    showToast('Ingresa la cantidad de unidades a transferir.', 'error');
-    return;
-  }
-  const producto = productos.find(p => parseInt(p.id, 10) === prodId);
-  if (!producto) {
-    showToast('No se encontró el producto seleccionado.', 'error');
-    return;
-  }
-  const stockDisponible = parseInt(producto.stock, 10) || 0;
-  if (cantidad > stockDisponible) {
-    showToast('La cantidad supera el stock disponible del producto.', 'error');
-    return;
-  }
-  const zonaDestino = zonas.find(z => parseInt(z.id, 10) === zonaId);
-  const areaDestino = zonaDestino?.area_nombre || zonaDestino?.nombre_area || zonaDestino?.area || producto.area_nombre || '';
-  const zonaDestinoNombre = zonaDestino?.nombre || zonaDestino?.zona_nombre || zonaDestino?.nombre_zona || '';
-  producto.area_nombre = areaDestino;
-  if (zonaDestinoNombre) {
-    producto.zona_nombre = zonaDestinoNombre;
-  }
-  showToast('Transferencia registrada correctamente.', 'success');
-  transferModal?.hide();
-  renderResumen();
-  document.dispatchEvent(new CustomEvent('movimientoRegistrado', {
-    detail: {
-      tipo: 'transferencia',
-      productoId: prodId,
-      cantidad,
-      destino: { area: areaDestino, zona: zonaDestinoNombre }
-    }
-  }));
-});
 
 btnScanQR?.addEventListener('click', async () => {
   if (!navigator.mediaDevices || !window.isSecureContext) {
@@ -545,21 +359,6 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
     movModal.show();
   });
 
-  btnTransferencia?.addEventListener('click', () => {
-    if (!transferModal || !transferProductoSelect) {
-      showToast('El formulario de transferencias no está disponible.', 'error');
-      return;
-    }
-    if (!productos.length) {
-      showToast('No hay productos registrados para transferir.', 'info');
-      return;
-    }
-    poblarSelectTransferencia();
-    poblarZonasDestinoSelect();
-    resetTransferModal();
-    transferModal.show();
-  });
-
 
 
 
@@ -630,7 +429,6 @@ async function cargarZonas() {
   const datos = await fetchAPI(`${API.zonas}?empresa_id=${EMP_ID}`);
    datos.forEach(z => zonas.push(z));
   actualizarSelectZonas();
-  poblarZonasDestinoSelect();
  }
 
 movGuardar?.addEventListener('click', async () => {
@@ -676,7 +474,6 @@ movGuardar?.addEventListener('click', async () => {
       productos.push(p);
     });
     actualizarIndicadores();
-    poblarSelectTransferencia();
   }
 
   function renderResumen() {
