@@ -180,14 +180,31 @@ prodCategoria?.addEventListener('change', () => {
   const scanModalElement = document.getElementById('scanModal');
   const scanModal = scanModalElement ? new bootstrap.Modal(scanModalElement) : null;
   let iniciarEscaneoPendiente = false;
-
-  async function procesarLectura(decodedText) {
-    if (!qrScanner) return;
+  let scannerActivo = false;
+  let preferredCameraId = null;
+  let fallbackCameraId = null;
+  
+  async function detenerScanner() {
+    if (!qrScanner || !scannerActivo) {
+      return;
+    }
     try {
       await qrScanner.stop();
     } catch (error) {
-      console.warn('No se pudo detener el escáner tras la lectura', error);
+      console.warn('No se pudo detener el escáner', error);
+    } finally {
+      scannerActivo = false;
     }
+
+    try {
+      await qrScanner.clear();
+    } catch (error) {
+      console.debug('No se pudo limpiar el contenedor del escáner', error);
+    }
+  }
+
+  async function procesarLectura(decodedText) {
+    await detenerScanner();
     qrReader?.classList.add('d-none');
     scanModal?.hide();
 
@@ -219,13 +236,7 @@ prodCategoria?.addEventListener('change', () => {
   }
 
   scanModalElement?.addEventListener('hidden.bs.modal', async () => {
-    if (qrScanner) {
-      try {
-        await qrScanner.stop();
-      } catch (error) {
-        console.warn('No se pudo detener el escáner', error);
-      }
-    }
+    await detenerScanner();
     qrReader?.classList.add('d-none');
   });
 
@@ -246,18 +257,30 @@ btnScanQR?.addEventListener('click', async () => {
     return;
   }
 
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-    stream.getTracks().forEach(track => track.stop());
-  } catch (e) {
-    showToast('Permiso de cámara denegado o no disponible', 'error');
-    return;
-  }
-
   if (!scanModal) {
     showToast('No se pudo abrir el escáner QR', 'error');
     return;
   }
+
+  let cameras = [];
+  try {
+    cameras = await Html5Qrcode.getCameras();
+  } catch (error) {
+    console.error('No se pudieron enumerar las cámaras disponibles', error);
+    showToast('No se pudo acceder a la cámara', 'error');
+    return;
+  }
+
+  if (!Array.isArray(cameras) || cameras.length === 0) {
+    showToast('No se detectaron cámaras disponibles', 'error');
+    return;
+  }
+
+  const backRegex = /(back|rear|environment)/i;
+  const backCamera = cameras.find(cam => backRegex.test(cam.label));
+  preferredCameraId = (backCamera || cameras[0]).id;
+  const secondaryCamera = cameras.find(cam => cam.id !== preferredCameraId);
+  fallbackCameraId = secondaryCamera ? secondaryCamera.id : null;
 
   iniciarEscaneoPendiente = true;
   qrReader?.classList.remove('d-none');
@@ -272,27 +295,33 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
     qrScanner = new Html5Qrcode('qrReader');
   }
 
-  try {
-    await qrScanner.start(
-      { facingMode: { ideal: 'environment' } },
-      { fps: 10, qrbox: 250 },
-      procesarLectura
-    );
-  } catch (error) {
-    console.warn('No se pudo iniciar la cámara con la trasera, intentando cámara frontal.', error);
-    if (!qrScanner) return;
-    try {
-      await qrScanner.start(
-        { facingMode: 'user' },
-        { fps: 10, qrbox: 250 },
-        procesarLectura
-      );
-    } catch (fallbackError) {
-      console.error('No se pudo iniciar ninguna cámara', fallbackError);
-      qrReader?.classList.add('d-none');
-      scanModal?.hide();
-      showToast('Error al iniciar la cámara', 'error');
+  const startWithCamera = async cameraId => {
+    if (!cameraId) {
+      await qrScanner.start({ facingMode: { ideal: 'environment' } }, { fps: 10, qrbox: 250 }, procesarLectura);
+      return;
     }
+    await qrScanner.start({ deviceId: { exact: cameraId } }, { fps: 10, qrbox: 250 }, procesarLectura);
+  };
+
+  try {
+    await startWithCamera(preferredCameraId);
+    scannerActivo = true;
+  } catch (error) {
+    console.warn('No se pudo iniciar la cámara preferida, intentando alternativa.', error);
+    if (fallbackCameraId && fallbackCameraId !== preferredCameraId) {
+      try {
+        await startWithCamera(fallbackCameraId);
+        scannerActivo = true;
+        return;
+      } catch (fallbackError) {
+        console.error('No se pudo iniciar la cámara alternativa', fallbackError);
+      }
+    }
+
+    qrReader?.classList.add('d-none');
+    scanModal?.hide();
+    showToast('Error al iniciar la cámara', 'error');
+
   }
 });
 
