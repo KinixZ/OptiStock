@@ -195,6 +195,7 @@ prodCategoria?.addEventListener('change', () => {
     } finally {
       scannerActivo = false;
     }
+
     try {
       await qrScanner.clear();
     } catch (error) {
@@ -278,21 +279,20 @@ btnScanQR?.addEventListener('click', async () => {
   try {
     cameras = await Html5Qrcode.getCameras();
   } catch (error) {
-    console.error('No se pudieron enumerar las cámaras disponibles', error);
-    showToast('No se pudo acceder a la cámara', 'error');
-    return;
+    console.warn('No se pudieron enumerar las cámaras disponibles', error);
+    cameras = [];
   }
 
-  if (!Array.isArray(cameras) || cameras.length === 0) {
-    showToast('No se detectaron cámaras disponibles', 'error');
-    return;
+  if (Array.isArray(cameras) && cameras.length > 0) {
+    const backRegex = /(back|rear|environment)/i;
+    const backCamera = cameras.find(cam => backRegex.test(cam.label));
+    preferredCameraId = (backCamera || cameras[0]).id;
+    const secondaryCamera = cameras.find(cam => cam.id !== preferredCameraId);
+    fallbackCameraId = secondaryCamera ? secondaryCamera.id : null;
+  } else {
+    preferredCameraId = null;
+    fallbackCameraId = null;
   }
-
-  const backRegex = /(back|rear|environment)/i;
-  const backCamera = cameras.find(cam => backRegex.test(cam.label));
-  preferredCameraId = (backCamera || cameras[0]).id;
-  const secondaryCamera = cameras.find(cam => cam.id !== preferredCameraId);
-  fallbackCameraId = secondaryCamera ? secondaryCamera.id : null;
 
   iniciarEscaneoPendiente = true;
   qrReader?.classList.remove('d-none');
