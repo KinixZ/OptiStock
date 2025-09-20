@@ -179,6 +179,44 @@ prodCategoria?.addEventListener('change', () => {
   let qrScanner;
   const scanModalElement = document.getElementById('scanModal');
   const scanModal = scanModalElement ? new bootstrap.Modal(scanModalElement) : null;
+  let iniciarEscaneoPendiente = false;
+
+  async function procesarLectura(decodedText) {
+    if (!qrScanner) return;
+    try {
+      await qrScanner.stop();
+    } catch (error) {
+      console.warn('No se pudo detener el escáner tras la lectura', error);
+    }
+    qrReader?.classList.add('d-none');
+    scanModal?.hide();
+
+    const productoId = parseInt(decodedText, 10);
+    if (!Number.isFinite(productoId)) {
+      showToast('Código QR no reconocido', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('../../scripts/php/guardar_movimientos.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al registrar movimiento');
+      }
+
+      await response.json();
+      await cargarProductos();
+      renderResumen();
+      showToast('Movimiento registrado', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Error al registrar movimiento', 'error');
+    }
+  }
 
   scanModalElement?.addEventListener('hidden.bs.modal', async () => {
     if (qrScanner) {
@@ -207,6 +245,7 @@ btnScanQR?.addEventListener('click', async () => {
     showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
     return;
   }
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
     stream.getTracks().forEach(track => track.stop());
@@ -220,53 +259,41 @@ btnScanQR?.addEventListener('click', async () => {
     return;
   }
 
+  iniciarEscaneoPendiente = true;
   qrReader?.classList.remove('d-none');
   scanModal.show();
+});
+
+scanModalElement?.addEventListener('shown.bs.modal', async () => {
+  if (!iniciarEscaneoPendiente) return;
+  iniciarEscaneoPendiente = false;
+
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
   }
 
-  qrScanner
-    .start(
+  try {
+    await qrScanner.start(
       { facingMode: { ideal: 'environment' } },
       { fps: 10, qrbox: 250 },
-      async decodedText => {
-        await qrScanner.stop();
-        qrReader?.classList.add('d-none');
-        scanModal?.hide();
-
-        const productoId = parseInt(decodedText, 10);
-        if (!Number.isFinite(productoId)) {
-          showToast('Código QR no reconocido', 'error');
-          return;
-        }
-
-        try {
-          const response = await fetch('../../scripts/php/guardar_movimientos.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
-          });
-
-          if (!response.ok) {
-            throw new Error('Error al registrar movimiento');
-          }
-
-          await response.json();
-          await cargarProductos();
-          renderResumen();
-          showToast('Movimiento registrado', 'success');
-        } catch (error) {
-          console.error(error);
-          showToast('Error al registrar movimiento', 'error');
-        }
-      }
-    )
-    .catch(() => {
+      procesarLectura
+    );
+  } catch (error) {
+    console.warn('No se pudo iniciar la cámara con la trasera, intentando cámara frontal.', error);
+    if (!qrScanner) return;
+    try {
+      await qrScanner.start(
+        { facingMode: 'user' },
+        { fps: 10, qrbox: 250 },
+        procesarLectura
+      );
+    } catch (fallbackError) {
+      console.error('No se pudo iniciar ninguna cámara', fallbackError);
       qrReader?.classList.add('d-none');
       scanModal?.hide();
       showToast('Error al iniciar la cámara', 'error');
-    });
+    }
+  }
 });
 
  btnIngreso?.addEventListener('click', () => {
