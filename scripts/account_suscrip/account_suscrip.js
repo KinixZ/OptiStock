@@ -143,6 +143,7 @@ function mainAccountSuscrip() {
       document.getElementById('inputCorreo').value = u.correo;
       document.getElementById('inputTelefono').value = u.telefono || '';
       document.getElementById('inputContrasena').value = '';
+      document.getElementById('inputConfirmarContrasena').value = '';
       modalUsuario.show();
     }
   });
@@ -154,7 +155,15 @@ function mainAccountSuscrip() {
     formData.append('apellido', document.getElementById('inputApellido').value);
     formData.append('telefono', document.getElementById('inputTelefono').value);
     formData.append('correo', document.getElementById('inputCorreo').value);
-    formData.append('contrasena', document.getElementById('inputContrasena').value);
+    const nuevaContrasena = document.getElementById('inputContrasena').value.trim();
+    const confirmarContrasena = document.getElementById('inputConfirmarContrasena').value.trim();
+
+    if (nuevaContrasena !== confirmarContrasena) {
+      alert('Las contraseñas no coinciden.');
+      return;
+    }
+
+    formData.append('contrasena', nuevaContrasena);
     const file = document.getElementById('inputFoto').files[0];
     if (file) formData.append('foto_perfil', file);
 
