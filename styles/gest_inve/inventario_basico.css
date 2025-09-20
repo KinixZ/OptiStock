@@ -441,6 +441,16 @@ img {
   box-shadow: 0 12px 30px -22px rgba(255, 107, 107, 0.4);
 }
 
+.btn-icon--primary {
+  background: rgba(15, 40, 65, 0.12);
+  color: var(--primary-color);
+}
+
+.btn-icon--primary:hover {
+  background: rgba(15, 40, 65, 0.18);
+  box-shadow: 0 12px 30px -22px rgba(15, 40, 65, 0.35);
+}
+
 .btn-icon--accent {
   background: rgba(15, 180, 212, 0.12);
   color: var(--accent-color);
