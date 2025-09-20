@@ -195,7 +195,6 @@ prodCategoria?.addEventListener('change', () => {
     } finally {
       scannerActivo = false;
     }
-
     try {
       await qrScanner.clear();
     } catch (error) {
