@@ -119,6 +119,15 @@
             </div>
             <div id="sublevelsContainer" class="sublevels-container"></div>
             <div class="form-group">
+              <label for="zoneUsage">Ocupación actual (%)</label>
+              <input type="number" id="zoneUsage" name="zoneUsage" min="0" max="100" step="0.1" placeholder="Ej. 78" required />
+            </div>
+            <div class="form-group">
+              <label for="zoneProducts">Productos almacenados</label>
+              <input type="text" id="zoneProducts" name="zoneProducts" placeholder="Ej. Palets A, Palets B" />
+              <small class="form-hint">Separar con comas para registrar múltiples productos.</small>
+            </div>
+            <div class="form-group">
               <label for="storageType">Tipo de almacenamiento</label>
               <select name="storageType" id="storageType" required>
                 <option value="">Seleccione una opción</option>
@@ -131,6 +140,72 @@
               <button type="submit" class="shell-action shell-action--primary">Guardar zona</button>
             </div>
           </form>
+        </section>
+
+        <section class="analytics-card">
+          <header class="analytics-header">
+            <div>
+              <span class="analytics-eyebrow">Analítica en vivo</span>
+              <h3 class="analytics-title">Seguimiento operativo de áreas y zonas</h3>
+              <p class="analytics-description">Filtra la información por nombre, ocupación y productos para identificar oportunidades de optimización.</p>
+            </div>
+            <div class="export-actions">
+              <button class="shell-action" id="exportExcel">Exportar a Excel</button>
+              <button class="shell-action" id="exportPDF">Exportar a PDF</button>
+            </div>
+          </header>
+
+          <div class="analytics-grid">
+            <aside class="filters-panel">
+              <h4 class="panel-title">Filtros dinámicos</h4>
+              <div class="form-group">
+                <label for="filterName">Buscar por nombre</label>
+                <input type="search" id="filterName" placeholder="Nombre de área o zona" />
+              </div>
+              <div class="form-group">
+                <label for="filterArea">Área asignada</label>
+                <select id="filterArea">
+                  <option value="">Todas las áreas</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="filterCapacity">Capacidad utilizada</label>
+                <select id="filterCapacity">
+                  <option value="">Todos los rangos</option>
+                  <option value="low">Menor al 50%</option>
+                  <option value="medium">Entre 50% y 80%</option>
+                  <option value="high">Mayor al 80%</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="filterProduct">Productos almacenados</label>
+                <input type="search" id="filterProduct" placeholder="Nombre del producto" />
+              </div>
+              <button class="shell-action" id="resetFilters">Restablecer filtros</button>
+            </aside>
+
+            <div class="insights-panel">
+              <div id="alertsContainer" class="alerts-panel" role="alert"></div>
+              <div id="metricsContainer" class="metrics-grid"></div>
+              <div class="table-wrapper">
+                <table id="tablaAreasZonas">
+                  <thead>
+                    <tr>
+                      <th>Área</th>
+                      <th>Zona</th>
+                      <th>Tipo</th>
+                      <th>Capacidad m³</th>
+                      <th>Ocupación</th>
+                      <th>Productos</th>
+                      <th>Última actualización</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+                <p id="emptyTableMessage" class="vacio" style="display:none">No se encontraron registros con los filtros aplicados.</p>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </section>
