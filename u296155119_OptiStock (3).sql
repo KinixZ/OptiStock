@@ -2,10 +2,10 @@
 -- version 5.2.2
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1:3306
--- Generation Time: Sep 10, 2025 at 07:01 PM
--- Server version: 10.11.10-MariaDB-log
--- PHP Version: 7.2.34
+-- Servidor: 127.0.0.1:3306
+-- Tiempo de generación: 19-09-2025 a las 18:27:25
+-- Versión del servidor: 11.8.3-MariaDB-log
+-- Versión de PHP: 7.2.34
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `u296155119_OptiStock`
+-- Base de datos: `u296155119_OptiStock`
 --
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `areas`
+-- Estructura de tabla para la tabla `areas`
 --
 
 CREATE TABLE `areas` (
@@ -39,7 +39,7 @@ CREATE TABLE `areas` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `areas`
+-- Volcado de datos para la tabla `areas`
 --
 
 INSERT INTO `areas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `id_empresa`) VALUES
@@ -54,7 +54,7 @@ INSERT INTO `areas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `v
 -- --------------------------------------------------------
 
 --
--- Table structure for table `categorias`
+-- Estructura de tabla para la tabla `categorias`
 --
 
 CREATE TABLE `categorias` (
@@ -65,7 +65,7 @@ CREATE TABLE `categorias` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `categorias`
+-- Volcado de datos para la tabla `categorias`
 --
 
 INSERT INTO `categorias` (`id`, `nombre`, `descripcion`, `empresa_id`) VALUES
@@ -81,7 +81,7 @@ INSERT INTO `categorias` (`id`, `nombre`, `descripcion`, `empresa_id`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `configuracion_empresa`
+-- Estructura de tabla para la tabla `configuracion_empresa`
 --
 
 CREATE TABLE `configuracion_empresa` (
@@ -93,11 +93,11 @@ CREATE TABLE `configuracion_empresa` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Dumping data for table `configuracion_empresa`
+-- Volcado de datos para la tabla `configuracion_empresa`
 --
 
 INSERT INTO `configuracion_empresa` (`id_empresa`, `color_sidebar`, `color_topbar`, `orden_sidebar`, `fecha_actualizacion`) VALUES
-(21, '#ff6b6b', '#2b7a78', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-10 16:05:31'),
+(21, '#ff6b6b', '#6c63ff', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-18 20:22:59'),
 (22, '#ff6b6b', '#2b7a78', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"account_suscrip\\/account_suscrip.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\"]', '2025-08-30 02:10:16'),
 (23, '#8e44ad', '#2980b9', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-08-04 13:47:24'),
 (24, '#454b52', '#ffa41b', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-10 16:06:02'),
@@ -108,7 +108,7 @@ INSERT INTO `configuracion_empresa` (`id_empresa`, `color_sidebar`, `color_topba
 -- --------------------------------------------------------
 
 --
--- Table structure for table `empresa`
+-- Estructura de tabla para la tabla `empresa`
 --
 
 CREATE TABLE `empresa` (
@@ -121,7 +121,7 @@ CREATE TABLE `empresa` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `empresa`
+-- Volcado de datos para la tabla `empresa`
 --
 
 INSERT INTO `empresa` (`id_empresa`, `nombre_empresa`, `logo_empresa`, `sector_empresa`, `usuario_creador`, `fecha_registro`) VALUES
@@ -141,7 +141,7 @@ INSERT INTO `empresa` (`id_empresa`, `nombre_empresa`, `logo_empresa`, `sector_e
 -- --------------------------------------------------------
 
 --
--- Table structure for table `log_control`
+-- Estructura de tabla para la tabla `log_control`
 --
 
 CREATE TABLE `log_control` (
@@ -154,19 +154,51 @@ CREATE TABLE `log_control` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `log_control`
+-- Volcado de datos para la tabla `log_control`
 --
 
 INSERT INTO `log_control` (`id`, `id_usuario`, `modulo`, `accion`, `fecha`, `hora`) VALUES
 (1, 57, 'Usuarios', 'Registro de usuario empresa: carmen.alicia@gmail.com', '2025-09-09', '00:14:22'),
 (2, 57, 'Usuarios', 'Registro de usuario empresa: hector.lung@gmail.com', '2025-09-09', '01:54:52'),
 (3, 60, 'Usuarios', 'Registro de usuario empresa: vipoca7841@certve.com', '2025-09-10', '15:55:38'),
-(4, 113, 'Usuarios', 'Registro de usuario: lumminary2@gmail.com', '2025-09-10', '16:08:45');
+(4, 113, 'Usuarios', 'Registro de usuario: lumminary2@gmail.com', '2025-09-10', '16:08:45'),
+(5, 57, 'Usuarios', 'Solicitud de código de recuperación de contraseña', '2025-09-15', '20:46:16'),
+(6, 57, 'Usuarios', 'Código de recuperación validado', '2025-09-15', '20:46:34'),
+(7, 57, 'Usuarios', 'Recuperación de contraseña completada', '2025-09-15', '20:47:07'),
+(8, 57, 'Usuarios', 'Solicitud de código de recuperación de contraseña', '2025-09-15', '22:20:14'),
+(9, 57, 'Usuarios', 'Código de recuperación validado', '2025-09-15', '22:20:29'),
+(10, 57, 'Usuarios', 'Recuperación de contraseña completada', '2025-09-15', '22:20:39'),
+(11, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-16', '02:45:56'),
+(12, 114, 'Usuarios', 'Actualización de datos por registro con Google', '2025-09-16', '17:12:21'),
+(13, 57, 'Inventario', 'Egreso manual de 4 unidad(es) del producto 41', '2025-09-17', '02:06:45'),
+(14, 57, 'Inventario', 'Ingreso manual de 6 unidad(es) del producto 41', '2025-09-17', '02:07:49'),
+(15, 57, 'Áreas', 'Creación de área: area nueva', '2025-09-17', '05:06:51'),
+(16, 57, 'Zonas', 'Creación de zona: zona nueva', '2025-09-17', '05:07:39'),
+(17, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '05:09:49'),
+(18, 57, 'Productos', 'Actualización de producto ID: 41', '2025-09-17', '19:51:08'),
+(19, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '21:53:21'),
+(20, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '21:53:36'),
+(21, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '21:55:35'),
+(22, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '22:26:14'),
+(23, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '22:26:56'),
+(24, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '22:28:32'),
+(25, 57, 'Áreas', 'Eliminación de área ID: 29', '2025-09-17', '22:32:54'),
+(26, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-17', '22:33:23'),
+(27, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '15:16:04'),
+(28, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '15:21:12'),
+(29, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '15:21:32'),
+(30, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '19:16:55'),
+(31, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '19:17:22'),
+(32, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '19:58:58'),
+(33, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '20:08:57'),
+(34, 110, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '20:22:59'),
+(35, 110, 'Subcategorías', 'Creación de subcategoría: platos', '2025-09-18', '20:23:46'),
+(36, 110, 'Productos', 'Creación de producto: platos unicel royal prestige (ID 46)', '2025-09-18', '20:24:26');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `movimientos`
+-- Estructura de tabla para la tabla `movimientos`
 --
 
 CREATE TABLE `movimientos` (
@@ -182,7 +214,7 @@ CREATE TABLE `movimientos` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `pass_resets`
+-- Estructura de tabla para la tabla `pass_resets`
 --
 
 CREATE TABLE `pass_resets` (
@@ -193,7 +225,7 @@ CREATE TABLE `pass_resets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Dumping data for table `pass_resets`
+-- Volcado de datos para la tabla `pass_resets`
 --
 
 INSERT INTO `pass_resets` (`id_pass_reset`, `id_usuario`, `token`, `expira`) VALUES
@@ -206,7 +238,7 @@ INSERT INTO `pass_resets` (`id_pass_reset`, `id_usuario`, `token`, `expira`) VAL
 -- --------------------------------------------------------
 
 --
--- Table structure for table `productos`
+-- Estructura de tabla para la tabla `productos`
 --
 
 CREATE TABLE `productos` (
@@ -228,20 +260,22 @@ CREATE TABLE `productos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `productos`
+-- Volcado de datos para la tabla `productos`
 --
 
 INSERT INTO `productos` (`id`, `nombre`, `descripcion`, `categoria_id`, `subcategoria_id`, `stock`, `precio_compra`, `dim_x`, `dim_y`, `dim_z`, `codigo_qr`, `empresa_id`, `zona_id`, `last_movimiento`, `last_tipo`) VALUES
 (36, 'Lapiz Sharpie', 'SI', 27, 27, 10, 10.00, 2, 2, 1, NULL, 23, 18, '2025-08-04 13:46:16', NULL),
 (37, 'Una piedra', '', 28, NULL, 19, 1.30, 0, 0, 0, NULL, 28, 19, '2025-08-04 17:13:27', NULL),
-(41, 'plato unicel', '', 31, NULL, 6, 50.00, 2, 2, 2, 'images/qr/41.png', 21, 20, '2025-08-19 23:29:57', NULL),
+(41, 'plato unicel', '', 31, 32, 8, 50.00, 0, 0, 0, 'images/qr/41.png', 21, 22, '2025-09-17 19:51:08', NULL),
 (43, 'papel a4 marca J', 'Es papel de la marca J de tamaño a4', 34, 36, 990, 400.00, 4, 4, 4, 'images/qr/43.png', 24, 17, '2025-09-03 19:09:02', NULL),
-(44, 'si', 'si', 34, NULL, 0, 100.00, 0, 0, 0, 'images/qr/44.png', 24, 17, '2025-09-10 16:01:47', NULL);
+(44, 'si', 'si', 34, NULL, 0, 100.00, 0, 0, 0, 'images/qr/44.png', 24, 17, '2025-09-10 16:01:47', NULL),
+(45, 'Conos de papel', '', 32, 37, 50, 2.00, 0, 0, 0, 'images/qr/45.png', 21, 16, '2025-09-15 20:14:17', NULL),
+(46, 'platos unicel royal prestige', '', 31, 38, 40, 50.00, 0, 0, 0, 'images/qr/46.png', 21, 20, '2025-09-18 20:24:26', NULL);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `registro_accesos`
+-- Estructura de tabla para la tabla `registro_accesos`
 --
 
 CREATE TABLE `registro_accesos` (
@@ -252,7 +286,7 @@ CREATE TABLE `registro_accesos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `registro_accesos`
+-- Volcado de datos para la tabla `registro_accesos`
 --
 
 INSERT INTO `registro_accesos` (`id`, `id_usuario`, `accion`, `fecha`) VALUES
@@ -364,12 +398,143 @@ INSERT INTO `registro_accesos` (`id`, `id_usuario`, `accion`, `fecha`) VALUES
 (113, 57, 'Cierre', '2025-09-10 16:06:48'),
 (114, 60, 'Inicio', '2025-09-10 16:06:50'),
 (115, 113, 'Inicio', '2025-09-10 16:11:51'),
-(116, 113, 'Cierre', '2025-09-10 16:13:18');
+(116, 113, 'Cierre', '2025-09-10 16:13:18'),
+(117, 57, 'Inicio', '2025-09-15 16:32:30'),
+(118, 57, 'Inicio', '2025-09-15 18:53:17'),
+(119, 57, 'Intento', '2025-09-15 20:47:11'),
+(120, 57, 'Inicio', '2025-09-15 20:47:19'),
+(121, 57, 'Intento', '2025-09-15 21:01:51'),
+(122, 57, 'Intento', '2025-09-15 21:01:54'),
+(123, 57, 'Intento', '2025-09-15 21:02:18'),
+(124, 57, 'Inicio', '2025-09-15 21:02:38'),
+(125, 57, 'Inicio', '2025-09-15 22:20:45'),
+(126, 57, 'Inicio', '2025-09-15 23:44:47'),
+(127, 57, 'Inicio', '2025-09-16 00:28:13'),
+(128, 57, 'Inicio', '2025-09-16 00:53:34'),
+(129, 57, 'Inicio', '2025-09-16 00:54:45'),
+(130, 57, 'Inicio', '2025-09-16 00:56:55'),
+(131, 57, 'Inicio', '2025-09-16 00:58:51'),
+(132, 57, 'Inicio', '2025-09-16 01:02:27'),
+(133, 57, 'Inicio', '2025-09-16 01:08:02'),
+(134, 57, 'Inicio', '2025-09-16 01:25:46'),
+(135, 57, 'Inicio', '2025-09-16 01:43:11'),
+(136, 57, 'Inicio', '2025-09-16 02:14:24'),
+(137, 57, 'Inicio', '2025-09-16 02:32:56'),
+(138, 57, 'Inicio', '2025-09-16 02:42:30'),
+(139, 57, 'Inicio', '2025-09-16 03:14:16'),
+(140, 57, 'Inicio', '2025-09-16 03:15:11'),
+(141, 57, 'Inicio', '2025-09-16 03:17:09'),
+(142, 114, 'Inicio', '2025-09-16 17:12:04'),
+(143, 57, 'Inicio', '2025-09-17 01:12:34'),
+(144, 57, 'Inicio', '2025-09-17 01:16:25'),
+(145, 57, 'Inicio', '2025-09-17 02:05:01'),
+(146, 57, 'Inicio', '2025-09-17 03:02:35'),
+(147, 57, 'Inicio', '2025-09-17 03:04:50'),
+(148, 57, 'Inicio', '2025-09-17 03:35:06'),
+(149, 57, 'Inicio', '2025-09-17 03:54:06'),
+(150, 57, 'Inicio', '2025-09-17 03:59:00'),
+(151, 57, 'Inicio', '2025-09-17 04:01:09'),
+(152, 57, 'Inicio', '2025-09-17 04:12:52'),
+(153, 57, 'Inicio', '2025-09-17 04:13:12'),
+(154, 57, 'Inicio', '2025-09-17 04:16:43'),
+(155, 57, 'Inicio', '2025-09-17 04:18:20'),
+(156, 57, 'Inicio', '2025-09-17 04:19:42'),
+(157, 57, 'Inicio', '2025-09-17 04:48:12'),
+(158, 57, 'Inicio', '2025-09-17 04:49:47'),
+(159, 57, 'Inicio', '2025-09-17 04:55:56'),
+(160, 57, 'Inicio', '2025-09-17 05:05:38'),
+(161, 57, 'Inicio', '2025-09-17 05:17:41'),
+(162, 57, 'Cierre', '2025-09-17 05:17:51'),
+(163, 57, 'Inicio', '2025-09-17 05:18:13'),
+(164, 57, 'Inicio', '2025-09-17 05:18:41'),
+(165, 57, 'Inicio', '2025-09-17 15:59:55'),
+(166, 33, 'Intento', '2025-09-17 18:13:12'),
+(167, 33, 'Intento', '2025-09-17 18:13:16'),
+(168, 33, 'Intento', '2025-09-17 18:13:21'),
+(169, 60, 'Inicio', '2025-09-17 18:13:35'),
+(170, 57, 'Inicio', '2025-09-17 19:47:14'),
+(171, 57, 'Inicio', '2025-09-17 20:12:43'),
+(172, 57, 'Inicio', '2025-09-17 20:14:59'),
+(173, 57, 'Inicio', '2025-09-17 20:16:53'),
+(174, 57, 'Inicio', '2025-09-17 20:24:27'),
+(175, 57, 'Inicio', '2025-09-17 20:27:52'),
+(176, 57, 'Inicio', '2025-09-17 20:48:00'),
+(177, 57, 'Inicio', '2025-09-17 20:56:01'),
+(178, 57, 'Inicio', '2025-09-17 21:07:54'),
+(179, 57, 'Inicio', '2025-09-17 21:22:05'),
+(180, 57, 'Inicio', '2025-09-17 21:34:11'),
+(181, 57, 'Inicio', '2025-09-17 21:52:04'),
+(182, 57, 'Cierre', '2025-09-17 21:55:21'),
+(183, 57, 'Inicio', '2025-09-17 21:55:24'),
+(184, 57, 'Inicio', '2025-09-17 22:25:55'),
+(185, 57, 'Inicio', '2025-09-17 22:38:38'),
+(186, 57, 'Inicio', '2025-09-17 22:46:19'),
+(187, 57, 'Cierre', '2025-09-17 22:46:31'),
+(188, 57, 'Inicio', '2025-09-17 22:46:33'),
+(189, 57, 'Inicio', '2025-09-17 22:58:47'),
+(190, 57, 'Inicio', '2025-09-17 22:58:47'),
+(191, 57, 'Inicio', '2025-09-17 22:59:05'),
+(192, 57, 'Inicio', '2025-09-17 23:21:02'),
+(193, 57, 'Inicio', '2025-09-17 23:22:41'),
+(194, 57, 'Inicio', '2025-09-17 23:31:11'),
+(195, 57, 'Inicio', '2025-09-17 23:40:41'),
+(196, 57, 'Inicio', '2025-09-17 23:53:29'),
+(197, 57, 'Inicio', '2025-09-17 23:56:20'),
+(198, 57, 'Inicio', '2025-09-18 00:06:46'),
+(199, 57, 'Inicio', '2025-09-18 00:25:13'),
+(200, 57, 'Inicio', '2025-09-18 00:37:15'),
+(201, 57, 'Inicio', '2025-09-18 15:13:35'),
+(202, 57, 'Inicio', '2025-09-18 16:02:42'),
+(203, 57, 'Inicio', '2025-09-18 16:17:16'),
+(204, 57, 'Inicio', '2025-09-18 16:53:39'),
+(205, 57, 'Inicio', '2025-09-18 16:56:31'),
+(206, 57, 'Inicio', '2025-09-18 17:09:44'),
+(207, 57, 'Inicio', '2025-09-18 17:26:30'),
+(208, 57, 'Inicio', '2025-09-18 17:52:48'),
+(209, 57, 'Inicio', '2025-09-18 18:18:56'),
+(210, 57, 'Inicio', '2025-09-18 18:23:22'),
+(211, 57, 'Inicio', '2025-09-18 18:35:27'),
+(212, 57, 'Inicio', '2025-09-18 18:50:02'),
+(213, 57, 'Inicio', '2025-09-18 18:57:37'),
+(214, 57, 'Inicio', '2025-09-18 19:06:58'),
+(215, 57, 'Inicio', '2025-09-18 19:14:13'),
+(216, 57, 'Inicio', '2025-09-18 19:38:39'),
+(217, 57, 'Inicio', '2025-09-18 19:41:57'),
+(218, 57, 'Inicio', '2025-09-18 19:44:09'),
+(219, 57, 'Inicio', '2025-09-18 19:46:43'),
+(220, 57, 'Inicio', '2025-09-18 19:49:38'),
+(221, 57, 'Inicio', '2025-09-18 19:54:13'),
+(222, 57, 'Inicio', '2025-09-18 19:56:04'),
+(223, 57, 'Inicio', '2025-09-18 19:58:34'),
+(224, 57, 'Inicio', '2025-09-18 20:04:38'),
+(225, 57, 'Inicio', '2025-09-18 20:06:34'),
+(226, 57, 'Inicio', '2025-09-18 20:13:58'),
+(227, 57, 'Inicio', '2025-09-18 20:14:16'),
+(228, 57, 'Inicio', '2025-09-18 20:18:51'),
+(229, 57, 'Inicio', '2025-09-18 20:20:04'),
+(230, 57, 'Cierre', '2025-09-18 20:22:23'),
+(231, 110, 'Inicio', '2025-09-18 20:22:35'),
+(232, 110, 'Cierre', '2025-09-18 20:25:31'),
+(233, 57, 'Inicio', '2025-09-18 20:25:33'),
+(234, 57, 'Inicio', '2025-09-18 22:44:21'),
+(235, 57, 'Inicio', '2025-09-18 23:04:15'),
+(236, 57, 'Inicio', '2025-09-18 23:49:56'),
+(237, 57, 'Inicio', '2025-09-19 00:00:39'),
+(238, 57, 'Inicio', '2025-09-19 00:09:38'),
+(239, 57, 'Inicio', '2025-09-19 00:28:38'),
+(240, 110, 'Inicio', '2025-09-19 00:33:37'),
+(241, 110, 'Cierre', '2025-09-19 00:39:51'),
+(242, 57, 'Inicio', '2025-09-19 00:43:25'),
+(243, 57, 'Inicio', '2025-09-19 01:52:06'),
+(244, 57, 'Inicio', '2025-09-19 02:07:17'),
+(245, 57, 'Inicio', '2025-09-19 02:17:40'),
+(246, 57, 'Inicio', '2025-09-19 02:18:51'),
+(247, 57, 'Inicio', '2025-09-19 16:09:21');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `subcategorias`
+-- Estructura de tabla para la tabla `subcategorias`
 --
 
 CREATE TABLE `subcategorias` (
@@ -381,7 +546,7 @@ CREATE TABLE `subcategorias` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `subcategorias`
+-- Volcado de datos para la tabla `subcategorias`
 --
 
 INSERT INTO `subcategorias` (`id`, `categoria_id`, `nombre`, `descripcion`, `empresa_id`) VALUES
@@ -394,12 +559,14 @@ INSERT INTO `subcategorias` (`id`, `categoria_id`, `nombre`, `descripcion`, `emp
 (33, 31, 'tapas', '', 21),
 (34, 33, 'sub1', 'cositas', 24),
 (35, 34, 'papel a4', 'tamaño a4', 24),
-(36, 34, 'papel a4', 'tamaño a4', 24);
+(36, 34, 'papel a4', 'tamaño a4', 24),
+(37, 32, 'conos', '', 21),
+(38, 31, 'platos', '', 21);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `usuario`
+-- Estructura de tabla para la tabla `usuario`
 --
 
 CREATE TABLE `usuario` (
@@ -420,11 +587,11 @@ CREATE TABLE `usuario` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `usuario`
+-- Volcado de datos para la tabla `usuario`
 --
 
 INSERT INTO `usuario` (`id_usuario`, `nombre`, `apellido`, `fecha_nacimiento`, `telefono`, `correo`, `contrasena`, `rol`, `fecha_registro`, `verificacion_cuenta`, `suscripcion`, `intentos_fallidos`, `ultimo_intento`, `foto_perfil`) VALUES
-(33, 'Ivan Eduardo', 'Garcia Verduzco', '2005-05-15', '3315634572', 'ivangmgm1290@gmail.com', '31bbc4cb70043dcb8cca35cb837832c419a4caa6', 'Administrador', '2025-04-07 14:32:50', 1, 0, 5, '2025-09-03 13:09:51', 'images/profile.jpg'),
+(33, 'Ivan Eduardo', 'Garcia Verduzco', '2005-05-15', '3315634572', 'ivangmgm1290@gmail.com', '31bbc4cb70043dcb8cca35cb837832c419a4caa6', 'Administrador', '2025-04-07 14:32:50', 1, 0, 6, '2025-09-17 18:13:12', 'images/profile.jpg'),
 (56, 'kay', 'ro', '2025-12-22', '123456', 'a21100285@ceti.mx', '64b6c7a5060af5e67425be0ca23b3a9df4524d5e', 'Administrador', '2025-04-08 13:46:31', 1, 0, 0, NULL, 'images/profile.jpg'),
 (57, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'a21100316@ceti.mx', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-17 02:28:49', 1, 0, 0, NULL, 'images/profiles/perfil_57_1755646866.jpeg'),
 (58, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'tareasdeemi@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-18 05:39:32', 1, 0, 0, NULL, 'images/profiles/perfil_58_1756914842.jpg'),
@@ -450,13 +617,14 @@ INSERT INTO `usuario` (`id_usuario`, `nombre`, `apellido`, `fecha_nacimiento`, `
 (107, 'Lamine', 'Tamal', '1994-11-12', '1234567890', 'laminetamal@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Mantenimiento', '2025-09-05 00:36:36', 1, 0, 0, NULL, 'images/mantenimiento.jpg'),
 (110, 'Carmen Alicia', 'Flores Inzunza', '2004-03-03', '3321099971', 'carmen.alicia@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Mantenimiento', '2025-09-09 00:14:22', 1, 0, 0, NULL, 'images/mantenimiento.jpg'),
 (111, 'hector', 'sanchez lung', '1997-12-21', '12345678', 'hector.lung@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Almacenista', '2025-09-09 01:54:52', 1, 0, 0, NULL, 'images/almacenista.jpg'),
-(112, 'juanito', 'garcia', '2000-01-04', '3399988221', 'vipoca7841@certve.com', '3414039fe8ebbb0bc6db4ff54d0ca57016732635', 'Supervisor', '2025-09-10 15:55:38', 1, 0, 0, NULL, 'images/supervisor.jpg'),
-(113, 'Fulanito', 'Menganito', '2005-03-30', '3321099971', 'lumminary2@gmail.com', 'ae53da110e755b430ee6285a1ad0b41138b956d0', 'Administrador', '2025-09-10 16:08:45', 1, 0, 0, NULL, 'images/profile.jpg');
+(112, 'juanito', 'garcia', '2000-01-04', '3399988221', 'vipoca7841@certve.com', '3414039fe8ebbb0bc6db4ff54d0ca57016732635', 'Almacenista', '2025-09-10 15:55:38', 1, 0, 0, NULL, 'images/supervisor.jpg'),
+(113, 'Fulanito', 'Menganito', '2005-03-30', '3321099971', 'lumminary2@gmail.com', 'ae53da110e755b430ee6285a1ad0b41138b956d0', 'Administrador', '2025-09-10 16:08:45', 1, 0, 0, NULL, 'images/profile.jpg'),
+(114, 'OSAMA', 'HOSNI TOUIL TOUIL', '1975-05-26', '679121427', 'osamahosni1975@gmail.com', '135731ba3cd4a9cbe32b530e7c192c69965ba448', 'Administrador', '2025-09-16 17:12:04', 1, 0, 0, NULL, 'images/profile.jpg');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `usuario_empresa`
+-- Estructura de tabla para la tabla `usuario_empresa`
 --
 
 CREATE TABLE `usuario_empresa` (
@@ -465,26 +633,26 @@ CREATE TABLE `usuario_empresa` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Dumping data for table `usuario_empresa`
+-- Volcado de datos para la tabla `usuario_empresa`
 --
 
 INSERT INTO `usuario_empresa` (`id_usuario`, `id_empresa`) VALUES
+(110, 21),
+(111, 21),
 (75, 22),
+(92, 23),
+(112, 24),
 (80, 25),
 (81, 25),
-(92, 23),
 (104, 31),
 (105, 31),
 (106, 31),
-(107, 31),
-(110, 21),
-(111, 21),
-(112, 24);
+(107, 31);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `zonas`
+-- Estructura de tabla para la tabla `zonas`
 --
 
 CREATE TABLE `zonas` (
@@ -502,7 +670,7 @@ CREATE TABLE `zonas` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `zonas`
+-- Volcado de datos para la tabla `zonas`
 --
 
 INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `tipo_almacenamiento`, `subniveles`, `area_id`, `id_empresa`) VALUES
@@ -513,47 +681,48 @@ INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `v
 (20, 'rack A', 'rack para cosas pesadas', 1.50, 3.00, 5.00, 22.50, 'rack', '[]', 26, 21),
 (21, 'rack B', 'otro rack', 1.50, 3.00, 5.00, 22.50, 'rack', '[]', 26, 21),
 (22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 'rack', '[]', 26, 21),
-(23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 'cajón', '[]', 28, 30);
+(23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 'cajón', '[]', 28, 30),
+(24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 'jaula', '[]', NULL, 21);
 
 --
--- Indexes for dumped tables
+-- Índices para tablas volcadas
 --
 
 --
--- Indexes for table `areas`
+-- Indices de la tabla `areas`
 --
 ALTER TABLE `areas`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `categorias`
+-- Indices de la tabla `categorias`
 --
 ALTER TABLE `categorias`
   ADD PRIMARY KEY (`id`),
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `configuracion_empresa`
+-- Indices de la tabla `configuracion_empresa`
 --
 ALTER TABLE `configuracion_empresa`
   ADD PRIMARY KEY (`id_empresa`);
 
 --
--- Indexes for table `empresa`
+-- Indices de la tabla `empresa`
 --
 ALTER TABLE `empresa`
   ADD PRIMARY KEY (`id_empresa`),
   ADD KEY `usuario_creador` (`usuario_creador`);
 
 --
--- Indexes for table `log_control`
+-- Indices de la tabla `log_control`
 --
 ALTER TABLE `log_control`
   ADD PRIMARY KEY (`id`),
   ADD KEY `id_usuario` (`id_usuario`);
 
 --
--- Indexes for table `movimientos`
+-- Indices de la tabla `movimientos`
 --
 ALTER TABLE `movimientos`
   ADD PRIMARY KEY (`id`),
@@ -561,14 +730,14 @@ ALTER TABLE `movimientos`
   ADD KEY `fk_movimientos_usuario` (`id_usuario`);
 
 --
--- Indexes for table `pass_resets`
+-- Indices de la tabla `pass_resets`
 --
 ALTER TABLE `pass_resets`
   ADD PRIMARY KEY (`id_pass_reset`),
   ADD KEY `id_usuario` (`id_usuario`);
 
 --
--- Indexes for table `productos`
+-- Indices de la tabla `productos`
 --
 ALTER TABLE `productos`
   ADD PRIMARY KEY (`id`),
@@ -579,14 +748,14 @@ ALTER TABLE `productos`
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `registro_accesos`
+-- Indices de la tabla `registro_accesos`
 --
 ALTER TABLE `registro_accesos`
   ADD PRIMARY KEY (`id`),
   ADD KEY `id_usuario` (`id_usuario`);
 
 --
--- Indexes for table `subcategorias`
+-- Indices de la tabla `subcategorias`
 --
 ALTER TABLE `subcategorias`
   ADD PRIMARY KEY (`id`),
@@ -594,120 +763,120 @@ ALTER TABLE `subcategorias`
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `usuario`
+-- Indices de la tabla `usuario`
 --
 ALTER TABLE `usuario`
   ADD PRIMARY KEY (`id_usuario`),
   ADD UNIQUE KEY `correo` (`correo`);
 
 --
--- Indexes for table `usuario_empresa`
+-- Indices de la tabla `usuario_empresa`
 --
 ALTER TABLE `usuario_empresa`
   ADD PRIMARY KEY (`id_usuario`,`id_empresa`),
   ADD KEY `id_empresa` (`id_empresa`);
 
 --
--- Indexes for table `zonas`
+-- Indices de la tabla `zonas`
 --
 ALTER TABLE `zonas`
   ADD PRIMARY KEY (`id`),
   ADD KEY `area_id` (`area_id`);
 
 --
--- AUTO_INCREMENT for dumped tables
+-- AUTO_INCREMENT de las tablas volcadas
 --
 
 --
--- AUTO_INCREMENT for table `areas`
+-- AUTO_INCREMENT de la tabla `areas`
 --
 ALTER TABLE `areas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
--- AUTO_INCREMENT for table `categorias`
+-- AUTO_INCREMENT de la tabla `categorias`
 --
 ALTER TABLE `categorias`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
--- AUTO_INCREMENT for table `empresa`
+-- AUTO_INCREMENT de la tabla `empresa`
 --
 ALTER TABLE `empresa`
   MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
--- AUTO_INCREMENT for table `log_control`
+-- AUTO_INCREMENT de la tabla `log_control`
 --
 ALTER TABLE `log_control`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
--- AUTO_INCREMENT for table `movimientos`
+-- AUTO_INCREMENT de la tabla `movimientos`
 --
 ALTER TABLE `movimientos`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `pass_resets`
+-- AUTO_INCREMENT de la tabla `pass_resets`
 --
 ALTER TABLE `pass_resets`
   MODIFY `id_pass_reset` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT for table `productos`
+-- AUTO_INCREMENT de la tabla `productos`
 --
 ALTER TABLE `productos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
--- AUTO_INCREMENT for table `registro_accesos`
+-- AUTO_INCREMENT de la tabla `registro_accesos`
 --
 ALTER TABLE `registro_accesos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=117;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=248;
 
 --
--- AUTO_INCREMENT for table `subcategorias`
+-- AUTO_INCREMENT de la tabla `subcategorias`
 --
 ALTER TABLE `subcategorias`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
--- AUTO_INCREMENT for table `usuario`
+-- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
 
 --
--- AUTO_INCREMENT for table `zonas`
+-- AUTO_INCREMENT de la tabla `zonas`
 --
 ALTER TABLE `zonas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
--- Constraints for dumped tables
+-- Restricciones para tablas volcadas
 --
 
 --
--- Constraints for table `configuracion_empresa`
+-- Filtros para la tabla `configuracion_empresa`
 --
 ALTER TABLE `configuracion_empresa`
   ADD CONSTRAINT `configuracion_empresa_ibfk_1` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`);
 
 --
--- Constraints for table `empresa`
+-- Filtros para la tabla `empresa`
 --
 ALTER TABLE `empresa`
   ADD CONSTRAINT `empresa_ibfk_1` FOREIGN KEY (`usuario_creador`) REFERENCES `usuario` (`id_usuario`);
 
 --
--- Constraints for table `log_control`
+-- Filtros para la tabla `log_control`
 --
 ALTER TABLE `log_control`
   ADD CONSTRAINT `log_control_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`);
 
 --
--- Constraints for table `movimientos`
+-- Filtros para la tabla `movimientos`
 --
 ALTER TABLE `movimientos`
   ADD CONSTRAINT `fk_mov_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
@@ -715,13 +884,13 @@ ALTER TABLE `movimientos`
   ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`);
 
 --
--- Constraints for table `pass_resets`
+-- Filtros para la tabla `pass_resets`
 --
 ALTER TABLE `pass_resets`
   ADD CONSTRAINT `pass_resets_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`);
 
 --
--- Constraints for table `productos`
+-- Filtros para la tabla `productos`
 --
 ALTER TABLE `productos`
   ADD CONSTRAINT `fk_producto_zona` FOREIGN KEY (`zona_id`) REFERENCES `zonas` (`id`),
@@ -729,26 +898,26 @@ ALTER TABLE `productos`
   ADD CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`subcategoria_id`) REFERENCES `subcategorias` (`id`) ON DELETE SET NULL;
 
 --
--- Constraints for table `registro_accesos`
+-- Filtros para la tabla `registro_accesos`
 --
 ALTER TABLE `registro_accesos`
   ADD CONSTRAINT `registro_accesos_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE;
 
 --
--- Constraints for table `subcategorias`
+-- Filtros para la tabla `subcategorias`
 --
 ALTER TABLE `subcategorias`
   ADD CONSTRAINT `subcategorias_ibfk_1` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`) ON DELETE SET NULL;
 
 --
--- Constraints for table `usuario_empresa`
+-- Filtros para la tabla `usuario_empresa`
 --
 ALTER TABLE `usuario_empresa`
   ADD CONSTRAINT `usuario_empresa_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
   ADD CONSTRAINT `usuario_empresa_ibfk_2` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
 
 --
--- Constraints for table `zonas`
+-- Filtros para la tabla `zonas`
 --
 ALTER TABLE `zonas`
   ADD CONSTRAINT `zonas_ibfk_1` FOREIGN KEY (`area_id`) REFERENCES `areas` (`id`) ON DELETE SET NULL;
