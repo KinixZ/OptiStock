@@ -183,7 +183,7 @@ prodCategoria?.addEventListener('change', () => {
   let scannerActivo = false;
   let preferredCameraId = null;
   let fallbackCameraId = null;
-
+  
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
       return;
@@ -321,6 +321,7 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
     qrReader?.classList.add('d-none');
     scanModal?.hide();
     showToast('Error al iniciar la cámara', 'error');
+
   }
 });
 
