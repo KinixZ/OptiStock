@@ -210,6 +210,10 @@ img {
   background: linear-gradient(135deg, #ff7b7b, #ff5d5d);
 }
 
+.summary-pill--transfer {
+  background: linear-gradient(135deg, #ffb347, #ff9447);
+}
+
 .summary-pill--reload {
   background: linear-gradient(135deg, #5b8dff, #4a75f5);
 }
@@ -269,6 +273,11 @@ img {
 .status-indicator--out {
   background: rgba(255, 125, 125, 0.16);
   color: #e94848;
+}
+
+.status-indicator--transfer {
+  background: rgba(255, 179, 71, 0.16);
+  color: #e17c18;
 }
 
 .status-indicator--reload {

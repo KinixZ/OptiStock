@@ -52,6 +52,9 @@
         <div class="summary-pills" role="list">
           <button type="button" class="summary-pill summary-pill--in" role="listitem">Ingreso</button>
           <button type="button" class="summary-pill summary-pill--out" role="listitem">Egreso</button>
+          <button type="button" id="abrirTransferencia" class="summary-pill summary-pill--transfer" role="listitem">
+            Transferir
+          </button>
           <button type="button" class="summary-pill summary-pill--reload" role="listitem">Recargar</button>
           <button type="button" class="summary-pill summary-pill--scan" role="listitem">Escanear</button>
         </div>
@@ -62,6 +65,7 @@
           <div class="summary-table-status">
             <span class="status-indicator status-indicator--in">Ingreso</span>
             <span class="status-indicator status-indicator--out">Egreso</span>
+            <span class="status-indicator status-indicator--transfer">Transferir</span>
             <span class="status-indicator status-indicator--reload">Recargar</span>
             <span class="status-indicator status-indicator--scan">Escanear</span>
           </div>
@@ -249,6 +253,70 @@
         </div>
       </div>
     </section>
+  </div>
+
+  <div
+    class="modal fade"
+    id="transferenciaModal"
+    tabindex="-1"
+    aria-labelledby="transferenciaModalTitulo"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="transferenciaModalTitulo">Transferir producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="transferenciaForm" class="compact-form">
+            <div class="mb-3">
+              <label for="transferenciaProducto" class="form-label">Producto</label>
+              <select id="transferenciaProducto" class="form-select" required>
+                <option value="" disabled selected>Selecciona un producto</option>
+              </select>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="transferenciaArea" class="form-label">Área destino</label>
+                <select id="transferenciaArea" class="form-select">
+                  <option value="" selected>Selecciona un área</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="transferenciaZona" class="form-label">Zona destino</label>
+                <select id="transferenciaZona" class="form-select">
+                  <option value="" selected>Selecciona una zona</option>
+                </select>
+              </div>
+            </div>
+            <div class="row g-3 mt-0">
+              <div class="col-md-6">
+                <label for="transferenciaCantidad" class="form-label">Cantidad a transferir</label>
+                <input
+                  type="number"
+                  id="transferenciaCantidad"
+                  class="form-control"
+                  min="1"
+                  step="1"
+                  placeholder="0"
+                  required
+                />
+              </div>
+              <div class="col-md-6 d-flex align-items-end">
+                <p class="form-text mb-0">
+                  La cantidad no afecta el stock total, solo registra el movimiento interno.
+                </p>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="reset" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Registrar transferencia</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modal fade" id="productoModal" tabindex="-1" aria-labelledby="productoModalTitulo" aria-hidden="true">
