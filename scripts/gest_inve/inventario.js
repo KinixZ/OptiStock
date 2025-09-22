@@ -147,7 +147,7 @@ const DataController = {
     if (!areaSelect) return;
 
     const previousValue = areaId !== null ? String(areaId) : areaSelect.value;
-    areaSelect.innerHTML = '<option value="">Área</option>';
+    areaSelect.innerHTML = '<option value="">Selecciona un área</option>';
 
     AppState.areas.forEach(area => {
       const opt = document.createElement('option');
@@ -173,20 +173,28 @@ const DataController = {
     const targetAreaId = targetAreaValue ? parseInt(targetAreaValue, 10) : null;
     const previousZona = zonaId !== null ? String(zonaId) : zonaSelect.value;
 
-    zonaSelect.innerHTML = '<option value="">Zona</option>';
+    zonaSelect.innerHTML = '';
 
-    const areaMap = new Map(AppState.areas.map(area => [Number(area.id), area.nombre]));
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    const zonasFiltradas = targetAreaId
+      ? AppState.zonas.filter(zona => Number(zona.area_id) === targetAreaId)
+      : [];
+    const hasArea = Boolean(targetAreaId);
+    const hasZonas = zonasFiltradas.length > 0;
 
-    const zonasFiltradas = AppState.zonas.filter(zona => {
-      if (!targetAreaId) return true;
-      return Number(zona.area_id) === targetAreaId;
-    });
+    placeholder.textContent = hasArea
+      ? (hasZonas ? 'Selecciona una zona' : 'No hay zonas registradas para esta área')
+      : 'Selecciona un área para ver zonas';
+    placeholder.selected = true;
+    placeholder.disabled = hasArea && hasZonas;
+    zonaSelect.appendChild(placeholder);
+    zonaSelect.disabled = !hasArea || !hasZonas;
 
     zonasFiltradas.forEach(zona => {
       const opt = document.createElement('option');
       opt.value = zona.id;
-      const areaNombre = areaMap.get(Number(zona.area_id));
-      opt.textContent = targetAreaId ? zona.nombre : `${zona.nombre}${areaNombre ? ` · ${areaNombre}` : ''}`;
+      opt.textContent = zona.nombre;
       zonaSelect.appendChild(opt);
     });
 
