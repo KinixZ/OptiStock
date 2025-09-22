@@ -10,7 +10,8 @@
   const categorias = [];
   const subcategorias = [];
   const productos = [];
-  const zonas        = [];
+  const areas = [];
+  const zonas = [];
   let vistaActual = 'producto';
   let editProdId = null;
   let editCatId = null;
@@ -22,6 +23,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const btnProductos = document.getElementById('btnProductos');
   const btnCategorias = document.getElementById('btnCategorias');
   const btnSubcategorias = document.getElementById('btnSubcategorias');
+  const prodArea = document.getElementById('prodArea');
   const prodZona = document.getElementById('prodZona');
 
   const productoFormContainer = document.getElementById('productoFormContainer');
@@ -161,6 +163,13 @@ prodCategoria?.addEventListener('change', () => {
   const catId = parseInt(prodCategoria.value) || null;
   actualizarSelectSubcategorias(catId);
 });
+
+  prodArea?.addEventListener('change', () => {
+    if (prodZona) {
+      prodZona.value = '';
+    }
+    actualizarSelectZonas(prodArea?.value || null);
+  });
   const subcatCategoria = document.getElementById('subcatCategoria');
   const tablaResumen = document.querySelector('#tablaResumen tbody');
   const tablaHead = document.getElementById('tablaHead');
@@ -404,16 +413,70 @@ function actualizarSelectSubcategorias(categoriaId) {
     });
 }
 
-function actualizarSelectZonas() {
-   if (!prodZona) return;
-   prodZona.innerHTML = '<option value="">Seleccione zona</option>';
-   zonas.forEach(z => {
-     const opt = document.createElement('option');
-     opt.value = z.id;
-     opt.textContent = `${z.nombre} (${z.tipo_almacenamiento || '—'})`;
-     prodZona.appendChild(opt);
-   });
- }
+function actualizarSelectAreas(areaId = null, zonaId = null) {
+  if (!prodArea) return;
+
+  const previousValue = areaId !== null ? String(areaId) : prodArea.value;
+  prodArea.innerHTML = '<option value="">Selecciona un área</option>';
+
+  areas.forEach(area => {
+    const opt = document.createElement('option');
+    opt.value = area.id;
+    opt.textContent = area.nombre;
+    prodArea.appendChild(opt);
+  });
+
+  if (previousValue && areas.some(area => String(area.id) === previousValue)) {
+    prodArea.value = previousValue;
+  } else {
+    prodArea.value = '';
+  }
+
+  const zonaObjetivo = zonaId === null ? '' : zonaId;
+  actualizarSelectZonas(prodArea.value || null, zonaObjetivo);
+}
+
+function actualizarSelectZonas(areaId = null, zonaId = undefined) {
+  if (!prodZona) return;
+
+  const targetAreaValue = areaId !== null ? areaId : prodArea?.value || '';
+  const targetAreaId = targetAreaValue ? parseInt(targetAreaValue, 10) : null;
+  const hasExplicitZona = zonaId !== undefined;
+  const previousZona = hasExplicitZona ? String(zonaId ?? '') : prodZona.value;
+
+  prodZona.innerHTML = '';
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+
+  const zonasFiltradas = targetAreaId
+    ? zonas.filter(zona => parseInt(zona.area_id, 10) === targetAreaId)
+    : [];
+  const hasArea = Boolean(targetAreaId);
+  const hasZonas = zonasFiltradas.length > 0;
+
+  placeholder.textContent = hasArea
+    ? (hasZonas ? 'Selecciona una zona' : 'No hay zonas registradas para esta área')
+    : 'Selecciona un área para ver zonas';
+  placeholder.selected = true;
+  placeholder.disabled = hasArea && hasZonas;
+  prodZona.appendChild(placeholder);
+
+  prodZona.disabled = !hasArea || !hasZonas;
+
+  zonasFiltradas.forEach(z => {
+    const opt = document.createElement('option');
+    opt.value = z.id;
+    opt.textContent = `${z.nombre} (${z.tipo_almacenamiento || '—'})`;
+    prodZona.appendChild(opt);
+  });
+
+  if (previousZona && zonasFiltradas.some(z => String(z.id) === previousZona)) {
+    prodZona.value = previousZona;
+  } else {
+    prodZona.value = '';
+  }
+}
 
   async function cargarCategorias() {
     categorias.length = 0;
@@ -434,6 +497,13 @@ function actualizarSelectZonas() {
     // Al iniciar, ninguna categoría está elegida → sólo placeholder
     actualizarSelectSubcategorias(null);
     actualizarIndicadores();
+  }
+
+  async function cargarAreas() {
+    areas.length = 0;
+    const datos = await fetchAPI(`${API.areas}?empresa_id=${EMP_ID}`);
+    datos.forEach(a => areas.push(a));
+    actualizarSelectAreas();
   }
 
 async function cargarZonas() {
@@ -738,8 +808,21 @@ prodForm?.addEventListener('submit', async e => {
       return;
     }
 
-    const data = { nombre, descripcion, categoria_id, subcategoria_id, zona_id: prodZona ? (parseInt(prodZona.value) || null) : null,
-                   stock, precio_compra, dim_x, dim_y, dim_z };
+    const area_id = prodArea ? (parseInt(prodArea.value, 10) || null) : null;
+    const zona_id = prodZona ? (parseInt(prodZona.value, 10) || null) : null;
+    const data = {
+      nombre,
+      descripcion,
+      categoria_id,
+      subcategoria_id,
+      area_id,
+      zona_id,
+      stock,
+      precio_compra,
+      dim_x,
+      dim_y,
+      dim_z
+    };
 
     try {
       // 2) POST o PUT
@@ -764,7 +847,9 @@ if (editProdId) {
 
       // 3) Reset y recarga de datos
       prodForm.reset();
+      actualizarSelectAreas();
       await cargarProductos();
+      await cargarAreas();
       await cargarZonas();
       renderResumen();
 
@@ -772,6 +857,13 @@ if (editProdId) {
       console.error(err);
       showToast('Error al guardar producto: ' + err.message, 'error');
     }
+  });
+
+  prodForm?.addEventListener('reset', () => {
+    editProdId = null;
+    setTimeout(() => {
+      actualizarSelectAreas();
+    }, 0);
   });
 
   tablaResumen?.addEventListener('click', async e => {
@@ -889,6 +981,9 @@ if (accion === 'del') {
     prodCategoria.value  = parseInt(p.categoria_id,10) || '';
     actualizarSelectSubcategorias(parseInt(p.categoria_id,10));
     prodSubcategoria.value = parseInt(p.subcategoria_id,10) || '';
+    const areaId = p.area_id ? parseInt(p.area_id, 10) : null;
+    const zonaId = p.zona_id ? parseInt(p.zona_id, 10) : null;
+    actualizarSelectAreas(areaId, zonaId);
     const dims = (p.dimensiones || '').split('x');
     document.getElementById('prodDimX').value   = dims[0] || '';
     document.getElementById('prodDimY').value   = dims[1] || '';
@@ -929,6 +1024,7 @@ if (accion === 'del') {
   btnRecargarResumen?.addEventListener('click', async () => {
     await cargarCategorias();
     await cargarSubcategorias();
+    await cargarAreas();
     await cargarProductos();
     await cargarZonas();
     renderResumen();
@@ -938,6 +1034,7 @@ if (accion === 'del') {
   (async function init() {
     await cargarCategorias();
     await cargarSubcategorias();
+    await cargarAreas();
     await cargarZonas();
     await cargarProductos();
     renderResumen();

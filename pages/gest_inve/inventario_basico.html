@@ -113,10 +113,18 @@
               </div>
 
               <div class="col-md-6">
-                <label for="prodZona" class="form-label">Zona de almacén</label>
-                <select id="prodZona" class="form-select">
-                  <option value="">Seleccione zona</option>
+                <label for="prodArea" class="form-label">Área de almacén</label>
+                <select id="prodArea" class="form-select">
+                  <option value="">Selecciona un área</option>
                 </select>
+                <div class="form-text">Primero elige el área general donde se guardará el producto.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="prodZona" class="form-label">Zona de almacén</label>
+                <select id="prodZona" class="form-select" disabled>
+                  <option value="">Selecciona un área para ver zonas</option>
+                </select>
+                <div class="form-text">Después selecciona la zona disponible dentro del área.</div>
               </div>
               <div class="col-md-6">
                 <label for="prodStock" class="form-label">Stock inicial</label>
