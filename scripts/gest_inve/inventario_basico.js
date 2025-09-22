@@ -4,7 +4,7 @@
     subcategorias: '../../scripts/php/guardar_subcategorias.php',
     productos: '../../scripts/php/guardar_productos.php',
     zonas:         '../../scripts/php/guardar_zonas.php',
-    movimiento:   '../../scripts/php/movimiento.php'
+    movimiento:   '../../scripts/php/guardar_movimientos.php'
   };
 
   const categorias = [];
@@ -456,15 +456,35 @@ movGuardar?.addEventListener('click', async () => {
   }
   // POST a nuevo endpoint
   try {
-  await fetchAPI(
-  API.movimiento,
-  'POST',
-  { empresa_id: EMP_ID, producto_id: prodId, cantidad: qty, tipo: movTipo }
-);
+    const movimientoPayload = {
+      empresa_id: EMP_ID,
+      producto_id: prodId,
+      cantidad: qty,
+      tipo: movTipo
+    };
+
+    const resultado = await fetchAPI(
+      API.movimiento,
+      'POST',
+      movimientoPayload
+    );
+
+    if (resultado?.success !== true) {
+      throw new Error(resultado?.error || 'No se pudo registrar el movimiento');
+    }
+
     movModal?.hide();
     await cargarProductos();
     renderResumen();
     showToast(`Movimiento ${movTipo} registrado`, 'success');
+    document.dispatchEvent(new CustomEvent('movimientoRegistrado', {
+      detail: {
+        productoId: prodId,
+        tipo: movimientoPayload.tipo,
+        cantidad: movimientoPayload.cantidad,
+        stockActual: resultado.stock_actual ?? null
+      }
+    }));
   } catch (err) {
     console.error(err);
     showToast('Error al registrar movimiento: ' + err.message, 'error');
