@@ -139,59 +139,34 @@
                         <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo</h3>
                     </div>
                     <div class="card-actions">
-                        <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
-                        <button class="card-action-btn"><i class="fas fa-ellipsis-v"></i></button>
+                        <button class="card-action-btn" id="stockAlertsRefreshBtn" title="Actualizar lista">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <div class="card-action-menu-wrapper">
+                            <button class="card-action-btn" id="stockAlertsMenuBtn" aria-haspopup="true" aria-expanded="false" title="Configurar alerta">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="card-action-menu" id="stockAlertsMenu" role="menu">
+                                <div class="card-action-menu__header">
+                                    <i class="fas fa-sliders-h"></i>
+                                    <span>Configurar límite de stock</span>
+                                </div>
+                                <label class="card-action-menu__label" for="stockAlertThreshold">Límite personalizado</label>
+                                <div class="card-action-menu__field">
+                                    <input type="number" id="stockAlertThreshold" min="0" step="1">
+                                    <span>unidades</span>
+                                </div>
+                                <div class="card-action-menu__actions">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="stockAlertCancelBtn">Cancelar</button>
+                                    <button type="button" class="btn btn-primary btn-sm" id="stockAlertApplyBtn">Aplicar</button>
+                                </div>
+                                <p class="card-action-menu__help">Los productos con stock igual o inferior a este valor aparecerán automáticamente.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <ul class="stock-alert-list">
-                    <li class="stock-alert-item">
-                        <div class="stock-alert-info">
-                            <div class="stock-alert-icon">
-                                <i class="fas fa-box-open"></i>
-                            </div>
-                            <div>
-                                <div class="stock-alert-name">Baterías AA</div>
-                                <div class="stock-alert-detail">Zona A1 - Estante 3</div>
-                            </div>
-                        </div>
-                        <div class="stock-alert-stock">5 unidades</div>
-                    </li>
-                    <li class="stock-alert-item">
-                        <div class="stock-alert-info">
-                            <div class="stock-alert-icon">
-                                <i class="fas fa-box-open"></i>
-                            </div>
-                            <div>
-                                <div class="stock-alert-name">Mouse Inalámbrico</div>
-                                <div class="stock-alert-detail">Zona B2 - Estante 1</div>
-                            </div>
-                        </div>
-                        <div class="stock-alert-stock">3 unidades</div>
-                    </li>
-                    <li class="stock-alert-item">
-                        <div class="stock-alert-info">
-                            <div class="stock-alert-icon">
-                                <i class="fas fa-box-open"></i>
-                            </div>
-                            <div>
-                                <div class="stock-alert-name">Teclados</div>
-                                <div class="stock-alert-detail">Zona C3 - Estante 2</div>
-                            </div>
-                        </div>
-                        <div class="stock-alert-stock">2 unidades</div>
-                    </li>
-                    <li class="stock-alert-item">
-                        <div class="stock-alert-info">
-                            <div class="stock-alert-icon">
-                                <i class="fas fa-box-open"></i>
-                            </div>
-                            <div>
-                                <div class="stock-alert-name">Monitor 24"</div>
-                                <div class="stock-alert-detail">Zona D4 - Estante 5</div>
-                            </div>
-                        </div>
-                        <div class="stock-alert-stock">1 unidad</div>
-                    </li>
+                <ul class="stock-alert-list" id="stockAlertList">
+                    <!-- Filled dynamically -->
                 </ul>
             </div>
             
@@ -203,55 +178,13 @@
                         <h3 class="card-title"><i class="fas fa-history"></i> Movimientos Recientes</h3>
                     </div>
                     <div class="card-actions">
-                        <button class="card-action-btn"><i class="fas fa-sync-alt"></i></button>
+                        <button class="card-action-btn" id="recentActivityRefreshBtn" title="Actualizar movimientos">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                     </div>
                 </div>
-                <ul class="activity-list">
-                    <li class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-arrow-down"></i>
-                        </div>
-                        <div class="activity-details">
-                            <div class="activity-description">Ingreso de 50 unidades de Baterías AA</div>
-                            <div class="activity-time">Hace 15 minutos</div>
-                        </div>
-                    </li>
-                    <li class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-arrow-up"></i>
-                        </div>
-                        <div class="activity-details">
-                            <div class="activity-description">Egreso de 2 unidades de Teclados</div>
-                            <div class="activity-time">Hace 1 hora</div>
-                        </div>
-                    </li>
-                    <li class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-exchange-alt"></i>
-                        </div>
-                        <div class="activity-details">
-                            <div class="activity-description">Transferencia de 10 Monitores a Zona D4</div>
-                            <div class="activity-time">Hace 3 horas</div>
-                        </div>
-                    </li>
-                    <li class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-arrow-down"></i>
-                        </div>
-                        <div class="activity-details">
-                            <div class="activity-description">Ingreso de 25 Mouse Inalámbricos</div>
-                            <div class="activity-time">Hace 5 horas</div>
-                        </div>
-                    </li>
-                    <li class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-user-check"></i>
-                        </div>
-                        <div class="activity-details">
-                            <div class="activity-description">Usuario María García inició sesión</div>
-                            <div class="activity-time">Hace 6 horas</div>
-                        </div>
-                    </li>
+                <ul class="activity-list" id="recentActivityList">
+                    <!-- Filled dynamically -->
                 </ul>
             </div>
             
