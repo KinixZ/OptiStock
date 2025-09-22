@@ -11,7 +11,9 @@
 
   function obtenerConteoPorRol(usuarios) {
     return (usuarios || []).reduce((conteo, usuario) => {
-      if (!usuario || !usuario.rol) return conteo;
+      if (!usuario || !usuario.rol || Number(usuario.activo) !== 1) {
+        return conteo;
+      }
       conteo[usuario.rol] = (conteo[usuario.rol] || 0) + 1;
       return conteo;
     }, {});
@@ -43,7 +45,8 @@
     const ultimaActualizacionEl = document.getElementById('ultimaActualizacion');
 
     if (totalUsuariosEl) {
-      totalUsuariosEl.textContent = usuariosEmpresa.length;
+      const activos = usuariosEmpresa.filter(usuario => Number(usuario.activo) === 1).length;
+      totalUsuariosEl.textContent = activos;
     }
 
     if (totalRolesEl) {
@@ -90,7 +93,8 @@
 
     const filtrados = usuariosEmpresa.filter(usuario => {
       const coincideRol = !rolSeleccionado || usuario.rol === rolSeleccionado;
-      const textoUsuario = `${usuario.nombre || ''} ${usuario.apellido || ''} ${usuario.correo || ''} ${usuario.rol || ''}`.toLowerCase();
+      const estadoTexto = Number(usuario.activo) === 1 ? 'activo' : 'inactivo';
+      const textoUsuario = `${usuario.nombre || ''} ${usuario.apellido || ''} ${usuario.correo || ''} ${usuario.rol || ''} ${estadoTexto}`.toLowerCase();
       const coincideBusqueda = !termino || textoUsuario.includes(termino);
       return coincideRol && coincideBusqueda;
     });
@@ -106,7 +110,7 @@
 
     const contador = document.getElementById('usuariosCount');
     if (!usuarios.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No se encontraron usuarios con los filtros aplicados.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No se encontraron usuarios con los filtros aplicados.</td></tr>';
       if (contador) {
         contador.textContent = 'Sin usuarios disponibles';
       }
@@ -116,6 +120,13 @@
     usuarios.forEach(usuario => {
       const tr = document.createElement('tr');
       const foto = usuario.foto_perfil ? `/${usuario.foto_perfil}` : '/images/profile.jpg';
+      const activo = Number(usuario.activo) === 1;
+      const estadoClase = activo ? 'status-chip status-chip--active' : 'status-chip status-chip--inactive';
+      const estadoTexto = activo ? 'Activo' : 'Inactivo';
+      const estadoBotonClase = activo
+        ? 'btn-action btn-action--status btn-status--deactivate'
+        : 'btn-action btn-action--status btn-status--activate';
+      const estadoBotonTexto = activo ? 'Desactivar' : 'Activar';
 
       tr.innerHTML = `
         <td>
@@ -127,8 +138,16 @@
         <td>${usuario.apellido || ''}</td>
         <td><span class="cell-email">${usuario.correo || ''}</span></td>
         <td><span class="role-chip">${usuario.rol || ''}</span></td>
+        <td><span class="${estadoClase}">${estadoTexto}</span></td>
         <td>
           <div class="action-buttons">
+            <button type="button" class="${estadoBotonClase}" title="${estadoBotonTexto}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="4" x2="12" y2="12"></line>
+                <path d="M8 5a7 7 0 1 0 8 0"></path>
+              </svg>
+              <span>${estadoBotonTexto}</span>
+            </button>
             <button type="button" class="btn-action btn-action--edit" title="Editar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 20h9"></path>
@@ -151,6 +170,7 @@
 
       const botonEditar = tr.querySelector('.btn-action--edit');
       const botonEliminar = tr.querySelector('.btn-action--delete');
+      const botonEstado = tr.querySelector('.btn-action--status');
 
       if (botonEditar) {
         botonEditar.addEventListener('click', () => editarUsuario(usuario));
@@ -160,12 +180,53 @@
         botonEliminar.addEventListener('click', () => confirmarEliminacion(usuario.correo));
       }
 
+      if (botonEstado) {
+        botonEstado.addEventListener('click', () => cambiarEstadoUsuario(usuario));
+      }
+
       tbody.appendChild(tr);
     });
 
     if (contador) {
       contador.textContent = usuarios.length === 1 ? '1 usuario encontrado' : `${usuarios.length} usuarios encontrados`;
     }
+  }
+
+  function cambiarEstadoUsuario(usuario) {
+    if (!usuario || !usuario.id_usuario) return;
+
+    const estadoActual = Number(usuario.activo) === 1;
+    const nuevoEstado = estadoActual ? 0 : 1;
+    const accion = nuevoEstado === 1 ? 'activar' : 'desactivar';
+    const correo = usuario.correo || 'este usuario';
+
+    if (!confirm(`¿Deseas ${accion} la cuenta de ${correo}?`)) {
+      return;
+    }
+
+    const id_empresa = localStorage.getItem('id_empresa');
+
+    fetch('/scripts/php/actualizar_estado_usuario.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_usuario: usuario.id_usuario,
+        activo: nuevoEstado,
+        id_empresa
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          cargarUsuariosEmpresa();
+        } else {
+          alert('❌ No se pudo actualizar el estado: ' + (data.message || 'Error desconocido.'));
+        }
+      })
+      .catch(err => {
+        console.error('Error al cambiar estado:', err);
+        alert('❌ Error al actualizar el estado del usuario.');
+      });
   }
 
   function editarUsuario(usuario) {
@@ -269,7 +330,9 @@
           return;
         }
 
-        usuariosEmpresa = Array.isArray(data.usuarios) ? data.usuarios : [];
+        usuariosEmpresa = Array.isArray(data.usuarios)
+          ? data.usuarios.map(usuario => ({ ...usuario, activo: Number(usuario.activo) }))
+          : [];
         const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
 
         poblarFiltroRoles(Object.keys(conteoPorRol));
