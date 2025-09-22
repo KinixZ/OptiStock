@@ -274,6 +274,15 @@ img {
     padding: 0;
 }
 
+.summary-links .empty-message {
+    padding: 0.6rem 1.3rem;
+    border-radius: var(--radius-pill);
+    background: rgba(15, 180, 212, 0.08);
+    border: 1px dashed rgba(15, 180, 212, 0.35);
+    color: rgba(15, 23, 42, 0.7);
+    font-weight: 500;
+}
+
 .summary-links button {
     border: 1px solid rgba(15, 180, 212, 0.25);
     border-radius: var(--radius-pill);

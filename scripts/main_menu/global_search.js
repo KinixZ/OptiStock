@@ -8,6 +8,7 @@
     let quickLinks;
     let summaryDescription;
 
+    let empresaIdCache = null;
     let layoutListenersBound = false;
 
     const menuToggleListener = () => {
@@ -43,6 +44,7 @@
             searchInput.value = query;
         }
         renderResultados(query);
+        registrarBusqueda(query);
     };
 
     const searchInputListener = event => {
@@ -53,6 +55,7 @@
         if (event.key === 'Enter') {
             event.preventDefault();
             renderResultados(event.target.value);
+            registrarBusqueda(event.target.value);
         }
     };
 
@@ -243,6 +246,108 @@
                 ${descripcion ? `<p>${descripcion}</p>` : ''}
             </div>
         `;
+    }
+
+    function renderHistorialBusquedas(historial) {
+        if (!quickLinks) return;
+
+        quickLinks.innerHTML = '';
+
+        if (!Array.isArray(historial) || historial.length === 0) {
+            const emptyItem = document.createElement('li');
+            emptyItem.className = 'empty-message';
+            emptyItem.textContent = 'Aún no hay búsquedas recientes.';
+            quickLinks.appendChild(emptyItem);
+            return;
+        }
+
+        historial.forEach(entry => {
+            const termino = (entry && entry.termino ? entry.termino : '').toString().trim();
+            if (!termino) {
+                return;
+            }
+
+            const listItem = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.query = termino;
+            button.textContent = termino;
+            listItem.appendChild(button);
+            quickLinks.appendChild(listItem);
+        });
+
+        if (!quickLinks.children.length) {
+            const emptyItem = document.createElement('li');
+            emptyItem.className = 'empty-message';
+            emptyItem.textContent = 'Aún no hay búsquedas recientes.';
+            quickLinks.appendChild(emptyItem);
+        }
+    }
+
+    async function cargarHistorialBusquedas(idEmpresa) {
+        if (!quickLinks) {
+            return;
+        }
+
+        const empresaId = Number(idEmpresa);
+        if (!empresaId) {
+            renderHistorialBusquedas([]);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/scripts/php/get_search_history.php?id_empresa=${encodeURIComponent(empresaId)}`, {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('Respuesta no válida al obtener el historial.');
+            }
+
+            const data = await response.json();
+
+            if (data.success && Array.isArray(data.historial)) {
+                renderHistorialBusquedas(data.historial);
+            } else {
+                renderHistorialBusquedas([]);
+            }
+        } catch (error) {
+            console.warn('No se pudo cargar el historial de búsquedas:', error);
+            renderHistorialBusquedas([]);
+        }
+    }
+
+    async function registrarBusqueda(consulta) {
+        const termino = (consulta || '').trim();
+        if (!termino || !empresaIdCache) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/scripts/php/save_search_query.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    termino,
+                    id_empresa: Number(empresaIdCache)
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudo guardar la búsqueda.');
+            }
+
+            const data = await response.json();
+
+            if (data.success && Array.isArray(data.historial)) {
+                renderHistorialBusquedas(data.historial);
+            } else if (data.success) {
+                cargarHistorialBusquedas(empresaIdCache);
+            }
+        } catch (error) {
+            console.warn('No se pudo registrar la búsqueda:', error);
+        }
     }
 
     function normalizarTexto(texto) {
@@ -493,6 +598,9 @@
                 }
 
                 let empresaId = localStorage.getItem('id_empresa');
+                if (empresaId) {
+                    empresaId = Number(empresaId);
+                }
 
                 try {
                     const response = await fetch('/scripts/php/check_empresa.php', {
@@ -503,7 +611,7 @@
 
                     const data = await response.json();
                     if (data.success && data.empresa_id) {
-                        empresaId = data.empresa_id;
+                        empresaId = Number(data.empresa_id);
                         localStorage.setItem('id_empresa', data.empresa_id);
                     }
                 } catch (error) {
@@ -517,9 +625,12 @@
                     return;
                 }
 
+                empresaIdCache = Number(empresaId);
+                const empresaIdNumero = Number(empresaIdCache);
                 await Promise.all([
-                    cargarConfiguracionVisual(empresaId),
-                    cargarDatosBusqueda(empresaId)
+                    cargarConfiguracionVisual(empresaIdNumero),
+                    cargarDatosBusqueda(empresaIdNumero),
+                    cargarHistorialBusquedas(empresaIdNumero)
                 ]);
             })()
             .catch(error => {
@@ -535,11 +646,13 @@
 
     function initializeGlobalSearchPage(initialQueryOverride = null) {
         cacheDomElements();
+        empresaIdCache = null;
 
         if (body) {
             body.classList.add('search-page-body');
         }
 
+        renderHistorialBusquedas([]);
         attachLayoutListeners();
         attachSearchListeners();
 

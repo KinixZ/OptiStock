@@ -890,6 +890,25 @@ ALTER TABLE `pass_resets`
   ADD CONSTRAINT `pass_resets_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`);
 
 --
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `historial_busquedas`
+--
+
+CREATE TABLE IF NOT EXISTS `historial_busquedas` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_empresa` int NOT NULL,
+  `id_usuario` int NOT NULL,
+  `termino` varchar(255) NOT NULL,
+  `fecha_busqueda` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_historial_empresa_fecha` (`id_empresa`,`fecha_busqueda`),
+  CONSTRAINT `fk_historial_busquedas_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
+  CONSTRAINT `fk_historial_busquedas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
 -- Filtros para la tabla `productos`
 --
 ALTER TABLE `productos`
