@@ -56,6 +56,30 @@
         }
     };
 
+    const searchResultsNavigationListener = event => {
+        if (event.button === 1 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+            return;
+        }
+
+        const link = event.target.closest('a.item-action');
+        if (!link) return;
+
+        const href = link.getAttribute('href');
+        if (!href) return;
+
+        if (typeof window.navigateFromGlobalSearch !== 'function') {
+            return;
+        }
+
+        event.preventDefault();
+
+        window.navigateFromGlobalSearch(href, {
+            page: (link.dataset.page || '').trim(),
+            title: (link.dataset.title || '').trim(),
+            actionLabel: (link.dataset.actionLabel || link.textContent || '').trim()
+        });
+    };
+
     function cacheDomElements() {
         body = document.body;
         sidebar = document.querySelector('.sidebar');
@@ -126,6 +150,11 @@
             searchInput.removeEventListener('keydown', searchInputKeyListener);
             searchInput.addEventListener('input', searchInputListener);
             searchInput.addEventListener('keydown', searchInputKeyListener);
+        }
+
+        if (searchResultsContainer && !searchResultsContainer.dataset.navigationBound) {
+            searchResultsContainer.addEventListener('click', searchResultsNavigationListener);
+            searchResultsContainer.dataset.navigationBound = 'true';
         }
     }
 
@@ -242,6 +271,26 @@
         });
     }
 
+    function deriveRelativePage(url) {
+        if (!url || typeof url !== 'string') return '';
+        let processed = url.trim();
+        if (!processed) return '';
+        if (/^https?:\/\//i.test(processed)) return '';
+
+        processed = processed.replace(/^(\.\.\/)+/, '');
+
+        if (processed.startsWith('./')) {
+            processed = processed.slice(2);
+        }
+
+        if (processed.startsWith('/')) {
+            processed = processed.slice(1);
+        }
+
+        const [path] = processed.split(/[?#]/);
+        return path || '';
+    }
+
     function crearGrupoHTML(categoria, elementos) {
         const group = document.createElement('article');
         group.className = 'search-group';
@@ -269,6 +318,21 @@
                 </div>
                 <a class="item-action" href="${item.url}">${item.accion}</a>
             `;
+
+            const actionLink = li.querySelector('.item-action');
+            if (actionLink) {
+                const relativePage = deriveRelativePage(item.url);
+                if (relativePage) {
+                    actionLink.dataset.page = relativePage;
+                }
+                if (item.titulo) {
+                    actionLink.dataset.title = item.titulo;
+                }
+                if (item.accion) {
+                    actionLink.dataset.actionLabel = item.accion;
+                }
+            }
+
             list.appendChild(li);
         });
 

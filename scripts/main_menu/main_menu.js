@@ -701,6 +701,105 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function removeSearchBodyClass() {
         document.body.classList.remove('search-page-body');
+        if (mainContent) {
+            mainContent.classList.remove('search-page-host');
+            const existingSearchRoot = mainContent.querySelector('.search-page-root');
+            if (existingSearchRoot) {
+                existingSearchRoot.classList.remove('search-page-root');
+            }
+        }
+    }
+
+    function normalizePageUrl(pageUrl) {
+        if (!pageUrl) return '';
+        const trimmed = pageUrl.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (trimmed.startsWith('/')) return trimmed;
+        if (trimmed.startsWith('../')) return trimmed;
+        if (trimmed.startsWith('./')) return `../${trimmed.slice(2)}`;
+        return `../${trimmed}`;
+    }
+
+    function setTopbarTitle(text) {
+        if (!text) return;
+        const topbarTitle = document.querySelector('.topbar-title');
+        if (topbarTitle) {
+            topbarTitle.textContent = text;
+        }
+    }
+
+    function setActiveSidebarItem(page) {
+        if (!page) return '';
+        const normalized = page.replace(/^(\.\.\/)+/, '').replace(/^\//, '');
+        let matchedLabel = '';
+        document.querySelectorAll('.sidebar-menu a[data-page]').forEach(link => {
+            const linkPage = link.getAttribute('data-page');
+            if (linkPage === normalized) {
+                link.classList.add('active');
+                matchedLabel = link.textContent.trim();
+            } else {
+                link.classList.remove('active');
+            }
+        });
+        return matchedLabel;
+    }
+
+    function executeEmbeddedScripts(container) {
+        if (!container) return;
+        const scripts = container.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            if (oldScript.src) {
+                newScript.async = false;
+            } else {
+                newScript.textContent = oldScript.textContent;
+            }
+            document.body.appendChild(newScript);
+        });
+    }
+
+    function loadPageIntoMain(pageUrl, options = {}) {
+        const { title = '', pageId = '' } = options;
+        const normalizedUrl = normalizePageUrl(pageUrl);
+
+        if (!normalizedUrl) return;
+
+        if (/^https?:\/\//i.test(normalizedUrl)) {
+            window.location.href = normalizedUrl;
+            return;
+        }
+
+        if (!mainContent) {
+            window.location.href = normalizedUrl;
+            return;
+        }
+
+        if (estaEnInicio) {
+            saveHomeData();
+            estaEnInicio = false;
+        }
+
+        removeSearchBodyClass();
+
+        if (title) {
+            setTopbarTitle(title);
+        }
+
+        const targetUrl = normalizePageUrl(pageId || pageUrl);
+
+        fetch(targetUrl)
+            .then(res => res.text())
+            .then(html => {
+                mainContent.innerHTML = html;
+                executeEmbeddedScripts(mainContent);
+            })
+            .catch(err => {
+                mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
+            });
     }
 
     function showSearchLoader(target) {
@@ -781,12 +880,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (incomingMain) {
                     mainContent.innerHTML = '';
+                    if (incomingMain.classList.contains('content')) {
+                        incomingMain.classList.remove('content');
+                    }
+                    incomingMain.classList.add('search-page-root');
                     mainContent.appendChild(incomingMain);
                 } else if (doc.body) {
                     mainContent.innerHTML = doc.body.innerHTML;
+                    const fallbackRoot = mainContent.querySelector('.search-page');
+                    if (fallbackRoot) {
+                        fallbackRoot.classList.remove('content');
+                        fallbackRoot.classList.add('search-page-root');
+                    }
                 } else {
                     mainContent.innerHTML = html;
                 }
+
+                mainContent.classList.add('search-page-host');
 
                 if (topbarTitle) {
                     topbarTitle.textContent = 'Buscador global';
@@ -999,17 +1109,11 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
 
-            // Marcar activo
-            menuItems.forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
-
-            // Cambiar título topbar
-            const titulo = this.textContent.trim();
-            document.querySelector('.topbar-title').textContent = titulo;
-
             const pageUrl = this.getAttribute('data-page');
 
             if (pageUrl === 'inicio') {
+                const label = setActiveSidebarItem('inicio') || this.textContent.trim();
+                setTopbarTitle(label);
                 mainContent.innerHTML = contenidoInicial;
                 restoreHomeData();
                 estaEnInicio = true;
@@ -1017,36 +1121,29 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 return;
             }
 
-            if (estaEnInicio) {
-                saveHomeData();
-                estaEnInicio = false;
-            }
-
-            fetch(`../${pageUrl}`)
-                .then(res => res.text())
-                .then(html => {
-                    mainContent.innerHTML = html;
-                    removeSearchBodyClass();
-
-                    const scripts = mainContent.querySelectorAll("script");
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement("script");
-                        Array.from(oldScript.attributes).forEach(attr => {
-                            newScript.setAttribute(attr.name, attr.value);
-                        });
-                        if (oldScript.src) {
-                            newScript.async = false;
-                        } else {
-                            newScript.textContent = oldScript.textContent;
-                        }
-                        document.body.appendChild(newScript);
-                    });
-                })
-                .catch(err => {
-                    mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
-                });
+            const label = setActiveSidebarItem(pageUrl) || this.textContent.trim();
+            loadPageIntoMain(pageUrl, { title: label, pageId: pageUrl });
         });
     });
+
+    window.navigateFromGlobalSearch = (targetUrl, meta = {}) => {
+        if (!targetUrl) return;
+
+        const pageId = meta.page || '';
+        let label = '';
+        if (pageId) {
+            label = setActiveSidebarItem(pageId);
+        } else {
+            document.querySelectorAll('.sidebar-menu a[data-page]').forEach(link => link.classList.remove('active'));
+        }
+
+        if (!label) {
+            label = meta.actionLabel || meta.title || document.querySelector('.topbar-title')?.textContent || '';
+        }
+
+        const effectiveTitle = label || 'Detalle';
+        loadPageIntoMain(targetUrl, { title: effectiveTitle, pageId: pageId || targetUrl });
+    };
 
     // Si viene ?load en la URL, cargar la página solicitada automáticamente
 const params = new URLSearchParams(window.location.search);
