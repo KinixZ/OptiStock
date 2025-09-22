@@ -2,7 +2,9 @@ const AppConfig = {
   API: {
     categorias: '../../scripts/php/guardar_categorias.php',
     subcategorias: '../../scripts/php/guardar_subcategorias.php',
-    productos: '../../scripts/php/guardar_productos.php'
+    productos: '../../scripts/php/guardar_productos.php',
+    areas: '../../scripts/php/guardar_areas.php',
+    zonas: '../../scripts/php/guardar_zonas.php'
   },
   selectors: {
     tabs: '.tab-btn',
@@ -21,6 +23,8 @@ const AppState = {
   categorias: [],
   subcategorias: [],
   productos: [],
+  areas: [],
+  zonas: [],
   currentTab: 'productos'
 };
 
@@ -46,6 +50,12 @@ const AppUtils = {
       opt.value = texto;
       dl.appendChild(opt);
     });
+  },
+
+  getEmpresaId() {
+    const stored = localStorage.getItem('id_empresa');
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    return Number.isFinite(parsed) ? parsed : null;
   },
 
   filterList(lista, texto, campos) {
@@ -99,6 +109,91 @@ const DataController = {
     } catch (error) {
       console.error('Error cargando productos:', error);
       AppUtils.showAlert('Error al cargar productos');
+    }
+  },
+
+  async loadAreas() {
+    try {
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.areas}?empresa_id=${empresaId}`
+        : AppConfig.API.areas;
+      const areas = await AppUtils.fetchAPI(url);
+      AppState.areas = Array.isArray(areas) ? areas : [];
+      this.updateAreaSelect();
+    } catch (error) {
+      console.error('Error cargando áreas:', error);
+      AppUtils.showAlert('Error al cargar áreas');
+    }
+  },
+
+  async loadZonas() {
+    try {
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.zonas}?empresa_id=${empresaId}`
+        : AppConfig.API.zonas;
+      const zonas = await AppUtils.fetchAPI(url);
+      AppState.zonas = Array.isArray(zonas) ? zonas : [];
+      this.updateZoneSelect();
+    } catch (error) {
+      console.error('Error cargando zonas:', error);
+      AppUtils.showAlert('Error al cargar zonas');
+    }
+  },
+
+  updateAreaSelect(areaId = null, zonaId = null) {
+    const areaSelect = document.getElementById('productoArea');
+    if (!areaSelect) return;
+
+    const previousValue = areaId !== null ? String(areaId) : areaSelect.value;
+    areaSelect.innerHTML = '<option value="">Área</option>';
+
+    AppState.areas.forEach(area => {
+      const opt = document.createElement('option');
+      opt.value = area.id;
+      opt.textContent = area.nombre;
+      areaSelect.appendChild(opt);
+    });
+
+    if (previousValue && AppState.areas.some(area => String(area.id) === previousValue)) {
+      areaSelect.value = previousValue;
+    } else {
+      areaSelect.value = '';
+    }
+
+    this.updateZoneSelect(areaSelect.value || null, zonaId);
+  },
+
+  updateZoneSelect(areaId = null, zonaId = null) {
+    const zonaSelect = document.getElementById('productoZona');
+    if (!zonaSelect) return;
+
+    const targetAreaValue = areaId !== null ? areaId : document.getElementById('productoArea')?.value || '';
+    const targetAreaId = targetAreaValue ? parseInt(targetAreaValue, 10) : null;
+    const previousZona = zonaId !== null ? String(zonaId) : zonaSelect.value;
+
+    zonaSelect.innerHTML = '<option value="">Zona</option>';
+
+    const areaMap = new Map(AppState.areas.map(area => [Number(area.id), area.nombre]));
+
+    const zonasFiltradas = AppState.zonas.filter(zona => {
+      if (!targetAreaId) return true;
+      return Number(zona.area_id) === targetAreaId;
+    });
+
+    zonasFiltradas.forEach(zona => {
+      const opt = document.createElement('option');
+      opt.value = zona.id;
+      const areaNombre = areaMap.get(Number(zona.area_id));
+      opt.textContent = targetAreaId ? zona.nombre : `${zona.nombre}${areaNombre ? ` · ${areaNombre}` : ''}`;
+      zonaSelect.appendChild(opt);
+    });
+
+    if (previousZona && zonasFiltradas.some(z => String(z.id) === previousZona)) {
+      zonaSelect.value = previousZona;
+    } else {
+      zonaSelect.value = '';
     }
   },
 
@@ -205,6 +300,8 @@ const DataController = {
     lista.forEach(p => {
       const cat = AppState.categorias.find(c => c.id === p.categoria_id);
       const subcat = AppState.subcategorias.find(s => s.id === p.subcategoria_id);
+      const areaNombre = p.area_nombre || AppState.areas.find(a => Number(a.id) === Number(p.area_id))?.nombre || '';
+      const zonaNombre = p.zona_nombre || AppState.zonas.find(z => Number(z.id) === Number(p.zona_id))?.nombre || '';
       
       const li = document.createElement('li');
       li.className = `item-card ${p.stock <= 5 ? 'stock-bajo' : ''}`;
@@ -221,6 +318,7 @@ const DataController = {
           ${p.dim_x ? `<br>Dimensiones: ${p.dim_x}x${p.dim_y}x${p.dim_z}` : ''}
           ${cat ? `<br>Categoría: ${cat.nombre}` : ''}
           ${subcat ? ` > ${subcat.nombre}` : ''}
+          ${(areaNombre || zonaNombre) ? `<br>Ubicación: ${[areaNombre, zonaNombre].filter(Boolean).join(' · ')}` : ''}
         </div>
         <div class="item-qr">
           ${p.codigo_qr ? `<img src="../../${p.codigo_qr}" alt="QR ${p.nombre}" class="qr-img"><br><a href="../../${p.codigo_qr}" download>Descargar QR</a>` : ''}
@@ -280,10 +378,14 @@ const DataController = {
 
       const categoriasMap = new Map(AppState.categorias.map(c => [c.id, c]));
       const subcategoriasMap = new Map(AppState.subcategorias.map(s => [s.id, s]));
+      const areasMap = new Map(AppState.areas.map(a => [Number(a.id), a.nombre]));
+      const zonasMap = new Map(AppState.zonas.map(z => [Number(z.id), z.nombre]));
 
       AppState.productos.forEach(p => {
         const categoriaNombre = p.categoria_nombre || categoriasMap.get(p.categoria_id)?.nombre || '—';
         const subcategoriaNombre = p.subcategoria_nombre || subcategoriasMap.get(p.subcategoria_id)?.nombre || '—';
+        const areaNombre = p.area_nombre || areasMap.get(Number(p.area_id)) || '—';
+        const zonaNombre = p.zona_nombre || zonasMap.get(Number(p.zona_id)) || '—';
         const volumen = (Number(p.dim_x) || 0) * (Number(p.dim_y) || 0) * (Number(p.dim_z) || 0);
         const volumenTexto = volumen
           ? volumen.toLocaleString('es-ES', { maximumFractionDigits: 2 })
@@ -318,8 +420,8 @@ const DataController = {
               </div>
             </div>
           </td>
-          <td>${p.area_nombre || '—'}</td>
-          <td>${p.zona_nombre || '—'}</td>
+          <td>${areaNombre}</td>
+          <td>${zonaNombre}</td>
           <td>${categoriaNombre}</td>
           <td>${subcategoriaNombre}</td>
           <td>${volumenTexto}</td>
@@ -425,6 +527,14 @@ const FormController = {
     this.setupForm(AppConfig.selectors.forms.categoria, this.handleCategoria);
     this.setupForm(AppConfig.selectors.forms.subcategoria, this.handleSubcategoria);
     this.setupForm(AppConfig.selectors.forms.producto, this.handleProducto);
+
+    const productoForm = document.querySelector(AppConfig.selectors.forms.producto);
+    if (productoForm) {
+      const areaSelect = productoForm.querySelector('#productoArea');
+      areaSelect?.addEventListener('change', () => {
+        DataController.updateZoneSelect(areaSelect.value || null);
+      });
+    }
   },
 
   setupForm(selector, handler) {
@@ -496,6 +606,8 @@ const FormController = {
     const id = form.querySelector('#productoId').value;
     const catValue = form.querySelector('#productoCategoria').value;
     const subcatValue = form.querySelector('#productoSubcategoria').value;
+    const areaValue = form.querySelector('#productoArea')?.value;
+    const zonaValue = form.querySelector('#productoZona')?.value;
     const data = {
       nombre: form.querySelector('#productoNombre').value,
       descripcion: form.querySelector('#productoDesc').value,
@@ -506,8 +618,15 @@ const FormController = {
       precio_compra: parseFloat(form.querySelector('#productoPrecio').value || '0'),
       dim_x: parseFloat(form.querySelector('#productoDimX').value || '0'),
       dim_y: parseFloat(form.querySelector('#productoDimY').value || '0'),
-      dim_z: parseFloat(form.querySelector('#productoDimZ').value || '0')
+      dim_z: parseFloat(form.querySelector('#productoDimZ').value || '0'),
+      area_id: areaValue ? parseInt(areaValue, 10) : null,
+      zona_id: zonaValue ? parseInt(zonaValue, 10) : null
     };
+
+    const empresaId = AppUtils.getEmpresaId();
+    if (empresaId) {
+      data.empresa_id = empresaId;
+    }
     
     try {
       if (id) {
@@ -530,6 +649,10 @@ const FormController = {
   resetForm(form) {
     form.reset();
     form.querySelector('[type="hidden"]').value = '';
+
+    if (form.matches(AppConfig.selectors.forms.producto)) {
+      DataController.updateAreaSelect();
+    }
   },
 
   editCategoria(item) {
@@ -575,6 +698,9 @@ const FormController = {
     form.querySelector('#productoDimX').value = item.dim_x || '';
     form.querySelector('#productoDimY').value = item.dim_y || '';
     form.querySelector('#productoDimZ').value = item.dim_z || '';
+    const areaId = item.area_id ? String(item.area_id) : null;
+    const zonaId = item.zona_id ? String(item.zona_id) : null;
+    DataController.updateAreaSelect(areaId, zonaId);
 
     ModalController.openProducto('Editar producto');
   }
@@ -766,6 +892,8 @@ document.getElementById('exportarExcel').addEventListener('click', exportarExcel
 document.getElementById('exportarPDF').addEventListener('click', exportarPDF);
 
 (async function(){
+  await DataController.loadAreas();
+  await DataController.loadZonas();
   await DataController.loadCategorias();
   await DataController.loadSubcategorias();
   await DataController.loadProductos();
@@ -796,11 +924,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     SearchController.init();
 
     document.getElementById('recargarResumen')?.addEventListener('click', async () => {
+      await DataController.loadAreas();
+      await DataController.loadZonas();
       await DataController.loadCategorias();
       await DataController.loadSubcategorias();
       await DataController.loadProductos();
     });
-    
+
+    await DataController.loadAreas();
+    await DataController.loadZonas();
     await DataController.loadCategorias();
     await DataController.loadSubcategorias();
     await DataController.loadProductos();
