@@ -8,10 +8,12 @@ const AppConfig = {
     tabs: '.tab-btn',
     panels: '.tab-panel',
     addButtons: '.btn-add',
+    transferButton: '#abrirTransferencia',
     forms: {
       categoria: '#categoriaForm',
       subcategoria: '#subcategoriaForm',
-      producto: '#productoForm'
+      producto: '#productoForm',
+      transferencia: '#transferenciaForm'
     }
   }
 };
@@ -95,6 +97,7 @@ const DataController = {
       AppUtils.updateDatalist('sugerenciasProducto', AppState.productos.map(p => p.nombre));
       this.renderProductos();
       this.checkLowStock();
+      TransferController.updateOptions();
       this.updateSummary();
     } catch (error) {
       console.error('Error cargando productos:', error);
@@ -407,7 +410,7 @@ const DataController = {
 
   async deleteProducto(id) {
     if (!confirm('¿Eliminar este producto?')) return;
-    
+
     try {
       await AppUtils.fetchAPI(`${AppConfig.API.productos}?id=${id}`, 'DELETE');
       await this.loadProductos();
@@ -416,6 +419,245 @@ const DataController = {
       console.error('Error eliminando producto:', error);
       AppUtils.showAlert('Error al eliminar producto');
     }
+  }
+};
+
+// Controlador de transferencias
+const TransferController = {
+  init() {
+    this.modalElement = document.getElementById('transferenciaModal');
+    this.form = document.querySelector(AppConfig.selectors.forms.transferencia);
+    this.productSelect = document.getElementById('transferenciaProducto');
+    this.areaSelect = document.getElementById('transferenciaArea');
+    this.zonaSelect = document.getElementById('transferenciaZona');
+    this.modal = this.modalElement ? new bootstrap.Modal(this.modalElement) : null;
+    this.zonasData = [];
+
+    const transferBtn = document.querySelector(AppConfig.selectors.transferButton);
+    if (transferBtn) {
+      transferBtn.addEventListener('click', () => this.open());
+    }
+
+    if (this.form) {
+      this.form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleSubmit();
+      });
+    }
+
+    if (this.areaSelect) {
+      this.areaSelect.addEventListener('change', () => this.filterZonas());
+    }
+
+    if (this.modalElement) {
+      this.modalElement.addEventListener('hidden.bs.modal', () => {
+        this.form?.reset();
+        this.filterZonas();
+      });
+    }
+  },
+
+  open() {
+    this.modal?.show();
+  },
+
+  close() {
+    this.modal?.hide();
+  },
+
+  updateOptions() {
+    if (!this.form) return;
+
+    this.updateProductos();
+    this.updateAreas();
+    this.updateZonas();
+    this.filterZonas();
+  },
+
+  updateProductos() {
+    if (!this.productSelect) return;
+
+    const currentValue = this.productSelect.value;
+    this.productSelect.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Selecciona un producto';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    this.productSelect.appendChild(placeholder);
+
+    AppState.productos.forEach((producto) => {
+      const option = document.createElement('option');
+      option.value = producto.id;
+      option.textContent = producto.nombre || `Producto #${producto.id}`;
+      this.productSelect.appendChild(option);
+    });
+
+    this.productSelect.disabled = AppState.productos.length === 0;
+
+    if (currentValue && this.productSelect.querySelector(`option[value="${currentValue}"]`)) {
+      this.productSelect.value = currentValue;
+    }
+  },
+
+  updateAreas() {
+    if (!this.areaSelect) return;
+
+    const currentValue = this.areaSelect.value;
+    this.areaSelect.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Selecciona un área';
+    placeholder.selected = true;
+    this.areaSelect.appendChild(placeholder);
+
+    const areasMap = new Map();
+    AppState.productos.forEach((producto) => {
+      if (producto.area_id && producto.area_nombre) {
+        areasMap.set(String(producto.area_id), producto.area_nombre);
+      }
+    });
+
+    Array.from(areasMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .forEach(([id, nombre]) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = nombre;
+        this.areaSelect.appendChild(option);
+      });
+
+    if (currentValue && this.areaSelect.querySelector(`option[value="${currentValue}"]`)) {
+      this.areaSelect.value = currentValue;
+    }
+  },
+
+  updateZonas() {
+    if (!this.zonaSelect) return;
+
+    const currentValue = this.zonaSelect.value;
+    this.zonaSelect.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Selecciona una zona';
+    placeholder.selected = true;
+    this.zonaSelect.appendChild(placeholder);
+
+    const zonasMap = new Map();
+    AppState.productos.forEach((producto) => {
+      if (producto.zona_id && producto.zona_nombre) {
+        zonasMap.set(String(producto.zona_id), {
+          id: String(producto.zona_id),
+          nombre: producto.zona_nombre,
+          areaId: producto.area_id ? String(producto.area_id) : ''
+        });
+      }
+    });
+
+    this.zonasData = Array.from(zonasMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    this.zonasData.forEach((zona) => {
+      const option = document.createElement('option');
+      option.value = zona.id;
+      option.textContent = zona.nombre;
+      if (zona.areaId) {
+        option.dataset.areaId = zona.areaId;
+      }
+      this.zonaSelect.appendChild(option);
+    });
+
+    if (currentValue && this.zonaSelect.querySelector(`option[value="${currentValue}"]`)) {
+      this.zonaSelect.value = currentValue;
+    }
+  },
+
+  filterZonas() {
+    if (!this.zonaSelect) return;
+
+    const areaId = this.areaSelect?.value || '';
+    Array.from(this.zonaSelect.options).forEach((option) => {
+      if (!option.value) {
+        option.hidden = false;
+        option.disabled = false;
+        return;
+      }
+
+      const optionArea = option.dataset.areaId || '';
+      const visible = !areaId || !optionArea || optionArea === areaId;
+      option.hidden = !visible;
+      option.disabled = !visible;
+    });
+
+    if (this.zonaSelect.value) {
+      const selected = this.zonaSelect.selectedOptions[0];
+      if (selected && (selected.hidden || selected.disabled)) {
+        this.zonaSelect.value = '';
+      }
+    }
+  },
+
+  handleSubmit() {
+    if (!this.form || !this.productSelect) return;
+
+    const productoId = this.productSelect.value;
+    const areaId = this.areaSelect?.value || '';
+    const zonaId = this.zonaSelect?.value || '';
+    const cantidad = Number(document.getElementById('transferenciaCantidad')?.value || 0);
+
+    if (!productoId) {
+      AppUtils.showAlert('Selecciona un producto para transferir');
+      return;
+    }
+
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      AppUtils.showAlert('Ingresa una cantidad válida a transferir');
+      return;
+    }
+
+    const producto = AppState.productos.find((item) => String(item.id) === productoId);
+    if (!producto) {
+      AppUtils.showAlert('No se encontró el producto seleccionado');
+      return;
+    }
+
+    const stockDisponible = Number(producto.stock) || 0;
+    if (cantidad > stockDisponible) {
+      AppUtils.showAlert('La cantidad supera el stock disponible del producto');
+      return;
+    }
+
+    const areaNombre = areaId && this.areaSelect
+      ? this.areaSelect.options[this.areaSelect.selectedIndex].textContent.trim()
+      : '';
+    const zonaNombre = zonaId && this.zonaSelect
+      ? this.zonaSelect.options[this.zonaSelect.selectedIndex].textContent.trim()
+      : '';
+
+    producto.area_id = areaId ? Number(areaId) : null;
+    producto.area_nombre = areaNombre || null;
+    producto.zona_id = zonaId ? Number(zonaId) : null;
+    producto.zona_nombre = zonaNombre || null;
+
+    DataController.updateSummary();
+    this.updateAreas();
+    this.updateZonas();
+    this.close();
+    this.form.reset();
+    this.filterZonas();
+
+    const destinoPartes = [];
+    if (areaNombre) destinoPartes.push(areaNombre);
+    if (zonaNombre) destinoPartes.push(zonaNombre);
+    const destinoTexto = destinoPartes.length ? destinoPartes.join(' · ') : 'destino sin especificar';
+
+    AppUtils.showAlert(
+      `${cantidad} unidad${cantidad === 1 ? '' : 'es'} de ${producto.nombre} ` +
+        `se registraron para transferir a ${destinoTexto}.`,
+      'success'
+    );
   }
 };
 
@@ -793,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     FormController.initForms();
     ModalController.init();
     ExportController.init();
+    TransferController.init();
     SearchController.init();
 
     document.getElementById('recargarResumen')?.addEventListener('click', async () => {
