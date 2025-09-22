@@ -160,6 +160,12 @@ img {
     gap: 18px;
 }
 
+.topbar-icon-group {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
 .search-bar {
     position: relative;
     width: 280px;
@@ -1236,10 +1242,10 @@ img {
         padding-left: 12px;
         height: auto;
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: auto 1fr auto;
         grid-template-areas:
-            "toggle title"
-            "actions actions";
+            "toggle title actions"
+            "user user user";
         column-gap: 10px;
         row-gap: 6px;
         align-items: center;
@@ -1262,15 +1268,14 @@ img {
 
     .topbar-actions {
         grid-area: actions;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 8px;
+        display: contents;
         min-width: 0;
-        flex-wrap: wrap;
-        padding: 0;
-        width: 100%;
-        row-gap: 6px;
+    }
+
+    .topbar-icon-group {
+        grid-area: actions;
+        justify-self: flex-end;
+        gap: 8px;
     }
 
     .topbar-actions > * {
@@ -1286,6 +1291,7 @@ img {
     }
 
     .user-profile {
+        grid-area: user;
         order: 1;
         flex: 1 1 220px;
         display: flex;
