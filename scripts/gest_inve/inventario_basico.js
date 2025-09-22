@@ -215,20 +215,32 @@ prodCategoria?.addEventListener('change', () => {
     }
 
     try {
+      const movimientoPayload = { empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 };
       const response = await fetch('../../scripts/php/guardar_movimientos.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 })
+        body: JSON.stringify(movimientoPayload)
       });
 
       if (!response.ok) {
         throw new Error('Error al registrar movimiento');
       }
 
-      await response.json();
+      const result = await response.json();
+      if (result?.success !== true) {
+        throw new Error(result?.error || 'Error al registrar movimiento');
+      }
       await cargarProductos();
       renderResumen();
       showToast('Movimiento registrado', 'success');
+      document.dispatchEvent(new CustomEvent('movimientoRegistrado', {
+        detail: {
+          productoId: productoId,
+          tipo: movimientoPayload.tipo,
+          cantidad: movimientoPayload.cantidad,
+          stockActual: result.stock_actual ?? null
+        }
+      }));
     } catch (error) {
       console.error(error);
       showToast('Error al registrar movimiento', 'error');

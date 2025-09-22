@@ -13,6 +13,15 @@ const saveAlertSettings = document.getElementById('saveAlertSettings');
 const cancelAlertSettings = document.getElementById('cancelAlertSettings');
 const topbarSearchInput = document.querySelector('.topbar .search-bar input');
 const topbarSearchIcon = document.querySelector('.topbar .search-bar i');
+const stockAlertList = document.getElementById('stockAlertList');
+const stockAlertsRefreshBtn = document.getElementById('stockAlertsRefreshBtn');
+const stockAlertsMenuBtn = document.getElementById('stockAlertsMenuBtn');
+const stockAlertsMenu = document.getElementById('stockAlertsMenu');
+const stockAlertThresholdInput = document.getElementById('stockAlertThreshold');
+const stockAlertApplyBtn = document.getElementById('stockAlertApplyBtn');
+const stockAlertCancelBtn = document.getElementById('stockAlertCancelBtn');
+const recentActivityList = document.getElementById('recentActivityList');
+const recentActivityRefreshBtn = document.getElementById('recentActivityRefreshBtn');
 
 let navegadorTimeZone = null;
 
@@ -49,6 +58,9 @@ try {
 } catch (error) {
     console.warn('No se pudo determinar la etiqueta de zona horaria del navegador.', error);
 }
+
+const DEFAULT_STOCK_ALERT_THRESHOLD = 10;
+const STOCK_THRESHOLD_STORAGE_PREFIX = 'stockAlertThreshold';
 
 // Selected theme colors
 let colorSidebarSeleccionado = getComputedStyle(document.documentElement)
@@ -160,6 +172,120 @@ function applyTopbarColor(color) {
 }
 
 
+function getStockThresholdStorageKey() {
+    const empresaId = localStorage.getItem('id_empresa') || '0';
+    return `${STOCK_THRESHOLD_STORAGE_PREFIX}_${empresaId}`;
+}
+
+function getStockAlertThreshold() {
+    const key = getStockThresholdStorageKey();
+    const raw = localStorage.getItem(key);
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+        return parsed;
+    }
+    return DEFAULT_STOCK_ALERT_THRESHOLD;
+}
+
+function setStockAlertThreshold(value) {
+    const sanitized = Math.max(0, Math.round(Number(value) || 0));
+    localStorage.setItem(getStockThresholdStorageKey(), String(sanitized));
+    if (stockAlertThresholdInput) {
+        stockAlertThresholdInput.value = sanitized;
+    }
+    return sanitized;
+}
+
+function setButtonLoading(button, loading) {
+    if (!button) return;
+    const icon = button.querySelector('i');
+    button.disabled = !!loading;
+    if (icon) {
+        icon.classList.toggle('fa-spin', !!loading);
+    }
+}
+
+function setListState(listElement, message, iconClass = 'fas fa-info-circle', stateClass = 'card-empty-state') {
+    if (!listElement) return;
+    listElement.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = stateClass;
+    const icon = document.createElement('i');
+    icon.className = iconClass;
+    const span = document.createElement('span');
+    span.textContent = message;
+    li.appendChild(icon);
+    li.appendChild(span);
+    listElement.appendChild(li);
+}
+
+function parseDateFromMysql(mysqlDate) {
+    if (!mysqlDate) return null;
+    const normalized = mysqlDate.replace(' ', 'T');
+    let parsed = new Date(`${normalized}Z`);
+    if (Number.isNaN(parsed.getTime())) {
+        parsed = new Date(normalized);
+    }
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function buildDateDisplay(date) {
+    if (!date || Number.isNaN(date.getTime())) {
+        return { display: '', tooltip: '' };
+    }
+
+    const parts = [];
+    const relative = formatRelativeDate(date);
+    if (relative) {
+        parts.push(relative);
+    }
+    const formattedTime = formatTime(date);
+    if (formattedTime) {
+        parts.push(formattedTime);
+    }
+
+    let display = parts.join(' · ');
+    if (display && timeZoneLabel) {
+        display += ` (${timeZoneLabel})`;
+    }
+
+    let tooltip = '';
+    try {
+        const tooltipOptions = {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        };
+        if (navegadorTimeZone) {
+            tooltipOptions.timeZone = navegadorTimeZone;
+        }
+        tooltip = new Intl.DateTimeFormat('es', tooltipOptions).format(date);
+    } catch (error) {
+        tooltip = date.toLocaleString();
+    }
+
+    if (tooltip && timeZoneLabel) {
+        tooltip += ` (${timeZoneLabel})`;
+    }
+
+    return { display, tooltip };
+}
+
+function toggleStockAlertMenu(forceOpen) {
+    if (!stockAlertsMenu) return;
+    const shouldOpen = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !stockAlertsMenu.classList.contains('is-open');
+    stockAlertsMenu.classList.toggle('is-open', shouldOpen);
+    if (stockAlertsMenuBtn) {
+        stockAlertsMenuBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
+    if (shouldOpen && stockAlertThresholdInput) {
+        stockAlertThresholdInput.focus();
+        stockAlertThresholdInput.select();
+    }
+}
+
+
 const metricsData = {
     highRotation: [
         { producto: 'Baterías AA', cantidad: 120 },
@@ -198,19 +324,235 @@ function renderZoneCapacity() {
     });
 }
 
+async function loadStockAlerts() {
+    if (!stockAlertList) return;
+
+    const threshold = getStockAlertThreshold();
+    if (stockAlertThresholdInput) {
+        stockAlertThresholdInput.value = threshold;
+    }
+
+    const empresaId = localStorage.getItem('id_empresa');
+    if (!empresaId) {
+        setListState(stockAlertList, 'Registra tu empresa para ver las alertas de stock.', 'fas fa-info-circle', 'card-empty-state');
+        return;
+    }
+
+    setButtonLoading(stockAlertsRefreshBtn, true);
+    setListState(stockAlertList, 'Cargando inventario...', 'fas fa-circle-notch', 'card-loading-state');
+
+    try {
+        const response = await fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        const productos = Array.isArray(payload) ? payload : [];
+
+        const filtrados = productos
+            .filter(prod => {
+                const stockValue = Number(prod.stock);
+                if (!Number.isFinite(stockValue)) {
+                    return threshold >= 0; // stock no definido se considera crítico
+                }
+                return stockValue <= threshold;
+            })
+            .sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0));
+
+        stockAlertList.innerHTML = '';
+
+        if (!filtrados.length) {
+            setListState(stockAlertList, 'Todo el inventario está por encima del límite configurado.', 'fas fa-check-circle', 'card-empty-state');
+            return;
+        }
+
+        filtrados.slice(0, 8).forEach(prod => {
+            const li = document.createElement('li');
+            li.className = 'stock-alert-item';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'stock-alert-info';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'stock-alert-icon';
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-box-open';
+            iconDiv.appendChild(icon);
+
+            const textWrapper = document.createElement('div');
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'stock-alert-name';
+            nameDiv.textContent = (prod.nombre || 'Producto sin nombre').trim();
+
+            const detailDiv = document.createElement('div');
+            detailDiv.className = 'stock-alert-detail';
+            const locationParts = [];
+            if (prod.zona_nombre) locationParts.push(prod.zona_nombre);
+            if (prod.area_nombre) locationParts.push(prod.area_nombre);
+            const ubicacion = locationParts.filter(Boolean).join(' · ');
+            detailDiv.textContent = ubicacion || 'Sin ubicación asignada';
+
+            textWrapper.appendChild(nameDiv);
+            textWrapper.appendChild(detailDiv);
+
+            infoDiv.appendChild(iconDiv);
+            infoDiv.appendChild(textWrapper);
+
+            const stockDiv = document.createElement('div');
+            stockDiv.className = 'stock-alert-stock';
+            const stockValue = Number(prod.stock);
+            const unidades = Number.isFinite(stockValue) ? stockValue : 0;
+            stockDiv.textContent = `${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`;
+
+            li.appendChild(infoDiv);
+            li.appendChild(stockDiv);
+
+            stockAlertList.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Error loading stock alerts:', error);
+        setListState(stockAlertList, 'No se pudo cargar el inventario. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+    } finally {
+        setButtonLoading(stockAlertsRefreshBtn, false);
+    }
+}
+
+async function loadRecentMovements() {
+    if (!recentActivityList) return;
+
+    const empresaId = localStorage.getItem('id_empresa');
+    if (!empresaId) {
+        setListState(recentActivityList, 'Registra tu empresa para ver los movimientos recientes.', 'fas fa-info-circle', 'card-empty-state');
+        return;
+    }
+
+    setButtonLoading(recentActivityRefreshBtn, true);
+    setListState(recentActivityList, 'Cargando movimientos...', 'fas fa-circle-notch', 'card-loading-state');
+
+    try {
+        const response = await fetch(`/scripts/php/get_recent_movements.php?id_empresa=${encodeURIComponent(empresaId)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        if (payload && payload.success === false) {
+            setListState(recentActivityList, payload.message || 'No hay movimientos recientes.', 'fas fa-info-circle', 'card-empty-state');
+            return;
+        }
+
+        const movimientos = Array.isArray(payload?.movimientos) ? payload.movimientos : (Array.isArray(payload) ? payload : []);
+
+        if (!movimientos.length) {
+            setListState(recentActivityList, 'No se encontraron movimientos de inventario recientes.', 'fas fa-info-circle', 'card-empty-state');
+            return;
+        }
+
+        recentActivityList.innerHTML = '';
+
+        movimientos.slice(0, 8).forEach(mov => {
+            const tipo = (mov.tipo || '').toLowerCase();
+            let movementClass = 'mov-ajuste';
+            let iconClass = 'fa-exchange-alt';
+            let verbo = 'Movimiento';
+            if (tipo === 'ingreso') {
+                movementClass = 'mov-ingreso';
+                iconClass = 'fa-arrow-down';
+                verbo = 'Ingreso';
+            } else if (tipo === 'egreso') {
+                movementClass = 'mov-egreso';
+                iconClass = 'fa-arrow-up';
+                verbo = 'Egreso';
+            } else {
+                verbo = 'Ajuste';
+            }
+
+            const li = document.createElement('li');
+            li.className = `activity-item ${movementClass}`;
+
+            const iconWrapper = document.createElement('div');
+            iconWrapper.className = 'activity-icon';
+            const icon = document.createElement('i');
+            icon.className = `fas ${iconClass}`;
+            iconWrapper.appendChild(icon);
+
+            const details = document.createElement('div');
+            details.className = 'activity-details';
+
+            const description = document.createElement('div');
+            description.className = 'activity-description';
+            const cantidad = Number(mov.cantidad);
+            const unidades = Number.isFinite(cantidad) ? cantidad : 0;
+            let descripcionTexto = `${verbo} de ${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`;
+            const producto = (mov.producto_nombre || '').trim();
+            if (producto) {
+                descripcionTexto += ` de ${producto}`;
+            }
+            const ubicacion = [mov.zona_nombre, mov.area_nombre]
+                .map(part => (part || '').trim())
+                .filter(Boolean)
+                .join(' · ');
+            if (ubicacion) {
+                descripcionTexto += ` (${ubicacion})`;
+            }
+            description.textContent = descripcionTexto;
+
+            const meta = document.createElement('div');
+            meta.className = 'activity-time';
+            const fecha = parseDateFromMysql(mov.fecha_movimiento);
+            const { display, tooltip } = buildDateDisplay(fecha);
+            const responsable = [mov.usuario_nombre, mov.usuario_apellido]
+                .map(part => (part || '').trim())
+                .filter(Boolean)
+                .join(' ');
+            const stockActual = Number(mov.stock_actual);
+
+            const metaPartes = [];
+            if (display) {
+                metaPartes.push(display);
+            }
+            if (responsable) {
+                metaPartes.push(`Por ${responsable}`);
+            }
+            if (Number.isFinite(stockActual)) {
+                metaPartes.push(`Stock actual: ${stockActual}`);
+            }
+            meta.textContent = metaPartes.join(' · ');
+            if (tooltip) {
+                meta.title = tooltip;
+            }
+
+            details.appendChild(description);
+            details.appendChild(meta);
+
+            li.appendChild(iconWrapper);
+            li.appendChild(details);
+
+            recentActivityList.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Error loading recent movements:', error);
+        setListState(recentActivityList, 'No se pudieron cargar los movimientos. Inténtalo nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+    } finally {
+        setButtonLoading(recentActivityRefreshBtn, false);
+    }
+}
+
 function loadMetrics() {
     renderHighRotation();
     renderZoneCapacity();
+    loadStockAlerts();
+    loadRecentMovements();
 }
 
 function saveHomeData() {
     const data = {
         empresaTitulo: document.getElementById('empresaTitulo')?.textContent || '',
-        stockAlerts: document.querySelector('#stockAlertsCard .stock-alert-list')?.innerHTML || '',
-        recentActivity: document.querySelector('#recentActivityCard .activity-list')?.innerHTML || '',
         highRotation: document.getElementById('highRotationList')?.innerHTML || '',
         zoneCapacity: document.getElementById('zoneCapacityList')?.innerHTML || '',
-        accessLogs: document.getElementById('accessLogsList')?.innerHTML || ''
+        accessLogs: document.getElementById('accessLogsList')?.innerHTML || '',
+        stockAlerts: document.getElementById('stockAlertList')?.innerHTML || '',
+        recentActivity: document.getElementById('recentActivityList')?.innerHTML || ''
     };
     sessionStorage.setItem('homeData', JSON.stringify(data));
 }
@@ -222,16 +564,16 @@ function restoreHomeData() {
         const data = JSON.parse(raw);
         const empresaTitulo = document.getElementById('empresaTitulo');
         if (empresaTitulo && data.empresaTitulo) empresaTitulo.textContent = data.empresaTitulo;
-        const stockAlerts = document.querySelector('#stockAlertsCard .stock-alert-list');
-        if (stockAlerts && data.stockAlerts) stockAlerts.innerHTML = data.stockAlerts;
-        const recentActivity = document.querySelector('#recentActivityCard .activity-list');
-        if (recentActivity && data.recentActivity) recentActivity.innerHTML = data.recentActivity;
         const highRotation = document.getElementById('highRotationList');
         if (highRotation && data.highRotation) highRotation.innerHTML = data.highRotation;
         const zoneCapacity = document.getElementById('zoneCapacityList');
         if (zoneCapacity && data.zoneCapacity) zoneCapacity.innerHTML = data.zoneCapacity;
         const accessLogs = document.getElementById('accessLogsList');
         if (accessLogs && data.accessLogs) accessLogs.innerHTML = data.accessLogs;
+        const stockAlerts = document.getElementById('stockAlertList');
+        if (stockAlerts && data.stockAlerts) stockAlerts.innerHTML = data.stockAlerts;
+        const recentActivity = document.getElementById('recentActivityList');
+        if (recentActivity && data.recentActivity) recentActivity.innerHTML = data.recentActivity;
     } catch (e) {
         console.error('Error restoring home data', e);
     }
@@ -680,6 +1022,70 @@ if (cancelAlertSettings) {
     });
 }
 
+if (stockAlertsRefreshBtn) {
+    stockAlertsRefreshBtn.addEventListener('click', () => {
+        loadStockAlerts();
+    });
+}
+
+if (recentActivityRefreshBtn) {
+    recentActivityRefreshBtn.addEventListener('click', () => {
+        loadRecentMovements();
+    });
+}
+
+if (stockAlertsMenuBtn) {
+    stockAlertsMenuBtn.addEventListener('click', event => {
+        event.stopPropagation();
+        toggleStockAlertMenu();
+    });
+}
+
+if (stockAlertApplyBtn) {
+    stockAlertApplyBtn.addEventListener('click', () => {
+        const value = stockAlertThresholdInput ? stockAlertThresholdInput.value : DEFAULT_STOCK_ALERT_THRESHOLD;
+        const sanitized = setStockAlertThreshold(value);
+        toggleStockAlertMenu(false);
+        loadStockAlerts();
+        console.info(`Nuevo límite de stock para alertas: ${sanitized}`);
+    });
+}
+
+if (stockAlertCancelBtn) {
+    stockAlertCancelBtn.addEventListener('click', () => {
+        if (stockAlertThresholdInput) {
+            stockAlertThresholdInput.value = getStockAlertThreshold();
+        }
+        toggleStockAlertMenu(false);
+    });
+}
+
+if (stockAlertThresholdInput) {
+    stockAlertThresholdInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (stockAlertApplyBtn) {
+                stockAlertApplyBtn.click();
+            }
+        }
+    });
+}
+
+document.addEventListener('click', event => {
+    if (!stockAlertsMenu || !stockAlertsMenu.classList.contains('is-open')) return;
+    const target = event.target;
+    if (stockAlertsMenu.contains(target) || (stockAlertsMenuBtn && stockAlertsMenuBtn.contains(target))) {
+        return;
+    }
+    toggleStockAlertMenu(false);
+});
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        toggleStockAlertMenu(false);
+    }
+});
+
 function notifyUnauthorizedMovement(msg) {
     if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
         sendPushNotification('Alerta de Seguridad', msg);
@@ -926,9 +1332,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    restoreHomeData();
     loadMetrics();
     loadAccessLogs();
-    restoreHomeData();
     window.addEventListener('beforeunload', saveHomeData);
     document.addEventListener('movimientoRegistrado', loadMetrics);
 
@@ -1118,6 +1524,8 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                 restoreHomeData();
                 estaEnInicio = true;
                 removeSearchBodyClass();
+                loadMetrics();
+                loadAccessLogs();
                 return;
             }
 
