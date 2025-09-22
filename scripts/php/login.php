@@ -43,6 +43,12 @@ if ($user) {
     $lastFailedAttempt  = strtotime($user['ultimo_intento']);
     $currentTime        = time();
 
+    if (isset($user['activo']) && intval($user['activo']) === 0) {
+        registrarAcceso($conn, $user['id_usuario'], 'Intento');
+        echo json_encode(["success" => false, "message" => "Tu cuenta ha sido desactivada. Contacta al administrador de tu empresa."]);
+        exit;
+    }
+
     if ($failedAttempts >= 4 && ($currentTime - $lastFailedAttempt) < 300) {
     registrarAcceso($conn, $user['id_usuario'], 'Intento');
         echo json_encode(["success"=>false,"message"=>"Tu cuenta está bloqueada. Intenta nuevamente en 5 minutos."]);

@@ -19,7 +19,7 @@ try {
 $data = json_decode(file_get_contents("php://input"), true);
 $id_empresa = intval($data['id_empresa']);
 
-$sql = "SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.rol, u.telefono, u.fecha_nacimiento, u.foto_perfil
+$sql = "SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.rol, u.telefono, u.fecha_nacimiento, u.foto_perfil, u.activo
         FROM usuario u
         INNER JOIN usuario_empresa ue ON u.id_usuario = ue.id_usuario
         WHERE ue.id_empresa = ? AND u.rol != 'Administrador'";
