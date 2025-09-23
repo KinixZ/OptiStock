@@ -604,6 +604,7 @@ img {
 
 .notification-tray__item {
     display: flex;
+<<<<<< codex/add-dropdown-style-to-notification-tray-hhwvkg
     gap: 0.6rem;
     padding: 0.65rem;
     border-radius: 12px;
