@@ -3,6 +3,7 @@
     categorias: '../../scripts/php/guardar_categorias.php',
     subcategorias: '../../scripts/php/guardar_subcategorias.php',
     productos: '../../scripts/php/guardar_productos.php',
+    areas:       '../../scripts/php/guardar_areas.php',
     zonas:         '../../scripts/php/guardar_zonas.php',
     movimiento:   '../../scripts/php/guardar_movimientos.php'
   };
