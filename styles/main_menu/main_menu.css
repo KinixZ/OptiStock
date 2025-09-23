@@ -474,6 +474,10 @@ img {
     box-shadow: 0 18px 35px -28px rgba(15, 40, 65, 0.6);
 }
 
+.notification-wrapper {
+    position: relative;
+}
+
 .notification-bell,
 .alert-settings {
     position: relative;
@@ -512,6 +516,168 @@ img {
     justify-content: center;
     font-size: 0.7rem;
     font-weight: 600;
+}
+
+.notification-tray {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: min(320px, 86vw);
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 18px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 25px 55px -20px rgba(15, 23, 42, 0.45);
+    padding: 1.2rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    z-index: 200;
+}
+
+.notification-tray::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    right: 16px;
+    width: 20px;
+    height: 20px;
+    background: inherit;
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    transform: rotate(45deg);
+    border-radius: 4px 0 0 0;
+}
+
+.notification-wrapper.open .notification-tray {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.notification-wrapper.open .notification-bell {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.12);
+    box-shadow: 0 18px 38px -24px rgba(15, 23, 42, 0.55);
+}
+
+.notification-tray__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.notification-tray__title {
+    display: block;
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin-bottom: 0.25rem;
+}
+
+.notification-tray__subtitle {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(15, 23, 42, 0.55);
+}
+
+.notification-tray__counter {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.75rem;
+}
+
+.notification-tray__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.notification-tray__item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid transparent;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.notification-tray__item:hover {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.25);
+    transform: translateY(-2px);
+}
+
+.notification-tray__item--critical {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.notification-tray__icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+}
+
+.notification-tray__item--critical .notification-tray__icon {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+}
+
+.notification-tray__content h4 {
+    margin: 0 0 0.3rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.notification-tray__content p {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(15, 23, 42, 0.7);
+    line-height: 1.4;
+}
+
+.notification-tray__time {
+    font-size: 0.75rem;
+    color: rgba(15, 23, 42, 0.5);
+    font-weight: 500;
+}
+
+.notification-tray__action {
+    width: 100%;
+    margin-top: 1.1rem;
+    background: #0f172a;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notification-tray__action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px -22px rgba(15, 23, 42, 0.6);
 }
 
 .user-profile {

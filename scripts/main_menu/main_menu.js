@@ -979,10 +979,44 @@ menuItems.forEach(item => {
     });
 });
 
-// Notification bell click handler
-document.querySelector('.notification-bell').addEventListener('click', function() {
-    alert('Mostrar notificaciones\n\n- Movimiento no autorizado detectado\n- Nuevo reporte disponible\n- Inventario actualizado');
-});
+// Notification tray handlers
+const notificationWrapper = document.querySelector('.notification-wrapper');
+const notificationBell = document.getElementById('notificationBell');
+const notificationTray = document.getElementById('notificationTray');
+
+if (notificationWrapper && notificationBell && notificationTray) {
+    const closeTray = () => {
+        if (!notificationWrapper.classList.contains('open')) {
+            return;
+        }
+
+        notificationWrapper.classList.remove('open');
+        notificationBell.setAttribute('aria-expanded', 'false');
+    };
+
+    notificationBell.addEventListener('click', event => {
+        event.stopPropagation();
+        const isOpen = notificationWrapper.classList.toggle('open');
+        notificationBell.setAttribute('aria-expanded', String(isOpen));
+
+        if (isOpen) {
+            notificationTray.focus();
+        }
+    });
+
+    document.addEventListener('click', event => {
+        if (!notificationWrapper.contains(event.target)) {
+            closeTray();
+        }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            closeTray();
+            notificationBell.focus();
+        }
+    });
+}
 
 // Quick actions buttons
 document.getElementById('ingresoFlashBtn').addEventListener('click', function() {
