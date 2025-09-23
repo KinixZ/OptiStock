@@ -59,9 +59,53 @@
                 <input type="text" placeholder="Buscar productos, órdenes...">
             </div>
             <div class="topbar-icon-group">
-                <div class="notification-bell">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-badge">3</span>
+                <div class="notification-wrapper">
+                    <div class="notification-bell" id="notificationBell" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </div>
+                    <div class="notification-tray" id="notificationTray" role="dialog" aria-label="Alertas recientes" tabindex="-1">
+                        <div class="notification-tray__header">
+                            <div>
+                                <span class="notification-tray__title">Alertas recientes</span>
+                                <p class="notification-tray__subtitle">Mantente al tanto de tu almacén</p>
+                            </div>
+                            <span class="notification-tray__counter">3 nuevas</span>
+                        </div>
+                        <ul class="notification-tray__list">
+                            <li class="notification-tray__item notification-tray__item--critical">
+                                <div class="notification-tray__icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="notification-tray__content">
+                                    <h4>Movimiento no autorizado</h4>
+                                    <p>Se detectó una actividad fuera de horario en la zona de resguardo.</p>
+                                    <span class="notification-tray__time">Hace 5 min</span>
+                                </div>
+                            </li>
+                            <li class="notification-tray__item">
+                                <div class="notification-tray__icon">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </div>
+                                <div class="notification-tray__content">
+                                    <h4>Nuevo reporte disponible</h4>
+                                    <p>El informe semanal de inventario ya está listo para revisar.</p>
+                                    <span class="notification-tray__time">Hace 25 min</span>
+                                </div>
+                            </li>
+                            <li class="notification-tray__item">
+                                <div class="notification-tray__icon">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="notification-tray__content">
+                                    <h4>Inventario actualizado</h4>
+                                    <p>Se registró la entrada de 32 unidades del producto "ZX-14".</p>
+                                    <span class="notification-tray__time">Hace 1 hora</span>
+                                </div>
+                            </li>
+                        </ul>
+                        <button class="notification-tray__action" type="button">Ver todas las alertas</button>
+                    </div>
                 </div>
                 <div class="alert-settings" id="alertSettingsBtn">
                     <i class="fas fa-cog"></i>
