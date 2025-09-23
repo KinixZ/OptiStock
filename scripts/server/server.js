@@ -27,6 +27,28 @@ db.connect((err) => {
     }
 });
 
+const crearTablaReportes = `
+    CREATE TABLE IF NOT EXISTS reportes_generados (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        folio VARCHAR(40) NOT NULL UNIQUE,
+        usuario_id INT NOT NULL,
+        modulos VARCHAR(255) NOT NULL,
+        total_registros INT NOT NULL DEFAULT 0,
+        tipo_exportacion ENUM('pdf','excel') NOT NULL DEFAULT 'pdf',
+        fecha_generado DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_reportes_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id_usuario)
+            ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+`;
+
+db.query(crearTablaReportes, (err) => {
+    if (err) {
+        console.error('No se pudo asegurar la tabla reportes_generados:', err);
+    } else {
+        console.log('Tabla reportes_generados lista para usarse');
+    }
+});
+
 // Función para verificar el token de Google
 async function verifyToken(idToken) {
     const ticket = await client.verifyIdToken({
@@ -122,6 +144,84 @@ app.post('/auth/google', async (req, res) => {
     } catch (error) {
         res.status(400).json({ success: false, error: 'Token inválido' });
     }
+});
+
+app.post('/api/reportes', (req, res) => {
+    const { folio, usuarioId, modulos, totalRegistros, tipo } = req.body || {};
+
+    if (!folio || !usuarioId || !modulos || (Array.isArray(modulos) && modulos.length === 0)) {
+        return res.status(400).json({ success: false, message: 'Faltan datos obligatorios para guardar el reporte.' });
+    }
+
+    const modulosTexto = Array.isArray(modulos) ? modulos.join(', ') : String(modulos);
+    const registros = Number.isFinite(Number(totalRegistros)) ? Number(totalRegistros) : 0;
+    const tipoExportacion = tipo === 'excel' ? 'excel' : 'pdf';
+
+    const query = `
+        INSERT INTO reportes_generados (folio, usuario_id, modulos, total_registros, tipo_exportacion, fecha_generado)
+        VALUES (?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+            usuario_id = VALUES(usuario_id),
+            modulos = VALUES(modulos),
+            total_registros = VALUES(total_registros),
+            tipo_exportacion = VALUES(tipo_exportacion),
+            fecha_generado = NOW();
+    `;
+
+    db.query(query, [folio, usuarioId, modulosTexto, registros, tipoExportacion], (err) => {
+        if (err) {
+            console.error('Error al guardar el reporte generado:', err);
+            return res.status(500).json({ success: false, message: 'Error al guardar el reporte generado.' });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.get('/api/reportes', (req, res) => {
+    const limiteSolicitado = Number.parseInt(req.query.limit, 10);
+    const usuarioFiltro = req.query.usuarioId ? Number.parseInt(req.query.usuarioId, 10) : null;
+    const limite = Number.isFinite(limiteSolicitado) ? Math.max(1, Math.min(100, limiteSolicitado)) : 20;
+
+    let query = `
+        SELECT r.folio, r.modulos, r.total_registros, r.tipo_exportacion, r.fecha_generado,
+               u.id_usuario AS usuario_id, u.nombre, u.apellido, u.rol
+        FROM reportes_generados r
+        LEFT JOIN usuario u ON u.id_usuario = r.usuario_id
+    `;
+    const params = [];
+
+    if (Number.isInteger(usuarioFiltro)) {
+        query += ' WHERE r.usuario_id = ?';
+        params.push(usuarioFiltro);
+    }
+
+    query += ' ORDER BY r.fecha_generado DESC LIMIT ?';
+    params.push(limite);
+
+    db.query(query, params, (err, resultados) => {
+        if (err) {
+            console.error('Error al obtener el historial de reportes:', err);
+            return res.status(500).json({ success: false, message: 'No se pudo obtener el historial de reportes.' });
+        }
+
+        const reportes = Array.isArray(resultados)
+            ? resultados.map((fila) => ({
+                  folio: fila.folio,
+                  modulos: fila.modulos,
+                  totalRegistros: Number(fila.total_registros) || 0,
+                  tipo: fila.tipo_exportacion,
+                  fecha: fila.fecha_generado,
+                  usuario: {
+                      id: fila.usuario_id,
+                      nombre: fila.nombre || '',
+                      apellido: fila.apellido || '',
+                      rol: fila.rol || ''
+                  }
+              }))
+            : [];
+
+        res.json({ success: true, reportes });
+    });
 });
 
 
