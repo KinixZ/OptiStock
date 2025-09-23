@@ -684,6 +684,44 @@ INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `v
 (23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 'cajón', '[]', 28, 30),
 (24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 'jaula', '[]', NULL, 21);
 
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `notificaciones`
+--
+
+CREATE TABLE `notificaciones` (
+  `id` int(11) NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `titulo` varchar(150) NOT NULL,
+  `mensaje` text NOT NULL,
+  `tipo_destinatario` enum('General','Rol','Usuario') NOT NULL DEFAULT 'General',
+  `rol_destinatario` enum('Administrador','Supervisor','Almacenista','Mantenimiento','Etiquetador') DEFAULT NULL,
+  `id_usuario_destinatario` int(11) DEFAULT NULL,
+  `id_usuario_creador` int(11) DEFAULT NULL,
+  `ruta_destino` varchar(255) DEFAULT NULL,
+  `estado` enum('Pendiente','Enviada','Leida','Archivada') NOT NULL DEFAULT 'Pendiente',
+  `prioridad` enum('Baja','Media','Alta') NOT NULL DEFAULT 'Media',
+  `fecha_disponible_desde` datetime NOT NULL DEFAULT current_timestamp(),
+  `fecha_expira` datetime DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  CHECK (
+    (`tipo_destinatario` = 'General' AND `rol_destinatario` IS NULL AND `id_usuario_destinatario` IS NULL)
+    OR (`tipo_destinatario` = 'Rol' AND `rol_destinatario` IS NOT NULL AND `id_usuario_destinatario` IS NULL)
+    OR (`tipo_destinatario` = 'Usuario' AND `id_usuario_destinatario` IS NOT NULL)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `notificaciones`
+--
+
+INSERT INTO `notificaciones` (`id`, `id_empresa`, `titulo`, `mensaje`, `tipo_destinatario`, `rol_destinatario`, `id_usuario_destinatario`, `id_usuario_creador`, `ruta_destino`, `estado`, `prioridad`, `fecha_disponible_desde`, `fecha_expira`, `creado_en`, `actualizado_en`) VALUES
+(1, 21, 'Inventario crítico', 'Se detectó inventario bajo en varios productos. Revisa el módulo de inventario para tomar acciones.', 'Rol', 'Supervisor', NULL, 57, 'gest_inve/inventario_basico.html', 'Pendiente', 'Alta', '2025-09-18 16:00:00', NULL, '2025-09-18 16:00:00', '2025-09-18 16:00:00'),
+(2, 21, 'Nuevo acceso al almacén', 'Se registró un nuevo ingreso al sistema por parte del usuario asignado.', 'Usuario', NULL, 110, 57, 'control_log/log.html', 'Pendiente', 'Media', '2025-09-18 17:15:00', NULL, '2025-09-18 17:15:00', '2025-09-18 17:15:00'),
+(3, 24, 'Mantenimiento programado', 'Habrá una ventana de mantenimiento del sistema este fin de semana. Es posible que algunas funciones no estén disponibles temporalmente.', 'General', NULL, NULL, 60, 'inicio', 'Enviada', 'Media', '2025-09-19 10:00:00', '2025-09-21 06:00:00', '2025-09-19 10:00:00', '2025-09-19 10:30:00');
+
 --
 -- Índices para tablas volcadas
 --
@@ -728,6 +766,15 @@ ALTER TABLE `movimientos`
   ADD PRIMARY KEY (`id`),
   ADD KEY `producto_id` (`producto_id`),
   ADD KEY `fk_movimientos_usuario` (`id_usuario`);
+
+--
+-- Indices de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_notificaciones_empresa_fecha` (`id_empresa`,`fecha_disponible_desde`),
+  ADD KEY `idx_notificaciones_usuario` (`id_usuario_destinatario`),
+  ADD KEY `idx_notificaciones_rol` (`rol_destinatario`);
 
 --
 -- Indices de la tabla `pass_resets`
@@ -818,6 +865,12 @@ ALTER TABLE `movimientos`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT de la tabla `pass_resets`
 --
 ALTER TABLE `pass_resets`
@@ -882,6 +935,14 @@ ALTER TABLE `movimientos`
   ADD CONSTRAINT `fk_mov_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
   ADD CONSTRAINT `fk_movimientos_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
   ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`);
+
+--
+-- Filtros para la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD CONSTRAINT `fk_notificaciones_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_notificaciones_usuario_creador` FOREIGN KEY (`id_usuario_creador`) REFERENCES `usuario` (`id_usuario`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_notificaciones_usuario_destinatario` FOREIGN KEY (`id_usuario_destinatario`) REFERENCES `usuario` (`id_usuario`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `pass_resets`
