@@ -76,11 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   fRol.addEventListener('change', actualizarVista);
 
-  init().catch(error => console.error('No se pudo inicializar la vista de reportes:', error));
+  init();
 
-  async function init() {
+  function init() {
     actualizarVista();
-    await actualizarHistorial();
+    actualizarHistorial();
     cargarProgramacion();
   }
 
@@ -272,25 +272,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const id = 'REP-' + Date.now();
-    try {
-      if (tipo === 'pdf') {
-        await exportarPDF(id, filtros, datosFiltrados);
-      } else {
-        exportarExcel(id, filtros, datosFiltrados);
-      }
-    } catch (error) {
-      console.error('Error al generar el archivo del reporte:', error);
-      alert('No se pudo generar el archivo del reporte. Intenta nuevamente.');
-      return;
+    if (tipo === 'pdf') {
+      await exportarPDF(id, filtros, datosFiltrados);
+    } else {
+      exportarExcel(id, filtros, datosFiltrados);
     }
-
-    try {
-      await registrarReporteGenerado(id, filtros, datosFiltrados.length, tipo);
-      await actualizarHistorial();
-    } catch (error) {
-      console.error('Error al guardar el reporte generado:', error);
-      alert('El reporte se exportó, pero no se pudo guardar en el historial. Intenta más tarde.');
-    }
+    guardarHistorial(id, filtros, datosFiltrados.length);
   }
 
   async function exportarPDF(id, filtros, datos) {
@@ -436,81 +423,39 @@ document.addEventListener('DOMContentLoaded', () => {
     XLSX.writeFile(wb, id + '.xlsx');
   }
 
-  async function registrarReporteGenerado(id, filtros, totalRegistros, tipo) {
-    const usuarioId = Number.parseInt(localStorage.getItem('usuario_id'), 10);
-    if (!Number.isInteger(usuarioId)) {
-      throw new Error('No se encontró el identificador del usuario activo.');
-    }
+  function guardarHistorial(id, filtros, totalRegistros) {
+    const historial = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+    historial.unshift({
+      id,
+      fecha: new Date().toISOString(),
+      modulos: filtros.modulos.length ? filtros.modulos.join(', ') : 'Todos',
+      registros: totalRegistros
+    });
+    localStorage.setItem('reportHistory', JSON.stringify(historial.slice(0, 20)));
+    actualizarHistorial();
+  }
 
-    const payload = {
-      folio: id,
-      usuarioId,
-      modulos: filtros.modulos.length ? filtros.modulos : ['Todos'],
-      totalRegistros,
-      tipo
-    };
-
-    const respuesta = await fetch('/api/reportes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+  function actualizarHistorial() {
+    const historial = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+    historialBody.innerHTML = '';
+    historial.forEach(registro => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${registro.id}</td>
+        <td>${formatearFechaHora(registro.fecha)}</td>
+        <td>${registro.modulos} · ${registro.registros} registro${registro.registros === 1 ? '' : 's'}</td>
+        <td><button class="btn-share" data-id="${registro.id}" type="button">Compartir</button></td>
+      `;
+      historialBody.appendChild(tr);
     });
 
-    if (!respuesta.ok) {
-      const errorData = await respuesta.json().catch(() => ({}));
-      throw new Error(errorData.message || 'No se pudo guardar el reporte en la base de datos.');
-    }
+    historialBody.querySelectorAll('.btn-share').forEach(btn => {
+      btn.addEventListener('click', () => compartir(btn.dataset.id));
+    });
   }
 
-  async function actualizarHistorial() {
-    try {
-      const respuesta = await fetch('/api/reportes?limit=20');
-      if (!respuesta.ok) {
-        throw new Error('Respuesta inválida del servidor.');
-      }
-
-      const data = await respuesta.json();
-      const historial = Array.isArray(data?.reportes) ? data.reportes : [];
-      historialBody.innerHTML = '';
-
-      if (!historial.length) {
-        const filaVacia = document.createElement('tr');
-        filaVacia.className = 'empty-row';
-        filaVacia.innerHTML = '<td colspan="4">Aún no se generan reportes.</td>';
-        historialBody.appendChild(filaVacia);
-        return;
-      }
-
-      historial.forEach(registro => {
-        const resumen = `${registro.modulos || 'Todos'} · ${registro.totalRegistros || 0} registro${registro.totalRegistros === 1 ? '' : 's'}`;
-        const usuarioTexto = construirDescripcionUsuario(registro.usuario);
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${escaparHtml(registro.folio)}</td>
-          <td>${formatearFechaHora(registro.fecha)}</td>
-          <td>
-            <span class="history-summary">${escaparHtml(resumen)}</span><br />
-            <span class="history-user">Generado por: ${escaparHtml(usuarioTexto)}</span>
-          </td>
-          <td><button class="btn-share" data-folio="${escaparHtml(registro.folio)}" type="button">Compartir</button></td>
-        `;
-        historialBody.appendChild(tr);
-      });
-
-      historialBody.querySelectorAll('.btn-share').forEach(btn => {
-        btn.addEventListener('click', () => compartir(btn.dataset.folio));
-      });
-    } catch (error) {
-      console.error('No se pudo cargar el historial de reportes:', error);
-      historialBody.innerHTML = '<tr class="empty-row"><td colspan="4">No se pudo cargar el historial de reportes.</td></tr>';
-    }
-  }
-
-  function compartir(folio) {
-    const texto = `https://optistock.local/reportes/${folio}`;
+  function compartir(id) {
+    const texto = `https://optistock.local/reportes/${id}`;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(texto)
         .then(() => alert('Enlace copiado: ' + texto))
@@ -522,22 +467,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function mostrarMensajeManual(texto) {
     alert('Copia manualmente el enlace:\n' + texto);
-  }
-
-  function construirDescripcionUsuario(usuario) {
-    if (!usuario) {
-      return 'Usuario desconocido';
-    }
-
-    const nombre = [usuario.nombre, usuario.apellido].filter(Boolean).join(' ').trim();
-    const nombreVisible = nombre || 'Usuario desconocido';
-    return usuario.rol ? `${nombreVisible} · ${usuario.rol}` : nombreVisible;
-  }
-
-  function escaparHtml(texto) {
-    const div = document.createElement('div');
-    div.textContent = texto == null ? '' : String(texto);
-    return div.innerHTML;
   }
 
   function guardarProgramacion() {
