@@ -583,7 +583,8 @@ CREATE TABLE `usuario` (
   `suscripcion` tinyint(1) DEFAULT 0,
   `intentos_fallidos` int(11) DEFAULT 0,
   `ultimo_intento` datetime DEFAULT NULL,
-  `foto_perfil` varchar(255) DEFAULT 'images/profile.jpg'
+  `foto_perfil` varchar(255) DEFAULT 'images/profile.jpg',
+  `tutorial_visto` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

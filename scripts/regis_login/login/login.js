@@ -16,6 +16,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    const storeTutorialStatus = (userId, status) => {
+        if (!userId) return;
+        const normalizedStatus = (status === 1 || status === '1' || status === true) ? '1' : '0';
+        localStorage.setItem(`tutorialVisto_${userId}`, normalizedStatus);
+        localStorage.removeItem(`tutorialShown_${userId}`);
+    };
+
     // Función para manejar la respuesta del login con Google
     function handleCredentialResponse(response) {
         function parseJwt(token) {
@@ -63,6 +70,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 localStorage.setItem('id_empresa', data.id_empresa);
                 localStorage.setItem('empresa_nombre', data.empresa_nombre);
+
+                storeTutorialStatus(data.id, data.tutorial_visto ?? 0);
                 
                 // Normaliza la ruta antes de guardar en localStorage
                 let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
@@ -143,6 +152,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 localStorage.setItem('id_empresa',      data.id_empresa     ?? '');
                 localStorage.setItem('empresa_nombre',  data.empresa_nombre ?? '');
+
+                storeTutorialStatus(data.id_usuario, data.tutorial_visto ?? 0);
 
                 // Normaliza la ruta antes de guardar en localStorage
                 let fotoPerfil = data.foto_perfil || '/images/profile.jpg';

@@ -21,6 +21,7 @@ $correo = $data->email ?? '';
 $nombre = $data->nombre ?? 'Nombre';
 $apellido = $data->apellido ?? 'Apellido';
 $google_id = $data->google_id ?? '';
+$foto_perfil = $data->picture ?? '';
 
 if (!$correo || !$nombre || !$apellido || !$google_id) {
     echo json_encode(["success" => false, "message" => "Datos incompletos"]);
@@ -28,22 +29,14 @@ if (!$correo || !$nombre || !$apellido || !$google_id) {
 }
 
 // Verificar si el usuario ya existe
-$check = $conn->prepare("SELECT id_usuario, nombre, fecha_nacimiento, telefono, rol, suscripcion FROM usuario WHERE correo = ?");
+$check = $conn->prepare("SELECT id_usuario, nombre, fecha_nacimiento, telefono, rol, suscripcion, tutorial_visto, foto_perfil FROM usuario WHERE correo = ?");
 $check->bind_param("s", $correo);
 $check->execute();
 $check->store_result();
 
 if ($check->num_rows > 0) {
-    $check->bind_result($id, $nom, $fecha, $tel, $rol, $suscripcion);
+    $check->bind_result($id, $nom, $fecha, $tel, $rol, $suscripcion, $tutorialVisto, $foto_perfil);
     $check->fetch();
-
-    $foto_perfil = '';
-    $fotoStmt = $conn->prepare("SELECT foto_perfil FROM usuario WHERE id_usuario = ?");
-    $fotoStmt->bind_param("i", $id);
-    $fotoStmt->execute();
-    $fotoStmt->bind_result($foto_perfil);
-    $fotoStmt->fetch();
-    $fotoStmt->close();
 
     $completo = $fecha !== "0000-00-00" && $tel !== "0000000000";
 
@@ -52,6 +45,7 @@ if ($check->num_rows > 0) {
     $_SESSION['usuario_correo'] = $correo;
     $_SESSION['usuario_rol'] = $rol;
     $_SESSION['usuario_suscripcion'] = $suscripcion;
+    $_SESSION['tutorial_visto'] = (int) $tutorialVisto;
 
     $log = $conn->prepare("INSERT INTO registro_accesos (id_usuario, accion) VALUES (?, 'Inicio')");
     if ($log) {
@@ -68,7 +62,8 @@ if ($check->num_rows > 0) {
         "correo" => $correo,
         "rol" => $rol,
         "suscripcion" => $suscripcion,
-        "foto_perfil" => $foto_perfil
+        "foto_perfil" => $foto_perfil,
+        "tutorial_visto" => (int) $tutorialVisto
     ]);
 } else {
     // Registrar usuario nuevo (el rol se asigna automáticamente por defecto)
@@ -94,6 +89,7 @@ if ($check->num_rows > 0) {
         $_SESSION['usuario_nombre'] = $nombre;
         $_SESSION['usuario_correo'] = $correo;
         $_SESSION['usuario_rol'] = $rol;
+        $_SESSION['tutorial_visto'] = 0;
 
         $log = $conn->prepare("INSERT INTO registro_accesos (id_usuario, accion) VALUES (?, 'Inicio')");
         if ($log) {
@@ -109,7 +105,8 @@ if ($check->num_rows > 0) {
             "nombre" => $nombre,
             "correo" => $correo,
             "rol" => $rol,
-            "foto_perfil" => $foto_perfil
+            "foto_perfil" => $foto_perfil,
+            "tutorial_visto" => 0
         ]);
     } else {
         echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);
