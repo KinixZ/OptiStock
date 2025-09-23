@@ -22,6 +22,21 @@ const stockAlertApplyBtn = document.getElementById('stockAlertApplyBtn');
 const stockAlertCancelBtn = document.getElementById('stockAlertCancelBtn');
 const recentActivityList = document.getElementById('recentActivityList');
 const recentActivityRefreshBtn = document.getElementById('recentActivityRefreshBtn');
+const notificationWrapper = document.querySelector('.notification-wrapper');
+const notificationBell = document.getElementById('notificationBell');
+const notificationTray = document.getElementById('notificationTray');
+const notificationList = document.getElementById('notificationList');
+const notificationBadge = document.querySelector('.notification-badge');
+const notificationCounter = document.querySelector('.notification-tray__counter');
+const notificationViewAll = document.getElementById('notificationViewAll');
+
+let activeEmpresaId = null;
+let activeUsuarioId = null;
+let activeUsuarioRol = null;
+let lastNotificationsFetch = 0;
+const NOTIFICATION_REFRESH_MS = 60 * 1000;
+let notificationAbortController = null;
+let cachedNotifications = [];
 
 let navegadorTimeZone = null;
 
@@ -98,6 +113,297 @@ function sendPushNotification(title, message) {
         });
     } else {
         alert(message);
+    }
+}
+
+function formatRelativeNotificationTime(dateString) {
+    if (!dateString) return '';
+
+    const normalized = dateString.replace(' ', 'T');
+    const referenceDate = new Date(normalized);
+
+    if (Number.isNaN(referenceDate.getTime())) {
+        return '';
+    }
+
+    const now = new Date();
+    const diffMs = now.getTime() - referenceDate.getTime();
+
+    if (diffMs < 0) {
+        const futureSeconds = Math.abs(Math.floor(diffMs / 1000));
+        const futureMinutes = Math.floor(futureSeconds / 60);
+        if (futureMinutes < 1) return 'Disponible en segundos';
+        if (futureMinutes < 60) {
+            return `Disponible en ${futureMinutes} minuto${futureMinutes === 1 ? '' : 's'}`;
+        }
+        const futureHours = Math.floor(futureMinutes / 60);
+        if (futureHours < 24) {
+            return `Disponible en ${futureHours} hora${futureHours === 1 ? '' : 's'}`;
+        }
+        const futureDays = Math.floor(futureHours / 24);
+        return `Disponible en ${futureDays} día${futureDays === 1 ? '' : 's'}`;
+    }
+
+    const diffSeconds = Math.floor(diffMs / 1000);
+    if (diffSeconds < 60) {
+        return 'Hace unos segundos';
+    }
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+        return `Hace ${diffMinutes} minuto${diffMinutes === 1 ? '' : 's'}`;
+    }
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+        return `Hace ${diffHours} hora${diffHours === 1 ? '' : 's'}`;
+    }
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) {
+        return `Hace ${diffDays} día${diffDays === 1 ? '' : 's'}`;
+    }
+
+    return referenceDate.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short'
+    });
+}
+
+function getNotificationIcon(prioridad) {
+    switch ((prioridad || '').toLowerCase()) {
+        case 'alta':
+            return 'fa-exclamation-triangle';
+        case 'baja':
+            return 'fa-info-circle';
+        default:
+            return 'fa-clipboard-list';
+    }
+}
+
+function resolveNotificationRoute(route) {
+    if (!route) return null;
+    const trimmed = route.trim();
+    if (!trimmed) return null;
+    if (trimmed.toLowerCase() === 'inicio') return null;
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+    if (trimmed.startsWith('/')) {
+        return trimmed;
+    }
+    if (trimmed.startsWith('../')) {
+        return trimmed;
+    }
+    return trimmed;
+}
+
+function renderNotificationPlaceholder(message, options = {}) {
+    if (!notificationList) return;
+
+    const { modifier } = options;
+
+    notificationList.innerHTML = '';
+
+    const listItem = document.createElement('li');
+    listItem.className = 'notification-tray__item notification-tray__item--placeholder';
+    if (modifier === 'error') {
+        listItem.classList.add('notification-tray__item--error');
+    }
+
+    const content = document.createElement('div');
+    content.className = 'notification-tray__content';
+
+    const paragraph = document.createElement('p');
+    paragraph.className = 'notification-tray__placeholder-text';
+    paragraph.textContent = message;
+
+    content.appendChild(paragraph);
+    listItem.appendChild(content);
+    notificationList.appendChild(listItem);
+}
+
+function updateNotificationCounters(newCount) {
+    const effectiveCount = Number.isFinite(newCount) ? Math.max(newCount, 0) : 0;
+
+    if (notificationCounter) {
+        notificationCounter.textContent = effectiveCount > 0
+            ? `${effectiveCount} ${effectiveCount === 1 ? 'nueva' : 'nuevas'}`
+            : 'Sin nuevas';
+    }
+
+    if (notificationBadge) {
+        if (effectiveCount > 0) {
+            notificationBadge.textContent = effectiveCount > 99 ? '99+' : String(effectiveCount);
+            notificationBadge.classList.remove('notification-badge--hidden');
+        } else {
+            notificationBadge.textContent = '';
+            notificationBadge.classList.add('notification-badge--hidden');
+        }
+    }
+}
+
+function renderNotifications(notifications = []) {
+    if (!notificationList) return;
+
+    cachedNotifications = Array.isArray(notifications) ? notifications : [];
+
+    notificationList.innerHTML = '';
+
+    if (!cachedNotifications.length) {
+        renderNotificationPlaceholder('No hay notificaciones disponibles en este momento.');
+        updateNotificationCounters(0);
+        return;
+    }
+
+    let newCount = 0;
+
+    cachedNotifications.forEach(notification => {
+        const listItem = document.createElement('li');
+        listItem.className = 'notification-tray__item';
+
+        if ((notification.prioridad || '').toLowerCase() === 'alta') {
+            listItem.classList.add('notification-tray__item--critical');
+        }
+
+        const isNew = Boolean(
+            notification.es_nueva ?? ['Pendiente', 'Enviada'].includes(notification.estado)
+        );
+
+        if (isNew) {
+            newCount += 1;
+            listItem.classList.add('notification-tray__item--new');
+        }
+
+        const iconWrapper = document.createElement('div');
+        iconWrapper.className = 'notification-tray__icon';
+
+        const icon = document.createElement('i');
+        icon.className = `fas ${getNotificationIcon(notification.prioridad)}`;
+        iconWrapper.appendChild(icon);
+
+        const content = document.createElement('div');
+        content.className = 'notification-tray__content';
+
+        const title = document.createElement('h4');
+        title.textContent = notification.titulo || 'Notificación';
+
+        const message = document.createElement('p');
+        message.textContent = notification.mensaje || '';
+
+        const time = document.createElement('span');
+        time.className = 'notification-tray__time';
+        time.textContent = formatRelativeNotificationTime(notification.fecha_disponible_desde);
+
+        content.append(title, message, time);
+        listItem.append(iconWrapper, content);
+
+        const targetRoute = resolveNotificationRoute(notification.ruta_destino);
+        if (targetRoute) {
+            const openTarget = () => {
+                if (typeof window.loadPageIntoMainFromNotifications === 'function') {
+                    window.loadPageIntoMainFromNotifications(targetRoute, {
+                        title: notification.titulo || ''
+                    });
+                } else {
+                    window.location.href = targetRoute;
+                }
+            };
+
+            listItem.classList.add('notification-tray__item--actionable');
+            listItem.tabIndex = 0;
+            listItem.addEventListener('click', () => {
+                openTarget();
+                if (notificationWrapper) {
+                    notificationWrapper.classList.remove('open');
+                }
+                if (notificationBell) {
+                    notificationBell.setAttribute('aria-expanded', 'false');
+                }
+            });
+            listItem.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openTarget();
+                    if (notificationWrapper) {
+                        notificationWrapper.classList.remove('open');
+                    }
+                    if (notificationBell) {
+                        notificationBell.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            });
+        }
+
+        notificationList.appendChild(listItem);
+    });
+
+    updateNotificationCounters(newCount);
+}
+
+async function fetchNotifications(options = {}) {
+    if (!notificationList || !activeEmpresaId) {
+        return;
+    }
+
+    const { force = false } = options;
+    const now = Date.now();
+
+    if (!force && now - lastNotificationsFetch < NOTIFICATION_REFRESH_MS) {
+        return;
+    }
+
+    if (notificationAbortController) {
+        notificationAbortController.abort();
+    }
+
+    notificationAbortController = new AbortController();
+    const { signal } = notificationAbortController;
+
+    if (!cachedNotifications.length) {
+        renderNotificationPlaceholder('Cargando notificaciones...');
+    }
+
+    const params = new URLSearchParams();
+    params.set('id_empresa', activeEmpresaId);
+    if (activeUsuarioId) {
+        params.set('id_usuario', activeUsuarioId);
+    }
+    if (activeUsuarioRol) {
+        params.set('rol', activeUsuarioRol);
+    }
+    params.set('limite', '20');
+
+    try {
+        const response = await fetch(`/scripts/php/get_notifications.php?${params.toString()}`, {
+            signal,
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data || data.success !== true) {
+            throw new Error(data && data.message ? data.message : 'No se pudo obtener la respuesta del servidor.');
+        }
+
+        lastNotificationsFetch = Date.now();
+        cachedNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+        renderNotifications(cachedNotifications);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return;
+        }
+
+        console.error('No se pudieron cargar las notificaciones:', error);
+        if (!cachedNotifications.length) {
+            renderNotificationPlaceholder('No se pudieron cargar las alertas.', { modifier: 'error' });
+            updateNotificationCounters(0);
+        } else {
+            renderNotifications(cachedNotifications);
+        }
+    } finally {
+        notificationAbortController = null;
     }
 }
 
@@ -980,10 +1286,6 @@ menuItems.forEach(item => {
 });
 
 // Notification tray handlers
-const notificationWrapper = document.querySelector('.notification-wrapper');
-const notificationBell = document.getElementById('notificationBell');
-const notificationTray = document.getElementById('notificationTray');
-
 if (notificationWrapper && notificationBell && notificationTray) {
     const closeTray = () => {
         if (!notificationWrapper.classList.contains('open')) {
@@ -1000,6 +1302,7 @@ if (notificationWrapper && notificationBell && notificationTray) {
         notificationBell.setAttribute('aria-expanded', String(isOpen));
 
         if (isOpen) {
+            fetchNotifications();
             notificationTray.focus();
         }
     });
@@ -1014,6 +1317,34 @@ if (notificationWrapper && notificationBell && notificationTray) {
         if (event.key === 'Escape') {
             closeTray();
             notificationBell.focus();
+        }
+    });
+}
+
+if (notificationViewAll) {
+    notificationViewAll.addEventListener('click', () => {
+        const targetNotification = cachedNotifications.find(notification => resolveNotificationRoute(notification.ruta_destino));
+
+        if (targetNotification) {
+            const targetRoute = resolveNotificationRoute(targetNotification.ruta_destino);
+            if (targetRoute) {
+                if (typeof window.loadPageIntoMainFromNotifications === 'function') {
+                    window.loadPageIntoMainFromNotifications(targetRoute, {
+                        title: targetNotification.titulo || ''
+                    });
+                } else {
+                    window.location.href = targetRoute;
+                }
+            }
+        } else {
+            fetchNotifications({ force: true });
+        }
+
+        if (notificationWrapper) {
+            notificationWrapper.classList.remove('open');
+        }
+        if (notificationBell) {
+            notificationBell.setAttribute('aria-expanded', 'false');
         }
     });
 }
@@ -1242,6 +1573,10 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     }
 
+    window.loadPageIntoMainFromNotifications = (pageUrl, options = {}) => {
+        loadPageIntoMain(pageUrl, options);
+    };
+
     function showSearchLoader(target) {
         if (!target) return;
         target.innerHTML = `
@@ -1375,6 +1710,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Mostrar nombre y rol del usuario
     const nombre = localStorage.getItem('usuario_nombre');
     const rol = localStorage.getItem('usuario_rol');
+    activeUsuarioRol = rol || null;
     const userNameEl = document.querySelector('.user-name');
     const userRoleEl = document.querySelector('.user-role');
 
@@ -1425,6 +1761,7 @@ if (userImgEl) {
 
     // Verificación empresa
     const userId = localStorage.getItem('usuario_id');
+    activeUsuarioId = userId ? parseInt(userId, 10) || null : null;
     if (!userId) {
         alert("No hay sesión activa.");
         window.location.href = "../../pages/regis_login/login/login.html";
@@ -1440,6 +1777,8 @@ if (userImgEl) {
     .then(data => {
         console.log("🔍 check_empresa.php:", data);
         if (data.success) {
+    activeEmpresaId = data.empresa_id;
+    fetchNotifications({ force: true });
     const tituloEmpresa = document.getElementById('empresaTitulo');
     if (tituloEmpresa) {
         tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
