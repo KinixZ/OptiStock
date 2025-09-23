@@ -593,28 +593,99 @@ function toggleStockAlertMenu(forceOpen) {
 
 
 const metricsData = {
-    highRotation: [
-        { producto: 'Baterías AA', cantidad: 120 },
-        { producto: 'Mouse Inalámbrico', cantidad: 75 },
-        { producto: 'Teclados', cantidad: 60 }
-    ],
     zoneCapacity: [
         { zona: 'A1', porcentaje: 95 },
         { zona: 'B2', porcentaje: 90 }
     ]
 };
 
-function renderHighRotation() {
+async function loadHighRotation() {
     if (!highRotationList) return;
-    highRotationList.innerHTML = '';
-    metricsData.highRotation.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'activity-item';
-        li.innerHTML = `<div class="activity-icon"><i class="fas fa-box"></i></div>
-            <div class="activity-details"><div class="activity-description">${item.producto}</div>
-            <div class="activity-time">${item.cantidad} mov.</div></div>`;
-        highRotationList.appendChild(li);
-    });
+
+    const empresaId = localStorage.getItem('id_empresa');
+    if (!empresaId) {
+        setListState(highRotationList, 'Registra tu empresa para ver los productos con mayor rotación.', 'fas fa-info-circle', 'card-empty-state');
+        return;
+    }
+
+    setListState(highRotationList, 'Cargando rotación...', 'fas fa-circle-notch', 'card-loading-state');
+
+    try {
+        const response = await fetch(`/scripts/php/get_high_rotation.php?id_empresa=${encodeURIComponent(empresaId)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        if (payload && payload.success === false) {
+            setListState(highRotationList, payload.message || 'No fue posible obtener la rotación.', 'fas fa-info-circle', 'card-empty-state');
+            return;
+        }
+
+        const productos = Array.isArray(payload?.productos)
+            ? payload.productos
+            : (Array.isArray(payload) ? payload : []);
+
+        if (!productos.length) {
+            setListState(highRotationList, 'Sin movimientos registrados en las últimas 24 horas.', 'fas fa-info-circle', 'card-empty-state');
+            return;
+        }
+
+        highRotationList.innerHTML = '';
+
+        productos.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'activity-item';
+
+            const iconWrapper = document.createElement('div');
+            iconWrapper.className = 'activity-icon';
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-box';
+            iconWrapper.appendChild(icon);
+
+            const details = document.createElement('div');
+            details.className = 'activity-details';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'activity-description';
+            nameDiv.textContent = item.producto_nombre || 'Producto sin nombre';
+
+            const movementDiv = document.createElement('div');
+            movementDiv.className = 'activity-time';
+            const totalMovimientos = Number.isFinite(item.total_movimientos)
+                ? item.total_movimientos
+                : Number(item.total_movimientos) || 0;
+            movementDiv.textContent = `${totalMovimientos} mov.`;
+
+            const totalUnidades = Number.isFinite(item.total_unidades)
+                ? item.total_unidades
+                : Number(item.total_unidades) || 0;
+            const ultimaFecha = parseDateFromMysql(item.ultima_fecha);
+            const tooltipPartes = [`Unidades movidas: ${totalUnidades}`];
+            tooltipPartes.push(`Movimientos registrados: ${totalMovimientos}`);
+            if (ultimaFecha) {
+                const { display, tooltip } = buildDateDisplay(ultimaFecha);
+                if (display) {
+                    tooltipPartes.push(`Último movimiento: ${display}`);
+                }
+                if (tooltip) {
+                    tooltipPartes.push(tooltip);
+                }
+            }
+            movementDiv.title = tooltipPartes.join('\n');
+
+            details.appendChild(nameDiv);
+            details.appendChild(movementDiv);
+
+            li.appendChild(iconWrapper);
+            li.appendChild(details);
+
+            highRotationList.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Error loading high rotation data:', error);
+        setListState(highRotationList, 'No se pudo cargar la rotación. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+    }
 }
 
 function renderZoneCapacity() {
@@ -845,7 +916,7 @@ async function loadRecentMovements() {
 }
 
 function loadMetrics() {
-    renderHighRotation();
+    loadHighRotation();
     renderZoneCapacity();
     loadStockAlerts();
     loadRecentMovements();
