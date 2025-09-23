@@ -74,6 +74,7 @@ if ($user) {
         $_SESSION['usuario_rol']         = $user['rol'];
         $_SESSION['usuario_suscripcion'] = $user['suscripcion'];
         $_SESSION['usuario_foto_perfil'] = $user['foto_perfil'];
+        $_SESSION['tutorial_visto']      = isset($user['tutorial_visto']) ? (int) $user['tutorial_visto'] : 0;
         registrarAcceso($conn, $user['id_usuario'], 'Inicio');
 
         /*─────────────────────────────────────────────
@@ -131,7 +132,8 @@ if ($user) {
             "suscripcion"    => $user['suscripcion'],
             "foto_perfil"    => $user['foto_perfil'],
             "id_empresa"     => $id_empresa,
-            "empresa_nombre" => $empresa_nombre
+            "empresa_nombre" => $empresa_nombre,
+            "tutorial_visto" => isset($user['tutorial_visto']) ? (int) $user['tutorial_visto'] : 0
         ];
 
         if ($user['verificacion_cuenta'] == 0) {

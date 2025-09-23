@@ -1187,23 +1187,60 @@ const tutorialIndicator = document.getElementById('tutorialIndicator');
 const nextTutorial = document.getElementById('nextTutorial');
 const skipTutorial = document.getElementById('skipTutorial');
 const closeTutorial = document.getElementById('closeTutorial');
+const openTutorialBtn = document.getElementById('openTutorialBtn');
 let tutorialHole = null;
 
-// Show tutorial only the first time each user logs in
-function checkFirstVisit() {
+const updateLocalTutorialFlag = (isSeen) => {
     const userId = localStorage.getItem('usuario_id');
     if (!userId) return;
-    if (!localStorage.getItem(`tutorialShown_${userId}`)) {
-        startTutorial();
+    localStorage.setItem(`tutorialVisto_${userId}`, isSeen ? '1' : '0');
+    localStorage.removeItem(`tutorialShown_${userId}`);
+};
+
+async function checkFirstVisit() {
+    const userId = localStorage.getItem('usuario_id');
+    if (!userId) return;
+
+    try {
+        const response = await fetch('/scripts/php/get_tutorial_status.php', {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            const alreadySeen = Number(data.tutorial_visto) === 1;
+            updateLocalTutorialFlag(alreadySeen);
+            if (!alreadySeen) {
+                startTutorial();
+            }
+        } else {
+            const storedFlag = localStorage.getItem(`tutorialVisto_${userId}`);
+            if (storedFlag !== '1') {
+                startTutorial();
+            }
+        }
+    } catch (error) {
+        console.error('Error al verificar el estado del tutorial:', error);
+        const storedFlag = localStorage.getItem(`tutorialVisto_${userId}`);
+        if (storedFlag !== '1') {
+            startTutorial();
+        }
     }
 }
 
 // Start the tutorial
 function startTutorial() {
     currentStep = 0;
-    showTutorialStep(currentStep);
     tutorialOverlayBg.style.display = 'block';
     tutorialCardContainer.style.display = 'flex';
+    requestAnimationFrame(() => {
+        showTutorialStep(currentStep);
+    });
 }
 
 // Show specific tutorial step
@@ -1312,10 +1349,39 @@ function endTutorial() {
         tutorialHole.remove();
         tutorialHole = null;
     }
+    markTutorialAsSeen();
+}
+
+function markTutorialAsSeen() {
     const userId = localStorage.getItem('usuario_id');
-    if (userId) {
-        localStorage.setItem(`tutorialShown_${userId}`, 'true');
+    if (!userId) {
+        return;
     }
+
+    if (localStorage.getItem(`tutorialVisto_${userId}`) === '1') {
+        return;
+    }
+
+    fetch('/scripts/php/update_tutorial_status.php', {
+        method: 'POST',
+        credentials: 'include'
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                updateLocalTutorialFlag(true);
+            } else {
+                console.warn('No se pudo actualizar el estado del tutorial:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error al actualizar el estado del tutorial:', error);
+        });
 }
 
 // Event Listeners
@@ -1325,6 +1391,12 @@ nextTutorial.addEventListener('click', () => {
 
 skipTutorial.addEventListener('click', endTutorial);
 closeTutorial.addEventListener('click', endTutorial);
+
+if (openTutorialBtn) {
+    openTutorialBtn.addEventListener('click', () => {
+        startTutorial();
+    });
+}
 
 // Check for first visit when page loads
 window.addEventListener('DOMContentLoaded', checkFirstVisit);
