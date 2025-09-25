@@ -206,6 +206,7 @@ prodCategoria?.addEventListener('change', () => {
   let scannerActivo = false;
   let preferredCameraId = null;
   let fallbackCameraId = null;
+  let avisoCantidadCeroMostrado = false;
 
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
@@ -282,12 +283,14 @@ prodCategoria?.addEventListener('change', () => {
 
     const tipo = scanTipoSelect.value === 'egreso' ? 'egreso' : 'ingreso';
     const stockActual = obtenerStockNumerico(scanProductoActual);
+    const rawCantidad = scanCantidadInput.value.trim();
+    const cantidadActual = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
 
     scanCantidadInput.min = '1';
 
     if (tipo === 'egreso') {
       if (stockActual <= 0) {
-        scanCantidadInput.value = '1';
+        scanCantidadInput.value = '';
         scanCantidadInput.disabled = true;
         scanCantidadInput.removeAttribute('max');
         if (scanCantidadHelp) {
@@ -301,8 +304,7 @@ prodCategoria?.addEventListener('change', () => {
 
       scanCantidadInput.disabled = false;
       scanCantidadInput.max = String(stockActual);
-      const cantidadActual = parseInt(scanCantidadInput.value, 10);
-      if (Number.isFinite(cantidadActual) && cantidadActual > stockActual) {
+      if (rawCantidad !== '' && Number.isFinite(cantidadActual) && cantidadActual > stockActual) {
         scanCantidadInput.value = String(stockActual);
       }
       if (scanCantidadHelp) {
@@ -346,10 +348,11 @@ prodCategoria?.addEventListener('change', () => {
       scanTipoSelect.disabled = true;
     }
     if (scanCantidadInput) {
-      scanCantidadInput.value = '1';
+      scanCantidadInput.value = '';
       scanCantidadInput.disabled = true;
       scanCantidadInput.removeAttribute('max');
     }
+    avisoCantidadCeroMostrado = false;
     if (scanCantidadHelp) {
       scanCantidadHelp.textContent = 'Escanea un producto para registrar su movimiento.';
     }
@@ -374,10 +377,11 @@ prodCategoria?.addEventListener('change', () => {
     }
     if (scanCantidadInput) {
       scanCantidadInput.disabled = false;
-      scanCantidadInput.value = '1';
+      scanCantidadInput.value = '';
       scanCantidadInput.min = '1';
       scanCantidadInput.removeAttribute('max');
     }
+    avisoCantidadCeroMostrado = false;
     if (scanRegistrar) {
       scanRegistrar.disabled = false;
     }
@@ -485,7 +489,6 @@ prodCategoria?.addEventListener('change', () => {
       }
       return;
     }
-
     mostrarProductoEscaneado(producto);
   }
 
@@ -503,10 +506,41 @@ prodCategoria?.addEventListener('change', () => {
     if (!scanCantidadInput) {
       return;
     }
-    let value = parseInt(scanCantidadInput.value, 10);
-    if (!Number.isFinite(value) || value < 1) {
-      value = 1;
+
+    const raw = scanCantidadInput.value.trim();
+
+    if (raw === '') {
+      avisoCantidadCeroMostrado = false;
+      actualizarAyudaCantidad();
+      return;
     }
+
+    let value = parseInt(raw, 10);
+
+    if (!Number.isFinite(value)) {
+      scanCantidadInput.value = '';
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    if (value === 0) {
+      if (!avisoCantidadCeroMostrado) {
+        showToast('No se puede poner 0 a secas.', 'error');
+        avisoCantidadCeroMostrado = true;
+      }
+      scanCantidadInput.value = '';
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    avisoCantidadCeroMostrado = false;
+
+    if (value < 0) {
+      scanCantidadInput.value = '';
+      actualizarAyudaCantidad();
+      return;
+    }
+
     if (scanProductoActual && scanTipoSelect?.value === 'egreso') {
       const stockActual = obtenerStockNumerico(scanProductoActual);
       if (stockActual > 0 && value > stockActual) {
@@ -540,12 +574,13 @@ prodCategoria?.addEventListener('change', () => {
     }
 
     const tipo = scanTipoSelect?.value === 'egreso' ? 'egreso' : 'ingreso';
-    const cantidad = parseInt(scanCantidadInput?.value ?? '1', 10);
+    const rawCantidad = scanCantidadInput?.value?.trim() ?? '';
+    const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
 
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
       showToast('La cantidad debe ser mayor a cero.', 'error');
       if (scanCantidadInput) {
-        scanCantidadInput.value = '1';
+        scanCantidadInput.value = '';
       }
       actualizarAyudaCantidad();
       return;
@@ -580,7 +615,6 @@ prodCategoria?.addEventListener('change', () => {
         tipo,
         cantidad
       };
-
       const resultado = await fetchAPI(API.movimiento, 'POST', movimientoPayload);
       if (resultado?.success !== true) {
         throw new Error(resultado?.error || 'No se pudo registrar el movimiento');
@@ -597,7 +631,7 @@ prodCategoria?.addEventListener('change', () => {
       scanProductoActual.stock = nuevoStock;
 
       if (scanCantidadInput) {
-        scanCantidadInput.value = '1';
+        scanCantidadInput.value = '';
       }
       if (qrHelperText) {
         qrHelperText.textContent = 'Movimiento registrado. Puedes escanear otro código o ajustar el mismo producto.';
