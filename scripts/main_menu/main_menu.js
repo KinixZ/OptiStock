@@ -1493,12 +1493,34 @@ if (notificationViewAll) {
 }
 
 // Quick actions buttons
-document.getElementById('ingresoFlashBtn').addEventListener('click', function() {
-    alert('Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
+const ingresoFlashBtn = document.getElementById('ingresoFlashBtn');
+const egresoFlashBtn = document.getElementById('egresoFlashBtn');
+
+const launchFlashScanner = (tipo, fallbackMessage) => {
+    const abrirEscaner = window.qrMovimiento?.abrir;
+    if (typeof abrirEscaner !== 'function') {
+        alert(fallbackMessage);
+        return;
+    }
+
+    abrirEscaner(tipo, { bloquearTipo: true })
+        .then(success => {
+            if (success === false) {
+                alert(fallbackMessage);
+            }
+        })
+        .catch(error => {
+            console.error('No se pudo abrir el escáner desde la pantalla principal', error);
+            alert(fallbackMessage);
+        });
+};
+
+ingresoFlashBtn?.addEventListener('click', () => {
+    launchFlashScanner('ingreso', 'Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
 });
 
-document.getElementById('egresoFlashBtn').addEventListener('click', function() {
-    alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
+egresoFlashBtn?.addEventListener('click', () => {
+    launchFlashScanner('egreso', 'Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
 });
 
 // Manual tutorial trigger for testing (remove in production)
