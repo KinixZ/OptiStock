@@ -30,6 +30,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
   const subcategoriaFormContainer = document.getElementById('subcategoriaFormContainer');
+  const inventoryPageElement = document.querySelector('.inventory-page');
 
   const tabButtons = {
     producto: btnProductos,
@@ -189,10 +190,26 @@ prodCategoria?.addEventListener('change', () => {
   let qrScanner;
   const scanModalElement = document.getElementById('scanModal');
   const scanModal = scanModalElement ? new bootstrap.Modal(scanModalElement) : null;
+  const qrHelperText = document.getElementById('qrHelperText');
+  const textoAyudaEscaneoBase = 'Coloca el código frente a la cámara para registrar el movimiento y confirma la operación antes de guardarla.';
+  const textoAyudaProducto = 'Producto identificado. Selecciona el tipo de movimiento y confirma la cantidad antes de guardar.';
+  const scanResult = document.getElementById('scanResult');
+  const scanProdName = document.getElementById('scanProductoNombre');
+  const scanProdCodigo = document.getElementById('scanProductoCodigo');
+  const scanProdStock = document.getElementById('scanProductoStock');
+  const scanTipoSelect = document.getElementById('scanMovimientoTipo');
+  const scanCantidadInput = document.getElementById('scanMovimientoCantidad');
+  const scanCantidadHelp = document.getElementById('scanCantidadAyuda');
+  const scanRegistrar = document.getElementById('scanRegistrar');
+  const scanReintentar = document.getElementById('scanReintentar');
+  let scanProductoActual = null;
   let iniciarEscaneoPendiente = false;
   let scannerActivo = false;
   let preferredCameraId = null;
   let fallbackCameraId = null;
+  let avisoCantidadCeroMostrado = false;
+  let tipoMovimientoPrefijado = 'ingreso';
+  let tipoMovimientoBloqueado = false;
 
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
@@ -213,53 +230,452 @@ prodCategoria?.addEventListener('change', () => {
     }
   }
 
-  async function procesarLectura(decodedText) {
-    await detenerScanner();
-    qrReader?.classList.add('d-none');
-    scanModal?.hide();
+  const getScannerConfig = () => {
+    const readerWidth = qrReader?.offsetWidth || 0;
+    const maxBox = Math.min(420, Math.max(readerWidth - 40, 0));
+    const size = Math.max(260, maxBox || 320);
+    const config = {
+      fps: 10,
+      qrbox: { width: size, height: size },
+      aspectRatio: 1
+    };
+    if (window.Html5QrcodeSupportedFormats?.QR_CODE) {
+      config.formatsToSupport = [window.Html5QrcodeSupportedFormats.QR_CODE];
+    }
+    return config;
+  };
 
-    const productoId = parseInt(decodedText, 10);
-    if (!Number.isFinite(productoId)) {
-      showToast('Código QR no reconocido', 'error');
+  const obtenerStockNumerico = producto => {
+    if (!producto) {
+      return 0;
+    }
+    const raw = producto.stock ?? producto.stock_actual ?? 0;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  function actualizarUIProductoEscaneado() {
+    if (!scanProductoActual) {
+      return;
+    }
+    if (scanProdName) {
+      scanProdName.textContent = scanProductoActual.nombre || `Producto #${scanProductoActual.id}`;
+    }
+    if (scanProdCodigo) {
+      scanProdCodigo.textContent = `ID interno: ${scanProductoActual.id}`;
+    }
+    if (scanProdStock) {
+      scanProdStock.textContent = String(obtenerStockNumerico(scanProductoActual));
+    }
+  }
+
+  function actualizarAyudaCantidad() {
+    if (!scanProductoActual) {
+      if (scanCantidadHelp) {
+        scanCantidadHelp.textContent = 'Escanea un producto para registrar su movimiento.';
+      }
+      if (scanRegistrar) {
+        scanRegistrar.disabled = true;
+      }
       return;
     }
 
-    try {
-      const movimientoPayload = { empresa_id: EMP_ID, producto_id: productoId, tipo: 'ingreso', cantidad: 1 };
-      const response = await fetch('../../scripts/php/guardar_movimientos.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(movimientoPayload)
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al registrar movimiento');
-      }
-
-      const result = await response.json();
-      if (result?.success !== true) {
-        throw new Error(result?.error || 'Error al registrar movimiento');
-      }
-      await cargarProductos();
-      renderResumen();
-      showToast('Movimiento registrado', 'success');
-      document.dispatchEvent(new CustomEvent('movimientoRegistrado', {
-        detail: {
-          productoId: productoId,
-          tipo: movimientoPayload.tipo,
-          cantidad: movimientoPayload.cantidad,
-          stockActual: result.stock_actual ?? null
-        }
-      }));
-    } catch (error) {
-      console.error(error);
-      showToast('Error al registrar movimiento', 'error');
+    if (!scanTipoSelect || !scanCantidadInput) {
+      return;
     }
+
+    const tipo = scanTipoSelect.value === 'egreso' ? 'egreso' : 'ingreso';
+    const stockActual = obtenerStockNumerico(scanProductoActual);
+    const rawCantidad = scanCantidadInput.value.trim();
+    const cantidadActual = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
+
+    scanCantidadInput.min = '1';
+
+    if (tipo === 'egreso') {
+      if (stockActual <= 0) {
+        scanCantidadInput.value = '';
+        scanCantidadInput.disabled = true;
+        scanCantidadInput.removeAttribute('max');
+        if (scanCantidadHelp) {
+          scanCantidadHelp.textContent = 'No hay unidades disponibles para registrar un egreso.';
+        }
+        if (scanRegistrar) {
+          scanRegistrar.disabled = true;
+        }
+        return;
+      }
+
+      scanCantidadInput.disabled = false;
+      scanCantidadInput.max = String(stockActual);
+      if (rawCantidad !== '' && Number.isFinite(cantidadActual) && cantidadActual > stockActual) {
+        scanCantidadInput.value = String(stockActual);
+      }
+      if (scanCantidadHelp) {
+        const plural = stockActual === 1 ? '' : 'es';
+        scanCantidadHelp.textContent = `Puedes retirar hasta ${stockActual} unidad${plural}.`;
+      }
+      if (scanRegistrar) {
+        scanRegistrar.disabled = false;
+      }
+      return;
+    }
+
+    scanCantidadInput.disabled = false;
+    scanCantidadInput.removeAttribute('max');
+    if (scanCantidadHelp) {
+      scanCantidadHelp.textContent = 'Las unidades ingresadas se sumarán al stock actual.';
+    }
+    if (scanRegistrar) {
+      scanRegistrar.disabled = false;
+    }
+  }
+
+  function prepararEscaneoUI() {
+    scanProductoActual = null;
+    scanResult?.classList.add('d-none');
+    qrReader?.classList.remove('d-none');
+    if (qrHelperText) {
+      qrHelperText.textContent = textoAyudaEscaneoBase;
+    }
+    if (scanProdName) {
+      scanProdName.textContent = 'Producto seleccionado';
+    }
+    if (scanProdCodigo) {
+      scanProdCodigo.textContent = 'ID interno:';
+    }
+    if (scanProdStock) {
+      scanProdStock.textContent = '0';
+    }
+    if (scanTipoSelect) {
+      scanTipoSelect.value = tipoMovimientoPrefijado;
+      scanTipoSelect.disabled = true;
+    }
+    if (scanCantidadInput) {
+      scanCantidadInput.value = '';
+      scanCantidadInput.disabled = true;
+      scanCantidadInput.removeAttribute('max');
+    }
+    avisoCantidadCeroMostrado = false;
+    if (scanCantidadHelp) {
+      scanCantidadHelp.textContent = 'Escanea un producto para registrar su movimiento.';
+    }
+    if (scanRegistrar) {
+      scanRegistrar.disabled = true;
+    }
+  }
+
+  function mostrarProductoEscaneado(producto) {
+    if (!producto) {
+      return;
+    }
+    scanProductoActual = producto;
+    qrReader?.classList.add('d-none');
+    scanResult?.classList.remove('d-none');
+    if (qrHelperText) {
+      qrHelperText.textContent = textoAyudaProducto;
+    }
+    if (scanTipoSelect) {
+      scanTipoSelect.value = tipoMovimientoPrefijado;
+      scanTipoSelect.disabled = tipoMovimientoBloqueado;
+    }
+    if (scanCantidadInput) {
+      scanCantidadInput.disabled = false;
+      scanCantidadInput.value = '';
+      scanCantidadInput.min = '1';
+      scanCantidadInput.removeAttribute('max');
+    }
+    avisoCantidadCeroMostrado = false;
+    if (scanRegistrar) {
+      scanRegistrar.disabled = false;
+    }
+    actualizarUIProductoEscaneado();
+    actualizarAyudaCantidad();
+  }
+
+  async function iniciarScanner() {
+    if (!scanModalElement?.classList.contains('show')) {
+      iniciarEscaneoPendiente = true;
+      return;
+    }
+    if (scannerActivo) {
+      return;
+    }
+    if (!qrReader) {
+      showToast('No se encontró el lector QR en la interfaz', 'error');
+      return;
+    }
+
+    if (!qrScanner) {
+      qrScanner = new Html5Qrcode('qrReader');
+    }
+
+    const config = getScannerConfig();
+
+    const startWithCamera = async cameraId => {
+      if (!cameraId) {
+        await qrScanner.start({ facingMode: { ideal: 'environment' } }, config, procesarLectura, handleScanError);
+        return;
+      }
+      await qrScanner.start({ deviceId: { exact: cameraId } }, config, procesarLectura, handleScanError);
+    };
+
+    try {
+      await startWithCamera(preferredCameraId);
+      scannerActivo = true;
+      iniciarEscaneoPendiente = false;
+    } catch (error) {
+      console.warn('No se pudo iniciar la cámara preferida, intentando alternativa.', error);
+      if (fallbackCameraId && fallbackCameraId !== preferredCameraId) {
+        try {
+          await startWithCamera(fallbackCameraId);
+          scannerActivo = true;
+          iniciarEscaneoPendiente = false;
+          return;
+        } catch (fallbackError) {
+          console.error('No se pudo iniciar la cámara alternativa', fallbackError);
+        }
+      }
+
+      qrReader?.classList.add('d-none');
+      scanModal?.hide();
+      showToast('Error al iniciar la cámara', 'error');
+    }
+  }
+
+  let lastScanError = '';
+  const handleScanError = errorMessage => {
+    if (typeof errorMessage !== 'string') {
+      return;
+    }
+    if (errorMessage === lastScanError) {
+      return;
+    }
+    lastScanError = errorMessage;
+    console.debug('Scanner detectó un error/ruido', errorMessage);
+  };
+
+  async function procesarLectura(decodedText) {
+    await detenerScanner();
+
+    const productoId = parseInt(String(decodedText).trim(), 10);
+
+    if (!Number.isFinite(productoId)) {
+      showToast('Código QR no reconocido', 'error');
+      prepararEscaneoUI();
+      try {
+        await iniciarScanner();
+      } catch (reinicioError) {
+        console.warn('No se pudo reiniciar el escáner tras un código inválido', reinicioError);
+      }
+      return;
+    }
+
+    let producto = productos.find(p => parseInt(p.id, 10) === productoId);
+
+    if (!producto) {
+      try {
+        const remoto = await fetchAPI(`${API.productos}?empresa_id=${EMP_ID}&id=${productoId}`);
+        if (remoto && remoto.id) {
+          producto = remoto;
+        }
+      } catch (consultaError) {
+        console.warn('No se pudo consultar el producto escaneado', consultaError);
+      }
+    }
+
+    if (!producto) {
+      showToast('El producto escaneado no se encuentra en el inventario.', 'error');
+      prepararEscaneoUI();
+      try {
+        await iniciarScanner();
+      } catch (reinicioError) {
+        console.warn('No se pudo reiniciar el escáner tras un producto desconocido', reinicioError);
+      }
+      return;
+    }
+
+    mostrarProductoEscaneado(producto);
   }
 
   scanModalElement?.addEventListener('hidden.bs.modal', async () => {
     await detenerScanner();
-    qrReader?.classList.add('d-none');
+    iniciarEscaneoPendiente = false;
+    tipoMovimientoPrefijado = 'ingreso';
+    tipoMovimientoBloqueado = false;
+    prepararEscaneoUI();
+  });
+
+  scanTipoSelect?.addEventListener('change', () => {
+    actualizarAyudaCantidad();
+  });
+
+  scanCantidadInput?.addEventListener('input', () => {
+    if (!scanCantidadInput) {
+      return;
+    }
+
+    const raw = scanCantidadInput.value.trim();
+
+    if (raw === '') {
+      avisoCantidadCeroMostrado = false;
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    let value = parseInt(raw, 10);
+
+    if (!Number.isFinite(value)) {
+      scanCantidadInput.value = '';
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    if (value === 0) {
+      if (!avisoCantidadCeroMostrado) {
+        showToast('No se puede poner 0 a secas.', 'error');
+        avisoCantidadCeroMostrado = true;
+      }
+      scanCantidadInput.value = '';
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    avisoCantidadCeroMostrado = false;
+
+    if (value < 0) {
+      scanCantidadInput.value = '';
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    if (scanProductoActual && scanTipoSelect?.value === 'egreso') {
+      const stockActual = obtenerStockNumerico(scanProductoActual);
+      if (stockActual > 0 && value > stockActual) {
+        value = stockActual;
+      }
+    }
+
+    scanCantidadInput.value = String(value);
+    actualizarAyudaCantidad();
+  });
+
+  scanReintentar?.addEventListener('click', async () => {
+    await detenerScanner();
+    prepararEscaneoUI();
+    try {
+      await iniciarScanner();
+    } catch (error) {
+      console.warn('No se pudo reiniciar el escáner manualmente', error);
+    }
+  });
+
+  scanRegistrar?.addEventListener('click', async () => {
+    if (!scanProductoActual) {
+      showToast('Escanea un producto antes de registrar el movimiento.', 'error');
+      return;
+    }
+
+    const prodId = parseInt(scanProductoActual.id, 10);
+    if (!Number.isFinite(prodId)) {
+      showToast('El identificador del producto es inválido.', 'error');
+      return;
+    }
+
+    const tipo = scanTipoSelect?.value === 'egreso' ? 'egreso' : 'ingreso';
+    const rawCantidad = scanCantidadInput?.value?.trim() ?? '';
+    const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
+
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      showToast('La cantidad debe ser mayor a cero.', 'error');
+      if (scanCantidadInput) {
+        scanCantidadInput.value = '';
+      }
+      actualizarAyudaCantidad();
+      return;
+    }
+
+    const stockActual = obtenerStockNumerico(scanProductoActual);
+
+    if (tipo === 'egreso') {
+      if (stockActual <= 0) {
+        showToast('No hay unidades disponibles para egresar.', 'error');
+        actualizarAyudaCantidad();
+        return;
+      }
+      if (cantidad > stockActual) {
+        showToast('La cantidad no puede exceder el stock disponible.', 'error');
+        if (scanCantidadInput) {
+          scanCantidadInput.value = String(stockActual);
+        }
+        actualizarAyudaCantidad();
+        return;
+      }
+    }
+
+    try {
+      if (scanRegistrar) {
+        scanRegistrar.disabled = true;
+      }
+
+      const movimientoPayload = {
+        empresa_id: EMP_ID,
+        producto_id: prodId,
+        tipo,
+        cantidad
+      };
+
+      const resultado = await fetchAPI(API.movimiento, 'POST', movimientoPayload);
+      if (resultado?.success !== true) {
+        throw new Error(resultado?.error || 'No se pudo registrar el movimiento');
+      }
+
+      const nuevoStock = (() => {
+        const remoto = parseInt(resultado.stock_actual, 10);
+        if (Number.isFinite(remoto)) {
+          return remoto;
+        }
+        return tipo === 'ingreso' ? stockActual + cantidad : stockActual - cantidad;
+      })();
+
+      scanProductoActual.stock = nuevoStock;
+
+      if (scanCantidadInput) {
+        scanCantidadInput.value = '';
+      }
+      if (qrHelperText) {
+        qrHelperText.textContent = 'Movimiento registrado. Puedes escanear otro código o ajustar el mismo producto.';
+      }
+
+      await cargarProductos();
+      renderResumen();
+
+      const productoActualizado = productos.find(p => parseInt(p.id, 10) === prodId);
+      if (productoActualizado) {
+        scanProductoActual = productoActualizado;
+      }
+
+      actualizarUIProductoEscaneado();
+      actualizarAyudaCantidad();
+
+      document.dispatchEvent(new CustomEvent('movimientoRegistrado', {
+        detail: {
+          productoId: prodId,
+          tipo,
+          cantidad,
+          stockActual: nuevoStock
+        }
+      }));
+
+      showToast(`Movimiento ${tipo} registrado`, 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Error al registrar movimiento: ' + (error?.message || 'desconocido'), 'error');
+    } finally {
+      if (scanRegistrar) {
+        scanRegistrar.disabled = false;
+      }
+      actualizarAyudaCantidad();
+    }
   });
 
 function poblarSelectProductos() {
@@ -273,16 +689,21 @@ function poblarSelectProductos() {
   });
 }
 
-btnScanQR?.addEventListener('click', async () => {
+async function solicitarEscaner(opciones = {}) {
+  const { tipo = 'ingreso', bloquearTipo = false } = opciones;
+
   if (!navigator.mediaDevices || !window.isSecureContext) {
     showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
-    return;
+    return false;
   }
 
   if (!scanModal) {
     showToast('No se pudo abrir el escáner QR', 'error');
-    return;
+    return false;
   }
+
+  tipoMovimientoPrefijado = tipo === 'egreso' ? 'egreso' : 'ingreso';
+  tipoMovimientoBloqueado = Boolean(bloquearTipo);
 
   let testStream;
   try {
@@ -290,7 +711,7 @@ btnScanQR?.addEventListener('click', async () => {
   } catch (error) {
     console.error('No se pudo obtener permiso para la cámara', error);
     showToast('Permiso de cámara denegado o no disponible', 'error');
-    return;
+    return false;
   } finally {
     if (testStream) {
       testStream.getTracks().forEach(track => track.stop());
@@ -317,44 +738,33 @@ btnScanQR?.addEventListener('click', async () => {
   }
 
   iniciarEscaneoPendiente = true;
+  prepararEscaneoUI();
   qrReader?.classList.remove('d-none');
   scanModal.show();
+  return true;
+}
+
+btnScanQR?.addEventListener('click', () => {
+  solicitarEscaner({ tipo: 'ingreso', bloquearTipo: false }).catch(error => {
+    console.error('Error al intentar abrir el escáner', error);
+  });
 });
 
-scanModalElement?.addEventListener('shown.bs.modal', async () => {
-  if (!iniciarEscaneoPendiente) return;
-  iniciarEscaneoPendiente = false;
-
-  if (!qrScanner) {
-    qrScanner = new Html5Qrcode('qrReader');
-  }
-
-  const startWithCamera = async cameraId => {
-    if (!cameraId) {
-      await qrScanner.start({ facingMode: { ideal: 'environment' } }, { fps: 10, qrbox: 250 }, procesarLectura);
-      return;
-    }
-    await qrScanner.start({ deviceId: { exact: cameraId } }, { fps: 10, qrbox: 250 }, procesarLectura);
+if (typeof window !== 'undefined') {
+  window.qrMovimiento = {
+    ...(window.qrMovimiento || {}),
+    abrir: (tipo = 'ingreso', opciones = {}) => solicitarEscaner({ tipo, ...opciones }),
+    solicitar: opciones => solicitarEscaner(opciones)
   };
+}
 
+scanModalElement?.addEventListener('shown.bs.modal', async () => {
+  prepararEscaneoUI();
+  iniciarEscaneoPendiente = false;
   try {
-    await startWithCamera(preferredCameraId);
-    scannerActivo = true;
+    await iniciarScanner();
   } catch (error) {
-    console.warn('No se pudo iniciar la cámara preferida, intentando alternativa.', error);
-    if (fallbackCameraId && fallbackCameraId !== preferredCameraId) {
-      try {
-        await startWithCamera(fallbackCameraId);
-        scannerActivo = true;
-        return;
-      } catch (fallbackError) {
-        console.error('No se pudo iniciar la cámara alternativa', fallbackError);
-      }
-    }
-
-    qrReader?.classList.add('d-none');
-    scanModal?.hide();
-    showToast('Error al iniciar la cámara', 'error');
+    console.warn('No se pudo iniciar el escáner al abrir el modal', error);
   }
 });
 
@@ -1032,12 +1442,14 @@ if (accion === 'del') {
     showToast('Resumen recargado', 'info');
   });
 
-  (async function init() {
-    await cargarCategorias();
-    await cargarSubcategorias();
-    await cargarAreas();
-    await cargarZonas();
-    await cargarProductos();
-    renderResumen();
-  })();
+  if (inventoryPageElement) {
+    (async function init() {
+      await cargarCategorias();
+      await cargarSubcategorias();
+      await cargarAreas();
+      await cargarZonas();
+      await cargarProductos();
+      renderResumen();
+    })();
+  }
 })();
