@@ -35,8 +35,14 @@ let activeUsuarioId = null;
 let activeUsuarioRol = null;
 let lastNotificationsFetch = 0;
 const NOTIFICATION_REFRESH_MS = 60 * 1000;
+const STOCK_ALERT_REFRESH_MS = 30 * 1000;
 let notificationAbortController = null;
+let notificationPollIntervalId = null;
+let stockAlertPollIntervalId = null;
 let cachedNotifications = [];
+let serverNotifications = [];
+let criticalStockNotifications = [];
+let criticalStockState = new Map();
 
 let navegadorTimeZone = null;
 
@@ -243,11 +249,12 @@ function updateNotificationCounters(newCount) {
 function renderNotifications(notifications = []) {
     if (!notificationList) return;
 
-    cachedNotifications = Array.isArray(notifications) ? notifications : [];
+    const normalizedNotifications = Array.isArray(notifications) ? notifications : [];
+    cachedNotifications = normalizedNotifications;
 
     notificationList.innerHTML = '';
 
-    if (!cachedNotifications.length) {
+    if (!normalizedNotifications.length) {
         renderNotificationPlaceholder('No hay notificaciones disponibles en este momento.');
         updateNotificationCounters(0);
         return;
@@ -255,7 +262,7 @@ function renderNotifications(notifications = []) {
 
     let newCount = 0;
 
-    cachedNotifications.forEach(notification => {
+    normalizedNotifications.forEach(notification => {
         const listItem = document.createElement('li');
         listItem.className = 'notification-tray__item';
 
@@ -338,6 +345,50 @@ function renderNotifications(notifications = []) {
     updateNotificationCounters(newCount);
 }
 
+function parseNotificationTimestamp(notification) {
+    if (!notification) return 0;
+    const source = notification.fecha_disponible_desde || notification.creado_en || notification.actualizado_en;
+    if (!source) return 0;
+    const normalized = String(source).replace(' ', 'T');
+    const parsed = Date.parse(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sortNotificationsByPriorityAndDate(notifications) {
+    const priorityOrder = { alta: 0, media: 1, baja: 2 };
+    return notifications.slice().sort((a, b) => {
+        const rawPriorityA = (a && a.prioridad) ? a.prioridad.toLowerCase() : '';
+        const rawPriorityB = (b && b.prioridad) ? b.prioridad.toLowerCase() : '';
+        const priorityA = Object.prototype.hasOwnProperty.call(priorityOrder, rawPriorityA)
+            ? priorityOrder[rawPriorityA]
+            : 3;
+        const priorityB = Object.prototype.hasOwnProperty.call(priorityOrder, rawPriorityB)
+            ? priorityOrder[rawPriorityB]
+            : 3;
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        const dateA = parseNotificationTimestamp(a);
+        const dateB = parseNotificationTimestamp(b);
+        if (dateA !== dateB) {
+            return dateB - dateA;
+        }
+
+        const idA = a && a.id != null ? String(a.id) : '';
+        const idB = b && b.id != null ? String(b.id) : '';
+        return idA.localeCompare(idB);
+    });
+}
+
+function refreshNotificationUI() {
+    const combined = sortNotificationsByPriorityAndDate([
+        ...criticalStockNotifications,
+        ...serverNotifications
+    ]);
+    renderNotifications(combined);
+}
+
 async function fetchNotifications(options = {}) {
     if (!notificationList || !activeEmpresaId) {
         return;
@@ -388,23 +439,43 @@ async function fetchNotifications(options = {}) {
         }
 
         lastNotificationsFetch = Date.now();
-        cachedNotifications = Array.isArray(data.notifications) ? data.notifications : [];
-        renderNotifications(cachedNotifications);
+        serverNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+        refreshNotificationUI();
     } catch (error) {
         if (error.name === 'AbortError') {
             return;
         }
 
         console.error('No se pudieron cargar las notificaciones:', error);
-        if (!cachedNotifications.length) {
+        if (!serverNotifications.length && !criticalStockNotifications.length) {
             renderNotificationPlaceholder('No se pudieron cargar las alertas.', { modifier: 'error' });
             updateNotificationCounters(0);
         } else {
-            renderNotifications(cachedNotifications);
+            refreshNotificationUI();
         }
     } finally {
         notificationAbortController = null;
     }
+}
+
+function startNotificationPolling() {
+    if (notificationPollIntervalId) {
+        return;
+    }
+
+    notificationPollIntervalId = window.setInterval(() => {
+        fetchNotifications();
+    }, NOTIFICATION_REFRESH_MS);
+}
+
+function stopNotificationPolling() {
+    if (!notificationPollIntervalId) {
+        return;
+    }
+
+    clearInterval(notificationPollIntervalId);
+    notificationPollIntervalId = null;
+    lastNotificationsFetch = 0;
 }
 
 function normalizeHex(hexColor) {
@@ -533,6 +604,91 @@ function parseDateFromMysql(mysqlDate) {
         parsed = new Date(normalized);
     }
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getCriticalProductKey(producto) {
+    if (!producto) return '';
+    if (producto.id) return `id-${producto.id}`;
+    if (producto.producto_id) return `pid-${producto.producto_id}`;
+    if (producto.codigo_barras) return `barcode-${producto.codigo_barras}`;
+    if (producto.codigo) return `code-${producto.codigo}`;
+    const nombre = (producto.nombre || '').toLowerCase().replace(/\s+/g, '-');
+    const zona = producto.zona_id ? `-zona-${producto.zona_id}` : '';
+    const area = producto.area_id ? `-area-${producto.area_id}` : '';
+    return `nombre-${nombre}${zona}${area}`;
+}
+
+function buildCriticalStockNotification(producto, threshold, markAsNew, preservedTimestamp) {
+    const stockValue = Number(producto && producto.stock);
+    const unidades = Number.isFinite(stockValue) ? stockValue : 0;
+    const nombre = ((producto && producto.nombre) || 'Producto sin nombre').trim();
+    const locationParts = [];
+    if (producto && producto.zona_nombre) locationParts.push(producto.zona_nombre);
+    if (producto && producto.area_nombre) locationParts.push(producto.area_nombre);
+    const ubicacion = locationParts.filter(Boolean).join(' · ');
+    const ubicacionTexto = ubicacion ? ` en ${ubicacion}` : '';
+    const timestamp = preservedTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    const limiteTexto = Number.isFinite(threshold)
+        ? ` Límite configurado: ${threshold} ${threshold === 1 ? 'unidad' : 'unidades'}.`
+        : '';
+
+    return {
+        id: `critical-stock-${getCriticalProductKey(producto)}`,
+        titulo: `Stock crítico: ${nombre}`,
+        mensaje: `Quedan ${unidades} ${unidades === 1 ? 'unidad' : 'unidades'} disponibles${ubicacionTexto}.${limiteTexto}`,
+        prioridad: 'Alta',
+        fecha_disponible_desde: timestamp,
+        ruta_destino: 'gest_inve/inventario_basico.html',
+        estado: 'Enviada',
+        es_nueva: !!markAsNew,
+        tipo_destinatario: 'Usuario',
+        es_local: true
+    };
+}
+
+function updateCriticalStockNotifications(productos, threshold) {
+    const previousState = new Map(criticalStockState);
+    const nextState = new Map();
+    const newlyTriggered = [];
+
+    productos.forEach(producto => {
+        const key = getCriticalProductKey(producto);
+        if (!key) return;
+
+        const previousEntry = previousState.get(key);
+        const alreadyAlerted = previousEntry && previousEntry.alerted === true;
+        const preservedTimestamp = previousEntry && previousEntry.notification
+            ? previousEntry.notification.fecha_disponible_desde
+            : null;
+        const notification = buildCriticalStockNotification(producto, threshold, !alreadyAlerted, preservedTimestamp);
+
+        nextState.set(key, {
+            alerted: true,
+            notification
+        });
+
+        if (!alreadyAlerted) {
+            newlyTriggered.push(notification);
+        }
+    });
+
+    if (!productos.length) {
+        criticalStockNotifications = [];
+        criticalStockState.clear();
+    } else {
+        criticalStockState = nextState;
+        criticalStockNotifications = Array.from(nextState.values()).map(entry => entry.notification);
+    }
+
+    if (newlyTriggered.length && JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
+        newlyTriggered.forEach(notification => {
+            const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
+            sendPushNotification(notification.titulo, mensaje);
+        });
+    }
+
+    refreshNotificationUI();
 }
 
 function buildDateDisplay(date) {
@@ -712,6 +868,7 @@ async function loadStockAlerts() {
     const empresaId = localStorage.getItem('id_empresa');
     if (!empresaId) {
         setListState(stockAlertList, 'Registra tu empresa para ver las alertas de stock.', 'fas fa-info-circle', 'card-empty-state');
+        updateCriticalStockNotifications([], threshold);
         return;
     }
 
@@ -735,6 +892,8 @@ async function loadStockAlerts() {
                 return stockValue <= threshold;
             })
             .sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0));
+
+        updateCriticalStockNotifications(filtrados, threshold);
 
         stockAlertList.innerHTML = '';
 
@@ -793,6 +952,25 @@ async function loadStockAlerts() {
     } finally {
         setButtonLoading(stockAlertsRefreshBtn, false);
     }
+}
+
+function startStockAlertAutoRefresh() {
+    if (stockAlertPollIntervalId) {
+        return;
+    }
+
+    stockAlertPollIntervalId = window.setInterval(() => {
+        loadStockAlerts();
+    }, STOCK_ALERT_REFRESH_MS);
+}
+
+function stopStockAlertAutoRefresh() {
+    if (!stockAlertPollIntervalId) {
+        return;
+    }
+
+    clearInterval(stockAlertPollIntervalId);
+    stockAlertPollIntervalId = null;
 }
 
 async function loadRecentMovements() {
@@ -2507,14 +2685,17 @@ if (userImgEl) {
     .then(data => {
         console.log("🔍 check_empresa.php:", data);
         if (data.success) {
-    activeEmpresaId = data.empresa_id;
-    fetchNotifications({ force: true });
-    const tituloEmpresa = document.getElementById('empresaTitulo');
-    if (tituloEmpresa) {
-        tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
-    }
-    document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
-    localStorage.setItem('id_empresa', data.empresa_id); // 🟢 GUARDAMOS EL ID
+            activeEmpresaId = data.empresa_id;
+            fetchNotifications({ force: true });
+            startNotificationPolling();
+            startStockAlertAutoRefresh();
+            localStorage.setItem('id_empresa', data.empresa_id); // 🟢 GUARDAMOS EL ID
+            loadStockAlerts();
+            const tituloEmpresa = document.getElementById('empresaTitulo');
+            if (tituloEmpresa) {
+                tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
+            }
+            document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
 
     const msg = document.getElementById('message');
     if (msg) msg.style.display = 'none';
@@ -2596,8 +2777,7 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
     colorModal.style.display = 'none';
 });
 
-}
- else {
+        } else {
             const modal = document.getElementById("modalEmpresa");
             const goToRegistro = document.getElementById("goToRegistroEmpresa");
             if (modal && goToRegistro) {
@@ -2606,10 +2786,14 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                     window.location.href = '../regis_login/regist/regist_empresa.html';
                 });
             }
+            stopNotificationPolling();
+            stopStockAlertAutoRefresh();
         }
     })
     .catch(err => {
         console.error("❌ Error consultando empresa:", err);
+        stopNotificationPolling();
+        stopStockAlertAutoRefresh();
     });
 
     // Sidebar: navegación SPA
