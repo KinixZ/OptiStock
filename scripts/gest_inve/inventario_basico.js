@@ -458,7 +458,6 @@ prodCategoria?.addEventListener('change', () => {
     await detenerScanner();
 
     const productoId = parseInt(String(decodedText).trim(), 10);
-
     if (!Number.isFinite(productoId)) {
       showToast('Código QR no reconocido', 'error');
       prepararEscaneoUI();
@@ -493,7 +492,6 @@ prodCategoria?.addEventListener('change', () => {
       }
       return;
     }
-
     mostrarProductoEscaneado(producto);
   }
 
@@ -554,7 +552,6 @@ prodCategoria?.addEventListener('change', () => {
         value = stockActual;
       }
     }
-
     scanCantidadInput.value = String(value);
     actualizarAyudaCantidad();
   });
@@ -628,6 +625,7 @@ prodCategoria?.addEventListener('change', () => {
       if (resultado?.success !== true) {
         throw new Error(resultado?.error || 'No se pudo registrar el movimiento');
       }
+    }
 
       const nuevoStock = (() => {
         const remoto = parseInt(resultado.stock_actual, 10);
