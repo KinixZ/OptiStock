@@ -451,7 +451,6 @@ prodCategoria?.addEventListener('change', () => {
     await detenerScanner();
 
     const productoId = parseInt(String(decodedText).trim(), 10);
-
     if (!Number.isFinite(productoId)) {
       showToast('Código QR no reconocido', 'error');
       prepararEscaneoUI();
