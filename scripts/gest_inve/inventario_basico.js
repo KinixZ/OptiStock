@@ -213,15 +213,52 @@ prodCategoria?.addEventListener('change', () => {
     }
   }
 
+  const getScannerConfig = () => {
+    const readerWidth = qrReader?.offsetWidth || 0;
+    const maxBox = Math.min(420, Math.max(readerWidth - 40, 0));
+    const size = Math.max(260, maxBox || 320);
+    const config = {
+      fps: 10,
+      qrbox: { width: size, height: size },
+      aspectRatio: 1
+    };
+    if (window.Html5QrcodeSupportedFormats?.QR_CODE) {
+      config.formatsToSupport = [window.Html5QrcodeSupportedFormats.QR_CODE];
+    }
+    return config;
+  };
+
+  let lastScanError = '';
+  const handleScanError = errorMessage => {
+    if (typeof errorMessage !== 'string') {
+      return;
+    }
+    if (errorMessage === lastScanError) {
+      return;
+    }
+    lastScanError = errorMessage;
+    console.debug('Scanner detectó un error/ruido', errorMessage);
+  };
+
   async function procesarLectura(decodedText) {
     await detenerScanner();
-    qrReader?.classList.add('d-none');
-    scanModal?.hide();
 
-    const productoId = parseInt(decodedText, 10);
+    const productoId = parseInt(String(decodedText).trim(), 10);
     if (!Number.isFinite(productoId)) {
       showToast('Código QR no reconocido', 'error');
-      return;
+      qrReader?.classList.remove('d-none');
+      try {
+        await startWithCamera(preferredCameraId);
+        scannerActivo = true;
+        return;
+      } catch (reinicioError) {
+        console.warn('No se pudo reiniciar el escáner tras un código inválido', reinicioError);
+        iniciarEscaneoPendiente = true;
+        if (!scanModalElement?.classList.contains('show')) {
+          scanModal?.show();
+        }
+        return;
+      }
     }
 
     try {
@@ -240,6 +277,8 @@ prodCategoria?.addEventListener('change', () => {
       if (result?.success !== true) {
         throw new Error(result?.error || 'Error al registrar movimiento');
       }
+      qrReader?.classList.add('d-none');
+      scanModal?.hide();
       await cargarProductos();
       renderResumen();
       showToast('Movimiento registrado', 'success');
@@ -330,11 +369,12 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
   }
 
   const startWithCamera = async cameraId => {
+    const config = getScannerConfig();
     if (!cameraId) {
-      await qrScanner.start({ facingMode: { ideal: 'environment' } }, { fps: 10, qrbox: 250 }, procesarLectura);
+      await qrScanner.start({ facingMode: { ideal: 'environment' } }, config, procesarLectura, handleScanError);
       return;
     }
-    await qrScanner.start({ deviceId: { exact: cameraId } }, { fps: 10, qrbox: 250 }, procesarLectura);
+    await qrScanner.start({ deviceId: { exact: cameraId } }, config, procesarLectura, handleScanError);
   };
 
   try {
