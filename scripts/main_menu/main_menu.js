@@ -92,34 +92,8 @@ let colorTopbarSeleccionado = getComputedStyle(document.documentElement)
     .trim();
 
 
-// Request browser permission for push notifications
-function requestPushPermission() {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-}
-
-function sendPushNotification(title, message) {
-    if (!('Notification' in window)) {
-        alert(message);
-        return;
-    }
-
-    const notify = () => new Notification(title, {
-        body: message,
-        icon: '../../images/optistockLogo.png'
-    });
-
-    if (Notification.permission === 'granted') {
-        notify();
-    } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(perm => {
-            if (perm === 'granted') notify();
-            else alert(message);
-        });
-    } else {
-        alert(message);
-    }
+function showCriticalStockAlert(title, message) {
+    alert(`${title}\n\n${message}`.trim());
 }
 
 function formatRelativeNotificationTime(dateString) {
@@ -354,50 +328,6 @@ function renderNotifications(notifications = []) {
     });
 
     updateNotificationCounters({ totalCount, newCount });
-}
-
-function parseNotificationTimestamp(notification) {
-    if (!notification) return 0;
-    const source = notification.fecha_disponible_desde || notification.creado_en || notification.actualizado_en;
-    if (!source) return 0;
-    const normalized = String(source).replace(' ', 'T');
-    const parsed = Date.parse(normalized);
-    return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function sortNotificationsByPriorityAndDate(notifications) {
-    const priorityOrder = { alta: 0, media: 1, baja: 2 };
-    return notifications.slice().sort((a, b) => {
-        const rawPriorityA = (a && a.prioridad) ? a.prioridad.toLowerCase() : '';
-        const rawPriorityB = (b && b.prioridad) ? b.prioridad.toLowerCase() : '';
-        const priorityA = Object.prototype.hasOwnProperty.call(priorityOrder, rawPriorityA)
-            ? priorityOrder[rawPriorityA]
-            : 3;
-        const priorityB = Object.prototype.hasOwnProperty.call(priorityOrder, rawPriorityB)
-            ? priorityOrder[rawPriorityB]
-            : 3;
-        if (priorityA !== priorityB) {
-            return priorityA - priorityB;
-        }
-
-        const dateA = parseNotificationTimestamp(a);
-        const dateB = parseNotificationTimestamp(b);
-        if (dateA !== dateB) {
-            return dateB - dateA;
-        }
-
-        const idA = a && a.id != null ? String(a.id) : '';
-        const idB = b && b.id != null ? String(b.id) : '';
-        return idA.localeCompare(idB);
-    });
-}
-
-function refreshNotificationUI() {
-    const combined = sortNotificationsByPriorityAndDate([
-        ...criticalStockNotifications,
-        ...serverNotifications
-    ]);
-    renderNotifications(combined);
 }
 
 function parseNotificationTimestamp(notification) {
@@ -739,7 +669,7 @@ function updateCriticalStockNotifications(productos, threshold) {
     if (newlyTriggered.length && JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
         newlyTriggered.forEach(notification => {
             const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
-            sendPushNotification(notification.titulo, mensaje);
+            showCriticalStockAlert(notification.titulo || 'Stock crítico', mensaje);
         });
     }
 
@@ -2416,8 +2346,6 @@ document.addEventListener('keydown', event => {
 
 function notifyUnauthorizedMovement(msg) {
     if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
-        sendPushNotification('Alerta de Seguridad', msg);
-
         alert(msg);
 
     }
@@ -2428,7 +2356,6 @@ document.addEventListener('movimientoNoAutorizado', e => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-    requestPushPermission();
     const mainContent = document.getElementById('mainContent');
     let contenidoInicial = mainContent.innerHTML;
     let estaEnInicio = true;
