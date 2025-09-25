@@ -1492,13 +1492,599 @@ if (notificationViewAll) {
     });
 }
 
-// Quick actions buttons
-document.getElementById('ingresoFlashBtn').addEventListener('click', function() {
-    alert('Función Ingreso Flash activada\n\nEscanea el código del producto para registrar su ingreso al almacén');
+// Quick actions QR scanner
+const ingresoFlashBtn = document.getElementById('ingresoFlashBtn');
+const egresoFlashBtn = document.getElementById('egresoFlashBtn');
+const flashScanModalElement = document.getElementById('flashScanModal');
+const flashScanModal = flashScanModalElement && typeof bootstrap !== 'undefined'
+    ? new bootstrap.Modal(flashScanModalElement)
+    : null;
+const flashQrReader = document.getElementById('flashQrReader');
+const flashQrHelperText = document.getElementById('flashQrHelperText');
+const flashScanResult = document.getElementById('flashScanResult');
+const flashScanProdName = document.getElementById('flashScanProductoNombre');
+const flashScanProdCodigo = document.getElementById('flashScanProductoCodigo');
+const flashScanProdStock = document.getElementById('flashScanProductoStock');
+const flashScanTipoSelect = document.getElementById('flashScanMovimientoTipo');
+const flashScanCantidadInput = document.getElementById('flashScanMovimientoCantidad');
+const flashScanCantidadHelp = document.getElementById('flashScanCantidadAyuda');
+const flashScanRegistrar = document.getElementById('flashScanRegistrar');
+const flashScanReintentar = document.getElementById('flashScanReintentar');
+const flashToastStack = document.getElementById('flashToastStack');
+
+const FLASH_API = {
+    productos: '../../scripts/php/guardar_productos.php',
+    movimiento: '../../scripts/php/guardar_movimientos.php'
+};
+
+const FLASH_EMPRESA_ID = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
+const FLASH_TEXTOS = {
+    base: 'Coloca el código frente a la cámara para registrar el movimiento y confirma la operación antes de guardarla.',
+    producto: 'Producto identificado. Selecciona el tipo de movimiento y confirma la cantidad antes de guardar.'
+};
+
+let flashQrScanner = null;
+let flashScannerActivo = false;
+let flashPreferredCameraId = null;
+let flashFallbackCameraId = null;
+let flashProductoActual = null;
+let flashMovimientoForzado = 'ingreso';
+let flashIniciarEscaneoPendiente = false;
+let flashAvisoCantidadCero = false;
+let flashLastScanError = '';
+
+function flashShowToast(message, type = 'info') {
+    if (!flashToastStack || typeof bootstrap === 'undefined') {
+        alert(message);
+        return;
+    }
+
+    const tipoClase = type === 'success'
+        ? 'text-bg-success'
+        : type === 'error'
+            ? 'text-bg-danger'
+            : 'text-bg-primary';
+
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center ${tipoClase} border-0 shadow`;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+        </div>
+    `;
+
+    flashToastStack.appendChild(toast);
+    const delay = type === 'error' ? 3600 : 2600;
+    const toastInstance = new bootstrap.Toast(toast, { delay });
+    toastInstance.show();
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+async function flashFetchJSON(url, method = 'GET', payload) {
+    const options = { method };
+    if (payload) {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(url, options);
+    const text = await response.text();
+    let data;
+    try {
+        data = text ? JSON.parse(text) : {};
+    } catch (error) {
+        throw new Error(`Respuesta no válida del servidor (${response.status})`);
+    }
+
+    if (!response.ok) {
+        const mensaje = data?.error || `Error HTTP ${response.status}`;
+        throw new Error(mensaje);
+    }
+
+    return data;
+}
+
+function flashObtenerStock(producto) {
+    if (!producto) return 0;
+    const raw = producto.stock ?? producto.stock_actual ?? 0;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function flashActualizarUIProducto() {
+    if (!flashProductoActual) return;
+    if (flashScanProdName) {
+        flashScanProdName.textContent = flashProductoActual.nombre || `Producto #${flashProductoActual.id}`;
+    }
+    if (flashScanProdCodigo) {
+        flashScanProdCodigo.textContent = `ID interno: ${flashProductoActual.id}`;
+    }
+    if (flashScanProdStock) {
+        flashScanProdStock.textContent = String(flashObtenerStock(flashProductoActual));
+    }
+}
+
+function flashActualizarAyudaCantidad() {
+    if (!flashProductoActual) {
+        if (flashScanCantidadHelp) {
+            flashScanCantidadHelp.textContent = 'Escanea un producto para registrar su movimiento.';
+        }
+        if (flashScanRegistrar) {
+            flashScanRegistrar.disabled = true;
+        }
+        return;
+    }
+
+    if (!flashScanTipoSelect || !flashScanCantidadInput) return;
+
+    const tipo = flashScanTipoSelect.value === 'egreso' ? 'egreso' : 'ingreso';
+    const stockActual = flashObtenerStock(flashProductoActual);
+    const rawCantidad = flashScanCantidadInput.value.trim();
+    const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
+
+    flashScanCantidadInput.min = '1';
+
+    if (tipo === 'egreso') {
+        if (stockActual <= 0) {
+            flashScanCantidadInput.value = '';
+            flashScanCantidadInput.disabled = true;
+            flashScanCantidadInput.removeAttribute('max');
+            if (flashScanCantidadHelp) {
+                flashScanCantidadHelp.textContent = 'No hay unidades disponibles para registrar un egreso.';
+            }
+            if (flashScanRegistrar) {
+                flashScanRegistrar.disabled = true;
+            }
+            return;
+        }
+
+        flashScanCantidadInput.disabled = false;
+        flashScanCantidadInput.max = String(stockActual);
+        if (rawCantidad !== '' && Number.isFinite(cantidad) && cantidad > stockActual) {
+            flashScanCantidadInput.value = String(stockActual);
+        }
+        if (flashScanCantidadHelp) {
+            const plural = stockActual === 1 ? '' : 'es';
+            flashScanCantidadHelp.textContent = `Puedes retirar hasta ${stockActual} unidad${plural}.`;
+        }
+        if (flashScanRegistrar) {
+            flashScanRegistrar.disabled = false;
+        }
+        return;
+    }
+
+    flashScanCantidadInput.disabled = false;
+    flashScanCantidadInput.removeAttribute('max');
+    if (flashScanCantidadHelp) {
+        flashScanCantidadHelp.textContent = 'Las unidades ingresadas se sumarán al stock actual.';
+    }
+    if (flashScanRegistrar) {
+        flashScanRegistrar.disabled = false;
+    }
+}
+
+function flashPrepararUI() {
+    flashProductoActual = null;
+    flashQrReader?.classList.remove('d-none');
+    flashScanResult?.classList.add('d-none');
+    if (flashQrHelperText) {
+        flashQrHelperText.textContent = FLASH_TEXTOS.base;
+    }
+    if (flashScanProdName) {
+        flashScanProdName.textContent = 'Producto seleccionado';
+    }
+    if (flashScanProdCodigo) {
+        flashScanProdCodigo.textContent = 'ID interno:';
+    }
+    if (flashScanProdStock) {
+        flashScanProdStock.textContent = '0';
+    }
+    if (flashScanTipoSelect) {
+        flashScanTipoSelect.value = flashMovimientoForzado;
+        flashScanTipoSelect.disabled = true;
+    }
+    if (flashScanCantidadInput) {
+        flashScanCantidadInput.value = '';
+        flashScanCantidadInput.disabled = true;
+        flashScanCantidadInput.removeAttribute('max');
+    }
+    flashAvisoCantidadCero = false;
+    if (flashScanCantidadHelp) {
+        flashScanCantidadHelp.textContent = 'Escanea un producto para registrar su movimiento.';
+    }
+    if (flashScanRegistrar) {
+        flashScanRegistrar.disabled = true;
+    }
+}
+
+function flashMostrarProducto(producto) {
+    flashProductoActual = producto;
+    flashQrReader?.classList.add('d-none');
+    flashScanResult?.classList.remove('d-none');
+    if (flashQrHelperText) {
+        flashQrHelperText.textContent = FLASH_TEXTOS.producto;
+    }
+    if (flashScanTipoSelect) {
+        flashScanTipoSelect.disabled = false;
+        flashScanTipoSelect.value = flashMovimientoForzado;
+    }
+    if (flashScanCantidadInput) {
+        flashScanCantidadInput.disabled = false;
+        flashScanCantidadInput.value = '';
+        flashScanCantidadInput.min = '1';
+        flashScanCantidadInput.removeAttribute('max');
+    }
+    flashAvisoCantidadCero = false;
+    if (flashScanRegistrar) {
+        flashScanRegistrar.disabled = false;
+    }
+    flashActualizarUIProducto();
+    flashActualizarAyudaCantidad();
+}
+
+async function flashDetenerScanner() {
+    if (!flashQrScanner || !flashScannerActivo) return;
+
+    try {
+        await flashQrScanner.stop();
+    } catch (error) {
+        console.warn('No se pudo detener el escáner', error);
+    } finally {
+        flashScannerActivo = false;
+    }
+
+    try {
+        await flashQrScanner.clear();
+    } catch (error) {
+        console.debug('No se pudo limpiar el contenedor del escáner', error);
+    }
+}
+
+function flashGetScannerConfig() {
+    const readerWidth = flashQrReader?.offsetWidth || 0;
+    const maxBox = Math.min(420, Math.max(readerWidth - 40, 0));
+    const size = Math.max(260, maxBox || 320);
+    const config = {
+        fps: 10,
+        qrbox: { width: size, height: size },
+        aspectRatio: 1
+    };
+    if (window.Html5QrcodeSupportedFormats?.QR_CODE) {
+        config.formatsToSupport = [window.Html5QrcodeSupportedFormats.QR_CODE];
+    }
+    return config;
+}
+
+async function flashIniciarScanner() {
+    if (!flashScanModalElement?.classList.contains('show')) {
+        flashIniciarEscaneoPendiente = true;
+        return;
+    }
+    if (flashScannerActivo) {
+        return;
+    }
+    if (!flashQrReader) {
+        flashShowToast('No se encontró el lector QR en la interfaz', 'error');
+        return;
+    }
+    if (typeof Html5Qrcode === 'undefined') {
+        flashShowToast('El lector QR no está disponible en este navegador.', 'error');
+        return;
+    }
+
+    if (!flashQrScanner) {
+        flashQrScanner = new Html5Qrcode('flashQrReader');
+    }
+
+    const config = flashGetScannerConfig();
+
+    const startWithCamera = async cameraId => {
+        if (!cameraId) {
+            await flashQrScanner.start({ facingMode: { ideal: 'environment' } }, config, flashProcesarLectura, flashHandleScanError);
+            return;
+        }
+        await flashQrScanner.start({ deviceId: { exact: cameraId } }, config, flashProcesarLectura, flashHandleScanError);
+    };
+
+    try {
+        await startWithCamera(flashPreferredCameraId);
+        flashScannerActivo = true;
+        flashIniciarEscaneoPendiente = false;
+    } catch (error) {
+        console.warn('No se pudo iniciar la cámara preferida, intentando alternativa.', error);
+        if (flashFallbackCameraId && flashFallbackCameraId !== flashPreferredCameraId) {
+            try {
+                await startWithCamera(flashFallbackCameraId);
+                flashScannerActivo = true;
+                flashIniciarEscaneoPendiente = false;
+                return;
+            } catch (fallbackError) {
+                console.error('No se pudo iniciar la cámara alternativa', fallbackError);
+            }
+        }
+
+        flashQrReader?.classList.add('d-none');
+        flashScanModal?.hide();
+        flashShowToast('Error al iniciar la cámara', 'error');
+    }
+}
+
+function flashHandleScanError(errorMessage) {
+    if (typeof errorMessage !== 'string') return;
+    if (errorMessage === flashLastScanError) return;
+    flashLastScanError = errorMessage;
+}
+
+async function flashProcesarLectura(decodedText) {
+    await flashDetenerScanner();
+
+    const productoId = parseInt(String(decodedText).trim(), 10);
+    if (!Number.isFinite(productoId)) {
+        flashShowToast('Código QR no reconocido', 'error');
+        flashPrepararUI();
+        try {
+            await flashIniciarScanner();
+        } catch (error) {
+            console.warn('No se pudo reiniciar el escáner tras un código inválido', error);
+        }
+        return;
+    }
+
+    let producto = null;
+    try {
+        producto = await flashFetchJSON(`${FLASH_API.productos}?empresa_id=${FLASH_EMPRESA_ID}&id=${productoId}`);
+    } catch (error) {
+        console.warn('No se pudo obtener el producto escaneado', error);
+    }
+
+    if (!producto || !producto.id) {
+        flashShowToast('El producto escaneado no se encuentra en el inventario.', 'error');
+        flashPrepararUI();
+        try {
+            await flashIniciarScanner();
+        } catch (reinicioError) {
+            console.warn('No se pudo reiniciar el escáner tras un producto desconocido', reinicioError);
+        }
+        return;
+    }
+
+    flashMostrarProducto(producto);
+}
+
+async function flashPrepararCamara() {
+    if (!navigator.mediaDevices || !window.isSecureContext) {
+        flashShowToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
+        return false;
+    }
+
+    let testStream;
+    try {
+        testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (error) {
+        console.error('No se pudo obtener permiso para la cámara', error);
+        flashShowToast('Permiso de cámara denegado o no disponible', 'error');
+        return false;
+    } finally {
+        if (testStream) {
+            testStream.getTracks().forEach(track => track.stop());
+        }
+    }
+
+    let cameras = [];
+    if (typeof Html5Qrcode !== 'undefined') {
+        try {
+            cameras = await Html5Qrcode.getCameras();
+        } catch (error) {
+            console.warn('No se pudieron enumerar las cámaras disponibles', error);
+            cameras = [];
+        }
+    }
+
+    if (Array.isArray(cameras) && cameras.length > 0) {
+        const backRegex = /(back|rear|environment)/i;
+        const backCamera = cameras.find(cam => backRegex.test(cam.label));
+        flashPreferredCameraId = (backCamera || cameras[0]).id;
+        const secondary = cameras.find(cam => cam.id !== flashPreferredCameraId);
+        flashFallbackCameraId = secondary ? secondary.id : null;
+    } else {
+        flashPreferredCameraId = null;
+        flashFallbackCameraId = null;
+    }
+
+    return true;
+}
+
+async function flashAbrirScanner(tipo) {
+    if (!flashScanModal) {
+        flashShowToast('No se pudo abrir el escáner QR', 'error');
+        return;
+    }
+    if (!FLASH_EMPRESA_ID) {
+        flashShowToast('Registra una empresa antes de usar el escáner QR.', 'error');
+        return;
+    }
+
+    const ok = await flashPrepararCamara();
+    if (!ok) {
+        return;
+    }
+
+    flashMovimientoForzado = tipo === 'egreso' ? 'egreso' : 'ingreso';
+    flashPrepararUI();
+    flashIniciarEscaneoPendiente = true;
+    flashScanModal.show();
+}
+
+flashScanModalElement?.addEventListener('shown.bs.modal', async () => {
+    flashPrepararUI();
+    flashIniciarEscaneoPendiente = false;
+    try {
+        await flashIniciarScanner();
+    } catch (error) {
+        console.warn('No se pudo iniciar el escáner al abrir el modal', error);
+    }
 });
 
-document.getElementById('egresoFlashBtn').addEventListener('click', function() {
-    alert('Función Egreso Flash activada\n\nEscanea el código del producto para registrar su salida del almacén');
+flashScanModalElement?.addEventListener('hidden.bs.modal', async () => {
+    await flashDetenerScanner();
+    flashIniciarEscaneoPendiente = false;
+    flashPrepararUI();
+});
+
+flashScanTipoSelect?.addEventListener('change', () => {
+    flashActualizarAyudaCantidad();
+});
+
+flashScanCantidadInput?.addEventListener('input', () => {
+    if (!flashScanCantidadInput) return;
+
+    const raw = flashScanCantidadInput.value.trim();
+
+    if (raw === '') {
+        flashAvisoCantidadCero = false;
+        flashActualizarAyudaCantidad();
+        return;
+    }
+
+    let value = parseInt(raw, 10);
+
+    if (!Number.isFinite(value)) {
+        flashScanCantidadInput.value = '';
+        flashActualizarAyudaCantidad();
+        return;
+    }
+
+    if (value === 0) {
+        if (!flashAvisoCantidadCero) {
+            flashShowToast('La cantidad debe ser mayor a cero.', 'error');
+            flashAvisoCantidadCero = true;
+        }
+        flashScanCantidadInput.value = '';
+        flashActualizarAyudaCantidad();
+        return;
+    }
+
+    flashAvisoCantidadCero = false;
+
+    if (value < 0) {
+        flashScanCantidadInput.value = '';
+        flashActualizarAyudaCantidad();
+        return;
+    }
+
+    if (flashProductoActual && flashScanTipoSelect?.value === 'egreso') {
+        const stockActual = flashObtenerStock(flashProductoActual);
+        if (stockActual > 0 && value > stockActual) {
+            value = stockActual;
+        }
+    }
+
+    flashScanCantidadInput.value = String(value);
+    flashActualizarAyudaCantidad();
+});
+
+flashScanReintentar?.addEventListener('click', async () => {
+    await flashDetenerScanner();
+    flashPrepararUI();
+    try {
+        await flashIniciarScanner();
+    } catch (error) {
+        console.warn('No se pudo reiniciar el escáner manualmente', error);
+    }
+});
+
+flashScanRegistrar?.addEventListener('click', async () => {
+    if (!flashProductoActual) {
+        flashShowToast('Escanea un producto antes de registrar el movimiento.', 'error');
+        return;
+    }
+
+    const prodId = parseInt(flashProductoActual.id, 10);
+    if (!Number.isFinite(prodId)) {
+        flashShowToast('El identificador del producto es inválido.', 'error');
+        return;
+    }
+
+    const tipo = flashScanTipoSelect?.value === 'egreso' ? 'egreso' : 'ingreso';
+    const rawCantidad = flashScanCantidadInput?.value?.trim() ?? '';
+    const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
+
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+        flashShowToast('La cantidad debe ser mayor a cero.', 'error');
+        if (flashScanCantidadInput) {
+            flashScanCantidadInput.value = '';
+        }
+        flashActualizarAyudaCantidad();
+        return;
+    }
+
+    const stockActual = flashObtenerStock(flashProductoActual);
+
+    if (tipo === 'egreso') {
+        if (stockActual <= 0) {
+            flashShowToast('No hay unidades disponibles para egresar.', 'error');
+            flashActualizarAyudaCantidad();
+            return;
+        }
+        if (cantidad > stockActual) {
+            flashShowToast('La cantidad no puede exceder el stock disponible.', 'error');
+            if (flashScanCantidadInput) {
+                flashScanCantidadInput.value = String(stockActual);
+            }
+            flashActualizarAyudaCantidad();
+            return;
+        }
+    }
+
+    try {
+        if (flashScanRegistrar) {
+            flashScanRegistrar.disabled = true;
+        }
+
+        const payload = {
+            empresa_id: FLASH_EMPRESA_ID,
+            producto_id: prodId,
+            tipo,
+            cantidad
+        };
+
+        const resultado = await flashFetchJSON(FLASH_API.movimiento, 'POST', payload);
+        if (resultado?.success !== true) {
+            throw new Error(resultado?.error || 'No se pudo registrar el movimiento');
+        }
+
+        const nuevoStock = (() => {
+            const remoto = parseInt(resultado.stock_actual, 10);
+            if (Number.isFinite(remoto)) {
+                return remoto;
+            }
+            return tipo === 'ingreso' ? stockActual + cantidad : stockActual - cantidad;
+        })();
+
+        flashProductoActual.stock = nuevoStock;
+        flashActualizarUIProducto();
+        flashShowToast(`Movimiento ${tipo} registrado`, 'success');
+        flashActualizarAyudaCantidad();
+    } catch (error) {
+        console.error(error);
+        flashShowToast('Error al registrar movimiento: ' + (error?.message || 'desconocido'), 'error');
+    } finally {
+        if (flashScanRegistrar) {
+            flashScanRegistrar.disabled = false;
+        }
+        flashActualizarAyudaCantidad();
+    }
+});
+
+ingresoFlashBtn?.addEventListener('click', () => {
+    flashAbrirScanner('ingreso');
+});
+
+egresoFlashBtn?.addEventListener('click', () => {
+    flashAbrirScanner('egreso');
 });
 
 // Manual tutorial trigger for testing (remove in production)
