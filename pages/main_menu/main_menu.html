@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="../../styles/main_menu/main_menu.css">
 </head>
 <body>
@@ -363,7 +364,73 @@
   </div>
 </div>
 
+  <!-- Modal escáner rápido -->
+  <div class="modal fade" id="flashScanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content qr-modal shadow-lg">
+        <div class="modal-header border-0">
+          <div>
+            <span class="modal-eyebrow">Escáner</span>
+            <h5 class="modal-title fw-bold">Escanear código QR</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="flashQrReader" class="qr-reader d-none" role="img" aria-label="Visor para lectura de códigos QR"></div>
+          <p id="flashQrHelperText" class="qr-helper">
+            Coloca el código frente a la cámara para registrar el movimiento y confirma la operación antes de guardarla.
+          </p>
+          <div id="flashScanResult" class="scan-result d-none" aria-live="polite">
+            <div class="scan-product">
+              <h6 id="flashScanProductoNombre" class="scan-product__name">Producto seleccionado</h6>
+              <p id="flashScanProductoCodigo" class="scan-product__code">ID interno:</p>
+              <div class="scan-stock">
+                <span class="scan-stock__label">Stock actual</span>
+                <span id="flashScanProductoStock" class="scan-stock__value">0</span>
+              </div>
+            </div>
+            <div class="scan-form" role="group" aria-label="Formulario de movimientos">
+              <div class="mb-3">
+                <label for="flashScanMovimientoTipo" class="form-label">Tipo de movimiento</label>
+                <select id="flashScanMovimientoTipo" class="form-select" disabled>
+                  <option value="ingreso">Ingreso</option>
+                  <option value="egreso">Egreso</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="flashScanMovimientoCantidad" class="form-label">Cantidad</label>
+                <input
+                  id="flashScanMovimientoCantidad"
+                  type="number"
+                  class="form-control"
+                  min="1"
+                  step="1"
+                  placeholder="1"
+                  disabled
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                />
+                <div id="flashScanCantidadAyuda" class="form-text">Escanea un producto para registrar su movimiento.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 flex-column gap-2">
+          <div class="w-100 d-flex flex-column flex-sm-row gap-2">
+            <button id="flashScanRegistrar" class="btn btn-primary flex-fill" type="button" disabled>Registrar movimiento</button>
+            <button id="flashScanReintentar" class="btn btn-outline-secondary flex-fill" type="button">Escanear otro código</button>
+          </div>
+          <button class="btn btn-link text-decoration-none px-0" type="button" data-bs-dismiss="modal">Cerrar escáner</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed top-0 end-0 p-3" id="flashToastStack" aria-live="polite" aria-atomic="true"></div>
+
     <script src="../../scripts/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="../../scripts/main_menu/main_menu.js"></script>
 </body>
 </html>
