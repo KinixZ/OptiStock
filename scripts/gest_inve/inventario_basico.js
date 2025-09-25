@@ -30,7 +30,6 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
   const subcategoriaFormContainer = document.getElementById('subcategoriaFormContainer');
-  const inventoryPageElement = document.querySelector('.inventory-page');
 
   const tabButtons = {
     producto: btnProductos,
@@ -208,8 +207,6 @@ prodCategoria?.addEventListener('change', () => {
   let preferredCameraId = null;
   let fallbackCameraId = null;
   let avisoCantidadCeroMostrado = false;
-  let tipoMovimientoPrefijado = 'ingreso';
-  let tipoMovimientoBloqueado = false;
 
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
@@ -347,7 +344,7 @@ prodCategoria?.addEventListener('change', () => {
       scanProdStock.textContent = '0';
     }
     if (scanTipoSelect) {
-      scanTipoSelect.value = tipoMovimientoPrefijado;
+      scanTipoSelect.value = 'ingreso';
       scanTipoSelect.disabled = true;
     }
     if (scanCantidadInput) {
@@ -375,8 +372,8 @@ prodCategoria?.addEventListener('change', () => {
       qrHelperText.textContent = textoAyudaProducto;
     }
     if (scanTipoSelect) {
-      scanTipoSelect.value = tipoMovimientoPrefijado;
-      scanTipoSelect.disabled = tipoMovimientoBloqueado;
+      scanTipoSelect.disabled = false;
+      scanTipoSelect.value = 'ingreso';
     }
     if (scanCantidadInput) {
       scanCantidadInput.disabled = false;
@@ -498,8 +495,6 @@ prodCategoria?.addEventListener('change', () => {
   scanModalElement?.addEventListener('hidden.bs.modal', async () => {
     await detenerScanner();
     iniciarEscaneoPendiente = false;
-    tipoMovimientoPrefijado = 'ingreso';
-    tipoMovimientoBloqueado = false;
     prepararEscaneoUI();
   });
 
@@ -620,12 +615,10 @@ prodCategoria?.addEventListener('change', () => {
         tipo,
         cantidad
       };
-
       const resultado = await fetchAPI(API.movimiento, 'POST', movimientoPayload);
       if (resultado?.success !== true) {
         throw new Error(resultado?.error || 'No se pudo registrar el movimiento');
       }
-    }
 
       const nuevoStock = (() => {
         const remoto = parseInt(resultado.stock_actual, 10);
@@ -687,21 +680,16 @@ function poblarSelectProductos() {
   });
 }
 
-async function solicitarEscaner(opciones = {}) {
-  const { tipo = 'ingreso', bloquearTipo = false } = opciones;
-
+btnScanQR?.addEventListener('click', async () => {
   if (!navigator.mediaDevices || !window.isSecureContext) {
     showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
-    return false;
+    return;
   }
 
   if (!scanModal) {
     showToast('No se pudo abrir el escáner QR', 'error');
-    return false;
+    return;
   }
-
-  tipoMovimientoPrefijado = tipo === 'egreso' ? 'egreso' : 'ingreso';
-  tipoMovimientoBloqueado = Boolean(bloquearTipo);
 
   let testStream;
   try {
@@ -709,7 +697,7 @@ async function solicitarEscaner(opciones = {}) {
   } catch (error) {
     console.error('No se pudo obtener permiso para la cámara', error);
     showToast('Permiso de cámara denegado o no disponible', 'error');
-    return false;
+    return;
   } finally {
     if (testStream) {
       testStream.getTracks().forEach(track => track.stop());
@@ -736,25 +724,9 @@ async function solicitarEscaner(opciones = {}) {
   }
 
   iniciarEscaneoPendiente = true;
-  prepararEscaneoUI();
   qrReader?.classList.remove('d-none');
   scanModal.show();
-  return true;
-}
-
-btnScanQR?.addEventListener('click', () => {
-  solicitarEscaner({ tipo: 'ingreso', bloquearTipo: false }).catch(error => {
-    console.error('Error al intentar abrir el escáner', error);
-  });
 });
-
-if (typeof window !== 'undefined') {
-  window.qrMovimiento = {
-    ...(window.qrMovimiento || {}),
-    abrir: (tipo = 'ingreso', opciones = {}) => solicitarEscaner({ tipo, ...opciones }),
-    solicitar: opciones => solicitarEscaner(opciones)
-  };
-}
 
 scanModalElement?.addEventListener('shown.bs.modal', async () => {
   prepararEscaneoUI();
@@ -1440,14 +1412,12 @@ if (accion === 'del') {
     showToast('Resumen recargado', 'info');
   });
 
-  if (inventoryPageElement) {
-    (async function init() {
-      await cargarCategorias();
-      await cargarSubcategorias();
-      await cargarAreas();
-      await cargarZonas();
-      await cargarProductos();
-      renderResumen();
-    })();
-  }
+  (async function init() {
+    await cargarCategorias();
+    await cargarSubcategorias();
+    await cargarAreas();
+    await cargarZonas();
+    await cargarProductos();
+    renderResumen();
+  })();
 })();
