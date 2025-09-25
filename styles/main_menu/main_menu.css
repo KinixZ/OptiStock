@@ -1470,6 +1470,124 @@ img {
     color: #fff;
 }
 
+/* QR scanner modal */
+.modal-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius-pill);
+    background: var(--primary-surface);
+    color: var(--primary-color);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+}
+
+.qr-modal {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.qr-reader {
+    width: 100%;
+    min-height: 320px;
+    border-radius: var(--radius-md);
+    background: repeating-linear-gradient(
+            135deg,
+            rgba(255, 111, 145, 0.08),
+            rgba(255, 111, 145, 0.08) 12px,
+            rgba(15, 180, 212, 0.08) 12px,
+            rgba(15, 180, 212, 0.08) 24px
+        ),
+        #fff;
+    border: 1px dashed rgba(255, 111, 145, 0.35);
+    display: grid;
+    place-items: center;
+}
+
+.qr-helper {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--muted-color);
+    text-align: center;
+}
+
+.scan-result {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: var(--primary-surface-extra);
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 576px) {
+    .scan-result {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: flex-start;
+    }
+}
+
+.scan-product {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.scan-product__name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.scan-product__code {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted-color);
+}
+
+.scan-stock {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.scan-stock__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-color);
+    font-weight: 600;
+}
+
+.scan-stock__value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.scan-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.scan-form .form-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.scan-form .form-text {
+    color: var(--muted-color);
+}
+
 /* Modal */
 .modal-overlay,
 .color-modal {
