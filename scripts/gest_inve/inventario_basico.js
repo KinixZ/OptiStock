@@ -191,8 +191,6 @@ prodCategoria?.addEventListener('change', () => {
   const scanModal = scanModalElement ? new bootstrap.Modal(scanModalElement) : null;
   let iniciarEscaneoPendiente = false;
   let scannerActivo = false;
-  let preferredCameraId = null;
-  let fallbackCameraId = null;
 
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
@@ -274,46 +272,9 @@ function poblarSelectProductos() {
 }
 
 btnScanQR?.addEventListener('click', async () => {
-  if (!navigator.mediaDevices || !window.isSecureContext) {
-    showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
-    return;
-  }
-
   if (!scanModal) {
     showToast('No se pudo abrir el escáner QR', 'error');
     return;
-  }
-
-  let testStream;
-  try {
-    testStream = await navigator.mediaDevices.getUserMedia({ video: true });
-  } catch (error) {
-    console.error('No se pudo obtener permiso para la cámara', error);
-    showToast('Permiso de cámara denegado o no disponible', 'error');
-    return;
-  } finally {
-    if (testStream) {
-      testStream.getTracks().forEach(track => track.stop());
-    }
-  }
-
-  let cameras = [];
-  try {
-    cameras = await Html5Qrcode.getCameras();
-  } catch (error) {
-    console.warn('No se pudieron enumerar las cámaras disponibles', error);
-    cameras = [];
-  }
-
-  if (Array.isArray(cameras) && cameras.length > 0) {
-    const backRegex = /(back|rear|environment)/i;
-    const backCamera = cameras.find(cam => backRegex.test(cam.label));
-    preferredCameraId = (backCamera || cameras[0]).id;
-    const secondaryCamera = cameras.find(cam => cam.id !== preferredCameraId);
-    fallbackCameraId = secondaryCamera ? secondaryCamera.id : null;
-  } else {
-    preferredCameraId = null;
-    fallbackCameraId = null;
   }
 
   iniciarEscaneoPendiente = true;
@@ -325,33 +286,40 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
   if (!iniciarEscaneoPendiente) return;
   iniciarEscaneoPendiente = false;
 
+  if (!navigator.mediaDevices?.getUserMedia) {
+    qrReader?.classList.add('d-none');
+    scanModal?.hide();
+    showToast('La cámara no es compatible en este dispositivo', 'error');
+    return;
+  }
+
   if (!qrScanner) {
     qrScanner = new Html5Qrcode('qrReader');
   }
 
-  const startWithCamera = async cameraId => {
-    if (!cameraId) {
-      await qrScanner.start({ facingMode: { ideal: 'environment' } }, { fps: 10, qrbox: 250 }, procesarLectura);
-      return;
-    }
-    await qrScanner.start({ deviceId: { exact: cameraId } }, { fps: 10, qrbox: 250 }, procesarLectura);
-  };
+  let previewStream;
+  try {
+    previewStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  } catch (error) {
+    console.error('No se pudo obtener permiso para la cámara', error);
+    qrReader?.classList.add('d-none');
+    scanModal?.hide();
+    showToast('Permiso de cámara denegado o no disponible', 'error');
+    return;
+  }
+
+  const [track] = previewStream.getVideoTracks();
+  const deviceId = track?.getSettings()?.deviceId;
+  previewStream.getTracks().forEach(t => t.stop());
+  previewStream = null;
+
+  const cameraConfig = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' };
 
   try {
-    await startWithCamera(preferredCameraId);
+    await qrScanner.start(cameraConfig, { fps: 10, qrbox: 250 }, procesarLectura, err => console.debug('Lectura fallida', err));
     scannerActivo = true;
   } catch (error) {
-    console.warn('No se pudo iniciar la cámara preferida, intentando alternativa.', error);
-    if (fallbackCameraId && fallbackCameraId !== preferredCameraId) {
-      try {
-        await startWithCamera(fallbackCameraId);
-        scannerActivo = true;
-        return;
-      } catch (fallbackError) {
-        console.error('No se pudo iniciar la cámara alternativa', fallbackError);
-      }
-    }
-
+    console.error('No se pudo iniciar la cámara', error);
     qrReader?.classList.add('d-none');
     scanModal?.hide();
     showToast('Error al iniciar la cámara', 'error');
