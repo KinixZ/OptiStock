@@ -827,7 +827,7 @@ async function loadRecentMovements() {
 
         recentActivityList.innerHTML = '';
 
-        movimientos.slice(0, 8).forEach(mov => {
+        movimientos.slice(0, 5).forEach(mov => {
             const tipo = (mov.tipo || '').toLowerCase();
             let movementClass = 'mov-ajuste';
             let iconClass = 'fa-exchange-alt';
