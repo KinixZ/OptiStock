@@ -391,11 +391,12 @@
             </div>
             <div class="scan-form" role="group" aria-label="Formulario de movimientos">
               <div class="mb-3">
-                <label for="flashScanMovimientoTipo" class="form-label">Tipo de movimiento</label>
-                <select id="flashScanMovimientoTipo" class="form-select" disabled>
-                  <option value="ingreso">Ingreso</option>
-                  <option value="egreso">Egreso</option>
-                </select>
+                <label class="form-label d-block" for="flashScanMovimientoResumen">Movimiento seleccionado</label>
+                <span
+                  id="flashScanMovimientoResumen"
+                  class="badge rounded-pill bg-success"
+                  aria-live="polite"
+                >Ingreso</span>
               </div>
               <div class="mb-3">
                 <label for="flashScanMovimientoCantidad" class="form-label">Cantidad</label>

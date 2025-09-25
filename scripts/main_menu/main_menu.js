@@ -1505,7 +1505,7 @@ const flashScanResult = document.getElementById('flashScanResult');
 const flashScanProdName = document.getElementById('flashScanProductoNombre');
 const flashScanProdCodigo = document.getElementById('flashScanProductoCodigo');
 const flashScanProdStock = document.getElementById('flashScanProductoStock');
-const flashScanTipoSelect = document.getElementById('flashScanMovimientoTipo');
+const flashScanTipoDisplay = document.getElementById('flashScanMovimientoResumen');
 const flashScanCantidadInput = document.getElementById('flashScanMovimientoCantidad');
 const flashScanCantidadHelp = document.getElementById('flashScanCantidadAyuda');
 const flashScanRegistrar = document.getElementById('flashScanRegistrar');
@@ -1520,7 +1520,7 @@ const FLASH_API = {
 const FLASH_EMPRESA_ID = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
 const FLASH_TEXTOS = {
     base: 'Coloca el código frente a la cámara para registrar el movimiento y confirma la operación antes de guardarla.',
-    producto: 'Producto identificado. Selecciona el tipo de movimiento y confirma la cantidad antes de guardar.'
+    producto: 'Producto identificado. Confirma la cantidad antes de guardar el movimiento.'
 };
 
 let flashQrScanner = null;
@@ -1532,6 +1532,17 @@ let flashMovimientoForzado = 'ingreso';
 let flashIniciarEscaneoPendiente = false;
 let flashAvisoCantidadCero = false;
 let flashLastScanError = '';
+
+function flashActualizarMovimientoUI() {
+    if (!flashScanTipoDisplay) {
+        return;
+    }
+
+    const esEgreso = flashMovimientoForzado === 'egreso';
+    flashScanTipoDisplay.textContent = esEgreso ? 'Egreso' : 'Ingreso';
+    flashScanTipoDisplay.classList.toggle('bg-danger', esEgreso);
+    flashScanTipoDisplay.classList.toggle('bg-success', !esEgreso);
+}
 
 function flashShowToast(message, type = 'info') {
     if (!flashToastStack || typeof bootstrap === 'undefined') {
@@ -1618,9 +1629,9 @@ function flashActualizarAyudaCantidad() {
         return;
     }
 
-    if (!flashScanTipoSelect || !flashScanCantidadInput) return;
+    if (!flashScanCantidadInput) return;
 
-    const tipo = flashScanTipoSelect.value === 'egreso' ? 'egreso' : 'ingreso';
+    const tipo = flashMovimientoForzado === 'egreso' ? 'egreso' : 'ingreso';
     const stockActual = flashObtenerStock(flashProductoActual);
     const rawCantidad = flashScanCantidadInput.value.trim();
     const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
@@ -1682,10 +1693,7 @@ function flashPrepararUI() {
     if (flashScanProdStock) {
         flashScanProdStock.textContent = '0';
     }
-    if (flashScanTipoSelect) {
-        flashScanTipoSelect.value = flashMovimientoForzado;
-        flashScanTipoSelect.disabled = true;
-    }
+    flashActualizarMovimientoUI();
     if (flashScanCantidadInput) {
         flashScanCantidadInput.value = '';
         flashScanCantidadInput.disabled = true;
@@ -1707,10 +1715,7 @@ function flashMostrarProducto(producto) {
     if (flashQrHelperText) {
         flashQrHelperText.textContent = FLASH_TEXTOS.producto;
     }
-    if (flashScanTipoSelect) {
-        flashScanTipoSelect.disabled = false;
-        flashScanTipoSelect.value = flashMovimientoForzado;
-    }
+    flashActualizarMovimientoUI();
     if (flashScanCantidadInput) {
         flashScanCantidadInput.disabled = false;
         flashScanCantidadInput.value = '';
@@ -1913,6 +1918,7 @@ async function flashAbrirScanner(tipo) {
     }
 
     flashMovimientoForzado = tipo === 'egreso' ? 'egreso' : 'ingreso';
+    flashActualizarMovimientoUI();
     flashPrepararUI();
     flashIniciarEscaneoPendiente = true;
     flashScanModal.show();
@@ -1932,10 +1938,6 @@ flashScanModalElement?.addEventListener('hidden.bs.modal', async () => {
     await flashDetenerScanner();
     flashIniciarEscaneoPendiente = false;
     flashPrepararUI();
-});
-
-flashScanTipoSelect?.addEventListener('change', () => {
-    flashActualizarAyudaCantidad();
 });
 
 flashScanCantidadInput?.addEventListener('input', () => {
@@ -1975,7 +1977,7 @@ flashScanCantidadInput?.addEventListener('input', () => {
         return;
     }
 
-    if (flashProductoActual && flashScanTipoSelect?.value === 'egreso') {
+    if (flashProductoActual && flashMovimientoForzado === 'egreso') {
         const stockActual = flashObtenerStock(flashProductoActual);
         if (stockActual > 0 && value > stockActual) {
             value = stockActual;
@@ -2007,8 +2009,7 @@ flashScanRegistrar?.addEventListener('click', async () => {
         flashShowToast('El identificador del producto es inválido.', 'error');
         return;
     }
-
-    const tipo = flashScanTipoSelect?.value === 'egreso' ? 'egreso' : 'ingreso';
+    const tipo = flashMovimientoForzado === 'egreso' ? 'egreso' : 'ingreso';
     const rawCantidad = flashScanCantidadInput?.value?.trim() ?? '';
     const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
 
