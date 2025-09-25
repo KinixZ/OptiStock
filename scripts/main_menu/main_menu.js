@@ -2009,7 +2009,6 @@ flashScanRegistrar?.addEventListener('click', async () => {
         flashShowToast('El identificador del producto es inválido.', 'error');
         return;
     }
-
     const tipo = flashMovimientoForzado === 'egreso' ? 'egreso' : 'ingreso';
     const rawCantidad = flashScanCantidadInput?.value?.trim() ?? '';
     const cantidad = rawCantidad === '' ? 1 : parseInt(rawCantidad, 10);
