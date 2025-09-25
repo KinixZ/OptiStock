@@ -215,7 +215,7 @@ if ($method === 'POST' || $method === 'PUT') {
             mkdir($qrDir,0777,true);
         }
         $qrFile = $qrDir.$newId.'.png';
-        QRcode::png((string)$newId, $qrFile, QR_ECLEVEL_L, 4, 2);
+        QRcode::png((string)$newId, $qrFile, QR_ECLEVEL_L, 8, 2);
         $qrRel = 'images/qr/'.$newId.'.png';
 
         // Guardar ruta del QR en la base de datos
