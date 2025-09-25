@@ -318,10 +318,48 @@
         </div>
         <div class="modal-body">
           <div id="qrReader" class="qr-reader d-none" role="img" aria-label="Visor para lectura de códigos QR"></div>
-          <p class="qr-helper">Coloca el código frente a la cámara para registrar el movimiento automáticamente.</p>
+          <p id="qrHelperText" class="qr-helper">
+            Coloca el código frente a la cámara para registrar el movimiento y confirma la operación antes de guardarla.
+          </p>
+          <div id="scanResult" class="scan-result d-none" aria-live="polite">
+            <div class="scan-product">
+              <h6 id="scanProductoNombre" class="scan-product__name">Producto seleccionado</h6>
+              <p id="scanProductoCodigo" class="scan-product__code">ID interno:</p>
+              <div class="scan-stock">
+                <span class="scan-stock__label">Stock actual</span>
+                <span id="scanProductoStock" class="scan-stock__value">0</span>
+              </div>
+            </div>
+            <div class="scan-form" role="group" aria-label="Formulario de movimientos">
+              <div class="mb-3">
+                <label for="scanMovimientoTipo" class="form-label">Tipo de movimiento</label>
+                <select id="scanMovimientoTipo" class="form-select" disabled>
+                  <option value="ingreso">Ingreso</option>
+                  <option value="egreso">Egreso</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="scanMovimientoCantidad" class="form-label">Cantidad</label>
+                <input
+                  id="scanMovimientoCantidad"
+                  type="number"
+                  class="form-control"
+                  min="1"
+                  value="1"
+                  disabled
+                  inputmode="numeric"
+                />
+                <div id="scanCantidadAyuda" class="form-text">Escanea un producto para registrar su movimiento.</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="modal-footer border-0">
-          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cerrar escáner</button>
+        <div class="modal-footer border-0 flex-column gap-2">
+          <div class="w-100 d-flex flex-column flex-sm-row gap-2">
+            <button id="scanRegistrar" class="btn btn-primary flex-fill" type="button" disabled>Registrar movimiento</button>
+            <button id="scanReintentar" class="btn btn-outline-secondary flex-fill" type="button">Escanear otro código</button>
+          </div>
+          <button class="btn btn-link text-decoration-none px-0" type="button" data-bs-dismiss="modal">Cerrar escáner</button>
         </div>
       </div>
     </div>
