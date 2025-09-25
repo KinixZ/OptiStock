@@ -226,18 +226,28 @@ function renderNotificationPlaceholder(message, options = {}) {
     notificationList.appendChild(listItem);
 }
 
-function updateNotificationCounters(newCount) {
-    const effectiveCount = Number.isFinite(newCount) ? Math.max(newCount, 0) : 0;
+function updateNotificationCounters(counts) {
+    const normalized = typeof counts === 'object' && counts !== null ? counts : {};
+    const totalCount = Number.isFinite(normalized.totalCount) ? Math.max(normalized.totalCount, 0) : 0;
+    const newCount = Number.isFinite(normalized.newCount) ? Math.max(normalized.newCount, 0) : 0;
 
     if (notificationCounter) {
-        notificationCounter.textContent = effectiveCount > 0
-            ? `${effectiveCount} ${effectiveCount === 1 ? 'nueva' : 'nuevas'}`
-            : 'Sin nuevas';
+        if (totalCount === 0) {
+            notificationCounter.textContent = 'Sin notificaciones';
+        } else if (newCount > 0) {
+            const nuevasLabel = newCount === 1 ? '1 notificación nueva' : `${newCount} notificaciones nuevas`;
+            const totalLabel = totalCount === 1 ? '1 en total' : `${totalCount} en total`;
+            notificationCounter.textContent = `${nuevasLabel} · ${totalLabel}`;
+        } else {
+            notificationCounter.textContent = totalCount === 1
+                ? '1 notificación disponible'
+                : `${totalCount} notificaciones disponibles`;
+        }
     }
 
     if (notificationBadge) {
-        if (effectiveCount > 0) {
-            notificationBadge.textContent = effectiveCount > 99 ? '99+' : String(effectiveCount);
+        if (totalCount > 0) {
+            notificationBadge.textContent = totalCount > 99 ? '99+' : String(totalCount);
             notificationBadge.classList.remove('notification-badge--hidden');
         } else {
             notificationBadge.textContent = '';
@@ -256,11 +266,12 @@ function renderNotifications(notifications = []) {
 
     if (!normalizedNotifications.length) {
         renderNotificationPlaceholder('No hay notificaciones disponibles en este momento.');
-        updateNotificationCounters(0);
+        updateNotificationCounters({ totalCount: 0, newCount: 0 });
         return;
     }
 
     let newCount = 0;
+    const totalCount = normalizedNotifications.length;
 
     normalizedNotifications.forEach(notification => {
         const listItem = document.createElement('li');
@@ -342,7 +353,51 @@ function renderNotifications(notifications = []) {
         notificationList.appendChild(listItem);
     });
 
-    updateNotificationCounters(newCount);
+    updateNotificationCounters({ totalCount, newCount });
+}
+
+function parseNotificationTimestamp(notification) {
+    if (!notification) return 0;
+    const source = notification.fecha_disponible_desde || notification.creado_en || notification.actualizado_en;
+    if (!source) return 0;
+    const normalized = String(source).replace(' ', 'T');
+    const parsed = Date.parse(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sortNotificationsByPriorityAndDate(notifications) {
+    const priorityOrder = { alta: 0, media: 1, baja: 2 };
+    return notifications.slice().sort((a, b) => {
+        const rawPriorityA = (a && a.prioridad) ? a.prioridad.toLowerCase() : '';
+        const rawPriorityB = (b && b.prioridad) ? b.prioridad.toLowerCase() : '';
+        const priorityA = Object.prototype.hasOwnProperty.call(priorityOrder, rawPriorityA)
+            ? priorityOrder[rawPriorityA]
+            : 3;
+        const priorityB = Object.prototype.hasOwnProperty.call(priorityOrder, rawPriorityB)
+            ? priorityOrder[rawPriorityB]
+            : 3;
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        const dateA = parseNotificationTimestamp(a);
+        const dateB = parseNotificationTimestamp(b);
+        if (dateA !== dateB) {
+            return dateB - dateA;
+        }
+
+        const idA = a && a.id != null ? String(a.id) : '';
+        const idB = b && b.id != null ? String(b.id) : '';
+        return idA.localeCompare(idB);
+    });
+}
+
+function refreshNotificationUI() {
+    const combined = sortNotificationsByPriorityAndDate([
+        ...criticalStockNotifications,
+        ...serverNotifications
+    ]);
+    renderNotifications(combined);
 }
 
 function parseNotificationTimestamp(notification) {
@@ -449,7 +504,7 @@ async function fetchNotifications(options = {}) {
         console.error('No se pudieron cargar las notificaciones:', error);
         if (!serverNotifications.length && !criticalStockNotifications.length) {
             renderNotificationPlaceholder('No se pudieron cargar las alertas.', { modifier: 'error' });
-            updateNotificationCounters(0);
+            updateNotificationCounters({ totalCount: 0, newCount: 0 });
         } else {
             refreshNotificationUI();
         }
