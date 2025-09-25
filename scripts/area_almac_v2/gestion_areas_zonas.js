@@ -120,12 +120,12 @@ async function renderAreas() {
     areas.forEach(a => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${a.nombre}</td>
-        <td>${a.descripcion}</td>
-        <td>${a.ancho}×${a.largo}×${a.alto}</td>
-        <td>${parseFloat(a.volumen).toFixed(2)}</td>
-        <td>${zonasPorArea[a.id] || 0}</td>
-        <td>
+        <td data-label="Área">${a.nombre}</td>
+        <td data-label="Descripción">${a.descripcion}</td>
+        <td data-label="Dimensiones">${a.ancho}×${a.largo}×${a.alto}</td>
+        <td data-label="Volumen">${parseFloat(a.volumen).toFixed(2)}</td>
+        <td data-label="Zonas asignadas">${zonasPorArea[a.id] || 0}</td>
+        <td data-label="Acciones">
           <div class="table-actions">
             <button class="table-action table-action--edit" data-action="edit-area" data-id="${a.id}">Editar</button>
             <button class="table-action table-action--delete" data-action="delete-area" data-id="${a.id}">Eliminar</button>
@@ -220,12 +220,12 @@ async function renderZonas() {
     zonasAsignadas.forEach(z => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${z.nombre}</td>
-        <td>${areasMap[z.area_id] || z.area_id}</td>
-        <td>${z.ancho}×${z.largo}×${z.alto}</td>
-        <td>${parseFloat(z.volumen).toFixed(2)}</td>
-        <td>${z.tipo_almacenamiento}</td>
-        <td>
+        <td data-label="Zona">${z.nombre}</td>
+        <td data-label="Área">${areasMap[z.area_id] || z.area_id}</td>
+        <td data-label="Dimensiones">${z.ancho}×${z.largo}×${z.alto}</td>
+        <td data-label="Volumen">${parseFloat(z.volumen).toFixed(2)}</td>
+        <td data-label="Tipo">${z.tipo_almacenamiento}</td>
+        <td data-label="Acciones">
           <div class="table-actions">
             <button class="table-action table-action--edit" data-action="edit-zone" data-id="${z.id}">Editar</button>
             <button class="table-action table-action--delete" data-action="delete-zone" data-id="${z.id}">Eliminar</button>
@@ -246,11 +246,11 @@ async function renderZonas() {
     zonasSinAsignar.forEach(z => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${z.nombre}</td>
-        <td>${z.ancho}×${z.largo}×${z.alto}</td>
-        <td>${parseFloat(z.volumen).toFixed(2)}</td>
-        <td>${z.tipo_almacenamiento}</td>
-        <td>
+        <td data-label="Zona">${z.nombre}</td>
+        <td data-label="Dimensiones">${z.ancho}×${z.largo}×${z.alto}</td>
+        <td data-label="Volumen">${parseFloat(z.volumen).toFixed(2)}</td>
+        <td data-label="Tipo">${z.tipo_almacenamiento}</td>
+        <td data-label="Acciones">
           <div class="table-actions">
             <button class="table-action table-action--edit" data-action="edit-zone" data-id="${z.id}">Editar</button>
             <button class="table-action table-action--delete" data-action="delete-zone" data-id="${z.id}">Eliminar</button>
