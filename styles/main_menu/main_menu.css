@@ -1199,6 +1199,65 @@ img {
     gap: 1rem;
 }
 
+.critical-stock-toast-container {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(320px, calc(100vw - 3rem));
+    z-index: 120;
+    pointer-events: none;
+}
+
+.critical-stock-toast {
+    position: relative;
+    background: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--primary-border-soft);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transform: translateY(-12px);
+    opacity: 0;
+    transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.critical-stock-toast::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 2px solid transparent;
+    background:
+        linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
+        linear-gradient(135deg, var(--danger-color), var(--primary-color)) border-box;
+    z-index: -1;
+}
+
+.critical-stock-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.critical-stock-toast__title {
+    font-weight: 600;
+    color: var(--danger-color);
+    font-size: 0.95rem;
+}
+
+.critical-stock-toast__message {
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: var(--text-color);
+}
+
 .stock-alert-item,
 .activity-item {
     display: flex;

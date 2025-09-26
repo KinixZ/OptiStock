@@ -83,6 +83,9 @@ try {
 const DEFAULT_STOCK_ALERT_THRESHOLD = 10;
 const STOCK_THRESHOLD_STORAGE_PREFIX = 'stockAlertThreshold';
 
+const CRITICAL_STOCK_TOAST_CONTAINER_ID = 'criticalStockToastContainer';
+const CRITICAL_STOCK_TOAST_DURATION = 7000;
+
 // Selected theme colors
 let colorSidebarSeleccionado = getComputedStyle(document.documentElement)
     .getPropertyValue('--sidebar-color')
@@ -92,8 +95,58 @@ let colorTopbarSeleccionado = getComputedStyle(document.documentElement)
     .trim();
 
 
+function getCriticalStockToastContainer() {
+    let container = document.getElementById(CRITICAL_STOCK_TOAST_CONTAINER_ID);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = CRITICAL_STOCK_TOAST_CONTAINER_ID;
+        container.className = 'critical-stock-toast-container';
+        container.setAttribute('aria-live', 'polite');
+        container.setAttribute('aria-atomic', 'true');
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
 function showCriticalStockAlert(title, message) {
-    alert(`${title}\n\n${message}`.trim());
+    const container = getCriticalStockToastContainer();
+    const toast = document.createElement('article');
+    toast.className = 'critical-stock-toast';
+    toast.setAttribute('role', 'status');
+
+    const titleEl = document.createElement('p');
+    titleEl.className = 'critical-stock-toast__title';
+    titleEl.textContent = title.trim();
+
+    const messageEl = document.createElement('p');
+    messageEl.className = 'critical-stock-toast__message';
+    messageEl.textContent = message.trim();
+
+    toast.appendChild(titleEl);
+    toast.appendChild(messageEl);
+
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add('is-visible');
+    });
+
+    const removeToast = () => {
+        toast.classList.remove('is-visible');
+        toast.addEventListener('transitionend', () => {
+            toast.remove();
+            if (!container.hasChildNodes()) {
+                container.remove();
+            }
+        }, { once: true });
+    };
+
+    const timeoutId = setTimeout(removeToast, CRITICAL_STOCK_TOAST_DURATION);
+
+    toast.addEventListener('click', () => {
+        clearTimeout(timeoutId);
+        removeToast();
+    });
 }
 
 function formatRelativeNotificationTime(dateString) {
