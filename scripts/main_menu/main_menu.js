@@ -1728,6 +1728,20 @@ const flashScanRegistrar = document.getElementById('flashScanRegistrar');
 const flashScanReintentar = document.getElementById('flashScanReintentar');
 const flashToastStack = document.getElementById('flashToastStack');
 
+const manualEntradaBtn = document.getElementById('manualEntradaBtn');
+const manualSalidaBtn = document.getElementById('manualSalidaBtn');
+const manualMovimientoModalElement = document.getElementById('manualMovimientoModal');
+const manualMovimientoModal = manualMovimientoModalElement && typeof bootstrap !== 'undefined'
+    ? new bootstrap.Modal(manualMovimientoModalElement)
+    : null;
+const manualMovimientoForm = document.getElementById('manualMovimientoForm');
+const manualMovimientoTitulo = document.getElementById('manualMovimientoTitulo');
+const manualMovimientoProducto = document.getElementById('manualMovimientoProducto');
+const manualMovimientoCantidad = document.getElementById('manualMovimientoCantidad');
+const manualMovimientoGuardar = document.getElementById('manualMovimientoGuardar');
+const manualMovimientoError = document.getElementById('manualMovimientoError');
+const manualCantidadHelp = document.getElementById('manualCantidadHelp');
+
 const FLASH_API = {
     productos: '../../scripts/php/guardar_productos.php',
     movimiento: '../../scripts/php/guardar_movimientos.php'
@@ -1748,6 +1762,298 @@ let flashMovimientoForzado = 'ingreso';
 let flashIniciarEscaneoPendiente = false;
 let flashAvisoCantidadCero = false;
 let flashLastScanError = '';
+
+let manualMovimientoTipo = 'ingreso';
+let manualProductosCache = [];
+let manualProductosEmpresaId = null;
+let manualCargandoProductos = false;
+
+function manualResetFeedback() {
+    if (manualMovimientoError) {
+        manualMovimientoError.textContent = '';
+        manualMovimientoError.classList.add('d-none');
+    }
+    if (manualCantidadHelp) {
+        manualCantidadHelp.textContent = '';
+    }
+}
+
+function manualMostrarError(message) {
+    if (!manualMovimientoError) {
+        return;
+    }
+    if (message) {
+        manualMovimientoError.textContent = String(message);
+        manualMovimientoError.classList.remove('d-none');
+    } else {
+        manualMovimientoError.textContent = '';
+        manualMovimientoError.classList.add('d-none');
+    }
+}
+
+function manualToggleGuardar(disabled) {
+    if (manualMovimientoGuardar) {
+        manualMovimientoGuardar.disabled = Boolean(disabled);
+    }
+}
+
+function manualPoblarSelect(productos = manualProductosCache) {
+    if (!manualMovimientoProducto) {
+        return;
+    }
+
+    manualMovimientoProducto.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = 'Selecciona un producto';
+    manualMovimientoProducto.appendChild(placeholderOption);
+
+    if (!Array.isArray(productos) || productos.length === 0) {
+        manualMovimientoProducto.disabled = true;
+        manualToggleGuardar(true);
+        manualMostrarError('No hay productos registrados. Agrega productos desde el módulo de inventario.');
+        return;
+    }
+
+    const productosOrdenados = [...productos].sort((a, b) => {
+        const nombreA = (a?.nombre || '').toString();
+        const nombreB = (b?.nombre || '').toString();
+        return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+    });
+
+    productosOrdenados.forEach(producto => {
+        if (!producto) return;
+        const option = document.createElement('option');
+        option.value = String(producto.id);
+        const codigo = producto.codigo || producto.codigo_barras || producto.sku || producto.codigo_interno;
+        const nombre = producto.nombre || `Producto #${producto.id}`;
+        option.textContent = codigo ? `${nombre} (${codigo})` : nombre;
+        const stock = parseInt(producto.stock, 10);
+        option.dataset.stock = Number.isFinite(stock) ? String(stock) : '0';
+        manualMovimientoProducto.appendChild(option);
+    });
+
+    manualMovimientoProducto.disabled = false;
+    manualToggleGuardar(false);
+    manualMostrarError('');
+}
+
+function manualObtenerProductoSeleccionado() {
+    if (!manualMovimientoProducto) {
+        return null;
+    }
+    const productoId = parseInt(manualMovimientoProducto.value, 10);
+    if (!Number.isFinite(productoId)) {
+        return null;
+    }
+    return manualProductosCache.find(item => parseInt(item?.id, 10) === productoId) || null;
+}
+
+function manualActualizarAyudaCantidad() {
+    if (!manualCantidadHelp) {
+        return;
+    }
+
+    const producto = manualObtenerProductoSeleccionado();
+    const stockActual = producto ? parseInt(producto.stock, 10) || 0 : 0;
+
+    if (!producto) {
+        manualCantidadHelp.textContent = manualMovimientoTipo === 'egreso'
+            ? 'Selecciona un producto para conocer el stock disponible.'
+            : 'Selecciona un producto para registrar la entrada.';
+        return;
+    }
+
+    if (manualMovimientoTipo === 'egreso') {
+        if (stockActual > 0) {
+            manualCantidadHelp.textContent = `Disponibles ${stockActual} unidad${stockActual === 1 ? '' : 'es'} para egreso.`;
+        } else {
+            manualCantidadHelp.textContent = 'No hay unidades disponibles para egresar.';
+        }
+    } else {
+        manualCantidadHelp.textContent = `El movimiento sumará unidades al stock actual (${stockActual}).`;
+    }
+}
+
+async function manualCargarProductos(force = false) {
+    if (!FLASH_EMPRESA_ID) {
+        manualPoblarSelect([]);
+        return [];
+    }
+
+    if (!force && manualProductosEmpresaId === FLASH_EMPRESA_ID && manualProductosCache.length) {
+        manualPoblarSelect(manualProductosCache);
+        manualActualizarAyudaCantidad();
+        return manualProductosCache;
+    }
+
+    manualCargandoProductos = true;
+    manualToggleGuardar(true);
+    manualMostrarError('');
+
+    try {
+        const url = `${FLASH_API.productos}?empresa_id=${encodeURIComponent(FLASH_EMPRESA_ID)}`;
+        const data = await flashFetchJSON(url);
+        const productos = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.productos)
+                ? data.productos
+                : [];
+        manualProductosCache = productos;
+        manualProductosEmpresaId = FLASH_EMPRESA_ID;
+        manualPoblarSelect(productos);
+        manualActualizarAyudaCantidad();
+        return manualProductosCache;
+    } catch (error) {
+        console.error('manualCargarProductos', error);
+        manualPoblarSelect([]);
+        manualMostrarError('No se pudieron cargar los productos. Intenta nuevamente.');
+        throw error;
+    } finally {
+        manualCargandoProductos = false;
+    }
+}
+
+function manualAbrirModal(tipo) {
+    if (!manualMovimientoModal) {
+        return;
+    }
+
+    if (!FLASH_EMPRESA_ID) {
+        flashShowToast('Registra tu empresa para poder registrar movimientos.', 'error');
+        return;
+    }
+
+    manualMovimientoTipo = tipo === 'egreso' ? 'egreso' : 'ingreso';
+    manualResetFeedback();
+
+    if (manualMovimientoTitulo) {
+        manualMovimientoTitulo.textContent = manualMovimientoTipo === 'egreso'
+            ? 'Registrar Salida'
+            : 'Registrar Entrada';
+    }
+
+    if (manualMovimientoProducto) {
+        manualMovimientoProducto.value = '';
+        manualMovimientoProducto.disabled = true;
+    }
+    if (manualMovimientoCantidad) {
+        manualMovimientoCantidad.value = '';
+    }
+
+    manualToggleGuardar(true);
+    manualActualizarAyudaCantidad();
+    manualMovimientoModal.show();
+
+    manualCargarProductos().catch(() => {
+        // El error ya fue mostrado al usuario en manualCargarProductos
+    });
+}
+
+async function manualRegistrarMovimiento(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    if (!manualMovimientoForm) {
+        return;
+    }
+
+    manualMostrarError('');
+
+    if (!FLASH_EMPRESA_ID) {
+        flashShowToast('Registra tu empresa para poder registrar movimientos.', 'error');
+        return;
+    }
+
+    const producto = manualObtenerProductoSeleccionado();
+    const productoId = producto ? parseInt(producto.id, 10) : NaN;
+    if (!producto || !Number.isFinite(productoId)) {
+        manualMostrarError('Selecciona un producto para continuar.');
+        manualMovimientoProducto?.focus();
+        return;
+    }
+
+    const cantidad = manualMovimientoCantidad ? Number(manualMovimientoCantidad.value) : NaN;
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+        manualMostrarError('Ingresa una cantidad válida mayor a cero.');
+        manualMovimientoCantidad?.focus();
+        return;
+    }
+
+    const stockActual = parseInt(producto.stock, 10) || 0;
+    if (manualMovimientoTipo === 'egreso') {
+        if (stockActual <= 0) {
+            manualMostrarError('No hay stock disponible para egresar este producto.');
+            return;
+        }
+        if (cantidad > stockActual) {
+            manualMostrarError(`La cantidad no puede exceder el stock disponible (${stockActual}).`);
+            return;
+        }
+    }
+
+    manualToggleGuardar(true);
+
+    try {
+        const payload = {
+            empresa_id: FLASH_EMPRESA_ID,
+            producto_id: productoId,
+            tipo: manualMovimientoTipo,
+            cantidad
+        };
+
+        const resultado = await flashFetchJSON(FLASH_API.movimiento, 'POST', payload);
+        if (!resultado || resultado.success !== true) {
+            throw new Error(resultado?.error || 'No se pudo registrar el movimiento.');
+        }
+
+        const nuevoStock = (() => {
+            const remoto = parseInt(resultado.stock_actual, 10);
+            if (Number.isFinite(remoto)) {
+                return remoto;
+            }
+            return manualMovimientoTipo === 'egreso'
+                ? stockActual - cantidad
+                : stockActual + cantidad;
+        })();
+
+        producto.stock = nuevoStock;
+
+        flashShowToast(
+            manualMovimientoTipo === 'egreso'
+                ? 'Movimiento de salida registrado correctamente.'
+                : 'Movimiento de entrada registrado correctamente.',
+            'success'
+        );
+
+        manualMovimientoModal?.hide();
+        manualMovimientoForm.reset();
+        manualActualizarAyudaCantidad();
+
+        if (typeof loadRecentMovements === 'function') {
+            try {
+                loadRecentMovements();
+            } catch (refreshError) {
+                console.warn('No se pudo refrescar los movimientos recientes', refreshError);
+            }
+        }
+
+        if (typeof loadStockAlerts === 'function') {
+            try {
+                loadStockAlerts();
+            } catch (alertError) {
+                console.warn('No se pudo refrescar las alertas de stock', alertError);
+            }
+        }
+    } catch (error) {
+        console.error('manualRegistrarMovimiento', error);
+        manualMostrarError(error?.message || 'No se pudo registrar el movimiento.');
+    } finally {
+        manualToggleGuardar(false);
+        manualActualizarAyudaCantidad();
+    }
+}
 
 function flashActualizarMovimientoUI() {
     if (!flashScanTipoDisplay) {
@@ -2302,6 +2608,43 @@ ingresoFlashBtn?.addEventListener('click', () => {
 
 egresoFlashBtn?.addEventListener('click', () => {
     flashAbrirScanner('egreso');
+});
+
+manualEntradaBtn?.addEventListener('click', () => {
+    manualAbrirModal('ingreso');
+});
+
+manualSalidaBtn?.addEventListener('click', () => {
+    manualAbrirModal('egreso');
+});
+
+manualMovimientoForm?.addEventListener('submit', manualRegistrarMovimiento);
+
+manualMovimientoProducto?.addEventListener('change', () => {
+    manualMostrarError('');
+    manualActualizarAyudaCantidad();
+});
+
+manualMovimientoCantidad?.addEventListener('input', () => {
+    if (manualMovimientoError && !manualMovimientoError.classList.contains('d-none')) {
+        manualMostrarError('');
+    }
+});
+
+manualMovimientoModalElement?.addEventListener('shown.bs.modal', () => {
+    manualMovimientoProducto?.focus();
+    manualActualizarAyudaCantidad();
+});
+
+manualMovimientoModalElement?.addEventListener('hidden.bs.modal', () => {
+    manualResetFeedback();
+    if (manualMovimientoProducto && !manualCargandoProductos) {
+        manualMovimientoProducto.disabled = false;
+        manualMovimientoProducto.value = '';
+    }
+    if (manualMovimientoCantidad) {
+        manualMovimientoCantidad.value = '';
+    }
 });
 
 // Manual tutorial trigger for testing (remove in production)
