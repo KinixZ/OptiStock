@@ -141,10 +141,10 @@
                             <button class="btn btn-danger" id="egresoFlashBtn">
                                 <i class="fas fa-bolt"></i> Egreso Flash
                             </button>
-                            <button class="btn btn-primary">
+                            <button class="btn btn-primary" type="button" id="manualEntradaBtn">
                                 <i class="fas fa-sign-in-alt"></i> Registrar Entrada
                             </button>
-                            <button class="btn btn-primary">
+                            <button class="btn btn-primary" type="button" id="manualSalidaBtn">
                                 <i class="fas fa-sign-out-alt"></i> Registrar Salida
                             </button>
                         </div>
@@ -357,6 +357,38 @@
     <div style="margin-top:20px;">
       <button id="saveAlertSettings" class="btn btn-success">Guardar</button>
       <button id="cancelAlertSettings" class="btn btn-danger">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Registro manual de movimientos -->
+<div class="modal fade" id="manualMovimientoModal" tabindex="-1" aria-labelledby="manualMovimientoTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="manualMovimientoTitulo">Registrar Movimiento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="manualMovimientoForm">
+          <div id="manualMovimientoError" class="alert alert-danger d-none" role="alert"></div>
+          <div class="mb-3">
+            <label for="manualMovimientoProducto" class="form-label">Producto</label>
+            <select class="form-select" id="manualMovimientoProducto" required>
+              <option value="">Selecciona un producto</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="manualMovimientoCantidad" class="form-label">Cantidad</label>
+            <input type="number" class="form-control" id="manualMovimientoCantidad" min="1" step="1" required>
+            <div class="form-text" id="manualCantidadHelp"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" form="manualMovimientoForm" class="btn btn-primary" id="manualMovimientoGuardar">Guardar movimiento</button>
+      </div>
     </div>
   </div>
 </div>
