@@ -35,6 +35,9 @@ CREATE TABLE `areas` (
   `alto` decimal(10,2) NOT NULL,
   `largo` decimal(10,2) NOT NULL,
   `volumen` decimal(15,2) NOT NULL,
+  `capacidad_utilizada` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `porcentaje_ocupacion` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `productos_registrados` int(11) NOT NULL DEFAULT 0,
   `id_empresa` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -42,14 +45,14 @@ CREATE TABLE `areas` (
 -- Volcado de datos para la tabla `areas`
 --
 
-INSERT INTO `areas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `id_empresa`) VALUES
-(21, 'area', 'mi area', 7.00, 2.50, 6.00, 105.00, 21),
-(22, 'Area 1', 'Es el area 1', 5.00, 2.00, 2.00, 20.00, 24),
-(23, 'Papeleria', 'ES una papeleria', 5.00, 2.00, 5.00, 50.00, 23),
-(24, 'El patolicismo', 'Una religion de patos', 99999999.99, 99999999.99, 99999999.99, 9999999999999.99, 28),
-(25, 'Papeleria', 'Descripcion', 8.00, 2.00, 5.00, 80.00, 24),
-(26, 'otra area', 'area dos', 20.00, 4.00, 14.00, 1120.00, 21),
-(28, 'Area1', 'area1', 20.00, 3.00, 30.00, 1800.00, 30);
+INSERT INTO `areas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `capacidad_utilizada`, `porcentaje_ocupacion`, `productos_registrados`, `id_empresa`) VALUES
+(21, 'area', 'mi area', 7.00, 2.50, 6.00, 105.00, 0.00, 0.00, 0, 21),
+(22, 'Area 1', 'Es el area 1', 5.00, 2.00, 2.00, 20.00, 0.00, 0.00, 0, 24),
+(23, 'Papeleria', 'ES una papeleria', 5.00, 2.00, 5.00, 50.00, 0.00, 0.00, 0, 23),
+(24, 'El patolicismo', 'Una religion de patos', 99999999.99, 99999999.99, 99999999.99, 9999999999999.99, 0.00, 0.00, 0, 28),
+(25, 'Papeleria', 'Descripcion', 8.00, 2.00, 5.00, 80.00, 0.00, 0.00, 0, 24),
+(26, 'otra area', 'area dos', 20.00, 4.00, 14.00, 1120.00, 0.00, 0.00, 0, 21),
+(28, 'Area1', 'area1', 20.00, 3.00, 30.00, 1800.00, 0.00, 0.00, 0, 30);
 
 -- --------------------------------------------------------
 
@@ -117,26 +120,28 @@ CREATE TABLE `empresa` (
   `logo_empresa` varchar(255) DEFAULT NULL,
   `sector_empresa` enum('Industrial','Comercial','Servicios','agropecuario','tecnol?gico','financiero','Construcci?n') DEFAULT NULL,
   `usuario_creador` int(11) DEFAULT NULL,
-  `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp()
+  `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp(),
+  `capacidad_maxima_m3` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `umbral_alerta_capacidad` decimal(5,2) NOT NULL DEFAULT 90.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `empresa`
 --
 
-INSERT INTO `empresa` (`id_empresa`, `nombre_empresa`, `logo_empresa`, `sector_empresa`, `usuario_creador`, `fecha_registro`) VALUES
-(21, 'Discocks', '/images/logos/logo_21_1755907312.png', 'Comercial', 57, '2025-06-26 19:29:13'),
-(22, 'empresa', NULL, 'Industrial', 58, '2025-07-01 01:31:07'),
-(23, 'afwfqf', NULL, 'Industrial', 33, '2025-07-01 01:45:04'),
-(24, 'EL KINI CORP', '/images/logos/logo_24_1757520273.jpeg', 'Industrial', 60, '2025-07-01 01:45:36'),
-(25, 'elkini', NULL, 'Industrial', 56, '2025-07-01 13:17:34'),
-(26, 'Salchichas pepe', NULL, 'Comercial', 83, '2025-07-01 14:28:13'),
-(27, 'ROMO\'S', NULL, '', 91, '2025-08-02 14:54:20'),
-(28, 'Papamovil.net', NULL, '', 93, '2025-08-04 17:06:27'),
-(29, 'Optistock', NULL, 'Servicios', 97, '2025-08-08 04:18:41'),
-(30, 'KInicorp', '/images/logos/logo_1756916306.jpg', 'Servicios', 101, '2025-09-03 16:18:26'),
-(31, 'Discos de Vinilo y CD', NULL, 'Comercial', 102, '2025-09-05 00:27:10'),
-(32, 'Empresa.exe', NULL, '', 113, '2025-09-10 16:12:08');
+INSERT INTO `empresa` (`id_empresa`, `nombre_empresa`, `logo_empresa`, `sector_empresa`, `usuario_creador`, `fecha_registro`, `capacidad_maxima_m3`, `umbral_alerta_capacidad`) VALUES
+(21, 'Discocks', '/images/logos/logo_21_1755907312.png', 'Comercial', 57, '2025-06-26 19:29:13', 0.00, 90.00),
+(22, 'empresa', NULL, 'Industrial', 58, '2025-07-01 01:31:07', 0.00, 90.00),
+(23, 'afwfqf', NULL, 'Industrial', 33, '2025-07-01 01:45:04', 0.00, 90.00),
+(24, 'EL KINI CORP', '/images/logos/logo_24_1757520273.jpeg', 'Industrial', 60, '2025-07-01 01:45:36', 0.00, 90.00),
+(25, 'elkini', NULL, 'Industrial', 56, '2025-07-01 13:17:34', 0.00, 90.00),
+(26, 'Salchichas pepe', NULL, 'Comercial', 83, '2025-07-01 14:28:13', 0.00, 90.00),
+(27, 'ROMO\'S', NULL, '', 91, '2025-08-02 14:54:20', 0.00, 90.00),
+(28, 'Papamovil.net', NULL, '', 93, '2025-08-04 17:06:27', 0.00, 90.00),
+(29, 'Optistock', NULL, 'Servicios', 97, '2025-08-08 04:18:41', 0.00, 90.00),
+(30, 'KInicorp', '/images/logos/logo_1756916306.jpg', 'Servicios', 101, '2025-09-03 16:18:26', 0.00, 90.00),
+(31, 'Discos de Vinilo y CD', NULL, 'Comercial', 102, '2025-09-05 00:27:10', 0.00, 90.00),
+(32, 'Empresa.exe', NULL, '', 113, '2025-09-10 16:12:08', 0.00, 90.00);
 
 -- --------------------------------------------------------
 
@@ -664,6 +669,9 @@ CREATE TABLE `zonas` (
   `alto` decimal(10,2) NOT NULL,
   `largo` decimal(10,2) NOT NULL,
   `volumen` decimal(15,2) NOT NULL,
+  `capacidad_utilizada` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `porcentaje_ocupacion` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `productos_registrados` int(11) NOT NULL DEFAULT 0,
   `tipo_almacenamiento` varchar(50) DEFAULT NULL,
   `subniveles` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`subniveles`)),
   `area_id` int(11) DEFAULT NULL,
@@ -674,16 +682,16 @@ CREATE TABLE `zonas` (
 -- Volcado de datos para la tabla `zonas`
 --
 
-INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `tipo_almacenamiento`, `subniveles`, `area_id`, `id_empresa`) VALUES
-(16, 'zona', 'mi zona', 3.00, 2.00, 1.00, 6.00, 'rack', '[]', 21, 21),
-(17, 'Zona 1', 'es la zona 1', 2.00, 2.00, 2.00, 8.00, 'gabinete', '[]', 22, 24),
-(18, 'Mostrador', 'SI', 2.00, 1.00, 2.00, 4.00, 'vitrina', '[]', 23, 23),
-(19, 'Iglesia Patólica', 'Una iglesia a nuestro señor y salvador emplumado', 0.00, 1.00, 0.00, 0.00, 'jaula', '[]', 24, 28),
-(20, 'rack A', 'rack para cosas pesadas', 1.50, 3.00, 5.00, 22.50, 'rack', '[]', 26, 21),
-(21, 'rack B', 'otro rack', 1.50, 3.00, 5.00, 22.50, 'rack', '[]', 26, 21),
-(22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 'rack', '[]', 26, 21),
-(23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 'cajón', '[]', 28, 30),
-(24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 'jaula', '[]', NULL, 21);
+INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `capacidad_utilizada`, `porcentaje_ocupacion`, `productos_registrados`, `tipo_almacenamiento`, `subniveles`, `area_id`, `id_empresa`) VALUES
+(16, 'zona', 'mi zona', 3.00, 2.00, 1.00, 6.00, 0.00, 0.00, 0, 'rack', '[]', 21, 21),
+(17, 'Zona 1', 'es la zona 1', 2.00, 2.00, 2.00, 8.00, 0.00, 0.00, 0, 'gabinete', '[]', 22, 24),
+(18, 'Mostrador', 'SI', 2.00, 1.00, 2.00, 4.00, 0.00, 0.00, 0, 'vitrina', '[]', 23, 23),
+(19, 'Iglesia Patólica', 'Una iglesia a nuestro señor y salvador emplumado', 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0, 'jaula', '[]', 24, 28),
+(20, 'rack A', 'rack para cosas pesadas', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
+(21, 'rack B', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
+(22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
+(23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 0.00, 0.00, 0, 'cajón', '[]', 28, 30),
+(24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 0.00, 0.00, 0, 'jaula', '[]', NULL, 21);
 
 -- --------------------------------------------------------
 

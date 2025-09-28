@@ -48,13 +48,44 @@
             Alterna entre formularios y consulta los resúmenes generales desde una vista limpia y moderna coherente con el resto del sistema.
           </p>
         </div>
-        <div class="shell-header__actions">
-          <button id="nuevaArea" class="shell-action shell-action--primary">Registrar nueva área</button>
-          <button id="nuevaZona" class="shell-action">Registrar nueva zona</button>
+      <div class="shell-header__actions">
+        <button id="nuevaArea" class="shell-action shell-action--primary">Registrar nueva área</button>
+        <button id="nuevaZona" class="shell-action">Registrar nueva zona</button>
+      </div>
+    </div>
+
+    <section class="filters-panel" aria-label="Filtros y reportes de zonas">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label for="filtroNombre">Buscar por nombre</label>
+          <input type="text" id="filtroNombre" placeholder="Nombre de la zona" />
+        </div>
+        <div class="filter-group">
+          <label for="filtroArea">Área asignada</label>
+          <select id="filtroArea">
+            <option value="todos">Todas las zonas</option>
+            <option value="sin-area">Zonas sin área</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filtroOcupacion">Capacidad utilizada mínima (%)</label>
+          <input type="range" id="filtroOcupacion" min="0" max="100" step="5" value="0" />
+          <span id="filtroOcupacionValor" class="filter-hint">Desde 0%</span>
+        </div>
+        <div class="filter-group">
+          <label for="filtroProductos">Productos almacenados (mínimo)</label>
+          <input type="number" id="filtroProductos" min="0" step="1" value="0" />
         </div>
       </div>
+      <div class="filters-actions">
+        <button type="button" id="exportExcel" class="shell-action">Exportar a Excel</button>
+        <button type="button" id="exportPdf" class="shell-action">Exportar a PDF</button>
+      </div>
+    </section>
 
-      <div class="shell-grid">
+    <div id="alertasSaturacion" class="alerts-banner" role="status" aria-live="polite"></div>
+
+    <div class="shell-grid">
         <div class="summary-stack">
           <section id="resumenAreas" class="data-card" aria-labelledby="tituloAreas">
             <header class="data-card__header">
@@ -70,7 +101,10 @@
                     <th>Descripción</th>
                     <th>Dimensiones (m)</th>
                     <th>Volumen (m³)</th>
-                    <th># Zonas</th>
+                    <th>Capacidad utilizada (m³)</th>
+                    <th>Disponible (m³)</th>
+                    <th>Ocupación</th>
+                    <th>Productos</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
@@ -92,8 +126,10 @@
                     <th>Zona</th>
                     <th>Área</th>
                     <th>Dimensiones (m)</th>
-                    <th>Volumen (m³)</th>
-                    <th>Tipo</th>
+                    <th>Capacidad utilizada (m³)</th>
+                    <th>Disponible (m³)</th>
+                    <th>Ocupación</th>
+                    <th>Productos</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
@@ -114,8 +150,10 @@
                   <tr>
                     <th>Zona</th>
                     <th>Dimensiones (m)</th>
-                    <th>Volumen (m³)</th>
-                    <th>Tipo</th>
+                    <th>Capacidad utilizada (m³)</th>
+                    <th>Disponible (m³)</th>
+                    <th>Ocupación</th>
+                    <th>Productos</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>

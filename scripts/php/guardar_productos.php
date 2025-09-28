@@ -11,6 +11,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 require_once __DIR__ . '/log_utils.php';
 require_once __DIR__ . '/accesos_utils.php';
+require_once __DIR__ . '/infraestructura_utils.php';
 
 function requireUserIdProductos()
 {
@@ -159,6 +160,9 @@ if ($method === 'POST' || $method === 'PUT') {
     $dim_y           = isset($data['dim_y']) ? floatval($data['dim_y']) : null;
     $dim_z           = isset($data['dim_z']) ? floatval($data['dim_z']) : null;
     $zona_id         = isset($data['zona_id']) ? intval($data['zona_id']) : null;
+    if ($zona_id !== null && $zona_id <= 0) {
+        $zona_id = null;
+    }
 
     // Validación de empresa_id
     if ($empresa_id <= 0) {
@@ -200,6 +204,51 @@ if ($method === 'POST' || $method === 'PUT') {
         exit;
     }
     // ────────────────────────────────────────────────────────────────────
+
+    $volumenProducto = max($stock, 0) * (($dim_x ?? 0) * ($dim_y ?? 0) * ($dim_z ?? 0));
+
+    $zonaAnterior = null;
+    $volumenAnterior = 0.0;
+
+    if ($method === 'PUT') {
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID de producto inválido']);
+            exit;
+        }
+        $stmtPrev = $conn->prepare('SELECT zona_id, COALESCE(dim_x,0) AS dim_x, COALESCE(dim_y,0) AS dim_y, COALESCE(dim_z,0) AS dim_z, GREATEST(stock,0) AS stock FROM productos WHERE id = ? AND empresa_id = ?');
+        $stmtPrev->bind_param('ii', $id, $empresa_id);
+        $stmtPrev->execute();
+        $prevProducto = $stmtPrev->get_result()->fetch_assoc();
+        $stmtPrev->close();
+
+        if (!$prevProducto) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Producto no encontrado']);
+            exit;
+        }
+
+        $zonaAnterior = isset($prevProducto['zona_id']) ? (int) $prevProducto['zona_id'] : null;
+        if ($zonaAnterior !== null && $zonaAnterior <= 0) {
+            $zonaAnterior = null;
+        }
+        $volumenAnterior = ((float) ($prevProducto['stock'] ?? 0)) * ((float) ($prevProducto['dim_x'] ?? 0)) * ((float) ($prevProducto['dim_y'] ?? 0)) * ((float) ($prevProducto['dim_z'] ?? 0));
+    }
+
+    if ($zona_id && $volumenProducto > 0) {
+        $ocupacion = calcularOcupacionZona($conn, $zona_id);
+        if ($ocupacion) {
+            $disponible = $ocupacion['capacidad_disponible'];
+            if ($zonaAnterior && $zonaAnterior === $zona_id) {
+                $disponible += $volumenAnterior;
+            }
+            if ($volumenProducto > $disponible) {
+                http_response_code(409);
+                echo json_encode(['error' => 'La zona seleccionada no tiene capacidad disponible para este producto.']);
+                exit;
+            }
+        }
+    }
 
     if ($method === 'POST') {
         // INSERTAR (ahora sólo una llamada a execute)
@@ -249,6 +298,10 @@ if ($method === 'POST' || $method === 'PUT') {
         $up->bind_param('si', $qrRel, $newId);
         $up->execute();
 
+        if ($zona_id) {
+            actualizarOcupacionZona($conn, $zona_id);
+        }
+
         echo json_encode(['id' => $newId, 'codigo_qr' => $qrRel]);
         exit;
     } else {
@@ -282,6 +335,14 @@ if ($method === 'POST' || $method === 'PUT') {
         }
 
         registrarLog($conn, $usuarioId, 'Productos', "Actualización de producto ID: {$id}");
+
+        if ($zona_id) {
+            actualizarOcupacionZona($conn, $zona_id);
+        }
+        if ($zonaAnterior && $zonaAnterior !== $zona_id) {
+            actualizarOcupacionZona($conn, $zonaAnterior);
+        }
+
         echo json_encode(['success' => $stmt->affected_rows > 0]);
         exit;
     }
@@ -295,6 +356,19 @@ if ($method === 'DELETE') {
     if ($id <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'ID de producto inválido']);
+        exit;
+    }
+
+    $stmtZona = $conn->prepare('SELECT zona_id FROM productos WHERE id = ? AND empresa_id = ?');
+    $stmtZona->bind_param('ii', $id, $empresa_id);
+    $stmtZona->execute();
+    $stmtZona->bind_result($zonaProducto);
+    $existeProducto = $stmtZona->fetch();
+    $stmtZona->close();
+
+    if (!$existeProducto) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Producto no encontrado']);
         exit;
     }
 
@@ -351,6 +425,10 @@ if ($method === 'DELETE') {
         registrarLog($conn, $usuarioId, 'Productos', "Eliminación de producto ID: {$id}{$detalleMovs}");
         $conn->commit();
         $transactionStarted = false;
+
+        if (!empty($zonaProducto)) {
+            actualizarOcupacionZona($conn, (int) $zonaProducto);
+        }
 
         echo json_encode([
             'success' => true,
