@@ -110,6 +110,20 @@
     });
   }
 
+  function cerrarMenusAcciones(exceptMenu = null) {
+    document.querySelectorAll('.actions-menu--open').forEach(menu => {
+      if (!exceptMenu || menu !== exceptMenu) {
+        menu.classList.remove('actions-menu--open');
+      }
+    });
+  }
+
+  function manejarClickFueraMenus(event) {
+    if (!event.target.closest('.actions-menu')) {
+      cerrarMenusAcciones();
+    }
+  }
+
   function obtenerInstanciaModalAsignar() {
     if (!modalAsignar) return null;
     if (modalAsignarInstancia) return modalAsignarInstancia;
@@ -462,7 +476,7 @@
     const filtrados = usuariosEmpresa.filter(usuario => {
       const coincideRol = !rolSeleccionado || usuario.rol === rolSeleccionado;
       const estadoTexto = Number(usuario.activo) === 1 ? 'activo' : 'inactivo';
-      const textoUsuario = `${usuario.nombre || ''} ${usuario.apellido || ''} ${usuario.correo || ''} ${usuario.rol || ''} ${estadoTexto}`.toLowerCase();
+      const textoUsuario = `${usuario.nombre || ''} ${usuario.apellido || ''} ${usuario.correo || ''} ${usuario.telefono || ''} ${usuario.rol || ''} ${estadoTexto}`.toLowerCase();
       const coincideBusqueda = !termino || textoUsuario.includes(termino);
       return coincideRol && coincideBusqueda;
     });
@@ -478,7 +492,7 @@
 
     const contador = document.getElementById('usuariosCount');
     if (!usuarios.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No se encontraron usuarios con los filtros aplicados.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No se encontraron usuarios con los filtros aplicados.</td></tr>';
       if (contador) {
         contador.textContent = 'Sin usuarios disponibles';
       }
@@ -496,6 +510,7 @@
         : 'btn-action btn-action--status btn-status--activate';
       const estadoBotonTexto = activo ? 'Desactivar' : 'Activar';
       const resumenAccesos = generarResumenAccesos(usuario.accesos);
+      const telefono = usuario.telefono && String(usuario.telefono).trim() ? usuario.telefono : '—';
 
       tr.innerHTML = `
         <td>
@@ -506,41 +521,52 @@
         </td>
         <td>${usuario.apellido || ''}</td>
         <td><span class="cell-email">${usuario.correo || ''}</span></td>
+        <td><span class="cell-phone">${telefono}</span></td>
         <td><span class="role-chip">${usuario.rol || ''}</span></td>
         <td><span class="${estadoClase}">${estadoTexto}</span></td>
         <td class="access-cell">${resumenAccesos}</td>
-        <td>
-          <div class="action-buttons">
-            <button type="button" class="${estadoBotonClase}" title="${estadoBotonTexto}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="4" x2="12" y2="12"></line>
-                <path d="M8 5a7 7 0 1 0 8 0"></path>
-              </svg>
-              <span>${estadoBotonTexto}</span>
+        <td class="actions-cell">
+          <div class="actions-menu">
+            <button type="button" class="actions-menu__toggle" title="Opciones">
+              <span class="actions-menu__dots" aria-hidden="true">
+                <span class="actions-menu__dot"></span>
+                <span class="actions-menu__dot"></span>
+                <span class="actions-menu__dot"></span>
+              </span>
+              <span class="visually-hidden">Mostrar acciones</span>
             </button>
-            <button type="button" class="btn-action btn-action--access" title="Gestionar accesos">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="13" r="2"></circle>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0L2 7a2 2 0 0 1 1.73-3H20.27A2 2 0 0 1 22 7Z"></path>
-              </svg>
-              <span>Accesos</span>
-            </button>
-            <button type="button" class="btn-action btn-action--edit" title="Editar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"></path>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-              </svg>
-              <span>Editar</span>
-            </button>
-            <button type="button" class="btn-action btn-action--delete" title="Eliminar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                <path d="M10 11v6"></path>
-                <path d="M14 11v6"></path>
-              </svg>
-              <span>Eliminar</span>
-            </button>
+            <div class="actions-menu__list">
+              <button type="button" class="${estadoBotonClase}" title="${estadoBotonTexto}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="4" x2="12" y2="12"></line>
+                  <path d="M8 5a7 7 0 1 0 8 0"></path>
+                </svg>
+                <span>${estadoBotonTexto}</span>
+              </button>
+              <button type="button" class="btn-action btn-action--access" title="Gestionar accesos">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="13" r="2"></circle>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0L2 7a2 2 0 0 1 1.73-3H20.27A2 2 0 0 1 22 7Z"></path>
+                </svg>
+                <span>Accesos</span>
+              </button>
+              <button type="button" class="btn-action btn-action--edit" title="Editar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+                <span>Editar</span>
+              </button>
+              <button type="button" class="btn-action btn-action--delete" title="Eliminar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                  <path d="M10 11v6"></path>
+                  <path d="M14 11v6"></path>
+                </svg>
+                <span>Eliminar</span>
+              </button>
+            </div>
           </div>
         </td>
       `;
@@ -549,21 +575,50 @@
       const botonEliminar = tr.querySelector('.btn-action--delete');
       const botonEstado = tr.querySelector('.btn-action--status');
       const botonAccesos = tr.querySelector('.btn-action--access');
+      const menu = tr.querySelector('.actions-menu');
+      const toggleMenu = tr.querySelector('.actions-menu__toggle');
+
+      if (toggleMenu && menu) {
+        toggleMenu.addEventListener('click', event => {
+          event.stopPropagation();
+          const isOpen = menu.classList.contains('actions-menu--open');
+          cerrarMenusAcciones();
+          if (!isOpen) {
+            menu.classList.add('actions-menu--open');
+          }
+        });
+      }
 
       if (botonEditar) {
-        botonEditar.addEventListener('click', () => editarUsuario(usuario));
+        botonEditar.addEventListener('click', event => {
+          event.stopPropagation();
+          cerrarMenusAcciones();
+          editarUsuario(usuario);
+        });
       }
 
       if (botonEliminar) {
-        botonEliminar.addEventListener('click', () => confirmarEliminacion(usuario.correo));
+        botonEliminar.addEventListener('click', event => {
+          event.stopPropagation();
+          cerrarMenusAcciones();
+          confirmarEliminacion(usuario.correo);
+        });
       }
 
       if (botonEstado) {
-        botonEstado.addEventListener('click', () => cambiarEstadoUsuario(usuario));
+        botonEstado.addEventListener('click', event => {
+          event.stopPropagation();
+          cerrarMenusAcciones();
+          cambiarEstadoUsuario(usuario);
+        });
       }
 
       if (botonAccesos) {
-        botonAccesos.addEventListener('click', () => abrirModalAccesos(usuario));
+        botonAccesos.addEventListener('click', event => {
+          event.stopPropagation();
+          cerrarMenusAcciones();
+          abrirModalAccesos(usuario);
+        });
       }
 
       tbody.appendChild(tr);
@@ -784,6 +839,7 @@
   addListener(document.getElementById('buscarUsuario'), 'input', aplicarFiltros);
   addListener(formAsignarAcceso, 'submit', manejarAsignacionAcceso);
   addListener(selectArea, 'change', manejarCambioArea);
+  addListener(document, 'click', manejarClickFueraMenus);
   addListener(modalAsignar, 'hidden.bs.modal', () => {
     usuarioAccesosSeleccionadoId = null;
     asignacionEnCurso = false;
