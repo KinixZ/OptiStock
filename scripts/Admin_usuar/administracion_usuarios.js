@@ -239,6 +239,9 @@
     accesos.forEach(acceso => {
       const item = document.createElement('li');
       item.className = 'list-group-item d-flex justify-content-between align-items-start access-item';
+      if (acceso?.composite_id) {
+        item.dataset.accessKey = acceso.composite_id;
+      }
 
       const zonaTexto = acceso?.zona ? escapeHtml(acceso.zona) : 'Todas las zonas';
       const areaTexto = escapeHtml(acceso?.area || `Área #${acceso?.id_area}`);
@@ -253,7 +256,7 @@
 
       const botonEliminar = item.querySelector('button');
       if (botonEliminar) {
-        botonEliminar.addEventListener('click', () => eliminarAcceso(acceso?.id));
+        botonEliminar.addEventListener('click', () => eliminarAcceso(acceso));
       }
 
       listaAccesos.appendChild(item);
@@ -417,17 +420,23 @@
       });
   }
 
-  function eliminarAcceso(idAcceso) {
-    if (!idAcceso) return;
+  function eliminarAcceso(acceso) {
+    if (!acceso || !acceso.id_usuario || !acceso.id_area) return;
 
     if (!confirm('¿Deseas eliminar este acceso asignado?')) {
       return;
     }
 
+    const payload = {
+      id_usuario: acceso.id_usuario,
+      id_area: acceso.id_area,
+      id_zona: acceso.id_zona === null || typeof acceso.id_zona === 'undefined' ? null : acceso.id_zona
+    };
+
     fetch('/scripts/php/eliminar_acceso_usuario.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_asignacion: idAcceso })
+      body: JSON.stringify(payload)
     })
       .then(res => res.json())
       .then(data => {

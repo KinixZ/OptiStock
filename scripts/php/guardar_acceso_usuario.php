@@ -25,6 +25,7 @@ $idUsuario = isset($input['id_usuario']) ? (int) $input['id_usuario'] : 0;
 $idArea    = isset($input['id_area']) ? (int) $input['id_area'] : 0;
 $idZonaRaw = $input['id_zona'] ?? null;
 $idZona    = ($idZonaRaw === '' || $idZonaRaw === null) ? null : (int) $idZonaRaw;
+$compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
 
 if ($idUsuario <= 0 || $idArea <= 0) {
     jsonResponse(false, 'Datos incompletos. Selecciona al menos un área.');
@@ -84,10 +85,10 @@ try {
     }
 
     if ($idZona === null) {
-        $stmtExiste = $conn->prepare('SELECT id FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona IS NULL LIMIT 1');
+        $stmtExiste = $conn->prepare('SELECT 1 FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona IS NULL LIMIT 1');
         $stmtExiste->bind_param('ii', $idUsuario, $idArea);
     } else {
-        $stmtExiste = $conn->prepare('SELECT id FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona = ? LIMIT 1');
+        $stmtExiste = $conn->prepare('SELECT 1 FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona = ? LIMIT 1');
         $stmtExiste->bind_param('iii', $idUsuario, $idArea, $idZona);
     }
 
@@ -96,7 +97,7 @@ try {
     $stmtExiste->close();
 
     if ($existe) {
-        jsonResponse(false, 'La asignación seleccionada ya existe.');
+        jsonResponse(false, 'La asignación seleccionada ya existe.', ['composite_id' => $compositeId]);
     }
 
     if ($idZona === null) {
@@ -108,14 +109,22 @@ try {
     }
 
     $stmtInsert->execute();
-    $nuevoId = $stmtInsert->insert_id;
     $stmtInsert->close();
 
     $mensajeExito = $idZona === null
         ? 'Se otorgó acceso a todas las zonas del área seleccionada.'
         : 'Se otorgó acceso a la zona seleccionada.';
 
-    jsonResponse(true, $mensajeExito, ['id' => $nuevoId, 'zona' => $zonaNombre]);
+    $acceso = [
+        'composite_id' => $compositeId,
+        'id_usuario' => $idUsuario,
+        'id_area' => $idArea,
+        'area' => $area['nombre'],
+        'id_zona' => $idZona,
+        'zona' => $zonaNombre
+    ];
+
+    jsonResponse(true, $mensajeExito, ['acceso' => $acceso]);
 } catch (mysqli_sql_exception $e) {
     error_log('Error al guardar acceso de usuario: ' . $e->getMessage());
     jsonResponse(false, 'No fue posible guardar la asignación solicitada.');
