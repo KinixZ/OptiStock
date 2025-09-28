@@ -72,7 +72,10 @@ async function fetchAPI(url, method = 'GET', data) {
   if (!res.ok) {
     console.warn(`⚠️ fetchAPI: HTTP ${res.status}`, payload);
     const msg = payload.error || `Error HTTP ${res.status}`;
-    throw new Error(msg);
+    const error = new Error(msg);
+    error.status = res.status;
+    error.payload = payload;
+    throw error;
   }
 
   // OK → devolvemos el objeto parsado
@@ -1261,22 +1264,63 @@ if (editProdId) {
   }
 
   // 1) Eliminar
-if (accion === 'del') {
-  // --- BORRAR PRODUCTO CON CONFIRMACIÓN ---
-  if (tipo === 'producto') {
-    // 1) Encuentra el producto para mostrar su nombre en el diálogo
-    const prod = productos.find(p => p.id === id);
-    const nombre = prod ? prod.nombre : 'este producto';
-    // 2) Pregunta al usuario
-    const ok = window.confirm(`¿Estás seguro de que quieres eliminar "${nombre}"? Esta acción no se puede deshacer.`);
-    if (!ok) return; // si cancela, no hacemos nada
+  if (accion === 'del') {
+    // --- BORRAR PRODUCTO CON CONFIRMACIÓN ---
+    if (tipo === 'producto') {
+      // 1) Encuentra el producto para mostrar su nombre en el diálogo
+      const prod = productos.find(p => p.id === id);
+      const nombre = prod ? prod.nombre : 'este producto';
+      // 2) Pregunta al usuario
+      const ok = window.confirm(`¿Estás seguro de que quieres eliminar "${nombre}"? Esta acción no se puede deshacer.`);
+      if (!ok) return; // si cancela, no hacemos nada
 
-    // 3) Si confirma, borramos y recargamos
-    await fetchAPI(
-      `${API.productos}?id=${id}&empresa_id=${EMP_ID}`,
-      'DELETE'
-    );
-    await cargarProductos();
+      // 3) Intentamos borrar y manejamos el caso de movimientos asociados
+      let resultadoEliminacion = null;
+      try {
+        resultadoEliminacion = await fetchAPI(
+          `${API.productos}?id=${id}&empresa_id=${EMP_ID}`,
+          'DELETE'
+        );
+      } catch (err) {
+        if (err.status === 409 && err.payload?.movimientos) {
+          const movimientos = parseInt(err.payload.movimientos, 10) || 0;
+          const confirmar = window.confirm(
+            `El producto tiene ${movimientos} movimiento(s) registrado(s).\n` +
+            'Si continúas, también se eliminarán esos movimientos históricos.\n' +
+            '¿Deseas continuar y borrar todo?'
+          );
+          if (!confirmar) {
+            showToast('El producto no se eliminó.', 'info');
+            return;
+          }
+          try {
+            resultadoEliminacion = await fetchAPI(
+              `${API.productos}?id=${id}&empresa_id=${EMP_ID}&force=1`,
+              'DELETE'
+            );
+          } catch (forceErr) {
+            console.error('Error eliminando producto con movimientos:', forceErr);
+            showToast(`No se pudo eliminar el producto: ${forceErr.message}`, 'error');
+            return;
+          }
+        } else {
+          console.error('Error eliminando producto:', err);
+          showToast(`No se pudo eliminar el producto: ${err.message}`, 'error');
+          return;
+        }
+      }
+
+      await cargarProductos();
+      renderResumen();
+
+      const movimientosEliminados = resultadoEliminacion?.movimientos_eliminados || 0;
+      let mensaje = 'Producto eliminado correctamente';
+      if (movimientosEliminados > 0) {
+        mensaje += ` junto con ${movimientosEliminados} movimiento(s) asociado(s).`;
+      } else {
+        mensaje += '.';
+      }
+      showToast(mensaje, 'success');
 
   // --- BORRAR CATEGORÍA + OPCIONES EN CASCADA ---
   } else if (tipo === 'categoria') {
