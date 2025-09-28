@@ -4,6 +4,9 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 header('Content-Type: application/json');
 
+// Forzamos mysqli a lanzar excepciones para poder capturarlas y responder en JSON
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 require_once __DIR__ . '/log_utils.php';
@@ -287,13 +290,84 @@ if ($method === 'POST' || $method === 'PUT') {
 if ($method === 'DELETE') {
     $usuarioId = requireUserIdProductos();
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    $stmt = $conn->prepare("DELETE FROM productos WHERE id=? AND empresa_id=?");
-    $stmt->bind_param('ii', $id, $empresa_id);
-    $stmt->execute();
+    $forceDelete = isset($_GET['force']) ? (bool) intval($_GET['force']) : false;
 
-    registrarLog($conn, $usuarioId, 'Productos', "Eliminación de producto ID: {$id}");
-    echo json_encode(['success' => true]);
-    exit;
+    if ($id <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID de producto inválido']);
+        exit;
+    }
+
+    $transactionStarted = false;
+
+    try {
+        // Verificamos si el producto tiene movimientos asociados
+        $stmt = $conn->prepare('SELECT COUNT(*) FROM movimientos WHERE producto_id = ? AND empresa_id = ?');
+        $stmt->bind_param('ii', $id, $empresa_id);
+        $stmt->execute();
+        $stmt->bind_result($movCount);
+        $stmt->fetch();
+        $stmt->close();
+
+        if ($movCount > 0 && ! $forceDelete) {
+            http_response_code(409);
+            echo json_encode([
+                'error' => 'No se puede eliminar el producto porque tiene movimientos registrados.',
+                'movimientos' => $movCount,
+                'reintentar_con_force' => true,
+            ]);
+            exit;
+        }
+
+        $conn->begin_transaction();
+        $transactionStarted = true;
+        $deletedMovimientos = 0;
+
+        if ($movCount > 0) {
+            $stmt = $conn->prepare('DELETE FROM movimientos WHERE producto_id = ? AND empresa_id = ?');
+            $stmt->bind_param('ii', $id, $empresa_id);
+            $stmt->execute();
+            $deletedMovimientos = $stmt->affected_rows;
+            $stmt->close();
+        }
+
+        $stmt = $conn->prepare('DELETE FROM productos WHERE id = ? AND empresa_id = ?');
+        $stmt->bind_param('ii', $id, $empresa_id);
+        $stmt->execute();
+        $deleted = $stmt->affected_rows > 0;
+        $stmt->close();
+
+        if (!$deleted) {
+            $conn->rollback();
+            $transactionStarted = false;
+            http_response_code(404);
+            echo json_encode(['error' => 'Producto no encontrado']);
+            exit;
+        }
+
+        $detalleMovs = $deletedMovimientos > 0
+            ? " y {$deletedMovimientos} movimiento(s) asociados"
+            : '';
+        registrarLog($conn, $usuarioId, 'Productos', "Eliminación de producto ID: {$id}{$detalleMovs}");
+        $conn->commit();
+        $transactionStarted = false;
+
+        echo json_encode([
+            'success' => true,
+            'movimientos_eliminados' => $deletedMovimientos,
+        ]);
+        exit;
+    } catch (mysqli_sql_exception $e) {
+        if (!empty($transactionStarted)) {
+            $conn->rollback();
+        }
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'No se pudo eliminar el producto.',
+            'details' => $e->getMessage(),
+        ]);
+        exit;
+    }
 }
 
 http_response_code(405);
