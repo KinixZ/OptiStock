@@ -29,7 +29,47 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 $usuarios = [];
+$idsUsuarios = [];
+
 while ($row = $result->fetch_assoc()) {
-    $usuarios[] = $row;
+    $id = (int) $row['id_usuario'];
+    $row['accesos'] = [];
+    $usuarios[$id] = $row;
+    $idsUsuarios[] = $id;
 }
-echo json_encode(["success" => true, "usuarios" => $usuarios]);
+
+if ($idsUsuarios) {
+    $placeholders = implode(',', array_fill(0, count($idsUsuarios), '?'));
+    $tipos = str_repeat('i', count($idsUsuarios));
+
+    $sqlAccesos = "SELECT uaz.id, uaz.id_usuario, uaz.id_area, uaz.id_zona, a.nombre AS area_nombre, z.nombre AS zona_nombre
+        FROM usuario_area_zona uaz
+        INNER JOIN areas a ON uaz.id_area = a.id
+        LEFT JOIN zonas z ON uaz.id_zona = z.id
+        WHERE uaz.id_usuario IN ($placeholders)
+        ORDER BY a.nombre ASC, z.nombre ASC";
+
+    $stmtAccesos = $conn->prepare($sqlAccesos);
+    $stmtAccesos->bind_param($tipos, ...$idsUsuarios);
+    $stmtAccesos->execute();
+    $resultadoAccesos = $stmtAccesos->get_result();
+
+    while ($acceso = $resultadoAccesos->fetch_assoc()) {
+        $idUsuario = (int) $acceso['id_usuario'];
+        if (!isset($usuarios[$idUsuario])) {
+            continue;
+        }
+
+        $usuarios[$idUsuario]['accesos'][] = [
+            'id' => (int) $acceso['id'],
+            'id_area' => (int) $acceso['id_area'],
+            'area' => $acceso['area_nombre'],
+            'id_zona' => $acceso['id_zona'] !== null ? (int) $acceso['id_zona'] : null,
+            'zona' => $acceso['zona_nombre']
+        ];
+    }
+
+    $stmtAccesos->close();
+}
+
+echo json_encode(["success" => true, "usuarios" => array_values($usuarios)]);

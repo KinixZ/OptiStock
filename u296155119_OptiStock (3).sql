@@ -688,6 +688,20 @@ INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `v
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `usuario_area_zona`
+--
+
+CREATE TABLE `usuario_area_zona` (
+  `id` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `id_area` int(11) NOT NULL,
+  `id_zona` int(11) DEFAULT NULL,
+  `fecha_asignacion` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `notificaciones`
 --
 
@@ -825,6 +839,15 @@ ALTER TABLE `usuario_empresa`
   ADD KEY `id_empresa` (`id_empresa`);
 
 --
+-- Indices de la tabla `usuario_area_zona`
+--
+ALTER TABLE `usuario_area_zona`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_usuario_area_zona` (`id_usuario`,`id_area`,`id_zona`),
+  ADD KEY `idx_uaz_area` (`id_area`),
+  ADD KEY `idx_uaz_zona` (`id_zona`);
+
+--
 -- Indices de la tabla `zonas`
 --
 ALTER TABLE `zonas`
@@ -900,6 +923,12 @@ ALTER TABLE `subcategorias`
 --
 ALTER TABLE `usuario`
   MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
+
+--
+-- AUTO_INCREMENT de la tabla `usuario_area_zona`
+--
+ALTER TABLE `usuario_area_zona`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `zonas`
@@ -996,6 +1025,14 @@ ALTER TABLE `subcategorias`
 ALTER TABLE `usuario_empresa`
   ADD CONSTRAINT `usuario_empresa_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
   ADD CONSTRAINT `usuario_empresa_ibfk_2` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `usuario_area_zona`
+--
+ALTER TABLE `usuario_area_zona`
+  ADD CONSTRAINT `usuario_area_zona_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `usuario_area_zona_ibfk_2` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `usuario_area_zona_ibfk_3` FOREIGN KEY (`id_zona`) REFERENCES `zonas` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `zonas`

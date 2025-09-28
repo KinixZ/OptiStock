@@ -79,6 +79,7 @@
               <th scope="col">Correo</th>
               <th scope="col">Rol</th>
               <th scope="col">Estado</th>
+              <th scope="col">Accesos</th>
               <th scope="col" class="actions-column">Acciones</th>
             </tr>
           </thead>
@@ -147,7 +148,63 @@
       </div>
     </div>
   </div>
-  
+
+  <div class="modal fade" id="modalAsignarAccesos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header border-0">
+          <div>
+            <span class="modal-eyebrow">Accesos</span>
+            <h5 class="modal-title fw-bold" id="tituloModalAccesos">Gestionar accesos por área y zona</h5>
+            <p class="modal-subtitle" id="descripcionModalAccesos">Selecciona un usuario para administrar sus accesos.</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body pt-0">
+          <form id="formAsignarAcceso" class="row g-3">
+            <div class="col-12">
+              <span class="modal-user-label">Usuario:</span>
+              <p class="modal-user-name" id="nombreUsuarioAccesos">—</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="asignarArea" class="form-label">Área *</label>
+              <select id="asignarArea" class="form-select" required>
+                <option value="">Selecciona un área</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="asignarZona" class="form-label">Zona (opcional)</label>
+              <select id="asignarZona" class="form-select" disabled>
+                <option value="">Selecciona un área primero</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary w-100" id="btnAgregarAcceso">Agregar acceso</button>
+            </div>
+          </form>
+
+          <hr class="my-4" />
+
+          <div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-semibold mb-0">Accesos asignados</h6>
+              <small class="text-muted" id="resumenAccesosUsuario">Acceso completo</small>
+            </div>
+            <div id="listaAccesosVacia" class="access-empty-message">
+              Este usuario puede acceder a todas las áreas y zonas.
+            </div>
+            <ul class="list-group access-list d-none" id="listaAccesosUsuario"></ul>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
     <section class="filters-card">
       <div class="filters-heading">
         <div>

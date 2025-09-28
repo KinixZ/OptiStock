@@ -528,6 +528,51 @@ body {
   text-transform: uppercase;
 }
 
+.access-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 280px;
+}
+
+.access-tag {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.75rem;
+  background: rgba(108, 99, 255, 0.1);
+  color: #1c2340;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  border: 1px solid rgba(108, 99, 255, 0.18);
+}
+
+.access-tag__area {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.access-tag__zone {
+  color: var(--muted-color);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.access-tag--full {
+  background: rgba(25, 135, 84, 0.16);
+  border-color: rgba(25, 135, 84, 0.25);
+  color: #17643d;
+}
+
+.access-tag--more {
+  background: rgba(255, 193, 7, 0.16);
+  border-color: rgba(255, 193, 7, 0.25);
+  color: #8c6c00;
+  align-self: center;
+}
+
 .status-chip--active {
   background: rgba(25, 135, 84, 0.16);
   color: #198754;
@@ -593,6 +638,15 @@ body {
   background: rgba(13, 110, 253, 0.2);
 }
 
+.btn-action--access {
+  background: rgba(255, 193, 7, 0.14);
+  color: #a07900;
+}
+
+.btn-action--access:hover {
+  background: rgba(255, 193, 7, 0.22);
+}
+
 .btn-status--activate {
   background: rgba(25, 135, 84, 0.16);
   color: #198754;
@@ -644,6 +698,62 @@ body {
 
 .modal-title {
   margin-top: 0.65rem;
+}
+
+.modal-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--muted-color);
+  font-size: 0.85rem;
+}
+
+.modal-user-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-color);
+  font-weight: 600;
+}
+
+.modal-user-name {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.access-empty-message {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(108, 99, 255, 0.08);
+  border: 1px dashed rgba(108, 99, 255, 0.3);
+  color: var(--muted-color);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.access-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border-radius: var(--radius-md);
+}
+
+.access-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.access-item__area {
+  display: block;
+  font-weight: 600;
+  color: #1c2340;
+}
+
+.access-item__zone {
+  display: block;
+  color: var(--muted-color);
+  font-size: 0.8rem;
 }
 
 .form-floating > .form-control:focus,
@@ -712,6 +822,23 @@ body {
 
   .users-table {
     min-width: 100%;
+  }
+
+  .access-cell {
+    max-width: 100%;
+  }
+
+  .access-tag {
+    width: 100%;
+  }
+
+  .access-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .access-item button {
+    width: 100%;
   }
 }
 
