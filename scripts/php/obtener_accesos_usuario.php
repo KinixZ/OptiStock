@@ -29,7 +29,7 @@ if ($idUsuario <= 0) {
 
 try {
     $stmt = $conn->prepare(
-        'SELECT uaz.id, uaz.id_area, uaz.id_zona, a.nombre AS area_nombre, z.nombre AS zona_nombre
+        'SELECT uaz.id_usuario, uaz.id_area, uaz.id_zona, a.nombre AS area_nombre, z.nombre AS zona_nombre
          FROM usuario_area_zona uaz
          INNER JOIN areas a ON uaz.id_area = a.id
          LEFT JOIN zonas z ON uaz.id_zona = z.id
@@ -42,11 +42,16 @@ try {
 
     $accesos = [];
     while ($fila = $resultado->fetch_assoc()) {
+        $idArea = (int) $fila['id_area'];
+        $idZona = $fila['id_zona'] !== null ? (int) $fila['id_zona'] : null;
+        $compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
+
         $accesos[] = [
-            'id' => (int) $fila['id'],
-            'id_area' => (int) $fila['id_area'],
+            'composite_id' => $compositeId,
+            'id_usuario' => $idUsuario,
+            'id_area' => $idArea,
             'area' => $fila['area_nombre'],
-            'id_zona' => $fila['id_zona'] !== null ? (int) $fila['id_zona'] : null,
+            'id_zona' => $idZona,
             'zona' => $fila['zona_nombre']
         ];
     }

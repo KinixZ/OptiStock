@@ -21,24 +21,45 @@ try {
 }
 
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
-$idAsignacion = isset($input['id_asignacion']) ? (int) $input['id_asignacion'] : 0;
+$idUsuario = isset($input['id_usuario']) ? (int) $input['id_usuario'] : 0;
+$idArea = isset($input['id_area']) ? (int) $input['id_area'] : 0;
+$idZonaRaw = $input['id_zona'] ?? null;
+$idZona = ($idZonaRaw === '' || $idZonaRaw === null) ? null : (int) $idZonaRaw;
 
-if ($idAsignacion <= 0) {
-    jsonResponse(false, 'Identificador de asignación inválido.');
+if ($idUsuario <= 0 || $idArea <= 0) {
+    jsonResponse(false, 'Datos inválidos para eliminar la asignación.');
 }
 
+$compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
+
 try {
-    $stmt = $conn->prepare('DELETE FROM usuario_area_zona WHERE id = ?');
-    $stmt->bind_param('i', $idAsignacion);
+    if ($idZona === null) {
+        $stmt = $conn->prepare('DELETE FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona IS NULL');
+        $stmt->bind_param('ii', $idUsuario, $idArea);
+    } else {
+        $stmt = $conn->prepare('DELETE FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona = ?');
+        $stmt->bind_param('iii', $idUsuario, $idArea, $idZona);
+    }
+
     $stmt->execute();
     $filasAfectadas = $stmt->affected_rows;
     $stmt->close();
 
     if ($filasAfectadas <= 0) {
-        jsonResponse(false, 'No se encontró la asignación que intentas eliminar.');
+        jsonResponse(false, 'No se encontró la asignación que intentas eliminar.', [
+            'composite_id' => $compositeId,
+            'id_usuario' => $idUsuario,
+            'id_area' => $idArea,
+            'id_zona' => $idZona
+        ]);
     }
 
-    jsonResponse(true, 'Asignación eliminada correctamente.');
+    jsonResponse(true, 'Asignación eliminada correctamente.', [
+        'composite_id' => $compositeId,
+        'id_usuario' => $idUsuario,
+        'id_area' => $idArea,
+        'id_zona' => $idZona
+    ]);
 } catch (mysqli_sql_exception $e) {
     error_log('Error al eliminar acceso de usuario: ' . $e->getMessage());
     jsonResponse(false, 'No fue posible eliminar la asignación solicitada.');

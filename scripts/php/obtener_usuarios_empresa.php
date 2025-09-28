@@ -42,7 +42,7 @@ if ($idsUsuarios) {
     $placeholders = implode(',', array_fill(0, count($idsUsuarios), '?'));
     $tipos = str_repeat('i', count($idsUsuarios));
 
-    $sqlAccesos = "SELECT uaz.id, uaz.id_usuario, uaz.id_area, uaz.id_zona, a.nombre AS area_nombre, z.nombre AS zona_nombre
+    $sqlAccesos = "SELECT uaz.id_usuario, uaz.id_area, uaz.id_zona, a.nombre AS area_nombre, z.nombre AS zona_nombre
         FROM usuario_area_zona uaz
         INNER JOIN areas a ON uaz.id_area = a.id
         LEFT JOIN zonas z ON uaz.id_zona = z.id
@@ -60,11 +60,16 @@ if ($idsUsuarios) {
             continue;
         }
 
+        $idArea = (int) $acceso['id_area'];
+        $idZona = $acceso['id_zona'] !== null ? (int) $acceso['id_zona'] : null;
+        $compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
+
         $usuarios[$idUsuario]['accesos'][] = [
-            'id' => (int) $acceso['id'],
-            'id_area' => (int) $acceso['id_area'],
+            'composite_id' => $compositeId,
+            'id_usuario' => $idUsuario,
+            'id_area' => $idArea,
             'area' => $acceso['area_nombre'],
-            'id_zona' => $acceso['id_zona'] !== null ? (int) $acceso['id_zona'] : null,
+            'id_zona' => $idZona,
             'zona' => $acceso['zona_nombre']
         ];
     }
