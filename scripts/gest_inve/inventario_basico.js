@@ -176,6 +176,31 @@ prodCategoria?.addEventListener('change', () => {
   });
   const subcatCategoria = document.getElementById('subcatCategoria');
   const tablaResumen = document.querySelector('#tablaResumen tbody');
+
+  function closeAllActionMenus(exceptMenu = null) {
+    document
+      .querySelectorAll('.table-action-menu__dropdown.is-open')
+      .forEach(menu => {
+        if (menu === exceptMenu) return;
+        menu.classList.remove('is-open');
+        const toggle = menu.previousElementSibling;
+        if (toggle?.classList.contains('table-action-menu__toggle')) {
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+  }
+
+  document.addEventListener('click', event => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    if (target.closest('.table-action-menu')) return;
+    closeAllActionMenus();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    closeAllActionMenus();
+  });
   const tablaHead = document.getElementById('tablaHead');
   const btnRecargarResumen = document.getElementById('btnRecargarResumen');
   const btnScanQR = document.getElementById('btnScanQR');
@@ -1023,9 +1048,43 @@ const sub = p.subcategoria_nombre || '';
       <td>${p.stock}</td>
       <td>${p.precio_compra}</td>
       <td>
-        <button class="btn btn-sm btn-secondary me-1" data-accion="qr" data-tipo="producto" data-id="${p.id}">QR</button>
-        <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="producto" data-id="${p.id}">Editar</button>
-        <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="producto" data-id="${p.id}">Eliminar</button>
+        <div class="table-action-menu">
+          <button
+            type="button"
+            class="table-action-menu__toggle"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-label="Abrir acciones del producto"
+          >
+            &#8942;
+          </button>
+          <div class="table-action-menu__dropdown" role="menu">
+            <button
+              type="button"
+              class="table-action-menu__item btn btn-sm btn-secondary"
+              data-accion="qr"
+              data-tipo="producto"
+              data-id="${p.id}"
+              role="menuitem"
+            >QR</button>
+            <button
+              type="button"
+              class="table-action-menu__item btn btn-sm btn-primary"
+              data-accion="edit"
+              data-tipo="producto"
+              data-id="${p.id}"
+              role="menuitem"
+            >Editar</button>
+            <button
+              type="button"
+              class="table-action-menu__item btn btn-sm btn-danger"
+              data-accion="del"
+              data-tipo="producto"
+              data-id="${p.id}"
+              role="menuitem"
+            >Eliminar</button>
+          </div>
+        </div>
       </td>
     `;
     tablaResumen.appendChild(tr);
@@ -1253,10 +1312,29 @@ if (editProdId) {
   tablaResumen?.addEventListener('click', async e => {
   const target = e.target instanceof HTMLElement ? e.target : null;
   if (!target) return;
-  const id     = parseInt(target.dataset.id, 10);
-  const tipo   = target.dataset.tipo;
-  const accion = target.dataset.accion;
-  if (!accion) return;
+
+  const toggle = target.closest('.table-action-menu__toggle');
+  if (toggle) {
+    e.preventDefault();
+    const dropdown = toggle.nextElementSibling;
+    const isOpen = dropdown?.classList.contains('is-open');
+    closeAllActionMenus(isOpen ? null : dropdown);
+    if (dropdown) {
+      dropdown.classList.toggle('is-open', !isOpen);
+      toggle.setAttribute('aria-expanded', String(!isOpen));
+    }
+    return;
+  }
+
+  const actionBtn = target.closest('[data-accion]');
+  if (!actionBtn) return;
+
+  closeAllActionMenus();
+
+  const id     = parseInt(actionBtn.dataset.id, 10);
+  const tipo   = actionBtn.dataset.tipo;
+  const accion = actionBtn.dataset.accion;
+  if (!accion || Number.isNaN(id)) return;
 
   if (accion === 'qr' && tipo === 'producto') {
     window.open(`../../scripts/php/generar_qr_producto.php?producto_id=${id}`, '_blank');
