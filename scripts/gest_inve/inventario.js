@@ -77,7 +77,11 @@ const AppUtils = {
 const DataController = {
   async loadCategorias() {
     try {
-      AppState.categorias = await AppUtils.fetchAPI(AppConfig.API.categorias);
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.categorias}?empresa_id=${empresaId}`
+        : AppConfig.API.categorias;
+      AppState.categorias = await AppUtils.fetchAPI(url);
       this.updateCategorySelects();
       this.renderCategorias();
       this.updateSummary();
@@ -89,7 +93,11 @@ const DataController = {
 
   async loadSubcategorias() {
     try {
-      AppState.subcategorias = await AppUtils.fetchAPI(AppConfig.API.subcategorias);
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.subcategorias}?empresa_id=${empresaId}`
+        : AppConfig.API.subcategorias;
+      AppState.subcategorias = await AppUtils.fetchAPI(url);
       this.updateSubcategorySelect();
       this.renderSubcategorias();
       this.updateSummary();
@@ -101,7 +109,11 @@ const DataController = {
 
   async loadProductos() {
     try {
-      AppState.productos = await AppUtils.fetchAPI(AppConfig.API.productos);
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.productos}?empresa_id=${empresaId}`
+        : AppConfig.API.productos;
+      AppState.productos = await AppUtils.fetchAPI(url);
       AppUtils.updateDatalist('sugerenciasProducto', AppState.productos.map(p => p.nombre));
       this.renderProductos();
       this.checkLowStock();
@@ -488,9 +500,13 @@ const DataController = {
 
   async deleteCategoria(id) {
     if (!confirm('¿Eliminar esta categoría y todas sus subcategorías?')) return;
-    
+
     try {
-      await AppUtils.fetchAPI(`${AppConfig.API.categorias}?id=${id}`, 'DELETE');
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.categorias}?empresa_id=${empresaId}&id=${id}`
+        : `${AppConfig.API.categorias}?id=${id}`;
+      await AppUtils.fetchAPI(url, 'DELETE');
       await this.loadCategorias();
       await this.loadSubcategorias();
       await this.loadProductos();
@@ -503,9 +519,13 @@ const DataController = {
 
   async deleteSubcategoria(id) {
     if (!confirm('¿Eliminar esta subcategoría?')) return;
-    
+
     try {
-      await AppUtils.fetchAPI(`${AppConfig.API.subcategorias}?id=${id}`, 'DELETE');
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.subcategorias}?empresa_id=${empresaId}&id=${id}`
+        : `${AppConfig.API.subcategorias}?id=${id}`;
+      await AppUtils.fetchAPI(url, 'DELETE');
       await this.loadSubcategorias();
       await this.loadProductos();
       AppUtils.showAlert('Subcategoría eliminada', 'success');
@@ -517,9 +537,13 @@ const DataController = {
 
   async deleteProducto(id) {
     if (!confirm('¿Eliminar este producto?')) return;
-    
+
     try {
-      await AppUtils.fetchAPI(`${AppConfig.API.productos}?id=${id}`, 'DELETE');
+      const empresaId = AppUtils.getEmpresaId();
+      const url = empresaId
+        ? `${AppConfig.API.productos}?empresa_id=${empresaId}&id=${id}`
+        : `${AppConfig.API.productos}?id=${id}`;
+      await AppUtils.fetchAPI(url, 'DELETE');
       await this.loadProductos();
       AppUtils.showAlert('Producto eliminado', 'success');
     } catch (error) {
