@@ -29,6 +29,17 @@ let editZoneId = null;
   const totalAreasEl          = document.getElementById('totalAreas');
   const totalZonasEl          = document.getElementById('totalZonas');
   const zonasSinAreaEl        = document.getElementById('zonasSinArea');
+  const filtroNombre          = document.getElementById('filtroNombre');
+  const filtroArea            = document.getElementById('filtroArea');
+  const filtroOcupacion       = document.getElementById('filtroOcupacion');
+  const filtroOcupacionValor  = document.getElementById('filtroOcupacionValor');
+  const filtroProductos       = document.getElementById('filtroProductos');
+  const exportExcelBtn        = document.getElementById('exportExcel');
+  const exportPdfBtn          = document.getElementById('exportPdf');
+  const alertasBanner         = document.getElementById('alertasSaturacion');
+
+  let areasData = [];
+  let zonasData = [];
 
   const API_BASE     = '../../scripts/php';
   const EMP_ID       = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
@@ -50,6 +61,260 @@ let editZoneId = null;
       opt.textContent = t;
       zonaTipoSel.appendChild(opt);
     });
+  }
+
+  function normalizarArea(area = {}) {
+    const volumen = parseFloat(area.volumen ?? 0) || 0;
+    const capacidad = parseFloat(area.capacidad_utilizada ?? 0) || 0;
+    const disponible = area.capacidad_disponible !== undefined
+      ? parseFloat(area.capacidad_disponible) || 0
+      : Math.max(volumen - capacidad, 0);
+
+    return {
+      ...area,
+      id: area.id !== undefined ? parseInt(area.id, 10) : null,
+      ancho: area.ancho !== undefined ? parseFloat(area.ancho) : 0,
+      alto: area.alto !== undefined ? parseFloat(area.alto) : 0,
+      largo: area.largo !== undefined ? parseFloat(area.largo) : 0,
+      volumen,
+      capacidad_utilizada: capacidad,
+      capacidad_disponible: disponible,
+      porcentaje_ocupacion: parseFloat(area.porcentaje_ocupacion ?? 0) || 0,
+      productos_registrados: parseInt(area.productos_registrados ?? 0, 10) || 0,
+    };
+  }
+
+  function normalizarZona(zona = {}) {
+    const volumen = parseFloat(zona.volumen ?? 0) || 0;
+    const capacidad = parseFloat(zona.capacidad_utilizada ?? 0) || 0;
+    const disponible = zona.capacidad_disponible !== undefined
+      ? parseFloat(zona.capacidad_disponible) || 0
+      : Math.max(volumen - capacidad, 0);
+
+    let areaId = null;
+    if (zona.area_id !== null && zona.area_id !== undefined) {
+      const parsed = parseInt(zona.area_id, 10);
+      areaId = Number.isNaN(parsed) ? null : parsed;
+    }
+
+    return {
+      ...zona,
+      id: zona.id !== undefined ? parseInt(zona.id, 10) : null,
+      area_id: areaId,
+      volumen,
+      capacidad_utilizada: capacidad,
+      capacidad_disponible: disponible,
+      porcentaje_ocupacion: parseFloat(zona.porcentaje_ocupacion ?? 0) || 0,
+      productos_registrados: parseInt(zona.productos_registrados ?? 0, 10) || 0,
+    };
+  }
+
+  function renderBarraOcupacion(valor) {
+    const porcentaje = Math.min(Math.max(Number(valor) || 0, 0), 100);
+    const estado = porcentaje >= 90 ? ' capacity-bar--critical' : porcentaje >= 70 ? ' capacity-bar--warning' : '';
+    return `
+      <div class="capacity-bar${estado}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${porcentaje.toFixed(1)}">
+        <div class="capacity-bar__fill" style="width:${porcentaje}%"></div>
+        <span class="capacity-bar__label">${porcentaje.toFixed(1)}%</span>
+      </div>
+    `;
+  }
+
+  function filtrarZonas() {
+    const nombreFiltro = (filtroNombre?.value || '').trim().toLowerCase();
+    const areaSeleccionada = filtroArea?.value || 'todos';
+    const ocupacionMin = filtroOcupacion ? parseInt(filtroOcupacion.value, 10) || 0 : 0;
+    const productosMin = filtroProductos ? parseInt(filtroProductos.value, 10) || 0 : 0;
+
+    const filtradas = zonasData.filter(zona => {
+      if (nombreFiltro && !zona.nombre?.toLowerCase().includes(nombreFiltro)) {
+        return false;
+      }
+
+      const areaId = zona.area_id ?? null;
+      if (areaSeleccionada === 'sin-area' && areaId) {
+        return false;
+      }
+      if (areaSeleccionada !== 'todos' && areaSeleccionada !== 'sin-area') {
+        if ((areaId || 0) !== parseInt(areaSeleccionada, 10)) {
+          return false;
+        }
+      }
+
+      const porcentaje = Number(zona.porcentaje_ocupacion || 0);
+      if (porcentaje < ocupacionMin) {
+        return false;
+      }
+
+      const productos = Number(zona.productos_registrados || 0);
+      if (productos < productosMin) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return {
+      todas: filtradas,
+      asignadas: filtradas.filter(z => z.area_id),
+      sinArea: filtradas.filter(z => !z.area_id),
+    };
+  }
+
+  function actualizarOpcionesArea() {
+    const selectedZona = zonaAreaSel?.value || '';
+    const selectedFiltro = filtroArea?.value || 'todos';
+
+    if (zonaAreaSel) {
+      zonaAreaSel.innerHTML = '<option value="">Seleccione un área</option>';
+    }
+    if (filtroArea) {
+      filtroArea.innerHTML = '<option value="todos">Todas las zonas</option><option value="sin-area">Zonas sin área</option>';
+    }
+
+    areasData.forEach(area => {
+      if (zonaAreaSel) {
+        const opt = document.createElement('option');
+        opt.value = area.id;
+        opt.textContent = area.nombre;
+        zonaAreaSel.appendChild(opt);
+      }
+      if (filtroArea) {
+        const optFiltro = document.createElement('option');
+        optFiltro.value = area.id;
+        optFiltro.textContent = area.nombre;
+        filtroArea.appendChild(optFiltro);
+      }
+    });
+
+    if (zonaAreaSel) {
+      zonaAreaSel.value = selectedZona;
+    }
+    if (filtroArea) {
+      filtroArea.value = selectedFiltro;
+    }
+  }
+
+  function actualizarResumen() {
+    if (totalAreasEl) {
+      totalAreasEl.textContent = areasData.length;
+    }
+    if (totalZonasEl) {
+      totalZonasEl.textContent = zonasData.length;
+    }
+    if (zonasSinAreaEl) {
+      zonasSinAreaEl.textContent = zonasData.filter(z => !z.area_id).length;
+    }
+  }
+
+  function actualizarAlertas(zonas = []) {
+    if (!alertasBanner) {
+      return;
+    }
+
+    const criticas = zonas.filter(z => (z.porcentaje_ocupacion || 0) >= 90)
+      .sort((a, b) => (b.porcentaje_ocupacion || 0) - (a.porcentaje_ocupacion || 0));
+
+    if (!criticas.length) {
+      alertasBanner.classList.remove('active');
+      alertasBanner.innerHTML = '';
+      return;
+    }
+
+    const items = criticas.map(z => `<li><strong>${z.nombre}</strong> (${(z.porcentaje_ocupacion || 0).toFixed(1)}% ocupado)</li>`).join('');
+    alertasBanner.classList.add('active');
+    alertasBanner.innerHTML = `<span>Zonas con ocupación crítica:</span><ul>${items}</ul>`;
+  }
+
+  function exportarZonasCSV() {
+    const datos = filtrarZonas().todas;
+    if (!datos.length) {
+      showToast('No hay datos filtrados para exportar');
+      return;
+    }
+
+    const cabecera = ['Zona', 'Área', 'Capacidad utilizada (m³)', 'Disponible (m³)', 'Ocupación (%)', 'Productos'];
+    const filas = datos.map(z => {
+      const areaNombre = z.area_id ? (areasData.find(a => a.id === z.area_id)?.nombre || z.area_id) : 'Sin área';
+      return [
+        z.nombre,
+        areaNombre,
+        (z.capacidad_utilizada || 0).toFixed(2),
+        (z.capacidad_disponible || 0).toFixed(2),
+        (z.porcentaje_ocupacion || 0).toFixed(1),
+        z.productos_registrados || 0
+      ].join(';');
+    });
+
+    const contenido = [cabecera.join(';'), ...filas].join('\n');
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = 'ocupacion_zonas.csv';
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+    URL.revokeObjectURL(enlace.href);
+  }
+
+  function exportarZonasPDF() {
+    const datos = filtrarZonas().todas;
+    if (!datos.length) {
+      showToast('No hay datos filtrados para exportar');
+      return;
+    }
+
+    const ventana = window.open('', '_blank');
+    if (!ventana) {
+      showToast('No se pudo abrir la ventana de impresión');
+      return;
+    }
+
+    const filas = datos.map(z => {
+      const areaNombre = z.area_id ? (areasData.find(a => a.id === z.area_id)?.nombre || z.area_id) : 'Sin área';
+      return `<tr>
+        <td>${z.nombre}</td>
+        <td>${areaNombre}</td>
+        <td>${(z.capacidad_utilizada || 0).toFixed(2)}</td>
+        <td>${(z.capacidad_disponible || 0).toFixed(2)}</td>
+        <td>${(z.porcentaje_ocupacion || 0).toFixed(1)}%</td>
+        <td>${z.productos_registrados || 0}</td>
+      </tr>`;
+    }).join('');
+
+    ventana.document.write(`
+      <html>
+        <head>
+          <title>Reporte de ocupación de zonas</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; }
+            h1 { font-size: 20px; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #999; padding: 8px; font-size: 12px; text-align: left; }
+            th { background: #f1f3f8; }
+          </style>
+        </head>
+        <body>
+          <h1>Reporte de ocupación de zonas</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>Zona</th>
+                <th>Área</th>
+                <th>Capacidad utilizada (m³)</th>
+                <th>Disponible (m³)</th>
+                <th>Ocupación (%)</th>
+                <th>Productos</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
   }
 
   // —————— Helpers ——————
@@ -94,61 +359,58 @@ let editZoneId = null;
     return await res.json();
   }
 
-async function renderAreas() {
-  const [areas, zonas] = await Promise.all([fetchAreas(), fetchZonas()]);
+  function renderAreas() {
+    tablaAreasBody.innerHTML = '';
 
-  const zonasPorArea = zonas.reduce((acc, z) => {
-    const areaId = z.area_id || 0;
-    acc[areaId] = (acc[areaId] || 0) + 1;
-    return acc;
-  }, {});
+    if (!areasData.length) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = '<td colspan="9">No hay áreas registradas.</td>';
+      tablaAreasBody.appendChild(emptyRow);
+      return;
+    }
 
-  const zonasSinAsignar = zonasPorArea[0] || 0;
+    const zonasPorArea = zonasData.reduce((acc, zona) => {
+      const areaId = zona.area_id || 0;
+      acc[areaId] = (acc[areaId] || 0) + 1;
+      return acc;
+    }, {});
 
-  totalAreasEl.textContent = areas.length;
-  totalZonasEl.textContent = zonas.length;
-  zonasSinAreaEl.textContent = zonasSinAsignar;
+    areasData.forEach(area => {
+      const capacidad = Number(area.capacidad_utilizada || 0);
+      const volumen = Number(area.volumen || 0);
+      const disponible = area.capacidad_disponible !== undefined
+        ? Number(area.capacidad_disponible)
+        : Math.max(volumen - capacidad, 0);
+      const porcentaje = Number(area.porcentaje_ocupacion || 0);
+      const productos = Number(area.productos_registrados || 0);
 
-  tablaAreasBody.innerHTML = '';
-
-  if (!areas.length) {
-    const emptyRow = document.createElement('tr');
-    emptyRow.className = 'empty-row';
-    emptyRow.innerHTML = '<td colspan="6">No hay áreas registradas.</td>';
-    tablaAreasBody.appendChild(emptyRow);
-  } else {
-    areas.forEach(a => {
       const tr = document.createElement('tr');
+      if (porcentaje >= 90) {
+        tr.classList.add('row-alert');
+      }
       tr.innerHTML = `
-        <td data-label="Área">${a.nombre}</td>
-        <td data-label="Descripción">${a.descripcion}</td>
-        <td data-label="Dimensiones">${a.ancho}×${a.largo}×${a.alto}</td>
-        <td data-label="Volumen">${parseFloat(a.volumen).toFixed(2)}</td>
-        <td data-label="Zonas asignadas">${zonasPorArea[a.id] || 0}</td>
+        <td data-label="Área">
+          <div class="table-title">${area.nombre}</div>
+          <span class="table-subtext">${zonasPorArea[area.id] || 0} zonas vinculadas</span>
+        </td>
+        <td data-label="Descripción">${area.descripcion || ''}</td>
+        <td data-label="Dimensiones">${(area.ancho ?? 0)}×${(area.largo ?? 0)}×${(area.alto ?? 0)}</td>
+        <td data-label="Volumen">${volumen.toFixed(2)}</td>
+        <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
+        <td data-label="Disponible">${disponible.toFixed(2)}</td>
+        <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
+        <td data-label="Productos">${productos}</td>
         <td data-label="Acciones">
           <div class="table-actions">
-            <button class="table-action table-action--edit" data-action="edit-area" data-id="${a.id}">Editar</button>
-            <button class="table-action table-action--delete" data-action="delete-area" data-id="${a.id}">Eliminar</button>
+            <button class="table-action table-action--edit" data-action="edit-area" data-id="${area.id}">Editar</button>
+            <button class="table-action table-action--delete" data-action="delete-area" data-id="${area.id}">Eliminar</button>
           </div>
         </td>
       `;
       tablaAreasBody.appendChild(tr);
     });
   }
-
-  const selectedArea = zonaAreaSel.value;
-  zonaAreaSel.innerHTML = '<option value="">Seleccione un área</option>';
-  areas.forEach(a => {
-    const option = document.createElement('option');
-    option.value = a.id;
-    option.textContent = a.nombre;
-    zonaAreaSel.appendChild(option);
-  });
-
-  if (selectedArea) {
-    zonaAreaSel.value = selectedArea;
-  }
-}
 
 
 
@@ -183,8 +445,7 @@ formArea.addEventListener('submit', async e => {
       calcularVolumenArea();
       editAreaId = null;
       activarFormulario('area');
-      await renderAreas();
-      await renderZonas();
+      await recargarDatos();
     } else {
       throw new Error(j.error || 'Error en el servidor');
     }
@@ -200,67 +461,109 @@ formArea.addEventListener('submit', async e => {
 }
 
 
-async function renderZonas() {
-  const [zonas, areas] = await Promise.all([fetchZonas(), fetchAreas()]);
-  const areasMap = Object.fromEntries(areas.map(a => [a.id, a.nombre]));
-
-  const zonasAsignadas  = zonas.filter(z => z.area_id && z.area_id > 0);
-  const zonasSinAsignar = zonas.filter(z => !z.area_id || z.area_id === 0);
-
-  totalZonasEl.textContent = zonas.length;
-  zonasSinAreaEl.textContent = zonasSinAsignar.length;
-
-  tablaZonasBody.innerHTML = '';
-  if (!zonasAsignadas.length) {
-    const emptyRow = document.createElement('tr');
-    emptyRow.className = 'empty-row';
-    emptyRow.innerHTML = '<td colspan="6">No hay zonas asignadas a un área.</td>';
-    tablaZonasBody.appendChild(emptyRow);
-  } else {
-    zonasAsignadas.forEach(z => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Zona">${z.nombre}</td>
-        <td data-label="Área">${areasMap[z.area_id] || z.area_id}</td>
-        <td data-label="Dimensiones">${z.ancho}×${z.largo}×${z.alto}</td>
-        <td data-label="Volumen">${parseFloat(z.volumen).toFixed(2)}</td>
-        <td data-label="Tipo">${z.tipo_almacenamiento}</td>
-        <td data-label="Acciones">
-          <div class="table-actions">
-            <button class="table-action table-action--edit" data-action="edit-zone" data-id="${z.id}">Editar</button>
-            <button class="table-action table-action--delete" data-action="delete-zone" data-id="${z.id}">Eliminar</button>
-          </div>
-        </td>
-      `;
-      tablaZonasBody.appendChild(tr);
-    });
+  async function recargarDatos() {
+    try {
+      const [areas, zonas] = await Promise.all([fetchAreas(), fetchZonas()]);
+      areasData = Array.isArray(areas) ? areas.map(normalizarArea) : [];
+      zonasData = Array.isArray(zonas) ? zonas.map(normalizarZona) : [];
+      actualizarResumen();
+      actualizarOpcionesArea();
+      renderAreas();
+      renderZonas();
+    } catch (error) {
+      console.error('Error al recargar datos', error);
+      showToast('No se pudo actualizar la información de áreas y zonas');
+    }
   }
 
-  tablaZonasSinAreaBody.innerHTML = '';
-  if (!zonasSinAsignar.length) {
-    const emptyRow = document.createElement('tr');
-    emptyRow.className = 'empty-row';
-    emptyRow.innerHTML = '<td colspan="5">No hay zonas pendientes de asignar.</td>';
-    tablaZonasSinAreaBody.appendChild(emptyRow);
-  } else {
-    zonasSinAsignar.forEach(z => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Zona">${z.nombre}</td>
-        <td data-label="Dimensiones">${z.ancho}×${z.largo}×${z.alto}</td>
-        <td data-label="Volumen">${parseFloat(z.volumen).toFixed(2)}</td>
-        <td data-label="Tipo">${z.tipo_almacenamiento}</td>
-        <td data-label="Acciones">
-          <div class="table-actions">
-            <button class="table-action table-action--edit" data-action="edit-zone" data-id="${z.id}">Editar</button>
-            <button class="table-action table-action--delete" data-action="delete-zone" data-id="${z.id}">Eliminar</button>
-          </div>
-        </td>
-      `;
-      tablaZonasSinAreaBody.appendChild(tr);
-    });
+
+  function renderZonas() {
+    const resultado = filtrarZonas();
+    const areasMap = Object.fromEntries(areasData.map(a => [a.id, a.nombre]));
+
+    tablaZonasBody.innerHTML = '';
+    if (!resultado.asignadas.length) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = '<td colspan="8">No hay zonas asignadas que coincidan con los filtros.</td>';
+      tablaZonasBody.appendChild(emptyRow);
+    } else {
+      resultado.asignadas.forEach(zona => {
+        const porcentaje = Number(zona.porcentaje_ocupacion || 0);
+        const capacidad = Number(zona.capacidad_utilizada || 0);
+        const disponible = zona.capacidad_disponible !== undefined
+          ? Number(zona.capacidad_disponible)
+          : Math.max(Number(zona.volumen || 0) - capacidad, 0);
+        const productos = Number(zona.productos_registrados || 0);
+
+        const tr = document.createElement('tr');
+        if (porcentaje >= 90) {
+          tr.classList.add('row-alert');
+        }
+        tr.innerHTML = `
+          <td data-label="Zona">
+            <div class="table-title">${zona.nombre}</div>
+            <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
+          </td>
+          <td data-label="Área">${areasMap[zona.area_id] || 'Sin área'}</td>
+          <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
+          <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
+          <td data-label="Disponible">${disponible.toFixed(2)}</td>
+          <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
+          <td data-label="Productos">${productos}</td>
+          <td data-label="Acciones">
+            <div class="table-actions">
+              <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
+              <button class="table-action table-action--delete" data-action="delete-zone" data-id="${zona.id}">Eliminar</button>
+            </div>
+          </td>
+        `;
+        tablaZonasBody.appendChild(tr);
+      });
+    }
+
+    tablaZonasSinAreaBody.innerHTML = '';
+    if (!resultado.sinArea.length) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = '<td colspan="7">No hay zonas sin área que coincidan con los filtros.</td>';
+      tablaZonasSinAreaBody.appendChild(emptyRow);
+    } else {
+      resultado.sinArea.forEach(zona => {
+        const porcentaje = Number(zona.porcentaje_ocupacion || 0);
+        const capacidad = Number(zona.capacidad_utilizada || 0);
+        const disponible = zona.capacidad_disponible !== undefined
+          ? Number(zona.capacidad_disponible)
+          : Math.max(Number(zona.volumen || 0) - capacidad, 0);
+        const productos = Number(zona.productos_registrados || 0);
+
+        const tr = document.createElement('tr');
+        if (porcentaje >= 90) {
+          tr.classList.add('row-alert');
+        }
+        tr.innerHTML = `
+          <td data-label="Zona">
+            <div class="table-title">${zona.nombre}</div>
+            <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
+          </td>
+          <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
+          <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
+          <td data-label="Disponible">${disponible.toFixed(2)}</td>
+          <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
+          <td data-label="Productos">${productos}</td>
+          <td data-label="Acciones">
+            <div class="table-actions">
+              <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
+              <button class="table-action table-action--delete" data-action="delete-zone" data-id="${zona.id}">Eliminar</button>
+            </div>
+          </td>
+        `;
+        tablaZonasSinAreaBody.appendChild(tr);
+      });
+    }
+
+    actualizarAlertas(resultado.todas);
   }
-}
 
 async function editArea(id) {
   // 1) Traer la área
@@ -287,7 +590,7 @@ async function editZone(id) {
   zonaAncho.value  = z.ancho;
   zonaAlto.value   = z.alto;
   zonaTipoSel.value = z.tipo_almacenamiento;
-  zonaAreaSel.value = z.area_id || '';
+  zonaAreaSel.value = z.area_id ? String(z.area_id) : '';
   calcularVolumenZona();
   editZoneId = id;
 }
@@ -302,7 +605,7 @@ formZona.addEventListener('submit', async e => {
     alto:               parseFloat(zonaAlto.value) || 0,
     tipo_almacenamiento: zonaTipoSel.value,
     subniveles:         [],  // tu lógica si las tienes
-    area_id:            parseInt(zonaAreaSel.value, 10) || 0,
+    area_id:            zonaAreaSel.value ? parseInt(zonaAreaSel.value, 10) : null,
     empresa_id:         EMP_ID
   };
 
@@ -324,8 +627,7 @@ formZona.addEventListener('submit', async e => {
       calcularVolumenZona();
       editZoneId = null;
       activarFormulario('zona');
-      await renderZonas();
-      await renderAreas();
+      await recargarDatos();
     } else {
       throw new Error(j.error || 'Error en el servidor');
     }
@@ -336,61 +638,44 @@ formZona.addEventListener('submit', async e => {
 
 
 async function deleteArea(id) {
-  // 1) Obtener todas las zonas
-  const zonas = await fetchZonas();
-  // 2) Filtrar las que están asignadas a este área
-  const zonasAsig = zonas.filter(z => z.area_id === parseInt(id, 10));
-
-  // 3) Mensaje de confirmación distinto si hay zonas
-  let mensaje = '¿Seguro que deseas eliminar esta área?';
-  if (zonasAsig.length) {
-    mensaje = `El área que vas a eliminar y sus ${zonasAsig.length} zona(s) asignadas quedarán sin un área a la que pertenezcan. ¿Deseas continuar?`;
+  if (!confirm('¿Seguro que deseas eliminar esta área?')) {
+    return;
   }
-  if (!confirm(mensaje)) return;
 
-  // 4) Para cada zona asignada, lanzamos un PUT reasignando area_id a 0
-  for (const z of zonasAsig) {
-    // Construir payload completo con area_id = 0
-    const payload = {
-      nombre:             z.nombre,
-      descripcion:        z.descripcion,
-      ancho:              z.ancho,
-      largo:              z.largo,
-      alto:               z.alto,
-      tipo_almacenamiento: z.tipo_almacenamiento,
-      subniveles:         z.subniveles || [],
-      area_id:            0,
-      empresa_id:         EMP_ID
-    };
-    await fetch(
-      `${API_BASE}/guardar_zonas.php?id=${z.id}&empresa_id=${EMP_ID}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+  try {
+    const res = await fetch(`${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`, {
+      method: 'DELETE'
     });
+    const respuesta = await res.json();
+    if (!res.ok) {
+      throw new Error(respuesta.error || 'No se pudo eliminar el área');
+    }
+    showToast('Área eliminada');
+    await recargarDatos();
+  } catch (error) {
+    showToast(error.message);
   }
-
-  // 5) Finalmente borramos el área
-  await fetch(
-    `${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`, {
-    method: 'DELETE'
-  });
-
-  // 6) Refrescar ambas tablas
-  await renderAreas();
-  await renderZonas();
 }
 
 // —————— Borrar Zona ——————
 async function deleteZone(id) {
-  if (!confirm('¿Seguro que deseas eliminar esta zona?')) return;
-  // Llamada al endpoint DELETE
-  await fetch(`${API_BASE}/guardar_zonas.php?id=${id}&empresa_id=${EMP_ID}`, {
-    method: 'DELETE'
-  });
-  // Refrescar ambas vistas para mantener los contadores al día
-  await renderZonas();
-  await renderAreas();
+  if (!confirm('¿Seguro que deseas eliminar esta zona?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/guardar_zonas.php?id=${id}&empresa_id=${EMP_ID}`, {
+      method: 'DELETE'
+    });
+    const respuesta = await res.json();
+    if (!res.ok) {
+      throw new Error(respuesta.error || 'No se pudo eliminar la zona');
+    }
+    showToast('Zona eliminada');
+    await recargarDatos();
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
   // —————— Botones de alternar vista ——————
@@ -403,6 +688,30 @@ async function deleteZone(id) {
     renderAreas();
     renderZonas();
   });
+
+  if (filtroNombre) {
+    filtroNombre.addEventListener('input', renderZonas);
+  }
+  if (filtroArea) {
+    filtroArea.addEventListener('change', renderZonas);
+  }
+  if (filtroOcupacion) {
+    filtroOcupacion.addEventListener('input', () => {
+      if (filtroOcupacionValor) {
+        filtroOcupacionValor.textContent = `Desde ${filtroOcupacion.value}%`;
+      }
+      renderZonas();
+    });
+  }
+  if (filtroProductos) {
+    filtroProductos.addEventListener('input', renderZonas);
+  }
+  if (exportExcelBtn) {
+    exportExcelBtn.addEventListener('click', exportarZonasCSV);
+  }
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener('click', exportarZonasPDF);
+  }
 
 // Áreas: editar / borrar
 tablaAreasBody.addEventListener('click', e => {
@@ -443,6 +752,8 @@ tablaZonasSinAreaBody.addEventListener('click', e => {
   llenarTipos();
   calcularVolumenArea();
   calcularVolumenZona();
-  renderAreas();
-  renderZonas();
+  if (filtroOcupacion && filtroOcupacionValor) {
+    filtroOcupacionValor.textContent = `Desde ${filtroOcupacion.value}%`;
+  }
+  recargarDatos();
 })();

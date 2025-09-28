@@ -23,6 +23,7 @@ try {
 
 require_once __DIR__ . '/log_utils.php';
 require_once __DIR__ . '/accesos_utils.php';
+require_once __DIR__ . '/infraestructura_utils.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -58,6 +59,11 @@ if ($method === 'GET') {
         $stmt->execute();
         $res = $stmt->get_result();
         $area = $res->fetch_assoc() ?: [];
+        if ($area) {
+            $utilizada = isset($area['capacidad_utilizada']) ? (float) $area['capacidad_utilizada'] : 0.0;
+            $total = isset($area['volumen']) ? (float) $area['volumen'] : 0.0;
+            $area['capacidad_disponible'] = max($total - $utilizada, 0);
+        }
 
         if ($filtrarPorAccesos) {
             $puedeVer = usuarioPuedeVerArea($mapaAccesos, isset($area['id']) ? (int) $area['id'] : 0);
@@ -84,6 +90,7 @@ if ($method === 'GET') {
             if ($filtrarPorAccesos && !usuarioPuedeVerArea($mapaAccesos, isset($row['id']) ? (int) $row['id'] : 0)) {
                 continue;
             }
+            $row['capacidad_disponible'] = max(((float) ($row['volumen'] ?? 0)) - ((float) ($row['capacidad_utilizada'] ?? 0)), 0);
             $areas[] = $row;
         }
         echo json_encode($areas);
@@ -101,9 +108,15 @@ if ($method === 'POST') {
     $largo = floatval($data['largo'] ?? 0);
     $volumen = $ancho * $alto * $largo;
     $empresa_id = isset($data['empresa_id']) ? intval($data['empresa_id']) : 0;
-    if (!$nombre || $empresa_id <= 0) {
+    if (!$nombre || $empresa_id <= 0 || $ancho <= 0 || $alto <= 0 || $largo <= 0) {
         http_response_code(400);
-        echo json_encode(['error' => 'Datos incompletos']);
+        echo json_encode(['error' => 'Datos incompletos o dimensiones inválidas']);
+        exit;
+    }
+
+    if (!validarCapacidadContraAlmacen($conn, $empresa_id, $volumen)) {
+        http_response_code(422);
+        echo json_encode(['error' => 'El volumen del área supera la capacidad máxima registrada para el almacén.']);
         exit;
     }
     $stmt = $conn->prepare('INSERT INTO areas (nombre, descripcion, ancho, alto, largo, volumen, id_empresa) VALUES (?,?,?,?,?,?,?)');
@@ -111,6 +124,8 @@ if ($method === 'POST') {
     $stmt->execute();
 
     registrarLog($conn, $usuarioId, 'Áreas', "Creación de área: {$nombre}");
+
+    actualizarOcupacionArea($conn, $stmt->insert_id);
 
     echo json_encode(['id' => $stmt->insert_id]);
     exit;
@@ -127,6 +142,27 @@ if ($method === 'PUT') {
     $alto = floatval($data['alto'] ?? 0);
     $largo = floatval($data['largo'] ?? 0);
     $volumen = $ancho * $alto * $largo;
+    if (!$nombre || $ancho <= 0 || $alto <= 0 || $largo <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Datos incompletos o dimensiones inválidas']);
+        exit;
+    }
+
+    $empresaValidacion = $empresaId ?: (isset($data['empresa_id']) ? intval($data['empresa_id']) : 0);
+    if ($empresaValidacion > 0 && !validarCapacidadContraAlmacen($conn, $empresaValidacion, $volumen)) {
+        http_response_code(422);
+        echo json_encode(['error' => 'El volumen del área supera la capacidad máxima registrada para el almacén.']);
+        exit;
+    }
+
+    if ($id > 0) {
+        $volumenZonas = obtenerVolumenTotalZonas($conn, $id);
+        if ($volumen < $volumenZonas) {
+            http_response_code(409);
+            echo json_encode(['error' => 'El volumen del área no puede ser menor al volumen ocupado por sus zonas.']);
+            exit;
+        }
+    }
     if ($empresaId) {
         $stmt = $conn->prepare('UPDATE areas SET nombre=?, descripcion=?, ancho=?, alto=?, largo=?, volumen=? WHERE id=? AND id_empresa=?');
         $stmt->bind_param('ssddddii', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $id, $empresaId);
@@ -138,6 +174,10 @@ if ($method === 'PUT') {
 
     registrarLog($conn, $usuarioId, 'Áreas', "Actualización de área ID: {$id}");
 
+    if ($id) {
+        actualizarOcupacionArea($conn, $id);
+    }
+
     echo json_encode(['success' => $stmt->affected_rows > 0]);
     exit;
 }
@@ -146,6 +186,20 @@ if ($method === 'DELETE') {
     $usuarioId = requireUserId();
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
+
+    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $stmt->bind_result($zonasAsociadas);
+    $stmt->fetch();
+    $stmt->close();
+
+    if ($zonasAsociadas > 0) {
+        http_response_code(409);
+        echo json_encode(['error' => 'No se puede eliminar el área porque existen zonas asociadas. Reasigna o elimina las zonas primero.']);
+        exit;
+    }
+
     if ($empresaId) {
         $stmt = $conn->prepare('DELETE FROM areas WHERE id=? AND id_empresa=?');
         $stmt->bind_param('ii', $id, $empresaId);
