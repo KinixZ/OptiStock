@@ -30,6 +30,10 @@ if ($idUsuario <= 0 || $idArea <= 0) {
     jsonResponse(false, 'Datos incompletos. Selecciona al menos un área.');
 }
 
+if ($idZona !== null && $idZona <= 0) {
+    jsonResponse(false, 'Selecciona una zona válida.');
+}
+
 try {
     $stmtArea = $conn->prepare('SELECT id_empresa, nombre FROM areas WHERE id = ?');
     $stmtArea->bind_param('i', $idArea);
