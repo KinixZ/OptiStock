@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 $method = $_SERVER['REQUEST_METHOD'];
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/accesos_utils.php';
 
 function requireUserIdProductos()
 {
@@ -64,6 +65,10 @@ if ($method === 'GET') {
     }
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
+    $usuarioIdSesion = obtenerUsuarioIdSesion() ?? 0;
+    $mapaAccesos = construirMapaAccesosUsuario($conn, $usuarioIdSesion);
+    $filtrarPorAccesos = debeFiltrarPorAccesos($mapaAccesos);
+
     if ($id) {
         $sql = "
           SELECT
@@ -84,7 +89,7 @@ if ($method === 'GET') {
     } else {
         $sql = "
           SELECT
-            p.*,                            
+            p.*,
             z.id   AS zona_id,   z.nombre  AS zona_nombre,
             a.id   AS area_id,   a.nombre  AS area_nombre,
             c.nombre AS categoria_nombre,
@@ -93,7 +98,7 @@ if ($method === 'GET') {
           LEFT JOIN zonas         z  ON p.zona_id         = z.id
           LEFT JOIN areas         a  ON z.area_id         = a.id
           LEFT JOIN categorias    c  ON p.categoria_id    = c.id
-         LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
+          LEFT JOIN subcategorias sc ON p.subcategoria_id = sc.id
           WHERE p.empresa_id = ?
       ";
         $stmt = $conn->prepare($sql);
@@ -104,10 +109,28 @@ if ($method === 'GET') {
     $res = $stmt->get_result();
 
     if ($id) {
-        echo json_encode($res->fetch_assoc() ?: []);
+        $producto = $res->fetch_assoc() ?: [];
+        if ($filtrarPorAccesos) {
+            $areaId = isset($producto['area_id']) ? (int) $producto['area_id'] : 0;
+            $zonaId = isset($producto['zona_id']) ? (int) $producto['zona_id'] : 0;
+            if (!usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'No tienes acceso a este producto.']);
+                exit;
+            }
+        }
+
+        echo json_encode($producto);
     } else {
         $items = [];
         while ($row = $res->fetch_assoc()) {
+            $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
+            $zonaId = isset($row['zona_id']) ? (int) $row['zona_id'] : 0;
+
+            if ($filtrarPorAccesos && !usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+                continue;
+            }
+
             $items[] = $row;
         }
         echo json_encode($items);
