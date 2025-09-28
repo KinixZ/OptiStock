@@ -22,9 +22,20 @@
   const listaAccesosVacia = document.getElementById('listaAccesosVacia');
   const selectArea = document.getElementById('asignarArea');
   const selectZona = document.getElementById('asignarZona');
+  const selectZonaWrapper = selectZona ? selectZona.closest('.form-group, .mb-3, .col-12, .col') : null;
   const formAsignarAcceso = document.getElementById('formAsignarAcceso');
   const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
   let modalAsignarInstancia = null;
+
+  if (selectZona) {
+    selectZona.innerHTML = '<option value="">Asignación por zona deshabilitada</option>';
+    selectZona.disabled = true;
+    if (selectZonaWrapper) {
+      selectZonaWrapper.classList.add('d-none');
+    } else {
+      selectZona.setAttribute('hidden', 'hidden');
+    }
+  }
 
   function obtenerConteoPorRol(usuarios) {
     return (usuarios || []).reduce((conteo, usuario) => {
@@ -181,38 +192,14 @@
     });
   }
 
-  function poblarSelectZona(areaId) {
+  function poblarSelectZona() {
     if (!selectZona) return;
-
-    selectZona.innerHTML = '';
-    if (!areaId) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'Selecciona un área primero';
-      selectZona.appendChild(option);
-      selectZona.disabled = true;
-      return;
-    }
-
-    const areaSeleccionada = (cacheAreasZonas || []).find(item => String(item?.area?.id) === String(areaId));
-    selectZona.disabled = false;
-
-    const opcionTodas = document.createElement('option');
-    opcionTodas.value = '';
-    opcionTodas.textContent = 'Todas las zonas';
-    selectZona.appendChild(opcionTodas);
-
-    (areaSeleccionada?.zonas || []).forEach(zona => {
-      const option = document.createElement('option');
-      option.value = zona.id;
-      option.textContent = zona.nombre;
-      selectZona.appendChild(option);
-    });
+    selectZona.innerHTML = '<option value="">Asignación por zona deshabilitada</option>';
+    selectZona.disabled = true;
   }
 
-  function manejarCambioArea(event) {
-    const areaId = event?.target?.value || '';
-    poblarSelectZona(areaId);
+  function manejarCambioArea() {
+    poblarSelectZona();
   }
 
   function actualizarResumenAccesosModal(accesos) {
@@ -223,16 +210,15 @@
     }
 
     const totalAreas = new Set(accesos.map(a => a.id_area)).size;
-    const totalZonas = accesos.filter(a => a.id_zona).length;
-    const zonasLibres = accesos.filter(a => !a.id_zona).length;
+    const soloAreas = accesos.every(acceso => acceso?.id_zona === null || typeof acceso?.id_zona === 'undefined');
 
-    if (zonasLibres) {
-      resumenAccesosUsuario.textContent = `${totalAreas} área(s) con acceso total`;
-    } else if (totalZonas) {
-      resumenAccesosUsuario.textContent = `${totalZonas} zona(s) asignada(s) en ${totalAreas} área(s)`;
-    } else {
-      resumenAccesosUsuario.textContent = 'Acceso personalizado';
+    if (soloAreas) {
+      resumenAccesosUsuario.textContent = `${totalAreas} área(s) asignada(s)`;
+      return;
     }
+
+    const totalZonas = accesos.filter(a => a.id_zona).length;
+    resumenAccesosUsuario.textContent = `${totalAreas} área(s) con ${totalZonas} zona(s) personalizada(s)`;
   }
 
   function renderListaAccesos(accesos) {
@@ -257,8 +243,10 @@
         item.dataset.accessKey = acceso.composite_id;
       }
 
-      const zonaTexto = acceso?.zona ? escapeHtml(acceso.zona) : 'Todas las zonas';
       const areaTexto = escapeHtml(acceso?.area || `Área #${acceso?.id_area}`);
+      const zonaTexto = acceso?.id_zona
+        ? escapeHtml(acceso?.zona || `Zona #${acceso?.id_zona}`)
+        : 'Acceso completo al área';
 
       item.innerHTML = `
         <div class="me-3">
@@ -287,7 +275,9 @@
     const maxEtiquetas = 3;
     const etiquetas = accesos.slice(0, maxEtiquetas).map(acceso => {
       const areaTexto = escapeHtml(acceso?.area || `Área #${acceso?.id_area}`);
-      const zonaTexto = acceso?.zona ? escapeHtml(acceso.zona) : 'Todas las zonas';
+      const zonaTexto = acceso?.id_zona
+        ? escapeHtml(acceso?.zona || `Zona #${acceso?.id_zona}`)
+        : 'Acceso completo al área';
       return `
         <span class="access-tag">
           <span class="access-tag__area">${areaTexto}</span>
@@ -343,11 +333,11 @@
     usuarioAccesosSeleccionadoId = usuario.id_usuario;
 
     if (tituloModalAccesos) {
-      tituloModalAccesos.textContent = 'Gestionar accesos por área y zona';
+      tituloModalAccesos.textContent = 'Gestionar accesos por área';
     }
 
     if (descripcionModalAccesos) {
-      descripcionModalAccesos.textContent = 'Define a qué áreas y zonas puede acceder el colaborador seleccionado.';
+      descripcionModalAccesos.textContent = 'Define a qué áreas puede acceder el colaborador seleccionado.';
     }
 
     if (nombreUsuarioAccesos) {
@@ -359,10 +349,7 @@
       formAsignarAcceso.reset();
     }
 
-    if (selectZona) {
-      selectZona.innerHTML = '<option value="">Selecciona un área primero</option>';
-      selectZona.disabled = true;
-    }
+    poblarSelectZona();
 
     obtenerAreasEmpresa().then(areas => {
       poblarSelectArea(areas);
@@ -383,10 +370,8 @@
       return;
     }
 
-    const areaSeleccionada = selectArea ? parseInt(selectArea.value, 10) : 0;
-    const zonaSeleccionada = selectZona && selectZona.value ? parseInt(selectZona.value, 10) : null;
-
-    if (!areaSeleccionada) {
+    const areaSeleccionada = selectArea && selectArea.value !== '' ? Number(selectArea.value) : 0;
+    if (!Number.isInteger(areaSeleccionada) || areaSeleccionada <= 0) {
       alert('Debes seleccionar un área para continuar.');
       return;
     }
@@ -402,8 +387,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id_usuario: usuarioAccesosSeleccionadoId,
-        id_area: areaSeleccionada,
-        id_zona: zonaSeleccionada
+        id_area: areaSeleccionada
       })
     })
       .then(res => res.json())
@@ -427,10 +411,7 @@
         if (formAsignarAcceso) {
           formAsignarAcceso.reset();
         }
-        if (selectZona) {
-          selectZona.innerHTML = '<option value="">Selecciona un área primero</option>';
-          selectZona.disabled = true;
-        }
+        poblarSelectZona();
       });
   }
 
@@ -846,10 +827,7 @@
     if (formAsignarAcceso) {
       formAsignarAcceso.reset();
     }
-    if (selectZona) {
-      selectZona.innerHTML = '<option value="">Selecciona un área primero</option>';
-      selectZona.disabled = true;
-    }
+    poblarSelectZona();
     if (listaAccesos) {
       listaAccesos.innerHTML = '';
       listaAccesos.classList.add('d-none');
