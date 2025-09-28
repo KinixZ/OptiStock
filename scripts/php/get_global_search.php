@@ -9,6 +9,8 @@ $database   = "u296155119_OptiStock";
 
 $conn = new mysqli($servername, $username, $password, $database);
 
+require_once __DIR__ . '/accesos_utils.php';
+
 if ($conn->connect_error) {
     echo json_encode([
         'success' => false,
@@ -61,6 +63,9 @@ if ($idEmpresa <= 0) {
     exit;
 }
 
+$mapaAccesos = construirMapaAccesosUsuario($conn, $userId);
+$filtrarPorAccesos = debeFiltrarPorAccesos($mapaAccesos);
+
 function sanitizeText(?string $value): string {
     return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
@@ -80,9 +85,11 @@ function formatDateTime(?string $value): string {
 
 $results = [];
 
-$productosSql = "SELECT p.id, p.nombre, p.descripcion, p.stock, p.last_movimiento, p.last_tipo, z.nombre AS zona_nombre
+$productosSql = "SELECT p.id, p.nombre, p.descripcion, p.stock, p.last_movimiento, p.last_tipo,
+                        z.nombre AS zona_nombre, z.id AS zona_id, a.id AS area_id
                  FROM productos p
                  LEFT JOIN zonas z ON z.id = p.zona_id
+                 LEFT JOIN areas a ON a.id = z.area_id
                  WHERE p.empresa_id = ?
                  ORDER BY p.nombre ASC";
 
@@ -92,6 +99,13 @@ if ($productosStmt = $conn->prepare($productosSql)) {
     $productosResult = $productosStmt->get_result();
 
     while ($row = $productosResult->fetch_assoc()) {
+        $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
+        $zonaId = isset($row['zona_id']) ? (int) $row['zona_id'] : 0;
+
+        if ($filtrarPorAccesos && !usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+            continue;
+        }
+
         $descripcionPartes = [];
         $descripcionPartes[] = 'Stock: ' . (int) $row['stock'] . ' unidades';
         if (!empty($row['zona_nombre'])) {
@@ -118,9 +132,12 @@ if ($productosStmt = $conn->prepare($productosSql)) {
     $productosStmt->close();
 }
 
-$movimientosSql = "SELECT m.id, m.tipo, m.cantidad, m.fecha_movimiento, p.nombre AS producto_nombre
+$movimientosSql = "SELECT m.id, m.tipo, m.cantidad, m.fecha_movimiento, p.nombre AS producto_nombre,
+                          z.id AS zona_id, a.id AS area_id
                    FROM movimientos m
                    LEFT JOIN productos p ON p.id = m.producto_id
+                   LEFT JOIN zonas z ON p.zona_id = z.id
+                   LEFT JOIN areas a ON z.area_id = a.id
                    WHERE m.empresa_id = ?
                    ORDER BY m.fecha_movimiento DESC
                    LIMIT 50";
@@ -131,6 +148,13 @@ if ($movimientosStmt = $conn->prepare($movimientosSql)) {
     $movimientosResult = $movimientosStmt->get_result();
 
     while ($row = $movimientosResult->fetch_assoc()) {
+        $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
+        $zonaId = isset($row['zona_id']) ? (int) $row['zona_id'] : 0;
+
+        if ($filtrarPorAccesos && !usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+            continue;
+        }
+
         $titulo = ucfirst($row['tipo'] ?? 'movimiento') . ' #' . str_pad((string) $row['id'], 4, '0', STR_PAD_LEFT);
         $descripcionPartes = [];
 
@@ -190,13 +214,17 @@ if ($usuariosStmt = $conn->prepare($usuariosSql)) {
     $usuariosStmt->close();
 }
 
-$areasSql = "SELECT nombre, descripcion, volumen FROM areas WHERE id_empresa = ? ORDER BY nombre ASC";
+$areasSql = "SELECT id, nombre, descripcion, volumen FROM areas WHERE id_empresa = ? ORDER BY nombre ASC";
 if ($areasStmt = $conn->prepare($areasSql)) {
     $areasStmt->bind_param('i', $idEmpresa);
     $areasStmt->execute();
     $areasResult = $areasStmt->get_result();
 
     while ($row = $areasResult->fetch_assoc()) {
+        if ($filtrarPorAccesos && !usuarioPuedeVerArea($mapaAccesos, isset($row['id']) ? (int) $row['id'] : 0)) {
+            continue;
+        }
+
         $descripcionPartes = [];
         if (!empty($row['descripcion'])) {
             $descripcionPartes[] = sanitizeText($row['descripcion']);
@@ -217,13 +245,20 @@ if ($areasStmt = $conn->prepare($areasSql)) {
     $areasStmt->close();
 }
 
-$zonasSql = "SELECT nombre, descripcion, tipo_almacenamiento FROM zonas WHERE id_empresa = ? ORDER BY nombre ASC";
+$zonasSql = "SELECT id, area_id, nombre, descripcion, tipo_almacenamiento FROM zonas WHERE id_empresa = ? ORDER BY nombre ASC";
 if ($zonasStmt = $conn->prepare($zonasSql)) {
     $zonasStmt->bind_param('i', $idEmpresa);
     $zonasStmt->execute();
     $zonasResult = $zonasStmt->get_result();
 
     while ($row = $zonasResult->fetch_assoc()) {
+        $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
+        $zonaId = isset($row['id']) ? (int) $row['id'] : 0;
+
+        if ($filtrarPorAccesos && !usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+            continue;
+        }
+
         $descripcionPartes = [];
         if (!empty($row['descripcion'])) {
             $descripcionPartes[] = sanitizeText($row['descripcion']);

@@ -20,6 +20,7 @@ try {
 }
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/accesos_utils.php';
 
 function requireUserIdZonas()
 {
@@ -42,15 +43,32 @@ function getJsonInput() {
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
+
+    $usuarioIdSesion = obtenerUsuarioIdSesion() ?? 0;
+    $mapaAccesos = construirMapaAccesosUsuario($conn, $usuarioIdSesion);
+    $filtrarPorAccesos = debeFiltrarPorAccesos($mapaAccesos);
+
     if ($id) {
         $stmt = $conn->prepare('SELECT * FROM zonas WHERE id = ?');
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $res = $stmt->get_result();
         $zona = $res->fetch_assoc() ?: [];
+
         if ($zona && $zona['subniveles']) {
             $zona['subniveles'] = json_decode($zona['subniveles'], true);
         }
+
+        if ($filtrarPorAccesos) {
+            $areaId = isset($zona['area_id']) ? (int) $zona['area_id'] : 0;
+            $zonaId = isset($zona['id']) ? (int) $zona['id'] : 0;
+            if (!usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'No tienes acceso a esta zona.']);
+                exit;
+            }
+        }
+
         echo json_encode($zona);
     } else {
         $zonas = [];
@@ -62,10 +80,19 @@ if ($method === 'GET') {
         } else {
             $result = $conn->query('SELECT * FROM zonas');
         }
+
         while ($row = $result->fetch_assoc()) {
             if ($row['subniveles']) {
                 $row['subniveles'] = json_decode($row['subniveles'], true);
             }
+
+            $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
+            $zonaId = isset($row['id']) ? (int) $row['id'] : 0;
+
+            if ($filtrarPorAccesos && !usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+                continue;
+            }
+
             $zonas[] = $row;
         }
         echo json_encode($zonas);

@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/accesos_utils.php';
+
 $empresaId = isset($_GET['id_empresa']) ? (int) $_GET['id_empresa'] : 0;
 if ($empresaId <= 0) {
     http_response_code(400);
@@ -26,6 +29,10 @@ if ($conn->connect_error) {
     exit;
 }
 
+$usuarioIdSesion = obtenerUsuarioIdSesion() ?? 0;
+$mapaAccesos = construirMapaAccesosUsuario($conn, $usuarioIdSesion);
+$filtrarPorAccesos = debeFiltrarPorAccesos($mapaAccesos);
+
 $sql = "
     SELECT
         m.id,
@@ -36,7 +43,9 @@ $sql = "
         p.nombre AS producto_nombre,
         p.stock  AS stock_actual,
         z.nombre AS zona_nombre,
+        z.id     AS zona_id,
         a.nombre AS area_nombre,
+        a.id     AS area_id,
         u.nombre AS usuario_nombre,
         u.apellido AS usuario_apellido
     FROM movimientos m
@@ -66,6 +75,13 @@ $result = $stmt->get_result();
 
 $movimientos = [];
 while ($row = $result->fetch_assoc()) {
+    $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
+    $zonaId = isset($row['zona_id']) ? (int) $row['zona_id'] : 0;
+
+    if ($filtrarPorAccesos && !usuarioPuedeVerZona($mapaAccesos, $areaId ?: null, $zonaId ?: null)) {
+        continue;
+    }
+
     $movimientos[] = $row;
 }
 

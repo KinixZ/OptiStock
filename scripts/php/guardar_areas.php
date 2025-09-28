@@ -22,6 +22,7 @@ try {
 }
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/accesos_utils.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -46,12 +47,28 @@ function requireUserId()
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
+
+    $usuarioIdSesion = obtenerUsuarioIdSesion() ?? 0;
+    $mapaAccesos = construirMapaAccesosUsuario($conn, $usuarioIdSesion);
+    $filtrarPorAccesos = debeFiltrarPorAccesos($mapaAccesos);
+
     if ($id) {
         $stmt = $conn->prepare('SELECT * FROM areas WHERE id = ?');
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $res = $stmt->get_result();
-        echo json_encode($res->fetch_assoc() ?: []);
+        $area = $res->fetch_assoc() ?: [];
+
+        if ($filtrarPorAccesos) {
+            $puedeVer = usuarioPuedeVerArea($mapaAccesos, isset($area['id']) ? (int) $area['id'] : 0);
+            if (!$puedeVer) {
+                http_response_code(403);
+                echo json_encode(['error' => 'No tienes acceso a esta área.']);
+                exit;
+            }
+        }
+
+        echo json_encode($area);
     } else {
         $areas = [];
         if ($empresaId) {
@@ -62,7 +79,11 @@ if ($method === 'GET') {
         } else {
             $result = $conn->query('SELECT * FROM areas');
         }
+
         while ($row = $result->fetch_assoc()) {
+            if ($filtrarPorAccesos && !usuarioPuedeVerArea($mapaAccesos, isset($row['id']) ? (int) $row['id'] : 0)) {
+                continue;
+            }
             $areas[] = $row;
         }
         echo json_encode($areas);
