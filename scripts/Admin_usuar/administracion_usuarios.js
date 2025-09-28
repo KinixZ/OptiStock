@@ -2,12 +2,29 @@
   let usuariosEmpresa = [];
   const listeners = [];
   let domReadyHandler = null;
+  let cacheAreasZonas = null;
+  let solicitudAreas = null;
+  let usuarioAccesosSeleccionadoId = null;
+  let asignacionEnCurso = false;
 
   function addListener(element, event, handler) {
     if (!element) return;
     element.addEventListener(event, handler);
     listeners.push({ element, event, handler });
   }
+
+  const modalAsignar = document.getElementById('modalAsignarAccesos');
+  const tituloModalAccesos = document.getElementById('tituloModalAccesos');
+  const descripcionModalAccesos = document.getElementById('descripcionModalAccesos');
+  const nombreUsuarioAccesos = document.getElementById('nombreUsuarioAccesos');
+  const resumenAccesosUsuario = document.getElementById('resumenAccesosUsuario');
+  const listaAccesos = document.getElementById('listaAccesosUsuario');
+  const listaAccesosVacia = document.getElementById('listaAccesosVacia');
+  const selectArea = document.getElementById('asignarArea');
+  const selectZona = document.getElementById('asignarZona');
+  const formAsignarAcceso = document.getElementById('formAsignarAcceso');
+  const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
+  let modalAsignarInstancia = null;
 
   function obtenerConteoPorRol(usuarios) {
     return (usuarios || []).reduce((conteo, usuario) => {
@@ -17,6 +34,15 @@
       conteo[usuario.rol] = (conteo[usuario.rol] || 0) + 1;
       return conteo;
     }, {});
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function poblarFiltroRoles(roles) {
@@ -84,6 +110,339 @@
     });
   }
 
+  function obtenerInstanciaModalAsignar() {
+    if (!modalAsignar) return null;
+    if (modalAsignarInstancia) return modalAsignarInstancia;
+    if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return null;
+    modalAsignarInstancia = bootstrap.Modal.getOrCreateInstance(modalAsignar);
+    return modalAsignarInstancia;
+  }
+
+  function obtenerAreasEmpresa() {
+    if (cacheAreasZonas) {
+      return Promise.resolve(cacheAreasZonas);
+    }
+
+    if (solicitudAreas) {
+      return solicitudAreas;
+    }
+
+    const idEmpresa = localStorage.getItem('id_empresa');
+    if (!idEmpresa) {
+      cacheAreasZonas = [];
+      return Promise.resolve(cacheAreasZonas);
+    }
+
+    solicitudAreas = fetch('/scripts/php/obtener_areas_zonas.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_empresa: idEmpresa })
+    })
+      .then(res => res.json())
+      .then(data => {
+        cacheAreasZonas = Array.isArray(data?.data) ? data.data : [];
+        return cacheAreasZonas;
+      })
+      .catch(err => {
+        console.error('Error al obtener áreas y zonas:', err);
+        cacheAreasZonas = [];
+        return cacheAreasZonas;
+      })
+      .finally(() => {
+        solicitudAreas = null;
+      });
+
+    return solicitudAreas;
+  }
+
+  function poblarSelectArea(areas) {
+    if (!selectArea) return;
+    selectArea.innerHTML = '<option value="">Selecciona un área</option>';
+    areas.forEach(item => {
+      if (!item?.area) return;
+      const option = document.createElement('option');
+      option.value = item.area.id;
+      option.textContent = item.area.nombre;
+      selectArea.appendChild(option);
+    });
+  }
+
+  function poblarSelectZona(areaId) {
+    if (!selectZona) return;
+
+    selectZona.innerHTML = '';
+    if (!areaId) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Selecciona un área primero';
+      selectZona.appendChild(option);
+      selectZona.disabled = true;
+      return;
+    }
+
+    const areaSeleccionada = (cacheAreasZonas || []).find(item => String(item?.area?.id) === String(areaId));
+    selectZona.disabled = false;
+
+    const opcionTodas = document.createElement('option');
+    opcionTodas.value = '';
+    opcionTodas.textContent = 'Todas las zonas';
+    selectZona.appendChild(opcionTodas);
+
+    (areaSeleccionada?.zonas || []).forEach(zona => {
+      const option = document.createElement('option');
+      option.value = zona.id;
+      option.textContent = zona.nombre;
+      selectZona.appendChild(option);
+    });
+  }
+
+  function manejarCambioArea(event) {
+    const areaId = event?.target?.value || '';
+    poblarSelectZona(areaId);
+  }
+
+  function actualizarResumenAccesosModal(accesos) {
+    if (!resumenAccesosUsuario) return;
+    if (!Array.isArray(accesos) || !accesos.length) {
+      resumenAccesosUsuario.textContent = 'Acceso completo';
+      return;
+    }
+
+    const totalAreas = new Set(accesos.map(a => a.id_area)).size;
+    const totalZonas = accesos.filter(a => a.id_zona).length;
+    const zonasLibres = accesos.filter(a => !a.id_zona).length;
+
+    if (zonasLibres) {
+      resumenAccesosUsuario.textContent = `${totalAreas} área(s) con acceso total`;
+    } else if (totalZonas) {
+      resumenAccesosUsuario.textContent = `${totalZonas} zona(s) asignada(s) en ${totalAreas} área(s)`;
+    } else {
+      resumenAccesosUsuario.textContent = 'Acceso personalizado';
+    }
+  }
+
+  function renderListaAccesos(accesos) {
+    if (!listaAccesos || !listaAccesosVacia) return;
+
+    listaAccesos.innerHTML = '';
+
+    if (!Array.isArray(accesos) || !accesos.length) {
+      listaAccesos.classList.add('d-none');
+      listaAccesosVacia.classList.remove('d-none');
+      actualizarResumenAccesosModal([]);
+      return;
+    }
+
+    listaAccesos.classList.remove('d-none');
+    listaAccesosVacia.classList.add('d-none');
+
+    accesos.forEach(acceso => {
+      const item = document.createElement('li');
+      item.className = 'list-group-item d-flex justify-content-between align-items-start access-item';
+
+      const zonaTexto = acceso?.zona ? escapeHtml(acceso.zona) : 'Todas las zonas';
+      const areaTexto = escapeHtml(acceso?.area || `Área #${acceso?.id_area}`);
+
+      item.innerHTML = `
+        <div class="me-3">
+          <span class="access-item__area">${areaTexto}</span>
+          <small class="access-item__zone">${zonaTexto}</small>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger">Eliminar</button>
+      `;
+
+      const botonEliminar = item.querySelector('button');
+      if (botonEliminar) {
+        botonEliminar.addEventListener('click', () => eliminarAcceso(acceso?.id));
+      }
+
+      listaAccesos.appendChild(item);
+    });
+
+    actualizarResumenAccesosModal(accesos);
+  }
+
+  function generarResumenAccesos(accesos) {
+    if (!Array.isArray(accesos) || !accesos.length) {
+      return '<span class="access-tag access-tag--full">Todas las áreas</span>';
+    }
+
+    const maxEtiquetas = 3;
+    const etiquetas = accesos.slice(0, maxEtiquetas).map(acceso => {
+      const areaTexto = escapeHtml(acceso?.area || `Área #${acceso?.id_area}`);
+      const zonaTexto = acceso?.zona ? escapeHtml(acceso.zona) : 'Todas las zonas';
+      return `
+        <span class="access-tag">
+          <span class="access-tag__area">${areaTexto}</span>
+          <span class="access-tag__zone">${zonaTexto}</span>
+        </span>
+      `;
+    });
+
+    if (accesos.length > maxEtiquetas) {
+      etiquetas.push(`<span class="access-tag access-tag--more">+${accesos.length - maxEtiquetas}</span>`);
+    }
+
+    return etiquetas.join('');
+  }
+
+  function actualizarAccesosUsuario(idUsuario, renderModal = false) {
+    if (!idUsuario) return Promise.resolve([]);
+
+    return fetch('/scripts/php/obtener_accesos_usuario.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_usuario: idUsuario })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const accesos = Array.isArray(data?.accesos) ? data.accesos : [];
+        usuariosEmpresa = usuariosEmpresa.map(usuario => {
+          if (Number(usuario.id_usuario) === Number(idUsuario)) {
+            return { ...usuario, accesos };
+          }
+          return usuario;
+        });
+
+        if (renderModal && Number(usuarioAccesosSeleccionadoId) === Number(idUsuario)) {
+          renderListaAccesos(accesos);
+        }
+
+        aplicarFiltros();
+        return accesos;
+      })
+      .catch(err => {
+        console.error('Error al actualizar accesos del usuario:', err);
+        return [];
+      });
+  }
+
+  function abrirModalAccesos(usuario) {
+    if (!usuario) return;
+
+    const modal = obtenerInstanciaModalAsignar();
+    if (!modal) return;
+
+    usuarioAccesosSeleccionadoId = usuario.id_usuario;
+
+    if (tituloModalAccesos) {
+      tituloModalAccesos.textContent = 'Gestionar accesos por área y zona';
+    }
+
+    if (descripcionModalAccesos) {
+      descripcionModalAccesos.textContent = 'Define a qué áreas y zonas puede acceder el colaborador seleccionado.';
+    }
+
+    if (nombreUsuarioAccesos) {
+      const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim();
+      nombreUsuarioAccesos.textContent = nombreCompleto || usuario.correo || `ID ${usuario.id_usuario}`;
+    }
+
+    if (formAsignarAcceso) {
+      formAsignarAcceso.reset();
+    }
+
+    if (selectZona) {
+      selectZona.innerHTML = '<option value="">Selecciona un área primero</option>';
+      selectZona.disabled = true;
+    }
+
+    obtenerAreasEmpresa().then(areas => {
+      poblarSelectArea(areas);
+      if (selectArea) {
+        selectArea.value = '';
+      }
+    });
+
+    renderListaAccesos(Array.isArray(usuario.accesos) ? usuario.accesos : []);
+    modal.show();
+    actualizarAccesosUsuario(usuario.id_usuario, true);
+  }
+
+  function manejarAsignacionAcceso(event) {
+    event.preventDefault();
+
+    if (asignacionEnCurso || !usuarioAccesosSeleccionadoId) {
+      return;
+    }
+
+    const areaSeleccionada = selectArea ? parseInt(selectArea.value, 10) : 0;
+    const zonaSeleccionada = selectZona && selectZona.value ? parseInt(selectZona.value, 10) : null;
+
+    if (!areaSeleccionada) {
+      alert('Debes seleccionar un área para continuar.');
+      return;
+    }
+
+    asignacionEnCurso = true;
+    if (botonAgregarAcceso) {
+      botonAgregarAcceso.disabled = true;
+      botonAgregarAcceso.textContent = 'Guardando...';
+    }
+
+    fetch('/scripts/php/guardar_acceso_usuario.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_usuario: usuarioAccesosSeleccionadoId,
+        id_area: areaSeleccionada,
+        id_zona: zonaSeleccionada
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data?.success) {
+          alert(data?.message || 'No se pudo guardar la asignación.');
+          return;
+        }
+        actualizarAccesosUsuario(usuarioAccesosSeleccionadoId, true);
+      })
+      .catch(err => {
+        console.error('Error al guardar la asignación:', err);
+        alert('Ocurrió un error al guardar la asignación.');
+      })
+      .finally(() => {
+        asignacionEnCurso = false;
+        if (botonAgregarAcceso) {
+          botonAgregarAcceso.disabled = false;
+          botonAgregarAcceso.textContent = 'Agregar acceso';
+        }
+        if (formAsignarAcceso) {
+          formAsignarAcceso.reset();
+        }
+        if (selectZona) {
+          selectZona.innerHTML = '<option value="">Selecciona un área primero</option>';
+          selectZona.disabled = true;
+        }
+      });
+  }
+
+  function eliminarAcceso(idAcceso) {
+    if (!idAcceso) return;
+
+    if (!confirm('¿Deseas eliminar este acceso asignado?')) {
+      return;
+    }
+
+    fetch('/scripts/php/eliminar_acceso_usuario.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_asignacion: idAcceso })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data?.success) {
+          alert(data?.message || 'No se pudo eliminar la asignación.');
+          return;
+        }
+        actualizarAccesosUsuario(usuarioAccesosSeleccionadoId, true);
+      })
+      .catch(err => {
+        console.error('Error al eliminar la asignación:', err);
+        alert('Ocurrió un error al eliminar la asignación.');
+      });
+  }
+
   function aplicarFiltros() {
     const filtroRol = document.getElementById('filtroRol');
     const buscador = document.getElementById('buscarUsuario');
@@ -127,6 +486,7 @@
         ? 'btn-action btn-action--status btn-status--deactivate'
         : 'btn-action btn-action--status btn-status--activate';
       const estadoBotonTexto = activo ? 'Desactivar' : 'Activar';
+      const resumenAccesos = generarResumenAccesos(usuario.accesos);
 
       tr.innerHTML = `
         <td>
@@ -139,6 +499,7 @@
         <td><span class="cell-email">${usuario.correo || ''}</span></td>
         <td><span class="role-chip">${usuario.rol || ''}</span></td>
         <td><span class="${estadoClase}">${estadoTexto}</span></td>
+        <td class="access-cell">${resumenAccesos}</td>
         <td>
           <div class="action-buttons">
             <button type="button" class="${estadoBotonClase}" title="${estadoBotonTexto}">
@@ -147,6 +508,13 @@
                 <path d="M8 5a7 7 0 1 0 8 0"></path>
               </svg>
               <span>${estadoBotonTexto}</span>
+            </button>
+            <button type="button" class="btn-action btn-action--access" title="Gestionar accesos">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="13" r="2"></circle>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0L2 7a2 2 0 0 1 1.73-3H20.27A2 2 0 0 1 22 7Z"></path>
+              </svg>
+              <span>Accesos</span>
             </button>
             <button type="button" class="btn-action btn-action--edit" title="Editar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -171,6 +539,7 @@
       const botonEditar = tr.querySelector('.btn-action--edit');
       const botonEliminar = tr.querySelector('.btn-action--delete');
       const botonEstado = tr.querySelector('.btn-action--status');
+      const botonAccesos = tr.querySelector('.btn-action--access');
 
       if (botonEditar) {
         botonEditar.addEventListener('click', () => editarUsuario(usuario));
@@ -182,6 +551,10 @@
 
       if (botonEstado) {
         botonEstado.addEventListener('click', () => cambiarEstadoUsuario(usuario));
+      }
+
+      if (botonAccesos) {
+        botonAccesos.addEventListener('click', () => abrirModalAccesos(usuario));
       }
 
       tbody.appendChild(tr);
@@ -331,7 +704,11 @@
         }
 
         usuariosEmpresa = Array.isArray(data.usuarios)
-          ? data.usuarios.map(usuario => ({ ...usuario, activo: Number(usuario.activo) }))
+          ? data.usuarios.map(usuario => ({
+              ...usuario,
+              activo: Number(usuario.activo),
+              accesos: Array.isArray(usuario.accesos) ? usuario.accesos : []
+            }))
           : [];
         const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
 
@@ -396,6 +773,29 @@
   addListener(document.getElementById('formEditarUsuario'), 'submit', manejarSubmitEdicion);
   addListener(document.getElementById('filtroRol'), 'change', aplicarFiltros);
   addListener(document.getElementById('buscarUsuario'), 'input', aplicarFiltros);
+  addListener(formAsignarAcceso, 'submit', manejarAsignacionAcceso);
+  addListener(selectArea, 'change', manejarCambioArea);
+  addListener(modalAsignar, 'hidden.bs.modal', () => {
+    usuarioAccesosSeleccionadoId = null;
+    asignacionEnCurso = false;
+    if (formAsignarAcceso) {
+      formAsignarAcceso.reset();
+    }
+    if (selectZona) {
+      selectZona.innerHTML = '<option value="">Selecciona un área primero</option>';
+      selectZona.disabled = true;
+    }
+    if (listaAccesos) {
+      listaAccesos.innerHTML = '';
+      listaAccesos.classList.add('d-none');
+    }
+    if (listaAccesosVacia) {
+      listaAccesosVacia.classList.remove('d-none');
+    }
+    if (resumenAccesosUsuario) {
+      resumenAccesosUsuario.textContent = 'Acceso completo';
+    }
+  });
 
   if (document.readyState !== 'loading') {
     cargarUsuariosEmpresa();
@@ -419,5 +819,10 @@
       document.removeEventListener('DOMContentLoaded', domReadyHandler);
       domReadyHandler = null;
     }
+
+    cacheAreasZonas = null;
+    solicitudAreas = null;
+    usuarioAccesosSeleccionadoId = null;
+    modalAsignarInstancia = null;
   };
 })();
