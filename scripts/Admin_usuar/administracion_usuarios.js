@@ -383,10 +383,17 @@
       return;
     }
 
-    const areaSeleccionada = selectArea ? parseInt(selectArea.value, 10) : 0;
-    const zonaSeleccionada = selectZona && selectZona.value ? parseInt(selectZona.value, 10) : null;
+    const areaSeleccionada = selectArea && selectArea.value !== '' ? Number(selectArea.value) : 0;
+    let zonaSeleccionada = null;
 
-    if (!areaSeleccionada) {
+    if (selectZona && typeof selectZona.value !== 'undefined' && selectZona.value !== '') {
+      const zonaValor = Number(selectZona.value);
+      if (!Number.isNaN(zonaValor) && Number.isInteger(zonaValor) && zonaValor > 0) {
+        zonaSeleccionada = zonaValor;
+      }
+    }
+
+    if (!Number.isInteger(areaSeleccionada) || areaSeleccionada <= 0) {
       alert('Debes seleccionar un área para continuar.');
       return;
     }

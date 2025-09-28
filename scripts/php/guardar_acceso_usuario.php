@@ -26,9 +26,14 @@ $idArea    = isset($input['id_area']) ? (int) $input['id_area'] : 0;
 $idZonaRaw = $input['id_zona'] ?? null;
 $idZona    = ($idZonaRaw === '' || $idZonaRaw === null) ? null : (int) $idZonaRaw;
 $compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
+$transaccionActiva = false;
 
 if ($idUsuario <= 0 || $idArea <= 0) {
     jsonResponse(false, 'Datos incompletos. Selecciona al menos un área.');
+}
+
+if ($idZona !== null && $idZona <= 0) {
+    jsonResponse(false, 'Selecciona una zona válida.');
 }
 
 try {
@@ -100,6 +105,9 @@ try {
         jsonResponse(false, 'La asignación seleccionada ya existe.', ['composite_id' => $compositeId]);
     }
 
+    $conn->begin_transaction();
+    $transaccionActiva = true;
+
     if ($idZona === null) {
         $stmtInsert = $conn->prepare('INSERT INTO usuario_area_zona (id_usuario, id_area, id_zona) VALUES (?, ?, NULL)');
         $stmtInsert->bind_param('ii', $idUsuario, $idArea);
@@ -110,6 +118,9 @@ try {
 
     $stmtInsert->execute();
     $stmtInsert->close();
+
+    $conn->commit();
+    $transaccionActiva = false;
 
     $mensajeExito = $idZona === null
         ? 'Se otorgó acceso a todas las zonas del área seleccionada.'
@@ -126,6 +137,20 @@ try {
 
     jsonResponse(true, $mensajeExito, ['acceso' => $acceso]);
 } catch (mysqli_sql_exception $e) {
+    if (isset($conn) && $conn instanceof mysqli && $transaccionActiva) {
+        $conn->rollback();
+        $transaccionActiva = false;
+    }
+
+    $errorCode = (int) $e->getCode();
+    if ($errorCode === 1062) {
+        jsonResponse(false, 'La asignación seleccionada ya existe.', ['composite_id' => $compositeId]);
+    }
+
+    if ($errorCode === 1452) {
+        jsonResponse(false, 'La zona seleccionada ya no está disponible o no pertenece al área indicada.');
+    }
+
     error_log('Error al guardar acceso de usuario: ' . $e->getMessage());
     jsonResponse(false, 'No fue posible guardar la asignación solicitada.');
 }
