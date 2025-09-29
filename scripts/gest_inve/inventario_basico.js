@@ -27,6 +27,96 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const prodArea = document.getElementById('prodArea');
   const prodZona = document.getElementById('prodZona');
 
+  const productoFormCollapseEl = document.getElementById('productoFormCollapse');
+  const productoFormToggle = document.getElementById('productoFormToggle');
+  const productoFormTitle = document.getElementById('productoFormTitle');
+  const productoFormSubtitle = document.getElementById('productoFormSubtitle');
+  const productoFormSubmit = document.getElementById('productoFormSubmit');
+  const productoFormModeHint = document.getElementById('productoFormModeHint');
+  const productoFormModeProduct = document.getElementById('productoFormModeProduct');
+  const productoFormSubtitleDefault = productoFormSubtitle?.textContent.trim() || '';
+
+  const qrModalElement = document.getElementById('productoQrModal');
+  const qrModalImage = document.getElementById('productoQrImage');
+  const qrModalTitle = document.getElementById('productoQrTitle');
+  const qrModalDownload = document.getElementById('productoQrDownload');
+  const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
+
+  let productoFormCollapse = null;
+  if (productoFormCollapseEl && window.bootstrap?.Collapse) {
+    productoFormCollapse = window.bootstrap.Collapse.getOrCreateInstance(productoFormCollapseEl, {
+      toggle: false
+    });
+    if (productoFormCollapseEl.classList.contains('show')) {
+      productoFormCollapse.show();
+    }
+  } else if (productoFormCollapseEl) {
+    productoFormCollapseEl.classList.add('show');
+  }
+
+  function updateProductoFormToggleLabel(isOpen) {
+    if (!productoFormToggle) return;
+    productoFormToggle.textContent = isOpen ? 'Ocultar formulario' : 'Mostrar formulario';
+    productoFormToggle.setAttribute('aria-expanded', String(isOpen));
+  }
+
+  function setProductoFormMode(mode, nombre = '') {
+    if (productoFormTitle) {
+      productoFormTitle.textContent = mode === 'edit' ? 'Editar producto' : 'Registrar nuevo producto';
+    }
+    if (productoFormSubmit) {
+      productoFormSubmit.textContent = mode === 'edit' ? 'Actualizar producto' : 'Guardar producto';
+    }
+    if (productoFormSubtitle) {
+      if (mode === 'edit') {
+        productoFormSubtitle.textContent = 'Actualiza la información necesaria y guarda los cambios cuando termines.';
+      } else {
+        productoFormSubtitle.textContent = productoFormSubtitleDefault;
+      }
+    }
+    if (productoFormModeHint && productoFormModeProduct) {
+      if (mode === 'edit' && nombre) {
+        productoFormModeProduct.textContent = nombre;
+        productoFormModeHint.classList.remove('d-none');
+      } else {
+        productoFormModeProduct.textContent = '';
+        productoFormModeHint.classList.add('d-none');
+      }
+    }
+  }
+
+  if (productoFormCollapseEl) {
+    const initialState = productoFormCollapseEl.classList.contains('show');
+    updateProductoFormToggleLabel(initialState);
+    productoFormCollapseEl.addEventListener('shown.bs.collapse', () => updateProductoFormToggleLabel(true));
+    productoFormCollapseEl.addEventListener('hidden.bs.collapse', () => updateProductoFormToggleLabel(false));
+  }
+
+  setProductoFormMode('create');
+
+  let qrModalInstance = null;
+  if (qrModalElement && window.bootstrap?.Modal) {
+    qrModalInstance = window.bootstrap.Modal.getOrCreateInstance(qrModalElement);
+  }
+
+  if (qrModalElement) {
+    qrModalElement.addEventListener('hidden.bs.modal', () => {
+      if (qrModalImage) {
+        qrModalImage.onload = null;
+        qrModalImage.onerror = null;
+        qrModalImage.src = '';
+        qrModalImage.classList.add('d-none');
+      }
+      if (qrModalPlaceholder) {
+        qrModalPlaceholder.textContent = 'Generando código QR...';
+        qrModalPlaceholder.classList.remove('d-none');
+      }
+      if (qrModalDownload) {
+        qrModalDownload.removeAttribute('href');
+      }
+    });
+  }
+
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
   const subcategoriaFormContainer = document.getElementById('subcategoriaFormContainer');
@@ -1295,6 +1385,13 @@ if (editProdId) {
       await cargarAreas();
       await cargarZonas();
       renderResumen();
+      setProductoFormMode('create');
+      if (productoFormCollapse) {
+        productoFormCollapse.show();
+      } else if (productoFormCollapseEl) {
+        productoFormCollapseEl.classList.add('show');
+        updateProductoFormToggleLabel(true);
+      }
 
     } catch (err) {
       console.error(err);
@@ -1307,6 +1404,13 @@ if (editProdId) {
     setTimeout(() => {
       actualizarSelectAreas();
     }, 0);
+    setProductoFormMode('create');
+    if (productoFormCollapse) {
+      productoFormCollapse.show();
+    } else if (productoFormCollapseEl) {
+      productoFormCollapseEl.classList.add('show');
+      updateProductoFormToggleLabel(true);
+    }
   });
 
   tablaResumen?.addEventListener('click', async e => {
@@ -1337,7 +1441,49 @@ if (editProdId) {
   if (!accion || Number.isNaN(id)) return;
 
   if (accion === 'qr' && tipo === 'producto') {
-    window.open(`../../scripts/php/generar_qr_producto.php?producto_id=${id}`, '_blank');
+    const producto = productos.find(pr => parseInt(pr.id, 10) === id) || null;
+    const qrSrc = `../../scripts/php/generar_qr_producto.php?producto_id=${id}&cache=${Date.now()}`;
+
+    if (!qrModalInstance || !qrModalImage) {
+      window.open(qrSrc, '_blank');
+      return;
+    }
+
+    if (qrModalPlaceholder) {
+      qrModalPlaceholder.textContent = 'Generando código QR...';
+      qrModalPlaceholder.classList.remove('d-none');
+    }
+
+    qrModalImage.classList.add('d-none');
+    qrModalImage.onload = () => {
+      qrModalImage.classList.remove('d-none');
+      if (qrModalPlaceholder) {
+        qrModalPlaceholder.classList.add('d-none');
+      }
+    };
+    qrModalImage.onerror = () => {
+      if (qrModalPlaceholder) {
+        qrModalPlaceholder.textContent = 'No se pudo generar el código QR.';
+        qrModalPlaceholder.classList.remove('d-none');
+      }
+      qrModalImage.classList.add('d-none');
+      qrModalDownload?.removeAttribute('href');
+    };
+    qrModalImage.src = qrSrc;
+    qrModalImage.alt = producto ? `Código QR del producto ${producto.nombre}` : 'Código QR del producto';
+
+    if (qrModalTitle) {
+      qrModalTitle.textContent = producto
+        ? `Código QR – ${producto.nombre}`
+        : 'Código QR del producto';
+    }
+    if (qrModalDownload) {
+      qrModalDownload.href = qrSrc;
+      const safeName = producto?.nombre ? producto.nombre.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() : `producto_${id}`;
+      qrModalDownload.download = `${safeName || 'producto'}_qr.png`;
+    }
+
+    qrModalInstance.show();
     return;
   }
 
@@ -1494,6 +1640,13 @@ if (editProdId) {
     document.getElementById('prodStock').value  = p.stock;
     document.getElementById('prodPrecio').value = p.precio_compra;
     editProdId = id;
+    setProductoFormMode('edit', p.nombre);
+    if (productoFormCollapse) {
+      productoFormCollapse.show();
+    } else if (productoFormCollapseEl) {
+      productoFormCollapseEl.classList.add('show');
+      updateProductoFormToggleLabel(true);
+    }
     return;
   }
 

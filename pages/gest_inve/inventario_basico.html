@@ -133,16 +133,33 @@
 
       <div class="inventory-card">
         <section id="productoFormContainer" class="panel-card" aria-labelledby="btnProductos">
-          <header class="panel-header">
-            <span class="panel-eyebrow">Productos</span>
-            <h2 class="panel-title">Registrar nuevo producto</h2>
-            <p class="panel-description">
-              Define la información esencial de cada artículo, incluyendo medidas, categoría y zona de almacenamiento para
-              mantener tu inventario sincronizado.
-            </p>
+          <header class="panel-header panel-header--collapsible">
+            <div class="panel-header__content">
+              <span class="panel-eyebrow">Productos</span>
+              <h2 id="productoFormTitle" class="panel-title">Registrar nuevo producto</h2>
+              <p id="productoFormSubtitle" class="panel-description">
+                Define la información esencial de cada artículo, incluyendo medidas, categoría y zona de almacenamiento para
+                mantener tu inventario sincronizado.
+              </p>
+              <div id="productoFormModeHint" class="panel-mode-hint d-none" role="status">
+                Editando <span id="productoFormModeProduct" class="panel-mode-hint__product"></span>
+              </div>
+            </div>
+            <button
+              id="productoFormToggle"
+              class="btn btn-outline-primary panel-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#productoFormCollapse"
+              aria-controls="productoFormCollapse"
+              aria-expanded="true"
+            >
+              Ocultar formulario
+            </button>
           </header>
 
-          <form id="productoForm" class="compact-form" novalidate>
+          <div id="productoFormCollapse" class="collapse show">
+            <form id="productoForm" class="compact-form" novalidate>
             <div class="row g-3">
               <div class="col-lg-6">
                 <label for="prodNombre" class="form-label">Nombre del producto</label>
@@ -210,9 +227,10 @@
 
             <div class="form-actions">
               <button type="reset" class="btn btn-secondary">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Guardar producto</button>
+              <button id="productoFormSubmit" type="submit" class="btn btn-primary">Guardar producto</button>
             </div>
-          </form>
+            </form>
+          </div>
         </section>
 
         <section id="categoriaFormContainer" class="panel-card d-none" aria-labelledby="btnCategorias">
@@ -276,6 +294,30 @@
         </section>
       </div>
     </section>
+  </div>
+
+  <div class="modal fade" id="productoQrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header border-0">
+          <div>
+            <span class="modal-eyebrow">Código QR</span>
+            <h5 id="productoQrTitle" class="modal-title fw-bold">Código QR del producto</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="productoQrPreview" class="qr-preview">
+            <div id="productoQrPlaceholder" class="qr-placeholder">Generando código QR...</div>
+            <img id="productoQrImage" class="qr-image d-none" alt="Código QR del producto" />
+          </div>
+        </div>
+        <div class="modal-footer border-0 d-flex flex-column flex-sm-row gap-2">
+          <a id="productoQrDownload" class="btn btn-outline-primary flex-fill" download>Descargar QR</a>
+          <button class="btn btn-secondary flex-fill" type="button" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modal fade" id="movimientoModal" tabindex="-1" aria-hidden="true">
