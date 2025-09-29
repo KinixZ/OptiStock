@@ -341,12 +341,16 @@ const DataController = {
           ${(areaNombre || zonaNombre) ? `<br>Ubicación: ${[areaNombre, zonaNombre].filter(Boolean).join(' · ')}` : ''}
         </div>
         <div class="item-qr">
-          ${p.codigo_qr ? `<img src="../../${p.codigo_qr}" alt="QR ${p.nombre}" class="qr-img"><br><a href="../../${p.codigo_qr}" download>Descargar QR</a>` : ''}
+          ${p.codigo_qr ? `<button type="button" class="qr-button" data-producto-id="${p.id}">Ver código QR</button>` : ''}
         </div>
       `;
-      
+
       li.querySelector('.edit-btn').addEventListener('click', () => FormController.editProducto(p));
       li.querySelector('.delete-btn').addEventListener('click', () => this.deleteProducto(p.id));
+      const qrBtn = li.querySelector('.qr-button');
+      if (qrBtn) {
+        qrBtn.addEventListener('click', () => QrModalController.open(p));
+      }
       ul.appendChild(li);
     });
   },
@@ -458,9 +462,7 @@ const DataController = {
 
         const qrBtn = tr.querySelector('.summary-action-btn--qr');
         if (qrBtn && p.codigo_qr) {
-          qrBtn.addEventListener('click', () => {
-            window.open(`../../${p.codigo_qr}`, '_blank');
-          });
+          qrBtn.addEventListener('click', () => QrModalController.open(p));
         }
 
         const editBtn = tr.querySelector('.summary-action-btn--edit');
@@ -670,7 +672,7 @@ const FormController = {
       }
 
       this.resetForm(form);
-      ModalController.closeProducto();
+      ProductoFormController.hide();
       await DataController.loadProductos();
     } catch (error) {
       console.error('Error guardando producto:', error);
@@ -734,43 +736,150 @@ const FormController = {
     const zonaId = item.zona_id ? String(item.zona_id) : null;
     DataController.updateAreaSelect(areaId, zonaId);
 
-    ModalController.openProducto('Editar producto');
+    ProductoFormController.show('Editar producto');
   }
 };
 
-// Controlador de modales
-const ModalController = {
-  productoModal: null,
-  productoTitle: null,
+// Controlador de formulario de productos desplegable
+const ProductoFormController = {
+  container: null,
+  title: null,
+  openButton: null,
+  closeButton: null,
+  cancelButton: null,
+  hideTimeout: null,
 
   init() {
-    const modalElement = document.getElementById('productoModal');
-    if (!modalElement || typeof bootstrap === 'undefined') return;
+    this.container = document.getElementById('productoFormContainer');
+    this.title = document.getElementById('productoFormTitulo');
+    this.openButton = document.getElementById('abrirFormularioProducto');
+    this.closeButton = document.getElementById('cerrarFormularioProducto');
+    this.cancelButton = document.getElementById('cancelarFormularioProducto');
 
-    this.productoModal = new bootstrap.Modal(modalElement);
-    this.productoTitle = modalElement.querySelector('.modal-title');
+    this.openButton?.addEventListener('click', () => {
+      const form = document.querySelector(AppConfig.selectors.forms.producto);
+      if (!form) return;
+      const isEditing = Boolean(form.querySelector('#productoId')?.value);
 
-    modalElement.addEventListener('hidden.bs.modal', () => {
+      if (this.isVisible() && !isEditing) {
+        this.hide();
+        return;
+      }
+
+      FormController.resetForm(form);
+      this.show('Nuevo producto');
+    });
+
+    const closeHandler = () => {
       const form = document.querySelector(AppConfig.selectors.forms.producto);
       if (form) FormController.resetForm(form);
-      this.setProductoTitle('Nuevo producto');
-    });
+      this.hide();
+    };
+
+    this.closeButton?.addEventListener('click', closeHandler);
+    this.cancelButton?.addEventListener('click', closeHandler);
   },
 
-  setProductoTitle(text) {
-    if (this.productoTitle) {
-      this.productoTitle.textContent = text;
+  setTitle(text) {
+    if (this.title) {
+      this.title.textContent = text;
     }
   },
 
-  openProducto(title = 'Nuevo producto') {
-    if (!this.productoModal) return;
-    this.setProductoTitle(title);
-    this.productoModal.show();
+  isVisible() {
+    return this.container ? !this.container.hasAttribute('hidden') : false;
   },
 
-  closeProducto() {
-    this.productoModal?.hide();
+  show(title = 'Nuevo producto') {
+    if (!this.container) return;
+
+    clearTimeout(this.hideTimeout);
+    this.setTitle(title);
+    this.container.removeAttribute('hidden');
+    requestAnimationFrame(() => {
+      this.container.classList.add('is-open');
+    });
+  },
+
+  hide() {
+    if (!this.container) return;
+
+    clearTimeout(this.hideTimeout);
+    this.container.classList.remove('is-open');
+    const duration = parseFloat(getComputedStyle(this.container).transitionDuration || '0');
+    if (duration > 0) {
+      this.hideTimeout = setTimeout(() => {
+        this.container.setAttribute('hidden', '');
+        this.setTitle('Nuevo producto');
+        this.hideTimeout = null;
+      }, duration * 1000);
+    } else {
+      this.container.setAttribute('hidden', '');
+      this.setTitle('Nuevo producto');
+      this.hideTimeout = null;
+    }
+  }
+};
+
+// Controlador del modal de códigos QR
+const QrModalController = {
+  modal: null,
+  title: null,
+  image: null,
+  description: null,
+  downloadLink: null,
+
+  init() {
+    const modalElement = document.getElementById('qrModal');
+    if (!modalElement || typeof bootstrap === 'undefined') return;
+
+    this.modal = new bootstrap.Modal(modalElement);
+    this.title = modalElement.querySelector('#qrModalTitulo');
+    this.image = modalElement.querySelector('#qrModalImagen');
+    this.description = modalElement.querySelector('#qrModalDescripcion');
+    this.downloadLink = modalElement.querySelector('#qrModalDescargar');
+
+    modalElement.addEventListener('hidden.bs.modal', () => {
+      if (this.image) {
+        this.image.removeAttribute('src');
+        this.image.alt = 'Código QR de producto';
+      }
+      if (this.description) {
+        this.description.textContent = '';
+      }
+      if (this.downloadLink) {
+        this.downloadLink.href = '#';
+        this.downloadLink.removeAttribute('download');
+      }
+    });
+  },
+
+  open(producto) {
+    if (!this.modal || !producto?.codigo_qr) return;
+
+    const ruta = `../../${producto.codigo_qr}`;
+    if (this.title) {
+      this.title.textContent = `Código QR - ${producto.nombre || 'Producto'}`;
+    }
+    if (this.image) {
+      this.image.src = ruta;
+      this.image.alt = `Código QR de ${producto.nombre || 'producto'}`;
+    }
+    if (this.description) {
+      const stock = producto.stock != null ? `Stock: ${producto.stock}` : '';
+      this.description.textContent = [producto.nombre, stock].filter(Boolean).join(' · ');
+    }
+    if (this.downloadLink) {
+      this.downloadLink.href = ruta;
+      const nombreArchivo = (producto.nombre || 'producto').replace(/\s+/g, '_');
+      this.downloadLink.download = `QR_${nombreArchivo}.png`;
+    }
+
+    this.modal.show();
+  },
+
+  hide() {
+    this.modal?.hide();
   }
 };
 
@@ -785,11 +894,6 @@ const TabController = {
     document.querySelectorAll(AppConfig.selectors.addButtons).forEach(btn => {
       const panelId = btn.closest('.tab-panel')?.id;
       if (panelId === 'productos') {
-        btn.addEventListener('click', () => {
-          const form = document.querySelector(AppConfig.selectors.forms.producto);
-          if (form) FormController.resetForm(form);
-          ModalController.openProducto('Nuevo producto');
-        });
         return;
       }
 
@@ -814,8 +918,14 @@ const TabController = {
     document.querySelectorAll(AppConfig.selectors.panels).forEach(panel => {
       panel.classList.toggle('active', panel.id === tabId);
     });
-    
+
     AppState.currentTab = tabId;
+
+    if (tabId !== 'productos' && ProductoFormController.isVisible()) {
+      const form = document.querySelector(AppConfig.selectors.forms.producto);
+      if (form) FormController.resetForm(form);
+      ProductoFormController.hide();
+    }
   }
 };
 
@@ -951,7 +1061,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     TabController.init();
     FormController.initForms();
-    ModalController.init();
+    ProductoFormController.init();
+    QrModalController.init();
     ExportController.init();
     SearchController.init();
 
