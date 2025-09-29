@@ -603,6 +603,46 @@ img {
   box-shadow: 0 18px 40px -32px rgba(14, 20, 56, 0.4);
 }
 
+.collapse-form {
+  border: 1px dashed var(--primary-border-soft);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.6);
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  box-shadow: inset 0 0 0 1px rgba(255, 111, 145, 0.08);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+.collapse-form.is-open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.collapse-form[hidden] {
+  display: none;
+}
+
+.collapse-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.collapse-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.collapse-card__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
 .panel-header {
   display: flex;
   flex-wrap: wrap;
@@ -821,16 +861,48 @@ img {
 }
 
 .item-qr {
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--muted-color);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 0.75rem;
 }
 
-.qr-img {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  margin: 0 auto 0.25rem auto;
+.qr-button {
+  border: 1px solid var(--primary-border-soft);
+  background: rgba(255, 111, 145, 0.12);
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.qr-button:hover {
+  background: rgba(255, 111, 145, 0.18);
+  transform: translateY(-1px);
+}
+
+.qr-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.qr-preview__image {
+  width: min(220px, 60vw);
+  height: auto;
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 45px -32px rgba(18, 26, 69, 0.4);
+}
+
+.qr-preview__details {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted-color);
 }
 
 @media (max-width: 992px) {
