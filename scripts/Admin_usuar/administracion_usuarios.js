@@ -125,6 +125,10 @@
     document.querySelectorAll('.actions-menu--open').forEach(menu => {
       if (!exceptMenu || menu !== exceptMenu) {
         menu.classList.remove('actions-menu--open');
+        const fila = menu.closest('tr');
+        if (fila) {
+          fila.classList.remove('actions-row--menu-open');
+        }
       }
     });
   }
@@ -563,9 +567,19 @@
         toggleMenu.addEventListener('click', event => {
           event.stopPropagation();
           const isOpen = menu.classList.contains('actions-menu--open');
-          cerrarMenusAcciones();
+          cerrarMenusAcciones(menu);
           if (!isOpen) {
             menu.classList.add('actions-menu--open');
+            const fila = menu.closest('tr');
+            if (fila) {
+              fila.classList.add('actions-row--menu-open');
+            }
+          } else {
+            menu.classList.remove('actions-menu--open');
+            const fila = menu.closest('tr');
+            if (fila) {
+              fila.classList.remove('actions-row--menu-open');
+            }
           }
         });
       }

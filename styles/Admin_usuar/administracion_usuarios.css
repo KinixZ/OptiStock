@@ -439,9 +439,16 @@ body {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: #ffffff;
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
   box-shadow: inset 0 1px 0 rgba(255, 111, 145, 0.08);
+}
+
+@media (max-width: 768px) {
+  .users-table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .users-table {
@@ -476,6 +483,15 @@ body {
 .users-table tbody tr {
   background: #ffffff;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+  position: relative;
+  z-index: 0;
+}
+
+.users-table tbody tr.actions-row--menu-open {
+  z-index: 3;
+  background: var(--primary-surface);
+  transform: translateX(4px);
+  box-shadow: inset 4px 0 0 rgba(255, 111, 145, 0.45);
 }
 
 .users-table tbody tr:nth-child(even) {
@@ -688,6 +704,10 @@ body {
   position: relative;
   display: inline-flex;
   align-items: center;
+}
+
+.actions-menu--open {
+  z-index: 10;
 }
 
 .actions-menu__toggle {
