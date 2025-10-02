@@ -52,11 +52,28 @@ async function fetchAPI(endpoint, method = 'GET', data = null) {
     const response = await fetch(endpoint, options);
 
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Error ${response.status}: ${text}`);
+      let errorMessage = `Error ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && typeof errorData === 'object') {
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        }
+      } catch (_) {
+        const text = await response.text();
+        if (text) {
+          errorMessage = text;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const contentType = response.headers.get('Content-Type') || '';
+    if (contentType.includes('application/json')) {
+      return await response.json();
+    }
+
+    return await response.text();
   } catch (error) {
     console.error('Error en fetchAPI:', error);
     mostrarError(error.message || 'Error de conexión con el servidor');
@@ -398,9 +415,18 @@ async function editarArea(id) {
 }
 
 async function eliminarArea(id) {
-  if (confirm('¿Está seguro de eliminar esta área?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
+  if (
+    confirm('¿Desea eliminar esta área? Las zonas asociadas quedarán sin área asignada.') &&
+    confirm('Esta acción es irreversible, confirme de nuevo.')
+  ) {
     try {
-      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+      const resultado = await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+      if (resultado && typeof resultado === 'object') {
+        const zonasLiberadas = Number(resultado.zonas_desasignadas || 0);
+        if (zonasLiberadas > 0) {
+          alert(`Área eliminada. ${zonasLiberadas} zona${zonasLiberadas === 1 ? '' : 's'} quedaron sin área asignada.`);
+        }
+      }
       await cargarYMostrarRegistros();
     } catch (error) {
       console.error('Error eliminando área:', error);
