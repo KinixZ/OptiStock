@@ -209,23 +209,57 @@ let editZoneId = null;
     }
   }
 
-  function actualizarAlertas(zonas = []) {
+  function actualizarAlertas() {
     if (!alertasBanner) {
       return;
     }
 
-    const criticas = zonas.filter(z => (z.porcentaje_ocupacion || 0) >= 90)
-      .sort((a, b) => (b.porcentaje_ocupacion || 0) - (a.porcentaje_ocupacion || 0));
+    const UMBRAL_ALERTA = 70;
+    const areasIndex = new Map(areasData.map(area => [area.id, area]));
 
-    if (!criticas.length) {
+    const alertasAreas = areasData
+      .filter(area => Number(area.porcentaje_ocupacion || 0) >= UMBRAL_ALERTA)
+      .map(area => ({
+        tipo: 'Área',
+        nombre: area.nombre || 'Sin nombre',
+        porcentaje: Number(area.porcentaje_ocupacion || 0),
+        disponible: area.capacidad_disponible,
+      }));
+
+    const alertasZonas = zonasData
+      .filter(zona => Number(zona.porcentaje_ocupacion || 0) >= UMBRAL_ALERTA)
+      .map(zona => ({
+        tipo: 'Zona',
+        nombre: zona.nombre || 'Sin nombre',
+        porcentaje: Number(zona.porcentaje_ocupacion || 0),
+        disponible: zona.capacidad_disponible,
+        area: zona.area_id ? areasIndex.get(zona.area_id)?.nombre : null,
+      }));
+
+    const alertas = [...alertasAreas, ...alertasZonas]
+      .sort((a, b) => b.porcentaje - a.porcentaje);
+
+    if (!alertas.length) {
       alertasBanner.classList.remove('active');
       alertasBanner.innerHTML = '';
       return;
     }
 
-    const items = criticas.map(z => `<li><strong>${z.nombre}</strong> (${(z.porcentaje_ocupacion || 0).toFixed(1)}% ocupado)</li>`).join('');
+    const items = alertas.map(alerta => {
+      const detalles = [];
+      if (alerta.tipo === 'Zona' && alerta.area) {
+        detalles.push(`Área: ${alerta.area}`);
+      }
+      if (Number.isFinite(alerta.disponible)) {
+        detalles.push(`${alerta.disponible.toFixed(2)} m³ libres`);
+      }
+      detalles.push(`${alerta.porcentaje.toFixed(1)}% ocupado`);
+
+      return `<li><strong>${alerta.tipo}: ${alerta.nombre}</strong><span>${detalles.join(' · ')}</span></li>`;
+    }).join('');
+
     alertasBanner.classList.add('active');
-    alertasBanner.innerHTML = `<span>Zonas con ocupación crítica:</span><ul>${items}</ul>`;
+    alertasBanner.innerHTML = `<span>Capacidad reducida detectada:</span><ul>${items}</ul>`;
   }
 
   function exportarZonasCSV() {
@@ -579,7 +613,7 @@ formArea.addEventListener('submit', async e => {
       });
     }
 
-    actualizarAlertas(resultado.todas);
+    actualizarAlertas();
   }
 
 async function editArea(id) {
