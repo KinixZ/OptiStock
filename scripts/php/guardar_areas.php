@@ -248,32 +248,74 @@ if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
 
-    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
-    $stmt->bind_param('i', $id);
-    $stmt->execute();
-    $stmt->bind_result($zonasAsociadas);
-    $stmt->fetch();
-    $stmt->close();
+    $zonasDesasignadas = 0;
 
-    if ($zonasAsociadas > 0) {
-        http_response_code(409);
-        echo json_encode(['error' => 'No se puede eliminar el área porque existen zonas asociadas. Reasigna o elimina las zonas primero.']);
+    try {
+        $conn->begin_transaction();
+
+        if ($empresaId) {
+            $stmtArea = $conn->prepare('SELECT id FROM areas WHERE id = ? AND id_empresa = ?');
+            $stmtArea->bind_param('ii', $id, $empresaId);
+        } else {
+            $stmtArea = $conn->prepare('SELECT id FROM areas WHERE id = ?');
+            $stmtArea->bind_param('i', $id);
+        }
+
+        $stmtArea->execute();
+        $stmtArea->store_result();
+
+        if ($stmtArea->num_rows === 0) {
+            $stmtArea->close();
+            $conn->rollback();
+            http_response_code(404);
+            echo json_encode(['error' => 'Área no encontrada.']);
+            exit;
+        }
+
+        $stmtArea->close();
+
+        $stmt = $conn->prepare('SELECT COUNT(*) FROM productos WHERE zona_id IN (SELECT id FROM zonas WHERE area_id = ?)');
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $stmt->bind_result($productosEnZonas);
+        $stmt->fetch();
+        $stmt->close();
+
+        if ($productosEnZonas > 0) {
+            $conn->rollback();
+            http_response_code(409);
+            echo json_encode(['error' => 'No se puede eliminar el área porque existen productos asignados en sus zonas. Reubica los productos antes de eliminar el área.']);
+            exit;
+        }
+
+        $stmt = $conn->prepare('UPDATE zonas SET area_id = NULL WHERE area_id = ?');
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $zonasDesasignadas = max($stmt->affected_rows, 0);
+        $stmt->close();
+
+        if ($empresaId) {
+            $stmt = $conn->prepare('DELETE FROM areas WHERE id=? AND id_empresa=?');
+            $stmt->bind_param('ii', $id, $empresaId);
+        } else {
+            $stmt = $conn->prepare('DELETE FROM areas WHERE id=?');
+            $stmt->bind_param('i', $id);
+        }
+        $stmt->execute();
+        $stmt->close();
+
+        $conn->commit();
+
+        registrarLog($conn, $usuarioId, 'Áreas', "Eliminación de área ID: {$id}");
+
+        echo json_encode(['success' => true, 'zonas_desasignadas' => $zonasDesasignadas]);
+        exit;
+    } catch (mysqli_sql_exception $e) {
+        $conn->rollback();
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al eliminar el área.']);
         exit;
     }
-
-    if ($empresaId) {
-        $stmt = $conn->prepare('DELETE FROM areas WHERE id=? AND id_empresa=?');
-        $stmt->bind_param('ii', $id, $empresaId);
-    } else {
-        $stmt = $conn->prepare('DELETE FROM areas WHERE id=?');
-        $stmt->bind_param('i', $id);
-    }
-    $stmt->execute();
-
-    registrarLog($conn, $usuarioId, 'Áreas', "Eliminación de área ID: {$id}");
-
-    echo json_encode(['success' => true]);
-    exit;
 }
 
 http_response_code(405);
