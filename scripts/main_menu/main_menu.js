@@ -44,6 +44,8 @@ let cachedNotifications = [];
 let serverNotifications = [];
 let criticalStockNotifications = [];
 let criticalStockState = new Map();
+let capacityNotifications = [];
+let capacityAlertState = new Map();
 
 let navegadorTimeZone = null;
 
@@ -81,6 +83,7 @@ try {
     console.warn('No se pudo determinar la etiqueta de zona horaria del navegador.', error);
 }
 
+const CAPACITY_ALERT_THRESHOLD = 75;
 const DEFAULT_STOCK_ALERT_THRESHOLD = 10;
 const STOCK_THRESHOLD_STORAGE_PREFIX = 'stockAlertThreshold';
 
@@ -422,6 +425,7 @@ function sortNotificationsByPriorityAndDate(notifications) {
 
 function refreshNotificationUI() {
     const combined = sortNotificationsByPriorityAndDate([
+        ...capacityNotifications,
         ...criticalStockNotifications,
         ...serverNotifications
     ]);
@@ -725,6 +729,101 @@ function updateCriticalStockNotifications(productos, threshold) {
             const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
             showCriticalStockAlert(notification.titulo || 'Stock crítico', mensaje);
         });
+    }
+
+    refreshNotificationUI();
+}
+
+function getCapacityAlertKey(entry) {
+    if (!entry || entry.id == null) {
+        return '';
+    }
+    const tipo = entry.tipo === 'area' ? 'area' : 'zona';
+    return `${tipo}-${entry.id}`;
+}
+
+function buildCapacityNotification(entry, markAsNew, preservedTimestamp) {
+    if (!entry) {
+        return null;
+    }
+
+    const tipo = entry.tipo === 'area' ? 'Área' : 'Zona';
+    const nombreBase = entry.nombre || `${tipo} ${entry.id}`;
+    const porcentaje = Number(entry.porcentaje ?? entry.porcentaje_ocupacion ?? 0) || 0;
+    const disponibleValue = entry.capacidad_disponible ?? entry.disponible;
+    const disponible = Number.isFinite(Number(disponibleValue)) ? Number(disponibleValue) : null;
+    const areaNombre = entry.tipo === 'zona' ? (entry.areaNombre || '') : '';
+
+    const timestamp = preservedTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    const prioridad = porcentaje >= 90 ? 'Alta' : 'Media';
+    const disponibilidadTexto = disponible == null
+        ? ''
+        : (disponible <= 0
+            ? ' Sin espacio disponible.'
+            : ` Espacio libre estimado: ${disponible.toFixed(2)} m³.`);
+    const areaTexto = areaNombre ? ` Área: ${areaNombre}.` : '';
+
+    return {
+        id: `capacity-${entry.tipo}-${entry.id}`,
+        titulo: `${tipo} saturada: ${nombreBase}`,
+        mensaje: `${tipo} ${nombreBase} alcanzó ${porcentaje.toFixed(1)}% de ocupación.${areaTexto}${disponibilidadTexto}`.trim(),
+        prioridad,
+        fecha_disponible_desde: timestamp,
+        ruta_destino: 'area_almac_v2/gestion_areas_zonas.html',
+        estado: 'Enviada',
+        es_nueva: !!markAsNew,
+        tipo_destinatario: 'Usuario',
+        es_local: true
+    };
+}
+
+function updateCapacityNotifications({ areas = [], zonas = [] } = {}) {
+    const previousState = new Map(capacityAlertState);
+    const nextState = new Map();
+    const entries = [];
+
+    areas.forEach(area => {
+        if (!area || area.id == null) {
+            return;
+        }
+        entries.push({ ...area, tipo: 'area' });
+    });
+
+    zonas.forEach(zona => {
+        if (!zona || zona.id == null) {
+            return;
+        }
+        entries.push({ ...zona, tipo: 'zona' });
+    });
+
+    entries.forEach(entry => {
+        const key = getCapacityAlertKey(entry);
+        if (!key) {
+            return;
+        }
+
+        const previousEntry = previousState.get(key);
+        const alreadyAlerted = previousEntry && previousEntry.alerted === true;
+        const preservedTimestamp = previousEntry && previousEntry.notification
+            ? previousEntry.notification.fecha_disponible_desde
+            : null;
+        const notification = buildCapacityNotification(entry, !alreadyAlerted, preservedTimestamp);
+
+        if (notification) {
+            nextState.set(key, {
+                alerted: true,
+                notification
+            });
+        }
+    });
+
+    if (!entries.length) {
+        capacityNotifications = [];
+        capacityAlertState.clear();
+    } else {
+        capacityAlertState = nextState;
+        capacityNotifications = Array.from(nextState.values()).map(entry => entry.notification);
     }
 
     refreshNotificationUI();
@@ -1125,11 +1224,27 @@ async function loadInfrastructureMetrics() {
             return acc;
         }, new Map());
 
-        const zonasCriticas = normalizedZonas
-            .filter(zona => zona.porcentaje >= 75)
+        const criticalAreas = normalizedAreas
+            .filter(area => area.porcentaje >= CAPACITY_ALERT_THRESHOLD)
             .sort((a, b) => b.porcentaje - a.porcentaje);
 
+        const zonasCriticas = normalizedZonas
+            .filter(zona => zona.porcentaje >= CAPACITY_ALERT_THRESHOLD)
+            .sort((a, b) => b.porcentaje - a.porcentaje);
+
+        const zonasCriticasConArea = zonasCriticas.map(zona => ({
+            ...zona,
+            areaNombre: zona.area_id && areaMap.has(zona.area_id)
+                ? areaMap.get(zona.area_id).nombre
+                : ''
+        }));
+
         renderZoneCapacity(zonasCriticas, areaMap);
+
+        updateCapacityNotifications({
+            areas: criticalAreas,
+            zonas: zonasCriticasConArea
+        });
 
         const sugerencias = buildSpaceOptimizationSuggestions(normalizedAreas, zonasPorArea);
         renderSpaceOptimization(sugerencias);
