@@ -81,6 +81,7 @@ let editZoneId = null;
       capacidad_disponible: disponible,
       porcentaje_ocupacion: parseFloat(area.porcentaje_ocupacion ?? 0) || 0,
       productos_registrados: parseInt(area.productos_registrados ?? 0, 10) || 0,
+      total_unidades: parseInt(area.total_unidades ?? 0, 10) || 0,
     };
   }
 
@@ -106,6 +107,7 @@ let editZoneId = null;
       capacidad_disponible: disponible,
       porcentaje_ocupacion: parseFloat(zona.porcentaje_ocupacion ?? 0) || 0,
       productos_registrados: parseInt(zona.productos_registrados ?? 0, 10) || 0,
+      total_unidades: parseInt(zona.total_unidades ?? 0, 10) || 0,
     };
   }
 
@@ -233,7 +235,7 @@ let editZoneId = null;
       return;
     }
 
-    const cabecera = ['Zona', 'Área', 'Capacidad utilizada (m³)', 'Disponible (m³)', 'Ocupación (%)', 'Productos'];
+    const cabecera = ['Zona', 'Área', 'Capacidad utilizada (m³)', 'Disponible (m³)', 'Ocupación (%)', 'Productos (tipos)', 'Unidades totales'];
     const filas = datos.map(z => {
       const areaNombre = z.area_id ? (areasData.find(a => a.id === z.area_id)?.nombre || z.area_id) : 'Sin área';
       return [
@@ -242,7 +244,8 @@ let editZoneId = null;
         (z.capacidad_utilizada || 0).toFixed(2),
         (z.capacidad_disponible || 0).toFixed(2),
         (z.porcentaje_ocupacion || 0).toFixed(1),
-        z.productos_registrados || 0
+        z.productos_registrados || 0,
+        z.total_unidades || 0
       ].join(';');
     });
 
@@ -279,6 +282,7 @@ let editZoneId = null;
         <td>${(z.capacidad_disponible || 0).toFixed(2)}</td>
         <td>${(z.porcentaje_ocupacion || 0).toFixed(1)}%</td>
         <td>${z.productos_registrados || 0}</td>
+        <td>${z.total_unidades || 0}</td>
       </tr>`;
     }).join('');
 
@@ -304,7 +308,8 @@ let editZoneId = null;
                 <th>Capacidad utilizada (m³)</th>
                 <th>Disponible (m³)</th>
                 <th>Ocupación (%)</th>
-                <th>Productos</th>
+                <th>Productos (tipos)</th>
+                <th>Unidades totales</th>
               </tr>
             </thead>
             <tbody>${filas}</tbody>
@@ -384,6 +389,10 @@ let editZoneId = null;
         : Math.max(volumen - capacidad, 0);
       const porcentaje = Number(area.porcentaje_ocupacion || 0);
       const productos = Number(area.productos_registrados || 0);
+      const totalUnidades = Number(area.total_unidades || 0);
+      const productosDisplay = totalUnidades
+        ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
+        : `${productos} tipo${productos === 1 ? '' : 's'}`;
 
       const tr = document.createElement('tr');
       if (porcentaje >= 90) {
@@ -400,7 +409,7 @@ let editZoneId = null;
         <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
         <td data-label="Disponible">${disponible.toFixed(2)}</td>
         <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
-        <td data-label="Productos">${productos}</td>
+        <td data-label="Productos">${productosDisplay}</td>
         <td data-label="Acciones">
           <div class="table-actions">
             <button class="table-action table-action--edit" data-action="edit-area" data-id="${area.id}">Editar</button>
@@ -495,6 +504,10 @@ formArea.addEventListener('submit', async e => {
           ? Number(zona.capacidad_disponible)
           : Math.max(Number(zona.volumen || 0) - capacidad, 0);
         const productos = Number(zona.productos_registrados || 0);
+        const totalUnidades = Number(zona.total_unidades || 0);
+        const productosDisplay = totalUnidades
+          ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
+          : `${productos} tipo${productos === 1 ? '' : 's'}`;
 
         const tr = document.createElement('tr');
         if (porcentaje >= 90) {
@@ -510,7 +523,7 @@ formArea.addEventListener('submit', async e => {
           <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
           <td data-label="Disponible">${disponible.toFixed(2)}</td>
           <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
-          <td data-label="Productos">${productos}</td>
+          <td data-label="Productos">${productosDisplay}</td>
           <td data-label="Acciones">
             <div class="table-actions">
               <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
@@ -536,6 +549,10 @@ formArea.addEventListener('submit', async e => {
           ? Number(zona.capacidad_disponible)
           : Math.max(Number(zona.volumen || 0) - capacidad, 0);
         const productos = Number(zona.productos_registrados || 0);
+        const totalUnidades = Number(zona.total_unidades || 0);
+        const productosDisplay = totalUnidades
+          ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
+          : `${productos} tipo${productos === 1 ? '' : 's'}`;
 
         const tr = document.createElement('tr');
         if (porcentaje >= 90) {
@@ -550,7 +567,7 @@ formArea.addEventListener('submit', async e => {
           <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
           <td data-label="Disponible">${disponible.toFixed(2)}</td>
           <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
-          <td data-label="Productos">${productos}</td>
+          <td data-label="Productos">${productosDisplay}</td>
           <td data-label="Acciones">
             <div class="table-actions">
               <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
