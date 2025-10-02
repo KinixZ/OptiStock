@@ -5,6 +5,7 @@ const sidebar = document.querySelector('.sidebar');
 const accessLogsList = document.getElementById('accessLogsList');
 const highRotationList = document.getElementById('highRotationList');
 const zoneCapacityList = document.getElementById('zoneCapacityList');
+const spaceOptimizationList = document.getElementById('spaceOptimizationList');
 const alertSettingsBtn = document.getElementById('alertSettingsBtn');
 const alertModal = document.getElementById('alertModal');
 const alertMovCriticos = document.getElementById('alertMovCriticos');
@@ -785,14 +786,6 @@ function toggleStockAlertMenu(forceOpen) {
     }
 }
 
-
-const metricsData = {
-    zoneCapacity: [
-        { zona: 'A1', porcentaje: 95 },
-        { zona: 'B2', porcentaje: 90 }
-    ]
-};
-
 async function loadHighRotation() {
     if (!highRotationList) return;
 
@@ -882,17 +875,273 @@ async function loadHighRotation() {
     }
 }
 
-function renderZoneCapacity() {
+function renderZoneCapacity(zonas, areaMap) {
     if (!zoneCapacityList) return;
+
+    if (!Array.isArray(zonas) || !zonas.length) {
+        setListState(zoneCapacityList, 'Todas las zonas se mantienen dentro de los rangos permitidos.', 'fas fa-check-circle', 'card-empty-state');
+        return;
+    }
+
     zoneCapacityList.innerHTML = '';
-    metricsData.zoneCapacity.forEach(item => {
+    zonas.slice(0, 5).forEach(zona => {
+        const porcentaje = Number(zona.porcentaje ?? zona.porcentaje_ocupacion ?? 0);
+        const disponible = Number(zona.capacidad_disponible ?? 0);
+        const utilizada = Number(zona.capacidad_utilizada ?? 0);
+        const areaNombre = zona.area_id && areaMap.has(zona.area_id)
+            ? areaMap.get(zona.area_id).nombre
+            : 'Sin área';
+
         const li = document.createElement('li');
         li.className = 'activity-item';
-        li.innerHTML = `<div class="activity-icon"><i class="fas fa-map-marker-alt"></i></div>
-            <div class="activity-details"><div class="activity-description">Zona ${item.zona}</div>
-            <div class="activity-time">${item.porcentaje}% ocupación</div></div>`;
+
+        const iconWrapper = document.createElement('div');
+        iconWrapper.className = 'activity-icon';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-map-marker-alt';
+        iconWrapper.appendChild(icon);
+
+        const details = document.createElement('div');
+        details.className = 'activity-details';
+
+        const description = document.createElement('div');
+        description.className = 'activity-description';
+        description.textContent = `${zona.nombre || `Zona ${zona.id}`} · ${areaNombre}`;
+
+        const meta = document.createElement('div');
+        meta.className = 'activity-time';
+        meta.textContent = `${porcentaje.toFixed(1)}% ocupación · ${disponible.toFixed(2)} m³ libres`;
+
+        const tooltip = [
+            `Capacidad utilizada: ${utilizada.toFixed(2)} m³`,
+            `Productos: ${(zona.productos ?? zona.productos_registrados ?? 0)} tipos`,
+            `Unidades totales: ${(zona.unidades ?? zona.total_unidades ?? 0)}`
+        ];
+        li.title = tooltip.join('\n');
+
+        details.appendChild(description);
+        details.appendChild(meta);
+
+        li.appendChild(iconWrapper);
+        li.appendChild(details);
+
         zoneCapacityList.appendChild(li);
     });
+}
+
+function renderSpaceOptimization(sugerencias) {
+    if (!spaceOptimizationList) return;
+
+    if (!Array.isArray(sugerencias) || !sugerencias.length) {
+        setListState(spaceOptimizationList, 'Sin recomendaciones por ahora. La ocupación está equilibrada.', 'fas fa-check-circle', 'card-empty-state');
+        return;
+    }
+
+    spaceOptimizationList.innerHTML = '';
+    sugerencias.slice(0, 3).forEach(sugerencia => {
+        const li = document.createElement('li');
+        li.className = 'activity-item';
+
+        const iconWrapper = document.createElement('div');
+        iconWrapper.className = 'activity-icon';
+        const icon = document.createElement('i');
+        icon.className = sugerencia.tipo === 'redistribuir' ? 'fas fa-exchange-alt' : 'fas fa-lightbulb';
+        iconWrapper.appendChild(icon);
+
+        const details = document.createElement('div');
+        details.className = 'activity-details';
+
+        const description = document.createElement('div');
+        description.className = 'activity-description';
+
+        const meta = document.createElement('div');
+        meta.className = 'activity-time';
+
+        if (sugerencia.tipo === 'redistribuir') {
+            const origenZona = sugerencia.zonaOrigen
+                ? `${sugerencia.zonaOrigen.nombre} (${sugerencia.origen.nombre})`
+                : sugerencia.origen.nombre;
+            const destinoZona = sugerencia.zonaDestino
+                ? `${sugerencia.zonaDestino.nombre} (${sugerencia.destino.nombre})`
+                : sugerencia.destino.nombre;
+
+            description.textContent = `Reubicar carga de ${origenZona} hacia ${destinoZona}`;
+
+            const volumenLiberar = Number.isFinite(sugerencia.volumenPotencial) && sugerencia.volumenPotencial > 0
+                ? `${sugerencia.volumenPotencial.toFixed(2)} m³ a liberar`
+                : `${sugerencia.destino.disponible.toFixed(2)} m³ disponibles`;
+            meta.textContent = `${sugerencia.origen.porcentaje.toFixed(1)}% ocupado · ${volumenLiberar}`;
+
+            const tooltip = [];
+            if (sugerencia.zonaOrigen) {
+                tooltip.push(`Zona crítica: ${sugerencia.zonaOrigen.nombre} (${sugerencia.zonaOrigen.porcentaje.toFixed(1)}%)`);
+            }
+            tooltip.push(`Área origen: ${sugerencia.origen.productos} tipos / ${sugerencia.origen.unidades} uds`);
+            tooltip.push(`Área destino libre: ${sugerencia.destino.disponible.toFixed(2)} m³`);
+            if (sugerencia.zonaDestino) {
+                tooltip.push(`Zona receptora: ${sugerencia.zonaDestino.nombre} (${sugerencia.zonaDestino.porcentaje.toFixed(1)}%)`);
+            }
+            li.title = tooltip.join('\n');
+        } else {
+            description.textContent = `Aprovecha ${sugerencia.destino.nombre} para nuevos ingresos`;
+            meta.textContent = `${sugerencia.destino.disponible.toFixed(2)} m³ libres · ${sugerencia.destino.productos} tipos`;
+            li.title = `Área con baja ocupación (${sugerencia.destino.porcentaje.toFixed(1)}% )`;
+        }
+
+        details.appendChild(description);
+        details.appendChild(meta);
+
+        li.appendChild(iconWrapper);
+        li.appendChild(details);
+
+        spaceOptimizationList.appendChild(li);
+    });
+}
+
+function buildSpaceOptimizationSuggestions(areas, zonasPorArea) {
+    const sugerencias = [];
+    const usados = new Set();
+
+    const altas = areas
+        .filter(area => area && area.porcentaje >= 85 && area.disponible < Math.max(area.volumen * 0.25, 5))
+        .sort((a, b) => b.porcentaje - a.porcentaje);
+
+    const disponibles = areas
+        .filter(area => area && area.disponible > 0 && area.porcentaje <= 70)
+        .sort((a, b) => b.disponible - a.disponible);
+
+    altas.forEach(origen => {
+        const destino = disponibles.find(area => area.id !== origen.id && !usados.has(area.id));
+        if (!destino) {
+            return;
+        }
+
+        usados.add(destino.id);
+
+        const zonasOrigen = zonasPorArea.get(origen.id) || [];
+        const zonaCritica = zonasOrigen.slice().sort((a, b) => b.porcentaje - a.porcentaje)[0] || null;
+
+        const zonasDestino = zonasPorArea.get(destino.id) || [];
+        const zonaRecepcion = zonasDestino.slice().sort((a, b) => a.porcentaje - b.porcentaje)[0] || null;
+
+        const potencial = zonaCritica
+            ? Math.min(zonaCritica.capacidad_utilizada, destino.disponible)
+            : Math.min(origen.utilizada, destino.disponible);
+
+        sugerencias.push({
+            tipo: 'redistribuir',
+            origen,
+            destino,
+            zonaOrigen: zonaCritica,
+            zonaDestino: zonaRecepcion,
+            volumenPotencial: potencial
+        });
+    });
+
+    if (!sugerencias.length) {
+        disponibles.slice(0, 3).forEach(destino => {
+            sugerencias.push({ tipo: 'aprovechar', destino });
+        });
+    }
+
+    return sugerencias;
+}
+
+async function loadInfrastructureMetrics() {
+    if (!zoneCapacityList && !spaceOptimizationList) {
+        return;
+    }
+
+    const empresaId = localStorage.getItem('id_empresa');
+    if (!empresaId) {
+        if (zoneCapacityList) {
+            setListState(zoneCapacityList, 'Registra tu empresa para ver las zonas con capacidad reducida.', 'fas fa-info-circle', 'card-empty-state');
+        }
+        if (spaceOptimizationList) {
+            setListState(spaceOptimizationList, 'Registra tu empresa para recibir sugerencias de optimización.', 'fas fa-info-circle', 'card-empty-state');
+        }
+        return;
+    }
+
+    if (zoneCapacityList) {
+        setListState(zoneCapacityList, 'Analizando capacidad...', 'fas fa-circle-notch', 'card-loading-state');
+    }
+    if (spaceOptimizationList) {
+        setListState(spaceOptimizationList, 'Buscando oportunidades de mejora...', 'fas fa-circle-notch', 'card-loading-state');
+    }
+
+    try {
+        const [zonasResponse, areasResponse] = await Promise.all([
+            fetch(`/scripts/php/guardar_zonas.php?empresa_id=${encodeURIComponent(empresaId)}`),
+            fetch(`/scripts/php/guardar_areas.php?empresa_id=${encodeURIComponent(empresaId)}`)
+        ]);
+
+        if (!zonasResponse.ok) {
+            throw new Error(`HTTP ${zonasResponse.status} zonas`);
+        }
+        if (!areasResponse.ok) {
+            throw new Error(`HTTP ${areasResponse.status} áreas`);
+        }
+
+        const zonasRaw = await zonasResponse.json();
+        const areasRaw = await areasResponse.json();
+
+        const areas = Array.isArray(areasRaw) ? areasRaw : [];
+        const zonas = Array.isArray(zonasRaw) ? zonasRaw : [];
+
+        const normalizedAreas = areas.map(area => ({
+            id: Number(area.id),
+            nombre: area.nombre || 'Área sin nombre',
+            porcentaje: Number(area.porcentaje_ocupacion || area.porcentaje || 0),
+            disponible: Number(area.capacidad_disponible || 0),
+            utilizada: Number(area.capacidad_utilizada || 0),
+            volumen: Number(area.volumen || 0),
+            productos: Number(area.productos_registrados || 0),
+            unidades: Number(area.total_unidades || 0)
+        }));
+
+        const areaMap = new Map(normalizedAreas.map(area => [area.id, area]));
+
+        const normalizedZonas = zonas.map(zona => ({
+            id: Number(zona.id),
+            nombre: zona.nombre || `Zona ${zona.id}`,
+            area_id: zona.area_id ? Number(zona.area_id) : null,
+            porcentaje: Number(zona.porcentaje_ocupacion || zona.porcentaje || 0),
+            capacidad_utilizada: Number(zona.capacidad_utilizada || 0),
+            capacidad_disponible: Number(zona.capacidad_disponible || 0),
+            productos: Number(zona.productos_registrados || 0),
+            unidades: Number(zona.total_unidades || 0),
+            tipo: zona.tipo_almacenamiento || ''
+        }));
+
+        const zonasPorArea = normalizedZonas.reduce((acc, zona) => {
+            if (!zona.area_id) {
+                return acc;
+            }
+            if (!acc.has(zona.area_id)) {
+                acc.set(zona.area_id, []);
+            }
+            acc.get(zona.area_id).push(zona);
+            return acc;
+        }, new Map());
+
+        const zonasCriticas = normalizedZonas
+            .filter(zona => zona.porcentaje >= 75)
+            .sort((a, b) => b.porcentaje - a.porcentaje);
+
+        renderZoneCapacity(zonasCriticas, areaMap);
+
+        const sugerencias = buildSpaceOptimizationSuggestions(normalizedAreas, zonasPorArea);
+        renderSpaceOptimization(sugerencias);
+    } catch (error) {
+        console.error('Error loading infrastructure metrics:', error);
+        if (zoneCapacityList) {
+            setListState(zoneCapacityList, 'No se pudo obtener la capacidad de las zonas.', 'fas fa-triangle-exclamation', 'card-empty-state');
+        }
+        if (spaceOptimizationList) {
+            setListState(spaceOptimizationList, 'No se pudieron generar recomendaciones.', 'fas fa-triangle-exclamation', 'card-empty-state');
+        }
+    }
 }
 
 async function loadStockAlerts() {
@@ -1133,7 +1382,7 @@ async function loadRecentMovements() {
 
 function loadMetrics() {
     loadHighRotation();
-    renderZoneCapacity();
+    loadInfrastructureMetrics();
     loadStockAlerts();
     loadRecentMovements();
 }
@@ -1143,6 +1392,7 @@ function saveHomeData() {
         empresaTitulo: document.getElementById('empresaTitulo')?.textContent || '',
         highRotation: document.getElementById('highRotationList')?.innerHTML || '',
         zoneCapacity: document.getElementById('zoneCapacityList')?.innerHTML || '',
+        spaceOptimization: document.getElementById('spaceOptimizationList')?.innerHTML || '',
         accessLogs: document.getElementById('accessLogsList')?.innerHTML || '',
         stockAlerts: document.getElementById('stockAlertList')?.innerHTML || '',
         recentActivity: document.getElementById('recentActivityList')?.innerHTML || ''
@@ -1161,6 +1411,8 @@ function restoreHomeData() {
         if (highRotation && data.highRotation) highRotation.innerHTML = data.highRotation;
         const zoneCapacity = document.getElementById('zoneCapacityList');
         if (zoneCapacity && data.zoneCapacity) zoneCapacity.innerHTML = data.zoneCapacity;
+        const spaceOptimization = document.getElementById('spaceOptimizationList');
+        if (spaceOptimization && data.spaceOptimization) spaceOptimization.innerHTML = data.spaceOptimization;
         const accessLogs = document.getElementById('accessLogsList');
         if (accessLogs && data.accessLogs) accessLogs.innerHTML = data.accessLogs;
         const stockAlerts = document.getElementById('stockAlertList');

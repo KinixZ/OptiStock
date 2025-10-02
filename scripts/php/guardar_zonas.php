@@ -41,6 +41,47 @@ function getJsonInput() {
     return $data ?: [];
 }
 
+function obtenerEstadisticasZonas(mysqli $conn, array $zonaIds): array
+{
+    $zonaIds = array_values(array_filter(array_map('intval', $zonaIds)));
+    if (!$zonaIds) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($zonaIds), '?'));
+    $types = str_repeat('i', count($zonaIds));
+
+    $sql = "
+        SELECT
+            zona_id,
+            COUNT(*) AS productos,
+            COALESCE(SUM(GREATEST(stock, 0)), 0) AS unidades,
+            COALESCE(SUM(GREATEST(stock, 0) * COALESCE(dim_x, 0) * COALESCE(dim_y, 0) * COALESCE(dim_z, 0)), 0) AS volumen_cm3
+        FROM productos
+        WHERE zona_id IN ($placeholders)
+        GROUP BY zona_id
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$zonaIds);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $mapa = [];
+    while ($row = $result->fetch_assoc()) {
+        $zonaId = (int) ($row['zona_id'] ?? 0);
+        $mapa[$zonaId] = [
+            'productos' => (int) ($row['productos'] ?? 0),
+            'unidades' => (int) ($row['unidades'] ?? 0),
+            'volumen_cm3' => (float) ($row['volumen_cm3'] ?? 0.0),
+        ];
+    }
+
+    $stmt->close();
+
+    return $mapa;
+}
+
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
@@ -61,9 +102,15 @@ if ($method === 'GET') {
         }
 
         if ($zona) {
-            $utilizada = isset($zona['capacidad_utilizada']) ? (float) $zona['capacidad_utilizada'] : 0.0;
             $total = isset($zona['volumen']) ? (float) $zona['volumen'] : 0.0;
+            $estadisticas = obtenerEstadisticasZonas($conn, [$zona['id']]);
+            $extra = $estadisticas[$zona['id']] ?? ['productos' => 0, 'unidades' => 0, 'volumen_cm3' => 0.0];
+            $utilizada = ((float) $extra['volumen_cm3']) / 1000000.0;
+            $zona['capacidad_utilizada'] = $utilizada;
             $zona['capacidad_disponible'] = max($total - $utilizada, 0);
+            $zona['porcentaje_ocupacion'] = $total > 0 ? min(100, ($utilizada / $total) * 100) : 0;
+            $zona['productos_registrados'] = $extra['productos'];
+            $zona['total_unidades'] = $extra['unidades'];
         }
 
         if ($filtrarPorAccesos) {
@@ -93,8 +140,6 @@ if ($method === 'GET') {
                 $row['subniveles'] = json_decode($row['subniveles'], true);
             }
 
-            $row['capacidad_disponible'] = max(((float) ($row['volumen'] ?? 0)) - ((float) ($row['capacidad_utilizada'] ?? 0)), 0);
-
             $areaId = isset($row['area_id']) ? (int) $row['area_id'] : 0;
             $zonaId = isset($row['id']) ? (int) $row['id'] : 0;
 
@@ -104,6 +149,20 @@ if ($method === 'GET') {
 
             $zonas[] = $row;
         }
+
+        $estadisticas = obtenerEstadisticasZonas($conn, array_column($zonas, 'id'));
+        foreach ($zonas as &$zonaItem) {
+            $total = isset($zonaItem['volumen']) ? (float) $zonaItem['volumen'] : 0.0;
+            $extra = $estadisticas[$zonaItem['id']] ?? ['productos' => 0, 'unidades' => 0, 'volumen_cm3' => 0.0];
+            $utilizada = ((float) $extra['volumen_cm3']) / 1000000.0;
+            $zonaItem['capacidad_utilizada'] = $utilizada;
+            $zonaItem['capacidad_disponible'] = max($total - $utilizada, 0);
+            $zonaItem['porcentaje_ocupacion'] = $total > 0 ? min(100, ($utilizada / $total) * 100) : 0;
+            $zonaItem['productos_registrados'] = $extra['productos'];
+            $zonaItem['total_unidades'] = $extra['unidades'];
+        }
+        unset($zonaItem);
+
         echo json_encode($zonas);
     }
     exit;

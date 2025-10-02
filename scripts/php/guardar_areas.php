@@ -45,6 +45,48 @@ function requireUserId()
     return $usuarioId;
 }
 
+function obtenerEstadisticasAreas(mysqli $conn, array $areaIds): array
+{
+    $areaIds = array_values(array_filter(array_map('intval', $areaIds)));
+    if (!$areaIds) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($areaIds), '?'));
+    $types = str_repeat('i', count($areaIds));
+
+    $sql = "
+        SELECT
+            z.area_id,
+            COUNT(DISTINCT p.id) AS productos,
+            COALESCE(SUM(GREATEST(p.stock, 0)), 0) AS unidades,
+            COALESCE(SUM(GREATEST(p.stock, 0) * COALESCE(p.dim_x, 0) * COALESCE(p.dim_y, 0) * COALESCE(p.dim_z, 0)), 0) AS volumen_cm3
+        FROM zonas z
+        LEFT JOIN productos p ON p.zona_id = z.id
+        WHERE z.area_id IN ($placeholders)
+        GROUP BY z.area_id
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$areaIds);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $mapa = [];
+    while ($row = $result->fetch_assoc()) {
+        $areaId = (int) ($row['area_id'] ?? 0);
+        $mapa[$areaId] = [
+            'productos' => (int) ($row['productos'] ?? 0),
+            'unidades' => (int) ($row['unidades'] ?? 0),
+            'volumen_cm3' => (float) ($row['volumen_cm3'] ?? 0.0),
+        ];
+    }
+
+    $stmt->close();
+
+    return $mapa;
+}
+
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
@@ -60,9 +102,15 @@ if ($method === 'GET') {
         $res = $stmt->get_result();
         $area = $res->fetch_assoc() ?: [];
         if ($area) {
-            $utilizada = isset($area['capacidad_utilizada']) ? (float) $area['capacidad_utilizada'] : 0.0;
             $total = isset($area['volumen']) ? (float) $area['volumen'] : 0.0;
+            $estadisticas = obtenerEstadisticasAreas($conn, [$area['id']]);
+            $extra = $estadisticas[$area['id']] ?? ['productos' => 0, 'unidades' => 0, 'volumen_cm3' => 0.0];
+            $utilizada = ((float) $extra['volumen_cm3']) / 1000000.0;
+            $area['capacidad_utilizada'] = $utilizada;
             $area['capacidad_disponible'] = max($total - $utilizada, 0);
+            $area['porcentaje_ocupacion'] = $total > 0 ? min(100, ($utilizada / $total) * 100) : 0;
+            $area['productos_registrados'] = $extra['productos'];
+            $area['total_unidades'] = $extra['unidades'];
         }
 
         if ($filtrarPorAccesos) {
@@ -90,9 +138,22 @@ if ($method === 'GET') {
             if ($filtrarPorAccesos && !usuarioPuedeVerArea($mapaAccesos, isset($row['id']) ? (int) $row['id'] : 0)) {
                 continue;
             }
-            $row['capacidad_disponible'] = max(((float) ($row['volumen'] ?? 0)) - ((float) ($row['capacidad_utilizada'] ?? 0)), 0);
             $areas[] = $row;
         }
+
+        $estadisticas = obtenerEstadisticasAreas($conn, array_column($areas, 'id'));
+        foreach ($areas as &$areaItem) {
+            $total = isset($areaItem['volumen']) ? (float) $areaItem['volumen'] : 0.0;
+            $extra = $estadisticas[$areaItem['id']] ?? ['productos' => 0, 'unidades' => 0, 'volumen_cm3' => 0.0];
+            $utilizada = ((float) $extra['volumen_cm3']) / 1000000.0;
+            $areaItem['capacidad_utilizada'] = $utilizada;
+            $areaItem['capacidad_disponible'] = max($total - $utilizada, 0);
+            $areaItem['porcentaje_ocupacion'] = $total > 0 ? min(100, ($utilizada / $total) * 100) : 0;
+            $areaItem['productos_registrados'] = $extra['productos'];
+            $areaItem['total_unidades'] = $extra['unidades'];
+        }
+        unset($areaItem);
+
         echo json_encode($areas);
     }
     exit;

@@ -62,14 +62,21 @@ function calcularOcupacionZona(mysqli $conn, int $zonaId): ?array
         return null;
     }
 
-    $stmt = $conn->prepare('SELECT COALESCE(SUM(GREATEST(stock,0) * COALESCE(dim_x,0) * COALESCE(dim_y,0) * COALESCE(dim_z,0)), 0), COUNT(*) FROM productos WHERE zona_id = ?');
+    $stmt = $conn->prepare(
+        'SELECT 
+            COALESCE(SUM(GREATEST(stock, 0) * COALESCE(dim_x, 0) * COALESCE(dim_y, 0) * COALESCE(dim_z, 0)), 0) AS volumen_cm3,
+            COUNT(*) AS productos,
+            COALESCE(SUM(GREATEST(stock, 0)), 0) AS unidades
+         FROM productos
+         WHERE zona_id = ?'
+    );
     $stmt->bind_param('i', $zonaId);
     $stmt->execute();
-    $stmt->bind_result($ocupado, $productos);
+    $stmt->bind_result($volumenCm3, $productos, $unidades);
     $stmt->fetch();
     $stmt->close();
 
-    $ocupado = (float) $ocupado;
+    $ocupado = ((float) $volumenCm3) / 1000000.0; // cm³ a m³
     $total = (float) $zona['volumen'];
     $disponible = max($total - $ocupado, 0);
     $porcentaje = $total > 0 ? min(100, ($ocupado / $total) * 100) : 0;
@@ -80,6 +87,7 @@ function calcularOcupacionZona(mysqli $conn, int $zonaId): ?array
         'capacidad_disponible' => $disponible,
         'porcentaje_ocupacion' => $porcentaje,
         'productos_registrados' => (int) $productos,
+        'total_unidades' => (int) $unidades,
     ];
 }
 
@@ -118,7 +126,13 @@ function actualizarOcupacionArea(mysqli $conn, int $areaId): void
         return;
     }
 
-    $stmt = $conn->prepare('SELECT COALESCE(SUM(capacidad_utilizada), 0), COALESCE(SUM(productos_registrados), 0) FROM zonas WHERE area_id = ?');
+    $stmt = $conn->prepare(
+        'SELECT 
+            COALESCE(SUM(capacidad_utilizada), 0) AS capacidad,
+            COALESCE(SUM(productos_registrados), 0) AS productos
+         FROM zonas
+         WHERE area_id = ?'
+    );
     $stmt->bind_param('i', $areaId);
     $stmt->execute();
     $stmt->bind_result($ocupado, $productos);
