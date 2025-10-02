@@ -205,10 +205,11 @@ if ($method === 'POST' || $method === 'PUT') {
     }
     // ────────────────────────────────────────────────────────────────────
 
-    $volumenProducto = max($stock, 0) * (($dim_x ?? 0) * ($dim_y ?? 0) * ($dim_z ?? 0));
+    $volumenProductoCm3 = max($stock, 0) * (($dim_x ?? 0) * ($dim_y ?? 0) * ($dim_z ?? 0));
+    $volumenProductoM3 = $volumenProductoCm3 / 1000000.0;
 
     $zonaAnterior = null;
-    $volumenAnterior = 0.0;
+    $volumenAnteriorM3 = 0.0;
 
     if ($method === 'PUT') {
         if ($id <= 0) {
@@ -232,17 +233,18 @@ if ($method === 'POST' || $method === 'PUT') {
         if ($zonaAnterior !== null && $zonaAnterior <= 0) {
             $zonaAnterior = null;
         }
-        $volumenAnterior = ((float) ($prevProducto['stock'] ?? 0)) * ((float) ($prevProducto['dim_x'] ?? 0)) * ((float) ($prevProducto['dim_y'] ?? 0)) * ((float) ($prevProducto['dim_z'] ?? 0));
+        $volumenAnteriorCm3 = ((float) ($prevProducto['stock'] ?? 0)) * ((float) ($prevProducto['dim_x'] ?? 0)) * ((float) ($prevProducto['dim_y'] ?? 0)) * ((float) ($prevProducto['dim_z'] ?? 0));
+        $volumenAnteriorM3 = $volumenAnteriorCm3 / 1000000.0;
     }
 
-    if ($zona_id && $volumenProducto > 0) {
+    if ($zona_id && $volumenProductoM3 > 0) {
         $ocupacion = calcularOcupacionZona($conn, $zona_id);
         if ($ocupacion) {
             $disponible = $ocupacion['capacidad_disponible'];
             if ($zonaAnterior && $zonaAnterior === $zona_id) {
-                $disponible += $volumenAnterior;
+                $disponible += $volumenAnteriorM3;
             }
-            if ($volumenProducto > $disponible) {
+            if ($volumenProductoM3 > $disponible) {
                 http_response_code(409);
                 echo json_encode(['error' => 'La zona seleccionada no tiene capacidad disponible para este producto.']);
                 exit;
