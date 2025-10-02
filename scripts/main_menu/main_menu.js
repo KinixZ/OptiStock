@@ -635,6 +635,189 @@ function setListState(listElement, message, iconClass = 'fas fa-info-circle', st
     listElement.appendChild(li);
 }
 
+function formatNumber(value, decimals = 0) {
+    if (!Number.isFinite(value)) {
+        return null;
+    }
+    try {
+        return new Intl.NumberFormat('es-ES', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }).format(value);
+    } catch (error) {
+        return value.toFixed(decimals);
+    }
+}
+
+function normalizeAreaData(areasRaw) {
+    return (Array.isArray(areasRaw) ? areasRaw : []).map(area => ({
+        id: Number(area.id),
+        nombre: area.nombre || 'Área sin nombre',
+        porcentaje: Number(area.porcentaje_ocupacion || area.porcentaje || 0),
+        disponible: Number(area.capacidad_disponible || 0),
+        utilizada: Number(area.capacidad_utilizada || 0),
+        volumen: Number(area.volumen || 0),
+        productos: Number(area.productos_registrados || 0),
+        unidades: Number(area.total_unidades || 0)
+    }));
+}
+
+function normalizeZoneData(zonasRaw) {
+    return (Array.isArray(zonasRaw) ? zonasRaw : []).map(zona => ({
+        id: Number(zona.id),
+        nombre: zona.nombre || (zona.id ? `Zona ${zona.id}` : 'Zona sin nombre'),
+        area_id: zona.area_id ? Number(zona.area_id) : null,
+        porcentaje: Number(zona.porcentaje_ocupacion || zona.porcentaje || 0),
+        capacidad_utilizada: Number(zona.capacidad_utilizada || 0),
+        capacidad_disponible: Number(zona.capacidad_disponible || 0),
+        productos: Number(zona.productos_registrados || 0),
+        unidades: Number(zona.total_unidades || 0),
+        tipo: zona.tipo_almacenamiento || ''
+    }));
+}
+
+function createAlertListItem({ iconClass, title, detail, value, extraClasses = [] }) {
+    const li = document.createElement('li');
+    const classes = ['stock-alert-item'];
+    extraClasses.filter(Boolean).forEach(cls => classes.push(cls));
+    li.className = classes.join(' ');
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'stock-alert-info';
+
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'stock-alert-icon';
+    if (iconClass) {
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        iconDiv.appendChild(icon);
+    }
+
+    const textWrapper = document.createElement('div');
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'stock-alert-name';
+    nameDiv.textContent = (title || 'Alerta').trim();
+
+    const detailDiv = document.createElement('div');
+    detailDiv.className = 'stock-alert-detail';
+    detailDiv.textContent = detail || 'Sin información adicional';
+
+    textWrapper.appendChild(nameDiv);
+    textWrapper.appendChild(detailDiv);
+
+    infoDiv.appendChild(iconDiv);
+    infoDiv.appendChild(textWrapper);
+
+    li.appendChild(infoDiv);
+
+    if (value !== undefined && value !== null && value !== '') {
+        const valueDiv = document.createElement('div');
+        valueDiv.className = 'stock-alert-stock';
+        valueDiv.textContent = String(value);
+        li.appendChild(valueDiv);
+    }
+
+    return li;
+}
+
+function buildStockAlertEntries(productos, threshold) {
+    const criticalProducts = (Array.isArray(productos) ? productos : [])
+        .filter(prod => {
+            const stockValue = Number(prod && prod.stock);
+            if (!Number.isFinite(stockValue)) {
+                return threshold >= 0;
+            }
+            return stockValue <= threshold;
+        })
+        .sort((a, b) => (Number(a && a.stock) || 0) - (Number(b && b.stock) || 0));
+
+    const alerts = criticalProducts.map(prod => {
+        const stockValue = Number(prod && prod.stock);
+        const unidades = Number.isFinite(stockValue) ? stockValue : 0;
+        const unidadesTexto = `${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`;
+
+        const locationParts = [];
+        if (prod && prod.zona_nombre) locationParts.push(prod.zona_nombre);
+        if (prod && prod.area_nombre) locationParts.push(prod.area_nombre);
+        const ubicacion = locationParts.filter(Boolean).join(' · ');
+
+        return {
+            type: 'stock',
+            iconClass: 'fas fa-box-open',
+            title: ((prod && prod.nombre) || 'Producto sin nombre').trim(),
+            detail: ubicacion || 'Sin ubicación asignada',
+            value: unidadesTexto,
+            severity: Number.isFinite(stockValue) ? Math.max(0, threshold - stockValue) + 1 : 1,
+            raw: prod
+        };
+    });
+
+    return { alerts, criticalProducts };
+}
+
+function buildCapacityAlertEntries(normalizedAreas, normalizedZonas) {
+    const areaMap = new Map(normalizedAreas.map(area => [area.id, area]));
+    const alerts = [];
+
+    normalizedZonas
+        .filter(zona => Number.isFinite(zona.porcentaje) && zona.porcentaje >= 75)
+        .sort((a, b) => b.porcentaje - a.porcentaje)
+        .forEach(zona => {
+            const area = zona.area_id ? areaMap.get(zona.area_id) : null;
+            const detailParts = [];
+            if (area && area.nombre) {
+                detailParts.push(`Área ${area.nombre}`);
+            }
+            const disponible = formatNumber(zona.capacidad_disponible, 1);
+            if (disponible !== null) {
+                detailParts.push(`Disponible ${disponible} m³`);
+            }
+            const unidades = formatNumber(zona.unidades, 0);
+            if (unidades !== null) {
+                detailParts.push(`${unidades} uds`);
+            }
+
+            const porcentajeTexto = formatNumber(zona.porcentaje, 1);
+
+            alerts.push({
+                type: 'zone',
+                iconClass: 'fas fa-warehouse',
+                title: zona.nombre || 'Zona sin nombre',
+                detail: detailParts.join(' · ') || 'Capacidad limitada',
+                value: porcentajeTexto ? `${porcentajeTexto}% ocupado` : 'Capacidad crítica',
+                severity: Number.isFinite(zona.porcentaje) ? zona.porcentaje : 0
+            });
+        });
+
+    normalizedAreas
+        .filter(area => Number.isFinite(area.porcentaje) && area.porcentaje >= 85)
+        .sort((a, b) => b.porcentaje - a.porcentaje)
+        .forEach(area => {
+            const detailParts = [];
+            const disponible = formatNumber(area.disponible, 1);
+            if (disponible !== null) {
+                detailParts.push(`Disponible ${disponible} m³`);
+            }
+            const unidades = formatNumber(area.unidades, 0);
+            if (unidades !== null) {
+                detailParts.push(`${unidades} uds`);
+            }
+            const porcentajeTexto = formatNumber(area.porcentaje, 1);
+
+            alerts.push({
+                type: 'area',
+                iconClass: 'fas fa-layer-group',
+                title: area.nombre || 'Área sin nombre',
+                detail: detailParts.join(' · ') || 'Capacidad limitada',
+                value: porcentajeTexto ? `${porcentajeTexto}% ocupado` : 'Capacidad crítica',
+                severity: Number.isFinite(area.porcentaje) ? area.porcentaje : 0
+            });
+        });
+
+    return alerts.sort((a, b) => b.severity - a.severity);
+}
+
 function parseDateFromMysql(mysqlDate) {
     if (!mysqlDate) return null;
     const normalized = mysqlDate.replace(' ', 'T');
@@ -1086,33 +1269,9 @@ async function loadInfrastructureMetrics() {
         const zonasRaw = await zonasResponse.json();
         const areasRaw = await areasResponse.json();
 
-        const areas = Array.isArray(areasRaw) ? areasRaw : [];
-        const zonas = Array.isArray(zonasRaw) ? zonasRaw : [];
-
-        const normalizedAreas = areas.map(area => ({
-            id: Number(area.id),
-            nombre: area.nombre || 'Área sin nombre',
-            porcentaje: Number(area.porcentaje_ocupacion || area.porcentaje || 0),
-            disponible: Number(area.capacidad_disponible || 0),
-            utilizada: Number(area.capacidad_utilizada || 0),
-            volumen: Number(area.volumen || 0),
-            productos: Number(area.productos_registrados || 0),
-            unidades: Number(area.total_unidades || 0)
-        }));
-
+        const normalizedAreas = normalizeAreaData(areasRaw);
         const areaMap = new Map(normalizedAreas.map(area => [area.id, area]));
-
-        const normalizedZonas = zonas.map(zona => ({
-            id: Number(zona.id),
-            nombre: zona.nombre || `Zona ${zona.id}`,
-            area_id: zona.area_id ? Number(zona.area_id) : null,
-            porcentaje: Number(zona.porcentaje_ocupacion || zona.porcentaje || 0),
-            capacidad_utilizada: Number(zona.capacidad_utilizada || 0),
-            capacidad_disponible: Number(zona.capacidad_disponible || 0),
-            productos: Number(zona.productos_registrados || 0),
-            unidades: Number(zona.total_unidades || 0),
-            tipo: zona.tipo_almacenamiento || ''
-        }));
+        const normalizedZonas = normalizeZoneData(zonasRaw);
 
         const zonasPorArea = normalizedZonas.reduce((acc, zona) => {
             if (!zona.area_id) {
@@ -1160,82 +1319,99 @@ async function loadStockAlerts() {
     }
 
     setButtonLoading(stockAlertsRefreshBtn, true);
-    setListState(stockAlertList, 'Cargando inventario...', 'fas fa-circle-notch', 'card-loading-state');
+    setListState(stockAlertList, 'Cargando alertas...', 'fas fa-circle-notch', 'card-loading-state');
 
     try {
-        const response = await fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        const [productosResult, zonasResult, areasResult] = await Promise.allSettled([
+            fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`),
+            fetch(`/scripts/php/guardar_zonas.php?empresa_id=${encodeURIComponent(empresaId)}`),
+            fetch(`/scripts/php/guardar_areas.php?empresa_id=${encodeURIComponent(empresaId)}`)
+        ]);
+
+        if (productosResult.status !== 'fulfilled' || !productosResult.value.ok) {
+            const statusText = productosResult.status === 'fulfilled' ? productosResult.value.status : 'sin respuesta';
+            throw new Error(`Inventario HTTP ${statusText}`);
         }
-        const payload = await response.json();
+
+        const productosResponse = productosResult.value;
+        const payload = await productosResponse.json();
         const productos = Array.isArray(payload) ? payload : [];
 
-        const filtrados = productos
-            .filter(prod => {
-                const stockValue = Number(prod.stock);
-                if (!Number.isFinite(stockValue)) {
-                    return threshold >= 0; // stock no definido se considera crítico
+        let zonasRaw = [];
+        if (zonasResult.status === 'fulfilled' && zonasResult.value) {
+            if (zonasResult.value.ok) {
+                try {
+                    const zonasPayload = await zonasResult.value.json();
+                    if (Array.isArray(zonasPayload)) {
+                        zonasRaw = zonasPayload;
+                    }
+                } catch (error) {
+                    console.warn('No se pudo interpretar la respuesta de zonas.', error);
                 }
-                return stockValue <= threshold;
-            })
-            .sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0));
+            } else {
+                console.warn(`No se pudieron cargar las zonas (HTTP ${zonasResult.value.status}).`);
+            }
+        } else if (zonasResult.status === 'rejected') {
+            console.warn('Error de red al obtener zonas.', zonasResult.reason);
+        }
 
-        updateCriticalStockNotifications(filtrados, threshold);
+        let areasRaw = [];
+        if (areasResult.status === 'fulfilled' && areasResult.value) {
+            if (areasResult.value.ok) {
+                try {
+                    const areasPayload = await areasResult.value.json();
+                    if (Array.isArray(areasPayload)) {
+                        areasRaw = areasPayload;
+                    }
+                } catch (error) {
+                    console.warn('No se pudo interpretar la respuesta de áreas.', error);
+                }
+            } else {
+                console.warn(`No se pudieron cargar las áreas (HTTP ${areasResult.value.status}).`);
+            }
+        } else if (areasResult.status === 'rejected') {
+            console.warn('Error de red al obtener áreas.', areasResult.reason);
+        }
 
-        stockAlertList.innerHTML = '';
+        const { alerts: stockAlerts, criticalProducts } = buildStockAlertEntries(productos, threshold);
+        updateCriticalStockNotifications(criticalProducts, threshold);
 
-        if (!filtrados.length) {
-            setListState(stockAlertList, 'Todo el inventario está por encima del límite configurado.', 'fas fa-check-circle', 'card-empty-state');
+        const normalizedAreas = normalizeAreaData(areasRaw);
+        const normalizedZonas = normalizeZoneData(zonasRaw);
+        const capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
+
+        let stockDisplay = stockAlerts.slice(0, 8);
+        let capacityDisplay = [];
+
+        if (capacityAlerts.length) {
+            const availableSlots = Math.max(0, 8 - stockDisplay.length);
+            if (availableSlots > 0) {
+                capacityDisplay = capacityAlerts.slice(0, availableSlots);
+            } else {
+                const capacitySlots = Math.min(capacityAlerts.length, 2);
+                capacityDisplay = capacityAlerts.slice(0, capacitySlots);
+                stockDisplay = stockDisplay.slice(0, Math.max(0, 8 - capacityDisplay.length));
+            }
+        }
+
+        const combinedAlerts = [...stockDisplay, ...capacityDisplay];
+
+        if (!combinedAlerts.length) {
+            setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
             return;
         }
 
-        filtrados.slice(0, 8).forEach(prod => {
-            const li = document.createElement('li');
-            li.className = 'stock-alert-item';
-
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'stock-alert-info';
-
-            const iconDiv = document.createElement('div');
-            iconDiv.className = 'stock-alert-icon';
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-box-open';
-            iconDiv.appendChild(icon);
-
-            const textWrapper = document.createElement('div');
-
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'stock-alert-name';
-            nameDiv.textContent = (prod.nombre || 'Producto sin nombre').trim();
-
-            const detailDiv = document.createElement('div');
-            detailDiv.className = 'stock-alert-detail';
-            const locationParts = [];
-            if (prod.zona_nombre) locationParts.push(prod.zona_nombre);
-            if (prod.area_nombre) locationParts.push(prod.area_nombre);
-            const ubicacion = locationParts.filter(Boolean).join(' · ');
-            detailDiv.textContent = ubicacion || 'Sin ubicación asignada';
-
-            textWrapper.appendChild(nameDiv);
-            textWrapper.appendChild(detailDiv);
-
-            infoDiv.appendChild(iconDiv);
-            infoDiv.appendChild(textWrapper);
-
-            const stockDiv = document.createElement('div');
-            stockDiv.className = 'stock-alert-stock';
-            const stockValue = Number(prod.stock);
-            const unidades = Number.isFinite(stockValue) ? stockValue : 0;
-            stockDiv.textContent = `${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`;
-
-            li.appendChild(infoDiv);
-            li.appendChild(stockDiv);
-
+        stockAlertList.innerHTML = '';
+        combinedAlerts.forEach(alert => {
+            const li = createAlertListItem(alert);
+            if (alert.type && alert.type !== 'stock') {
+                li.dataset.alertType = alert.type;
+            }
             stockAlertList.appendChild(li);
         });
     } catch (error) {
         console.error('Error loading stock alerts:', error);
-        setListState(stockAlertList, 'No se pudo cargar el inventario. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+        setListState(stockAlertList, 'No se pudo cargar la información de alertas. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
     } finally {
         setButtonLoading(stockAlertsRefreshBtn, false);
     }
