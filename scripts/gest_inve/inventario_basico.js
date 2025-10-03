@@ -1351,10 +1351,22 @@ prodForm?.addEventListener('submit', async e => {
       return;
     }
 
-    const area_id = prodArea ? (parseInt(prodArea.value, 10) || null) : null;
+    let area_id = prodArea ? (parseInt(prodArea.value, 10) || null) : null;
     const zona_id = prodZona ? (parseInt(prodZona.value, 10) || null) : null;
 
-    if (!area_id) {
+    const zonaSeleccionada = zona_id
+      ? zonas.find(z => parseInt(z.id, 10) === zona_id) || null
+      : null;
+    const zonaAreaId = zonaSeleccionada
+      ? normalizarAreaId(zonaSeleccionada.area_id)
+      : null;
+    const zonaSinArea = zonaSeleccionada ? zonaAreaId === null : false;
+
+    if (!zonaSinArea && zonaAreaId !== null && area_id === null) {
+      area_id = zonaAreaId;
+    }
+
+    if (!area_id && !zonaSinArea) {
       showToast('Selecciona un área para el producto', 'error');
       return;
     }
