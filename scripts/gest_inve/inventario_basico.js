@@ -1351,13 +1351,26 @@ prodForm?.addEventListener('submit', async e => {
       return;
     }
 
-    const area_id = prodArea ? (parseInt(prodArea.value, 10) || null) : null;
-    const zona_id = prodZona ? (parseInt(prodZona.value, 10) || null) : null;
+    const areaRaw = prodArea?.value ?? '';
+    const zonaRaw = prodZona?.value ?? '';
 
-    if (!area_id) {
-      showToast('Selecciona un área para el producto', 'error');
+    const hasAreaSeleccionada = areaRaw !== '';
+    const hasZonaSeleccionada = zonaRaw !== '';
+
+    if (!hasAreaSeleccionada && !hasZonaSeleccionada) {
+      showToast('Selecciona al menos un área o una zona para el producto', 'error');
       return;
     }
+
+    const areaParsed = hasAreaSeleccionada ? Number.parseInt(areaRaw, 10) : null;
+    const zonaParsed = hasZonaSeleccionada ? Number.parseInt(zonaRaw, 10) : null;
+
+    const area_id = hasAreaSeleccionada
+      ? (Number.isNaN(areaParsed) ? areaRaw : areaParsed)
+      : null;
+    const zona_id = hasZonaSeleccionada
+      ? (Number.isNaN(zonaParsed) ? zonaRaw : zonaParsed)
+      : null;
 
     const data = {
       nombre,
