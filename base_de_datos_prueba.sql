@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 19-09-2025 a las 18:27:25
+-- Tiempo de generación: 03-10-2025 a las 00:05:36
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -46,13 +46,14 @@ CREATE TABLE `areas` (
 --
 
 INSERT INTO `areas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `capacidad_utilizada`, `porcentaje_ocupacion`, `productos_registrados`, `id_empresa`) VALUES
-(21, 'area', 'mi area', 7.00, 2.50, 6.00, 105.00, 0.00, 0.00, 0, 21),
+(21, 'area', 'mi area', 7.00, 2.50, 6.00, 105.00, 1.30, 1.24, 2, 21),
 (22, 'Area 1', 'Es el area 1', 5.00, 2.00, 2.00, 20.00, 0.00, 0.00, 0, 24),
 (23, 'Papeleria', 'ES una papeleria', 5.00, 2.00, 5.00, 50.00, 0.00, 0.00, 0, 23),
 (24, 'El patolicismo', 'Una religion de patos', 99999999.99, 99999999.99, 99999999.99, 9999999999999.99, 0.00, 0.00, 0, 28),
 (25, 'Papeleria', 'Descripcion', 8.00, 2.00, 5.00, 80.00, 0.00, 0.00, 0, 24),
-(26, 'otra area', 'area dos', 20.00, 4.00, 14.00, 1120.00, 0.00, 0.00, 0, 21),
-(28, 'Area1', 'area1', 20.00, 3.00, 30.00, 1800.00, 0.00, 0.00, 0, 30);
+(26, 'otra area', 'area dos', 20.00, 4.00, 14.00, 1120.00, 0.02, 0.00, 1, 21),
+(28, 'Area1', 'area1', 20.00, 3.00, 30.00, 1800.00, 0.00, 0.00, 0, 30),
+(30, 'Papeleria Ely', 'es una papeleria', 5.00, 2.00, 4.00, 40.00, 0.05, 0.13, 1, 24);
 
 -- --------------------------------------------------------
 
@@ -73,11 +74,11 @@ CREATE TABLE `categorias` (
 
 INSERT INTO `categorias` (`id`, `nombre`, `descripcion`, `empresa_id`) VALUES
 (24, 'Categoria 1', '21321321', 23),
-(25, 'categoria', 'categoria', 21),
+(25, 'no', 'categoria equis', 21),
 (27, 'Lapices', 'si', 23),
 (28, 'Casco pastafarista', 'Un colador de espaguetis', 28),
 (31, 'plastico', 'plasticos', 21),
-(32, 'papel', 'papeles', 21),
+(32, 'hoja', 'papeles', 21),
 (33, 'categoria 1', 'cat1', 24),
 (34, 'papeles', 'tipos de papeles', 24);
 
@@ -100,10 +101,10 @@ CREATE TABLE `configuracion_empresa` (
 --
 
 INSERT INTO `configuracion_empresa` (`id_empresa`, `color_sidebar`, `color_topbar`, `orden_sidebar`, `fecha_actualizacion`) VALUES
-(21, '#ff6b6b', '#6c63ff', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-18 20:22:59'),
+(21, '#454b52', '#454b52', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-10-01 15:59:29'),
 (22, '#ff6b6b', '#2b7a78', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"account_suscrip\\/account_suscrip.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\"]', '2025-08-30 02:10:16'),
 (23, '#8e44ad', '#2980b9', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-08-04 13:47:24'),
-(24, '#454b52', '#ffa41b', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-10 16:06:02'),
+(24, '#454b52', '#454b52', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-10-02 19:24:35'),
 (30, '#ffa41b', '#6c63ff', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-03 16:23:06'),
 (31, '#0e9aa7', '#454b52', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-05 00:29:06'),
 (32, '#6c63ff', '#ff66c4', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-09-10 16:12:51');
@@ -130,7 +131,7 @@ CREATE TABLE `empresa` (
 --
 
 INSERT INTO `empresa` (`id_empresa`, `nombre_empresa`, `logo_empresa`, `sector_empresa`, `usuario_creador`, `fecha_registro`, `capacidad_maxima_m3`, `umbral_alerta_capacidad`) VALUES
-(21, 'Discocks', '/images/logos/logo_21_1755907312.png', 'Comercial', 57, '2025-06-26 19:29:13', 0.00, 90.00),
+(21, 'Discocks - CDs y Vinilos', '/images/logos/logo_21_1755907312.png', 'Comercial', 57, '2025-06-26 19:29:13', 0.00, 90.00),
 (22, 'empresa', NULL, 'Industrial', 58, '2025-07-01 01:31:07', 0.00, 90.00),
 (23, 'afwfqf', NULL, 'Industrial', 33, '2025-07-01 01:45:04', 0.00, 90.00),
 (24, 'EL KINI CORP', '/images/logos/logo_24_1757520273.jpeg', 'Industrial', 60, '2025-07-01 01:45:36', 0.00, 90.00),
@@ -141,7 +142,22 @@ INSERT INTO `empresa` (`id_empresa`, `nombre_empresa`, `logo_empresa`, `sector_e
 (29, 'Optistock', NULL, 'Servicios', 97, '2025-08-08 04:18:41', 0.00, 90.00),
 (30, 'KInicorp', '/images/logos/logo_1756916306.jpg', 'Servicios', 101, '2025-09-03 16:18:26', 0.00, 90.00),
 (31, 'Discos de Vinilo y CD', NULL, 'Comercial', 102, '2025-09-05 00:27:10', 0.00, 90.00),
-(32, 'Empresa.exe', NULL, '', 113, '2025-09-10 16:12:08', 0.00, 90.00);
+(32, 'Empresa.exe', NULL, '', 113, '2025-09-10 16:12:08', 0.00, 90.00),
+(33, 'Ely', NULL, 'Comercial', 116, '2025-10-02 19:44:57', 0.00, 90.00);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `historial_busquedas`
+--
+
+CREATE TABLE `historial_busquedas` (
+  `id` int(11) NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `termino` varchar(255) NOT NULL,
+  `fecha_busqueda` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -198,7 +214,80 @@ INSERT INTO `log_control` (`id`, `id_usuario`, `modulo`, `accion`, `fecha`, `hor
 (33, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '20:08:57'),
 (34, 110, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-18', '20:22:59'),
 (35, 110, 'Subcategorías', 'Creación de subcategoría: platos', '2025-09-18', '20:23:46'),
-(36, 110, 'Productos', 'Creación de producto: platos unicel royal prestige (ID 46)', '2025-09-18', '20:24:26');
+(36, 110, 'Productos', 'Creación de producto: platos unicel royal prestige (ID 46)', '2025-09-18', '20:24:26'),
+(37, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-09-20', '19:43:12'),
+(38, 57, 'Productos', 'Creación de producto: producto (ID 47)', '2025-09-20', '20:59:43'),
+(39, 57, 'Subcategorías', 'Eliminación de subcategoría ID: 24', '2025-09-20', '22:31:08'),
+(40, 57, 'Subcategorías', 'Eliminación de subcategoría ID: 31', '2025-09-20', '22:31:13'),
+(41, 57, 'Subcategorías', 'Eliminación de subcategoría ID: 32', '2025-09-20', '22:31:19'),
+(42, 111, 'Usuarios', 'Actualización de usuario: 111', '2025-09-20', '22:38:08'),
+(43, 111, 'Usuarios', 'Actualización de usuario: 111', '2025-09-20', '22:40:01'),
+(44, 111, 'Usuarios', 'Actualización de usuario: 111', '2025-09-20', '22:41:22'),
+(45, 57, 'Usuarios', 'Desactivación de usuario empresa: 110', '2025-09-22', '16:35:13'),
+(46, 57, 'Usuarios', 'Activación de usuario empresa: 110', '2025-09-22', '16:36:31'),
+(47, 57, 'Inventario', 'Egreso manual de 20 unidad(es) del producto 45', '2025-09-22', '22:40:58'),
+(48, 57, 'Inventario', 'Ingreso manual de 3 unidad(es) del producto 47', '2025-09-22', '22:41:10'),
+(49, 57, 'Inventario', 'Egreso manual de 10 unidad(es) del producto 45', '2025-09-22', '23:18:49'),
+(50, 57, 'Inventario', 'Ingreso de 30 unidad(es) del producto 46', '2025-09-23', '00:08:53'),
+(51, 57, 'Inventario', 'Egreso de 60 unidad(es) del producto 46', '2025-09-23', '00:09:02'),
+(52, 60, 'Configuración', 'Actualización de configuración para empresa 24', '2025-09-23', '20:27:11'),
+(53, 60, 'Configuración', 'Actualización de configuración para empresa 24', '2025-09-23', '20:27:16'),
+(54, 60, 'Configuración', 'Actualización de configuración para empresa 24', '2025-09-23', '20:27:24'),
+(55, 60, 'Productos', 'Creación de producto: Objeto de prueba (ID 48)', '2025-09-23', '20:29:20'),
+(56, 60, 'Configuración', 'Actualización de configuración para empresa 24', '2025-09-24', '01:39:00'),
+(57, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 45', '2025-09-25', '17:55:49'),
+(58, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 45', '2025-09-25', '17:56:06'),
+(59, 57, 'Inventario', 'Ingreso de 13 unidad(es) del producto 45', '2025-09-25', '18:13:42'),
+(60, 57, 'Inventario', 'Ingreso de 2 unidad(es) del producto 41', '2025-09-25', '18:17:05'),
+(61, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-09-25', '18:28:42'),
+(62, 57, 'Inventario', 'Egreso de 2 unidad(es) del producto 41', '2025-09-25', '18:29:04'),
+(63, 57, 'Inventario', 'Ingreso de 2 unidad(es) del producto 47', '2025-09-25', '20:06:57'),
+(64, 57, 'Inventario', 'Egreso de 1 unidad(es) del producto 46', '2025-09-25', '20:07:38'),
+(65, 57, 'Categorías', 'Actualización de categoría ID: 25', '2025-09-25', '21:03:14'),
+(66, 57, 'Categorías', 'Actualización de categoría ID: 25', '2025-09-25', '21:03:23'),
+(67, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 46', '2025-09-26', '23:23:51'),
+(68, 57, 'Inventario', 'Ingreso de 2 unidad(es) del producto 46', '2025-09-26', '23:24:02'),
+(69, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-09-27', '00:10:59'),
+(70, 57, 'Inventario', 'Egreso de 3 unidad(es) del producto 46', '2025-09-27', '00:11:21'),
+(71, 57, 'Categorías', 'Actualización de categoría ID: 25', '2025-09-27', '00:24:21'),
+(72, 57, 'Categorías', 'Actualización de categoría ID: 32', '2025-09-27', '00:24:41'),
+(73, 57, 'Inventario', 'Ingreso de 2 unidad(es) del producto 46', '2025-09-28', '05:12:55'),
+(74, 57, 'Usuarios', 'Desactivación de usuario empresa: 110', '2025-09-28', '20:19:44'),
+(75, 57, 'Usuarios', 'Activación de usuario empresa: 110', '2025-09-28', '20:19:48'),
+(76, 57, 'Productos', 'Eliminación de producto ID: 47 y 1 movimiento(s) asociados', '2025-09-28', '21:22:45'),
+(77, 57, 'Inventario', 'Ingreso de 9 unidad(es) del producto 46', '2025-09-28', '23:43:00'),
+(78, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-09-28', '23:43:19'),
+(79, 57, 'Productos', 'Creación de producto: tapas de plastico (ID 49)', '2025-09-29', '00:15:31'),
+(80, 60, 'Inventario', 'Ingreso de 2 unidad(es) del producto 48', '2025-10-01', '02:56:46'),
+(81, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-01', '15:52:32'),
+(82, 57, 'Empresas', 'Actualización de empresa ID: 21', '2025-10-01', '15:53:05'),
+(83, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-01', '15:59:02'),
+(84, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-01', '15:59:29'),
+(85, 115, 'Inventario', 'Egreso de 1 unidad(es) del producto 48', '2025-10-01', '16:13:46'),
+(86, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-10-01', '16:14:31'),
+(87, 57, 'Inventario', 'Egreso de 3 unidad(es) del producto 41', '2025-10-01', '16:24:03'),
+(88, 57, 'Productos', 'Actualización de producto ID: 45', '2025-10-02', '00:34:03'),
+(89, 57, 'Productos', 'Actualización de producto ID: 41', '2025-10-02', '00:34:53'),
+(90, 57, 'Productos', 'Eliminación de producto ID: 49', '2025-10-02', '00:35:05'),
+(91, 57, 'Productos', 'Creación de producto: Perfil Ventana M4 roble (ID 50)', '2025-10-02', '00:36:37'),
+(92, 57, 'Inventario', 'Ingreso de 20 unidad(es) del producto 50', '2025-10-02', '00:38:08'),
+(93, 57, 'Inventario', 'Ingreso de 5 unidad(es) del producto 50', '2025-10-02', '00:38:27'),
+(94, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 50', '2025-10-02', '00:38:49'),
+(95, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 50', '2025-10-02', '00:38:54'),
+(96, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 50', '2025-10-02', '00:53:25'),
+(97, 57, 'Inventario', 'Egreso de 30 unidad(es) del producto 50', '2025-10-02', '17:04:16'),
+(98, 57, 'Inventario', 'Ingreso de 30 unidad(es) del producto 50', '2025-10-02', '17:43:53'),
+(99, 60, 'Configuración', 'Actualización de configuración para empresa 24', '2025-10-02', '19:24:35'),
+(100, 60, 'Subcategorías', 'Creación de subcategoría: china', '2025-10-02', '19:28:19'),
+(101, 60, 'Áreas', 'Creación de área: Papeleria Ely', '2025-10-02', '19:31:30'),
+(102, 60, 'Zonas', 'Creación de zona: vitrina', '2025-10-02', '19:32:51'),
+(103, 60, 'Productos', 'Creación de producto: cyuaderno norma (ID 51)', '2025-10-02', '19:36:18'),
+(104, 116, 'Usuarios', 'Actualización de datos por registro con Google', '2025-10-02', '19:44:11'),
+(105, 116, 'Empresas', 'Registro de empresa: Ely', '2025-10-02', '19:44:57'),
+(106, 117, 'Usuarios', 'Registro de usuario: mario.garciadelacruz@forvia.com', '2025-10-02', '19:46:55'),
+(107, 117, 'Usuarios', 'Reenvío de código de verificación de cuenta', '2025-10-02', '19:47:52'),
+(108, 57, 'Productos', 'Creación de producto: carro (ID 52)', '2025-10-02', '23:47:30'),
+(109, 57, 'Productos', 'Actualización de producto ID: 52', '2025-10-02', '23:49:02');
 
 -- --------------------------------------------------------
 
@@ -215,6 +304,63 @@ CREATE TABLE `movimientos` (
   `id_usuario` int(11) NOT NULL,
   `fecha_movimiento` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `movimientos`
+--
+
+INSERT INTO `movimientos` (`id`, `empresa_id`, `producto_id`, `tipo`, `cantidad`, `id_usuario`, `fecha_movimiento`) VALUES
+(1, 21, 46, 'ingreso', 30, 57, '2025-09-23 00:08:53'),
+(2, 21, 46, 'egreso', 60, 57, '2025-09-23 00:09:02'),
+(3, 21, 45, 'ingreso', 1, 57, '2025-09-25 17:55:49'),
+(4, 21, 45, 'ingreso', 1, 57, '2025-09-25 17:56:06'),
+(5, 21, 45, 'ingreso', 13, 57, '2025-09-25 18:13:42'),
+(6, 21, 41, 'ingreso', 2, 57, '2025-09-25 18:17:05'),
+(7, 21, 41, 'ingreso', 1, 57, '2025-09-25 18:28:42'),
+(8, 21, 41, 'egreso', 2, 57, '2025-09-25 18:29:04'),
+(10, 21, 46, 'egreso', 1, 57, '2025-09-25 20:07:38'),
+(11, 21, 46, 'ingreso', 1, 57, '2025-09-26 23:23:51'),
+(12, 21, 46, 'ingreso', 2, 57, '2025-09-26 23:24:02'),
+(13, 21, 41, 'ingreso', 1, 57, '2025-09-27 00:10:59'),
+(14, 21, 46, 'egreso', 3, 57, '2025-09-27 00:11:21'),
+(15, 21, 46, 'ingreso', 2, 57, '2025-09-28 05:12:55'),
+(16, 21, 46, 'ingreso', 9, 57, '2025-09-28 23:43:00'),
+(17, 21, 41, 'ingreso', 1, 57, '2025-09-28 23:43:19'),
+(18, 24, 48, 'ingreso', 2, 60, '2025-10-01 02:56:46'),
+(19, 24, 48, 'egreso', 1, 115, '2025-10-01 16:13:46'),
+(20, 21, 41, 'ingreso', 1, 57, '2025-10-01 16:14:31'),
+(21, 21, 41, 'egreso', 3, 57, '2025-10-01 16:24:03'),
+(22, 21, 50, 'ingreso', 20, 57, '2025-10-02 00:38:08'),
+(23, 21, 50, 'ingreso', 5, 57, '2025-10-02 00:38:27'),
+(24, 21, 50, 'ingreso', 1, 57, '2025-10-02 00:38:49'),
+(25, 21, 50, 'ingreso', 1, 57, '2025-10-02 00:38:54'),
+(26, 21, 50, 'ingreso', 1, 57, '2025-10-02 00:53:24'),
+(27, 21, 50, 'egreso', 30, 57, '2025-10-02 17:04:16'),
+(28, 21, 50, 'ingreso', 30, 57, '2025-10-02 17:43:53');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `notificaciones`
+--
+
+CREATE TABLE `notificaciones` (
+  `id` int(11) NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `titulo` varchar(150) NOT NULL,
+  `mensaje` text NOT NULL,
+  `tipo_destinatario` enum('General','Rol','Usuario') NOT NULL DEFAULT 'General',
+  `rol_destinatario` enum('Administrador','Supervisor','Almacenista','Mantenimiento','Etiquetador') DEFAULT NULL,
+  `id_usuario_destinatario` int(11) DEFAULT NULL,
+  `id_usuario_creador` int(11) DEFAULT NULL,
+  `ruta_destino` varchar(255) DEFAULT NULL,
+  `estado` enum('Pendiente','Enviada','Leida','Archivada') NOT NULL DEFAULT 'Pendiente',
+  `prioridad` enum('Baja','Media','Alta') NOT NULL DEFAULT 'Media',
+  `fecha_disponible_desde` datetime NOT NULL DEFAULT current_timestamp(),
+  `fecha_expira` datetime DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ;
 
 -- --------------------------------------------------------
 
@@ -271,11 +417,15 @@ CREATE TABLE `productos` (
 INSERT INTO `productos` (`id`, `nombre`, `descripcion`, `categoria_id`, `subcategoria_id`, `stock`, `precio_compra`, `dim_x`, `dim_y`, `dim_z`, `codigo_qr`, `empresa_id`, `zona_id`, `last_movimiento`, `last_tipo`) VALUES
 (36, 'Lapiz Sharpie', 'SI', 27, 27, 10, 10.00, 2, 2, 1, NULL, 23, 18, '2025-08-04 13:46:16', NULL),
 (37, 'Una piedra', '', 28, NULL, 19, 1.30, 0, 0, 0, NULL, 28, 19, '2025-08-04 17:13:27', NULL),
-(41, 'plato unicel', '', 31, 32, 8, 50.00, 0, 0, 0, 'images/qr/41.png', 21, 22, '2025-09-17 19:51:08', NULL),
+(41, 'plato unicel', '', 31, NULL, 9, 50.00, 30, 30, 2, 'images/qr/41.png', 21, 22, '2025-10-02 00:34:53', NULL),
 (43, 'papel a4 marca J', 'Es papel de la marca J de tamaño a4', 34, 36, 990, 400.00, 4, 4, 4, 'images/qr/43.png', 24, 17, '2025-09-03 19:09:02', NULL),
 (44, 'si', 'si', 34, NULL, 0, 100.00, 0, 0, 0, 'images/qr/44.png', 24, 17, '2025-09-10 16:01:47', NULL),
-(45, 'Conos de papel', '', 32, 37, 50, 2.00, 0, 0, 0, 'images/qr/45.png', 21, 16, '2025-09-15 20:14:17', NULL),
-(46, 'platos unicel royal prestige', '', 31, 38, 40, 50.00, 0, 0, 0, 'images/qr/46.png', 21, 20, '2025-09-18 20:24:26', NULL);
+(45, 'Conos de papel', '', 32, 37, 35, 2.00, 8, 11, 8, 'images/qr/45.png', 21, 16, '2025-10-02 00:34:03', NULL),
+(46, 'platos unicel royal prestige', '', 31, 38, 20, 50.00, 0, 0, 0, 'images/qr/46.png', 21, 20, '2025-09-28 23:43:00', NULL),
+(48, 'Objeto de prueba', 'Sisisis', 33, 34, 3, 12.00, 2, 2, 2, 'images/qr/48.png', 24, 17, '2025-10-01 16:13:46', NULL),
+(50, 'Perfil Ventana M4 roble', '', 25, NULL, 36, 300.00, 20, 20, 400, 'images/qr/50.png', 21, 16, '2025-10-02 17:43:53', NULL),
+(51, 'cyuaderno norma', 'cuerno norma tama;o x', 33, 34, 10, 150.00, 30, 30, 5, 'images/qr/51.png', 24, 25, '2025-10-02 19:36:18', NULL),
+(52, 'carro', '', 25, NULL, 2, 300.00, 0, 0, 0, 'images/qr/52.png', 21, NULL, '2025-10-02 23:49:02', NULL);
 
 -- --------------------------------------------------------
 
@@ -534,7 +684,183 @@ INSERT INTO `registro_accesos` (`id`, `id_usuario`, `accion`, `fecha`) VALUES
 (244, 57, 'Inicio', '2025-09-19 02:07:17'),
 (245, 57, 'Inicio', '2025-09-19 02:17:40'),
 (246, 57, 'Inicio', '2025-09-19 02:18:51'),
-(247, 57, 'Inicio', '2025-09-19 16:09:21');
+(247, 57, 'Inicio', '2025-09-19 16:09:21'),
+(248, 57, 'Inicio', '2025-09-19 19:05:59'),
+(249, 57, 'Inicio', '2025-09-20 18:57:03'),
+(250, 57, 'Inicio', '2025-09-20 19:26:36'),
+(251, 57, 'Inicio', '2025-09-20 19:33:16'),
+(252, 57, 'Inicio', '2025-09-20 19:36:32'),
+(253, 57, 'Inicio', '2025-09-20 19:53:17'),
+(254, 57, 'Inicio', '2025-09-20 19:54:39'),
+(255, 57, 'Inicio', '2025-09-20 20:02:42'),
+(256, 57, 'Inicio', '2025-09-20 20:06:35'),
+(257, 57, 'Inicio', '2025-09-20 20:20:19'),
+(258, 57, 'Inicio', '2025-09-20 20:31:58'),
+(259, 57, 'Inicio', '2025-09-20 22:17:47'),
+(260, 57, 'Inicio', '2025-09-20 22:24:13'),
+(261, 57, 'Cierre', '2025-09-20 22:37:44'),
+(262, 111, 'Inicio', '2025-09-20 22:37:52'),
+(263, 111, 'Cierre', '2025-09-20 22:41:35'),
+(264, 57, 'Inicio', '2025-09-20 22:41:38'),
+(265, 57, 'Inicio', '2025-09-20 23:12:39'),
+(266, 57, 'Inicio', '2025-09-20 23:16:26'),
+(267, 57, 'Inicio', '2025-09-20 23:17:22'),
+(268, 57, 'Inicio', '2025-09-20 23:19:43'),
+(269, 57, 'Inicio', '2025-09-22 16:34:58'),
+(270, 57, 'Cierre', '2025-09-22 16:35:16'),
+(271, 57, 'Inicio', '2025-09-22 16:35:34'),
+(272, 57, 'Cierre', '2025-09-22 16:35:41'),
+(273, 110, 'Intento', '2025-09-22 16:35:53'),
+(274, 110, 'Intento', '2025-09-22 16:35:56'),
+(275, 57, 'Inicio', '2025-09-22 16:36:03'),
+(276, 57, 'Cierre', '2025-09-22 16:36:16'),
+(277, 110, 'Intento', '2025-09-22 16:36:21'),
+(278, 57, 'Inicio', '2025-09-22 16:36:26'),
+(279, 57, 'Cierre', '2025-09-22 16:36:33'),
+(280, 110, 'Inicio', '2025-09-22 16:36:38'),
+(281, 110, 'Cierre', '2025-09-22 16:36:59'),
+(282, 57, 'Inicio', '2025-09-22 16:37:02'),
+(283, 57, 'Inicio', '2025-09-22 17:51:01'),
+(284, 57, 'Inicio', '2025-09-22 18:32:56'),
+(285, 57, 'Inicio', '2025-09-22 18:33:06'),
+(286, 57, 'Inicio', '2025-09-22 18:38:48'),
+(287, 57, 'Inicio', '2025-09-22 18:48:21'),
+(288, 57, 'Inicio', '2025-09-22 22:37:20'),
+(289, 57, 'Inicio', '2025-09-22 22:40:33'),
+(290, 57, 'Inicio', '2025-09-22 23:18:12'),
+(291, 57, 'Inicio', '2025-09-22 23:23:22'),
+(292, 57, 'Inicio', '2025-09-22 23:24:46'),
+(293, 57, 'Inicio', '2025-09-22 23:35:56'),
+(294, 57, 'Inicio', '2025-09-22 23:53:02'),
+(295, 57, 'Inicio', '2025-09-23 00:00:02'),
+(296, 57, 'Inicio', '2025-09-23 00:07:57'),
+(297, 57, 'Inicio', '2025-09-23 01:13:13'),
+(298, 57, 'Inicio', '2025-09-23 01:23:28'),
+(299, 57, 'Inicio', '2025-09-23 01:49:12'),
+(300, 57, 'Inicio', '2025-09-23 02:06:04'),
+(301, 57, 'Inicio', '2025-09-23 02:06:04'),
+(302, 57, 'Inicio', '2025-09-23 02:26:08'),
+(303, 57, 'Inicio', '2025-09-23 02:59:05'),
+(304, 57, 'Inicio', '2025-09-23 02:59:27'),
+(305, 57, 'Inicio', '2025-09-23 03:04:23'),
+(306, 57, 'Inicio', '2025-09-23 04:19:32'),
+(307, 57, 'Inicio', '2025-09-23 18:43:13'),
+(308, 60, 'Inicio', '2025-09-23 20:23:06'),
+(309, 60, 'Inicio', '2025-09-24 01:37:52'),
+(310, 60, 'Inicio', '2025-09-24 01:38:06'),
+(311, 57, 'Inicio', '2025-09-25 02:36:55'),
+(312, 57, 'Inicio', '2025-09-25 17:23:24'),
+(313, 57, 'Inicio', '2025-09-25 17:31:47'),
+(314, 57, 'Inicio', '2025-09-25 17:35:15'),
+(315, 57, 'Inicio', '2025-09-25 17:40:30'),
+(316, 57, 'Inicio', '2025-09-25 17:41:51'),
+(317, 57, 'Inicio', '2025-09-25 17:55:17'),
+(318, 57, 'Inicio', '2025-09-25 17:55:26'),
+(319, 57, 'Inicio', '2025-09-25 18:12:53'),
+(320, 57, 'Inicio', '2025-09-25 18:12:56'),
+(321, 57, 'Inicio', '2025-09-25 18:28:02'),
+(322, 57, 'Inicio', '2025-09-25 18:28:16'),
+(323, 57, 'Inicio', '2025-09-25 19:01:39'),
+(324, 57, 'Inicio', '2025-09-25 19:29:39'),
+(325, 57, 'Inicio', '2025-09-25 19:29:43'),
+(326, 57, 'Inicio', '2025-09-25 20:05:38'),
+(327, 57, 'Inicio', '2025-09-25 20:06:30'),
+(328, 57, 'Inicio', '2025-09-25 20:13:49'),
+(329, 57, 'Inicio', '2025-09-25 20:53:00'),
+(330, 57, 'Inicio', '2025-09-25 20:54:50'),
+(331, 57, 'Inicio', '2025-09-25 21:13:07'),
+(332, 57, 'Inicio', '2025-09-25 21:22:30'),
+(333, 58, 'Inicio', '2025-09-25 21:25:24'),
+(334, 58, 'Cierre', '2025-09-25 21:26:59'),
+(335, 57, 'Inicio', '2025-09-25 21:27:02'),
+(336, 57, 'Inicio', '2025-09-25 21:27:24'),
+(337, 57, 'Inicio', '2025-09-25 22:01:51'),
+(338, 57, 'Inicio', '2025-09-25 22:12:52'),
+(339, 57, 'Cierre', '2025-09-25 22:25:52'),
+(340, 57, 'Inicio', '2025-09-25 22:26:19'),
+(341, 57, 'Inicio', '2025-09-25 22:28:34'),
+(342, 57, 'Inicio', '2025-09-25 23:22:01'),
+(343, 57, 'Inicio', '2025-09-25 23:57:56'),
+(344, 57, 'Inicio', '2025-09-26 23:20:29'),
+(345, 57, 'Inicio', '2025-09-26 23:56:10'),
+(346, 57, 'Inicio', '2025-09-27 00:10:42'),
+(347, 57, 'Inicio', '2025-09-27 00:15:15'),
+(348, 57, 'Inicio', '2025-09-27 00:23:46'),
+(349, 57, 'Inicio', '2025-09-28 05:11:43'),
+(350, 57, 'Inicio', '2025-09-28 19:22:39'),
+(351, 57, 'Inicio', '2025-09-28 19:25:11'),
+(352, 57, 'Inicio', '2025-09-28 19:37:16'),
+(353, 57, 'Cierre', '2025-09-28 19:38:49'),
+(354, 111, 'Inicio', '2025-09-28 19:39:00'),
+(355, 57, 'Inicio', '2025-09-28 19:41:19'),
+(356, 57, 'Inicio', '2025-09-28 19:54:26'),
+(357, 57, 'Cierre', '2025-09-28 19:54:56'),
+(358, 110, 'Inicio', '2025-09-28 19:55:31'),
+(359, 110, 'Cierre', '2025-09-28 19:57:01'),
+(360, 111, 'Inicio', '2025-09-28 19:57:10'),
+(361, 111, 'Cierre', '2025-09-28 19:57:59'),
+(362, 110, 'Inicio', '2025-09-28 19:58:08'),
+(363, 110, 'Cierre', '2025-09-28 19:58:52'),
+(364, 57, 'Inicio', '2025-09-28 19:58:57'),
+(365, 57, 'Inicio', '2025-09-28 20:02:11'),
+(366, 57, 'Inicio', '2025-09-28 20:17:36'),
+(367, 57, 'Inicio', '2025-09-28 21:22:34'),
+(368, 58, 'Inicio', '2025-09-28 21:46:04'),
+(369, 58, 'Cierre', '2025-09-28 21:47:11'),
+(370, 57, 'Inicio', '2025-09-28 22:09:32'),
+(371, 57, 'Inicio', '2025-09-28 22:29:50'),
+(372, 57, 'Inicio', '2025-09-28 23:25:47'),
+(373, 57, 'Inicio', '2025-09-28 23:37:49'),
+(374, 57, 'Inicio', '2025-09-29 00:12:02'),
+(375, 57, 'Inicio', '2025-09-29 00:12:27'),
+(376, 57, 'Inicio', '2025-09-29 00:13:45'),
+(377, 57, 'Inicio', '2025-09-29 00:27:22'),
+(378, 57, 'Inicio', '2025-09-29 00:29:19'),
+(379, 57, 'Inicio', '2025-09-29 02:03:59'),
+(380, 57, 'Cierre', '2025-09-29 02:04:21'),
+(381, 57, 'Inicio', '2025-10-01 00:47:47'),
+(382, 57, 'Inicio', '2025-10-01 01:06:47'),
+(383, 57, 'Inicio', '2025-10-01 01:16:47'),
+(384, 60, 'Inicio', '2025-10-01 02:50:20'),
+(385, 60, 'Cierre', '2025-10-01 02:50:30'),
+(386, 115, 'Inicio', '2025-10-01 02:50:41'),
+(387, 60, 'Inicio', '2025-10-01 02:56:17'),
+(388, 57, 'Inicio', '2025-10-01 15:42:27'),
+(389, 57, 'Inicio', '2025-10-01 15:48:08'),
+(390, 57, 'Inicio', '2025-10-01 15:50:00'),
+(391, 57, 'Inicio', '2025-10-01 15:53:43'),
+(392, 57, 'Inicio', '2025-10-01 16:04:51'),
+(393, 60, 'Inicio', '2025-10-01 16:08:37'),
+(394, 60, 'Cierre', '2025-10-01 16:08:41'),
+(395, 115, 'Intento', '2025-10-01 16:09:30'),
+(396, 115, 'Inicio', '2025-10-01 16:09:47'),
+(397, 110, 'Intento', '2025-10-01 16:17:05'),
+(398, 110, 'Inicio', '2025-10-01 16:17:10'),
+(399, 110, 'Cierre', '2025-10-01 16:18:47'),
+(400, 57, 'Inicio', '2025-10-01 22:30:52'),
+(401, 57, 'Inicio', '2025-10-02 00:19:15'),
+(402, 57, 'Inicio', '2025-10-02 00:21:43'),
+(403, 57, 'Inicio', '2025-10-02 00:27:46'),
+(404, 57, 'Inicio', '2025-10-02 00:33:26'),
+(405, 57, 'Inicio', '2025-10-02 00:42:21'),
+(406, 57, 'Inicio', '2025-10-02 00:52:48'),
+(407, 57, 'Inicio', '2025-10-02 16:47:59'),
+(408, 57, 'Inicio', '2025-10-02 17:00:17'),
+(409, 57, 'Inicio', '2025-10-02 17:03:11'),
+(410, 57, 'Inicio', '2025-10-02 17:43:27'),
+(411, 60, 'Intento', '2025-10-02 19:22:20'),
+(412, 60, 'Intento', '2025-10-02 19:22:27'),
+(413, 60, 'Intento', '2025-10-02 19:22:36'),
+(414, 60, 'Intento', '2025-10-02 19:22:43'),
+(415, 60, 'Intento', '2025-10-02 19:22:49'),
+(416, 33, 'Intento', '2025-10-02 19:23:01'),
+(417, 33, 'Intento', '2025-10-02 19:23:03'),
+(418, 33, 'Intento', '2025-10-02 19:23:05'),
+(419, 33, 'Intento', '2025-10-02 19:23:09'),
+(420, 60, 'Inicio', '2025-10-02 19:23:42'),
+(421, 116, 'Inicio', '2025-10-02 19:43:43'),
+(422, 57, 'Inicio', '2025-10-02 23:02:03'),
+(423, 57, 'Inicio', '2025-10-02 23:24:09');
 
 -- --------------------------------------------------------
 
@@ -556,17 +882,15 @@ CREATE TABLE `subcategorias` (
 
 INSERT INTO `subcategorias` (`id`, `categoria_id`, `nombre`, `descripcion`, `empresa_id`) VALUES
 (23, 24, 'sadeadada', 'werf23wffsef', 23),
-(24, 25, 'subcategoria', 'subcategoria', 21),
 (27, 27, 'Puntillas', 'Lapices de puntillas', 23),
 (28, 28, 'Madera de cedro verde', '', 28),
-(31, 31, 'botellas', '', 21),
-(32, 31, 'vasos', '', 21),
 (33, 31, 'tapas', '', 21),
 (34, 33, 'sub1', 'cositas', 24),
 (35, 34, 'papel a4', 'tamaño a4', 24),
 (36, 34, 'papel a4', 'tamaño a4', 24),
 (37, 32, 'conos', '', 21),
-(38, 31, 'platos', '', 21);
+(38, 31, 'platos', '', 21),
+(39, 34, 'china', 'Exclusivo para papeles china', 24);
 
 -- --------------------------------------------------------
 
@@ -589,6 +913,7 @@ CREATE TABLE `usuario` (
   `intentos_fallidos` int(11) DEFAULT 0,
   `ultimo_intento` datetime DEFAULT NULL,
   `foto_perfil` varchar(255) DEFAULT 'images/profile.jpg',
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
   `tutorial_visto` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -596,36 +921,52 @@ CREATE TABLE `usuario` (
 -- Volcado de datos para la tabla `usuario`
 --
 
-INSERT INTO `usuario` (`id_usuario`, `nombre`, `apellido`, `fecha_nacimiento`, `telefono`, `correo`, `contrasena`, `rol`, `fecha_registro`, `verificacion_cuenta`, `suscripcion`, `intentos_fallidos`, `ultimo_intento`, `foto_perfil`) VALUES
-(33, 'Ivan Eduardo', 'Garcia Verduzco', '2005-05-15', '3315634572', 'ivangmgm1290@gmail.com', '31bbc4cb70043dcb8cca35cb837832c419a4caa6', 'Administrador', '2025-04-07 14:32:50', 1, 0, 6, '2025-09-17 18:13:12', 'images/profile.jpg'),
-(56, 'kay', 'ro', '2025-12-22', '123456', 'a21100285@ceti.mx', '64b6c7a5060af5e67425be0ca23b3a9df4524d5e', 'Administrador', '2025-04-08 13:46:31', 1, 0, 0, NULL, 'images/profile.jpg'),
-(57, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'a21100316@ceti.mx', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-17 02:28:49', 1, 0, 0, NULL, 'images/profiles/perfil_57_1755646866.jpeg'),
-(58, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'tareasdeemi@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-18 05:39:32', 1, 0, 0, NULL, 'images/profiles/perfil_58_1756914842.jpg'),
-(59, 'Esteban Israel', 'Caballero Velázquez', '2006-08-03', '3323859470', 'a21300617@ceti.mx', '851f50aaf59b40156423094ad134cbd4272f399a', 'Administrador', '2025-05-21 12:53:38', 1, 0, 0, NULL, 'images/profile.jpg'),
-(60, 'Ivan Eduardo ', 'Garcia Verduzco', '2005-06-15', '3315634573', 'ie.garcia.ve@gmail.com', 'ba46035ced600481626596823e153ceb433fd886', 'Administrador', '2025-06-23 02:23:08', 1, 0, 0, NULL, 'images/profiles/perfil_60_1755183384.jpg'),
-(61, 'kini', 'a', '2000-03-12', '331342411', '1234567U@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Administrador', '2025-06-24 14:02:28', 0, 0, 0, NULL, 'images/profile.jpg'),
-(62, 'kini', 'a', '2000-03-12', '331342411', 'grasomister642@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Administrador', '2025-06-24 14:03:43', 1, 0, 0, NULL, 'images/profile.jpg'),
-(75, 'el pepe', 'Ete sech', '2004-04-12', '1234567890', 'elpepeetesech@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-07-01 01:32:25', 1, 0, 0, NULL, 'images/profile.jpg'),
-(80, 'juan', 'garcia', '2005-06-15', '3351431241242', 'juangarcia@gmail.com', 'ed44bb6085905e93ed20c701fb11a6d58a6c82f0', 'Almacenista', '2025-07-01 14:11:40', 1, 0, 0, NULL, 'images/profile.jpg'),
-(81, 'emiliano', 'perez', '1999-09-12', '1414213412', 'emiliano123@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Almacenista', '2025-07-01 14:12:31', 1, 0, 0, NULL, 'images/profile.jpg'),
-(83, 'jose', 'vasconcelos', '2005-09-15', '331241412', 'imchatgpt5@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Etiquetador', '2025-07-01 14:25:58', 1, 0, 4, '2025-07-01 14:31:25', 'images/profile.jpg'),
-(85, 'elber', 'gadura', '2001-01-10', '6731350698', 'elbergalarza313@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-07-05 19:00:25', 1, 0, 0, NULL, 'images/profile.jpg'),
-(91, 'Papu', 'Josh', '2005-08-07', '3326995066', 'a25110130@ceti.mx', 'a56694c6940386029bc5c36f63f8d64bbe018e90', 'Etiquetador', '2025-08-01 18:41:04', 1, 0, 0, NULL, 'images/profile.jpg'),
-(92, 'Uusario 1', 'user', '2005-06-15', '3315634512', 'correoprueba@gmail.com', '41137b4535ac2e5d1b81a9f6a1eca42ddce92916', 'Supervisor', '2025-08-01 23:26:30', 1, 0, 0, NULL, 'images/profile.jpg'),
-(93, 'Erick', 'Olguín', '2005-08-05', '3322201713', 'a19300083@ceti.mx', '6241388bba3e129f606bd7e9baeb8c4f76494272', 'Etiquetador', '2025-08-04 17:00:37', 1, 0, 0, NULL, 'images/profile.jpg'),
-(96, 'Erick', 'Olguín', '2025-08-04', '3322201713', 'erizo.gamer.781@gmail.com', '1094724d221af7856d7ccee086f1f463885ad572', 'Etiquetador', '2025-08-04 17:03:39', 1, 0, 0, NULL, 'images/profile.jpg'),
-(97, 'Vamos', 'Apasar', '2002-08-07', '12345678', 'optistockproject@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-08-08 04:17:00', 1, 0, 0, NULL, 'images/profile.jpg'),
-(101, 'Ivan Eduardo', 'Garcia Verduzcoo', '2000-01-02', '3315634573', 'juanitoalcachofaro@gmail.com', 'e591c90145d5a1451f8a270e491f5cc1cb6eb43e', 'Administrador', '2025-09-03 16:17:21', 1, 0, 0, NULL, 'images/profile.jpg'),
-(102, 'Menga', 'Nito', '2005-03-30', '6731350698', 'disksvinylcdymas@gmail.com', '62d027e4de8205d9da29815b99ea7172e1b42301', 'Administrador', '2025-09-05 00:25:47', 1, 0, 0, NULL, 'images/profile.jpg'),
-(104, 'Samuel', 'Etoo', '1996-07-19', '3325278895', 'samuelito@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Almacenista', '2025-09-05 00:32:26', 1, 0, 0, NULL, 'images/almacenista.jpg'),
-(105, 'Lionel Andres', 'Messi Cuccittini', '1988-04-02', '928749681', 'lionel.messi@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-09-05 00:33:49', 1, 0, 0, NULL, 'images/etiquetador.jpg'),
-(106, 'Cristiano', 'Ronaldo', '1978-11-05', '77642969', 'cr7@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Supervisor', '2025-09-05 00:35:47', 1, 0, 0, NULL, 'images/supervisor.jpg'),
-(107, 'Lamine', 'Tamal', '1994-11-12', '1234567890', 'laminetamal@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Mantenimiento', '2025-09-05 00:36:36', 1, 0, 0, NULL, 'images/mantenimiento.jpg'),
-(110, 'Carmen Alicia', 'Flores Inzunza', '2004-03-03', '3321099971', 'carmen.alicia@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Mantenimiento', '2025-09-09 00:14:22', 1, 0, 0, NULL, 'images/mantenimiento.jpg'),
-(111, 'hector', 'sanchez lung', '1997-12-21', '12345678', 'hector.lung@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Almacenista', '2025-09-09 01:54:52', 1, 0, 0, NULL, 'images/almacenista.jpg'),
-(112, 'juanito', 'garcia', '2000-01-04', '3399988221', 'vipoca7841@certve.com', '3414039fe8ebbb0bc6db4ff54d0ca57016732635', 'Almacenista', '2025-09-10 15:55:38', 1, 0, 0, NULL, 'images/supervisor.jpg'),
-(113, 'Fulanito', 'Menganito', '2005-03-30', '3321099971', 'lumminary2@gmail.com', 'ae53da110e755b430ee6285a1ad0b41138b956d0', 'Administrador', '2025-09-10 16:08:45', 1, 0, 0, NULL, 'images/profile.jpg'),
-(114, 'OSAMA', 'HOSNI TOUIL TOUIL', '1975-05-26', '679121427', 'osamahosni1975@gmail.com', '135731ba3cd4a9cbe32b530e7c192c69965ba448', 'Administrador', '2025-09-16 17:12:04', 1, 0, 0, NULL, 'images/profile.jpg');
+INSERT INTO `usuario` (`id_usuario`, `nombre`, `apellido`, `fecha_nacimiento`, `telefono`, `correo`, `contrasena`, `rol`, `fecha_registro`, `verificacion_cuenta`, `suscripcion`, `intentos_fallidos`, `ultimo_intento`, `foto_perfil`, `activo`, `tutorial_visto`) VALUES
+(33, 'Ivan Eduardo', 'Garcia Verduzco', '2005-05-15', '3315634572', 'ivangmgm1290@gmail.com', '31bbc4cb70043dcb8cca35cb837832c419a4caa6', 'Administrador', '2025-04-07 14:32:50', 1, 0, 7, '2025-10-02 19:23:01', 'images/profile.jpg', 1, 0),
+(56, 'kay', 'ro', '2025-12-22', '123456', 'a21100285@ceti.mx', '64b6c7a5060af5e67425be0ca23b3a9df4524d5e', 'Administrador', '2025-04-08 13:46:31', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(57, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'a21100316@ceti.mx', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-17 02:28:49', 1, 0, 0, NULL, 'images/profiles/perfil_57_1755646866.jpeg', 1, 1),
+(58, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'tareasdeemi@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-18 05:39:32', 1, 0, 0, NULL, 'images/profiles/perfil_58_1756914842.jpg', 1, 1),
+(59, 'Esteban Israel', 'Caballero Velázquez', '2006-08-03', '3323859470', 'a21300617@ceti.mx', '851f50aaf59b40156423094ad134cbd4272f399a', 'Administrador', '2025-05-21 12:53:38', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(60, 'Ivan Eduardo ', 'Garcia Verduzco', '2005-06-15', '3315634573', 'ie.garcia.ve@gmail.com', 'ba46035ced600481626596823e153ceb433fd886', 'Administrador', '2025-06-23 02:23:08', 1, 0, 4, '2025-10-02 19:22:43', 'images/profiles/perfil_60_1755183384.jpg', 1, 1),
+(61, 'kini', 'a', '2000-03-12', '331342411', '1234567U@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Administrador', '2025-06-24 14:02:28', 0, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(62, 'kini', 'a', '2000-03-12', '331342411', 'grasomister642@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Administrador', '2025-06-24 14:03:43', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(75, 'el pepe', 'Ete sech', '2004-04-12', '1234567890', 'elpepeetesech@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-07-01 01:32:25', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(80, 'juan', 'garcia', '2005-06-15', '3351431241242', 'juangarcia@gmail.com', 'ed44bb6085905e93ed20c701fb11a6d58a6c82f0', 'Almacenista', '2025-07-01 14:11:40', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(81, 'emiliano', 'perez', '1999-09-12', '1414213412', 'emiliano123@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Almacenista', '2025-07-01 14:12:31', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(83, 'jose', 'vasconcelos', '2005-09-15', '331241412', 'imchatgpt5@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Etiquetador', '2025-07-01 14:25:58', 1, 0, 4, '2025-07-01 14:31:25', 'images/profile.jpg', 1, 0),
+(85, 'elber', 'gadura', '2001-01-10', '6731350698', 'elbergalarza313@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-07-05 19:00:25', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(91, 'Papu', 'Josh', '2005-08-07', '3326995066', 'a25110130@ceti.mx', 'a56694c6940386029bc5c36f63f8d64bbe018e90', 'Etiquetador', '2025-08-01 18:41:04', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(92, 'Uusario 1', 'user', '2005-06-15', '3315634512', 'correoprueba@gmail.com', '41137b4535ac2e5d1b81a9f6a1eca42ddce92916', 'Supervisor', '2025-08-01 23:26:30', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(93, 'Erick', 'Olguín', '2005-08-05', '3322201713', 'a19300083@ceti.mx', '6241388bba3e129f606bd7e9baeb8c4f76494272', 'Etiquetador', '2025-08-04 17:00:37', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(96, 'Erick', 'Olguín', '2025-08-04', '3322201713', 'erizo.gamer.781@gmail.com', '1094724d221af7856d7ccee086f1f463885ad572', 'Etiquetador', '2025-08-04 17:03:39', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(97, 'Vamos', 'Apasar', '2002-08-07', '12345678', 'optistockproject@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-08-08 04:17:00', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(101, 'Ivan Eduardo', 'Garcia Verduzcoo', '2000-01-02', '3315634573', 'juanitoalcachofaro@gmail.com', 'e591c90145d5a1451f8a270e491f5cc1cb6eb43e', 'Administrador', '2025-09-03 16:17:21', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(102, 'Menga', 'Nito', '2005-03-30', '6731350698', 'disksvinylcdymas@gmail.com', '62d027e4de8205d9da29815b99ea7172e1b42301', 'Administrador', '2025-09-05 00:25:47', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(104, 'Samuel', 'Etoo', '1996-07-19', '3325278895', 'samuelito@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Almacenista', '2025-09-05 00:32:26', 1, 0, 0, NULL, 'images/almacenista.jpg', 1, 0),
+(105, 'Lionel Andres', 'Messi Cuccittini', '1988-04-02', '928749681', 'lionel.messi@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-09-05 00:33:49', 1, 0, 0, NULL, 'images/etiquetador.jpg', 1, 0),
+(106, 'Cristiano', 'Ronaldo', '1978-11-05', '77642969', 'cr7@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Supervisor', '2025-09-05 00:35:47', 1, 0, 0, NULL, 'images/supervisor.jpg', 1, 0),
+(107, 'Lamine', 'Tamal', '1994-11-12', '1234567890', 'laminetamal@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Mantenimiento', '2025-09-05 00:36:36', 1, 0, 0, NULL, 'images/mantenimiento.jpg', 1, 0),
+(110, 'Carmen Alicia', 'Flores Inzunza', '2004-03-03', '3321099971', 'carmen.alicia@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Mantenimiento', '2025-09-09 00:14:22', 1, 0, 0, NULL, 'images/mantenimiento.jpg', 1, 1),
+(111, 'Hector', 'Sanchez Lung', '1997-12-21', '987654321', 'hector.lung@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Almacenista', '2025-09-09 01:54:52', 1, 0, 0, NULL, 'images/almacenista.jpg', 1, 1),
+(112, 'juanito', 'garcia', '2000-01-04', '3399988221', 'vipoca7841@certve.com', '3414039fe8ebbb0bc6db4ff54d0ca57016732635', 'Almacenista', '2025-09-10 15:55:38', 1, 0, 0, NULL, 'images/supervisor.jpg', 1, 0),
+(113, 'Fulanito', 'Menganito', '2005-03-30', '3321099971', 'lumminary2@gmail.com', 'ae53da110e755b430ee6285a1ad0b41138b956d0', 'Administrador', '2025-09-10 16:08:45', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(114, 'OSAMA', 'HOSNI TOUIL TOUIL', '1975-05-26', '679121427', 'osamahosni1975@gmail.com', '135731ba3cd4a9cbe32b530e7c192c69965ba448', 'Administrador', '2025-09-16 17:12:04', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(115, 'rocha', 'alejandro', '2000-05-05', '99999999999999', 'rochamagico.90@gmail.com', '3414039fe8ebbb0bc6db4ff54d0ca57016732635', 'Almacenista', '2025-10-01 02:47:58', 1, 0, 0, NULL, 'images/almacenista.jpg', 1, 1),
+(116, 'Mariana Yatzil ', 'García Verduzco ', '2008-05-11', '33-11006257', 'mariyatgar@gmail.com', '1d732453f23aae921d779a393c1bbfa34facbeb4', 'Administrador', '2025-10-02 19:43:43', 1, 0, 0, NULL, 'images/profile.jpg', 1, 1),
+(117, 'Mario', 'Garcia', '2025-01-01', '3329658948', 'mario.garciadelacruz@forvia.com', '151bb728245d7f2877ea67505dabb1df033fd54c', 'Administrador', '2025-10-02 19:46:54', 0, 0, 0, NULL, 'images/profile.jpg', 1, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usuario_area_zona`
+--
+
+CREATE TABLE `usuario_area_zona` (
+  `id_usuario` int(11) NOT NULL,
+  `id_area` int(11) NOT NULL,
+  `id_zona` int(11) DEFAULT NULL,
+  `fecha_asignacion` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -648,6 +989,7 @@ INSERT INTO `usuario_empresa` (`id_usuario`, `id_empresa`) VALUES
 (75, 22),
 (92, 23),
 (112, 24),
+(115, 24),
 (80, 25),
 (81, 25),
 (104, 31),
@@ -683,67 +1025,16 @@ CREATE TABLE `zonas` (
 --
 
 INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `capacidad_utilizada`, `porcentaje_ocupacion`, `productos_registrados`, `tipo_almacenamiento`, `subniveles`, `area_id`, `id_empresa`) VALUES
-(16, 'zona', 'mi zona', 3.00, 2.00, 1.00, 6.00, 0.00, 0.00, 0, 'rack', '[]', 21, 21),
+(16, 'zona', 'mi zona', 3.00, 2.00, 1.00, 6.00, 1.30, 21.74, 2, 'rack', '[]', 21, 21),
 (17, 'Zona 1', 'es la zona 1', 2.00, 2.00, 2.00, 8.00, 0.00, 0.00, 0, 'gabinete', '[]', 22, 24),
 (18, 'Mostrador', 'SI', 2.00, 1.00, 2.00, 4.00, 0.00, 0.00, 0, 'vitrina', '[]', 23, 23),
 (19, 'Iglesia Patólica', 'Una iglesia a nuestro señor y salvador emplumado', 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0, 'jaula', '[]', 24, 28),
 (20, 'rack A', 'rack para cosas pesadas', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
 (21, 'rack B', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
-(22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
+(22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.02, 0.07, 1, 'rack', '[]', 26, 21),
 (23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 0.00, 0.00, 0, 'cajón', '[]', 28, 30),
-(24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 0.00, 0.00, 0, 'jaula', '[]', NULL, 21);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `usuario_area_zona`
---
-
-CREATE TABLE `usuario_area_zona` (
-  `id` int(11) NOT NULL,
-  `id_usuario` int(11) NOT NULL,
-  `id_area` int(11) NOT NULL,
-  `id_zona` int(11) DEFAULT NULL,
-  `fecha_asignacion` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `notificaciones`
---
-
-CREATE TABLE `notificaciones` (
-  `id` int(11) NOT NULL,
-  `id_empresa` int(11) NOT NULL,
-  `titulo` varchar(150) NOT NULL,
-  `mensaje` text NOT NULL,
-  `tipo_destinatario` enum('General','Rol','Usuario') NOT NULL DEFAULT 'General',
-  `rol_destinatario` enum('Administrador','Supervisor','Almacenista','Mantenimiento','Etiquetador') DEFAULT NULL,
-  `id_usuario_destinatario` int(11) DEFAULT NULL,
-  `id_usuario_creador` int(11) DEFAULT NULL,
-  `ruta_destino` varchar(255) DEFAULT NULL,
-  `estado` enum('Pendiente','Enviada','Leida','Archivada') NOT NULL DEFAULT 'Pendiente',
-  `prioridad` enum('Baja','Media','Alta') NOT NULL DEFAULT 'Media',
-  `fecha_disponible_desde` datetime NOT NULL DEFAULT current_timestamp(),
-  `fecha_expira` datetime DEFAULT NULL,
-  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
-  `actualizado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  CHECK (
-    (`tipo_destinatario` = 'General' AND `rol_destinatario` IS NULL AND `id_usuario_destinatario` IS NULL)
-    OR (`tipo_destinatario` = 'Rol' AND `rol_destinatario` IS NOT NULL AND `id_usuario_destinatario` IS NULL)
-    OR (`tipo_destinatario` = 'Usuario' AND `id_usuario_destinatario` IS NOT NULL)
-  )
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `notificaciones`
---
-
-INSERT INTO `notificaciones` (`id`, `id_empresa`, `titulo`, `mensaje`, `tipo_destinatario`, `rol_destinatario`, `id_usuario_destinatario`, `id_usuario_creador`, `ruta_destino`, `estado`, `prioridad`, `fecha_disponible_desde`, `fecha_expira`, `creado_en`, `actualizado_en`) VALUES
-(1, 21, 'Inventario crítico', 'Se detectó inventario bajo en varios productos. Revisa el módulo de inventario para tomar acciones.', 'Rol', 'Supervisor', NULL, 57, 'gest_inve/inventario_basico.html', 'Pendiente', 'Alta', '2025-09-18 16:00:00', NULL, '2025-09-18 16:00:00', '2025-09-18 16:00:00'),
-(2, 21, 'Nuevo acceso al almacén', 'Se registró un nuevo ingreso al sistema por parte del usuario asignado.', 'Usuario', NULL, 110, 57, 'control_log/log.html', 'Pendiente', 'Media', '2025-09-18 17:15:00', NULL, '2025-09-18 17:15:00', '2025-09-18 17:15:00'),
-(3, 24, 'Mantenimiento programado', 'Habrá una ventana de mantenimiento del sistema este fin de semana. Es posible que algunas funciones no estén disponibles temporalmente.', 'General', NULL, NULL, 60, 'inicio', 'Enviada', 'Media', '2025-09-19 10:00:00', '2025-09-21 06:00:00', '2025-09-19 10:00:00', '2025-09-19 10:30:00');
+(24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 0.00, 0.00, 0, 'jaula', '[]', NULL, 21),
+(25, 'vitrina', 'vitrina central', 1.00, 1.00, 1.50, 1.50, 0.05, 3.00, 1, 'vitrina', '[]', 30, 24);
 
 --
 -- Índices para tablas volcadas
@@ -774,6 +1065,14 @@ ALTER TABLE `configuracion_empresa`
 ALTER TABLE `empresa`
   ADD PRIMARY KEY (`id_empresa`),
   ADD KEY `usuario_creador` (`usuario_creador`);
+
+--
+-- Indices de la tabla `historial_busquedas`
+--
+ALTER TABLE `historial_busquedas`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_historial_empresa_fecha` (`id_empresa`,`fecha_busqueda`),
+  ADD KEY `fk_historial_busquedas_usuario` (`id_usuario`);
 
 --
 -- Indices de la tabla `log_control`
@@ -840,20 +1139,19 @@ ALTER TABLE `usuario`
   ADD UNIQUE KEY `correo` (`correo`);
 
 --
+-- Indices de la tabla `usuario_area_zona`
+--
+ALTER TABLE `usuario_area_zona`
+  ADD KEY `fk_uaz_usuario` (`id_usuario`),
+  ADD KEY `fk_uaz_area` (`id_area`),
+  ADD KEY `fk_uaz_zona` (`id_zona`);
+
+--
 -- Indices de la tabla `usuario_empresa`
 --
 ALTER TABLE `usuario_empresa`
   ADD PRIMARY KEY (`id_usuario`,`id_empresa`),
   ADD KEY `id_empresa` (`id_empresa`);
-
---
--- Indices de la tabla `usuario_area_zona`
---
-ALTER TABLE `usuario_area_zona`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uniq_usuario_area_zona` (`id_usuario`,`id_area`,`id_zona`),
-  ADD KEY `idx_uaz_area` (`id_area`),
-  ADD KEY `idx_uaz_zona` (`id_zona`);
 
 --
 -- Indices de la tabla `zonas`
@@ -870,7 +1168,7 @@ ALTER TABLE `zonas`
 -- AUTO_INCREMENT de la tabla `areas`
 --
 ALTER TABLE `areas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT de la tabla `categorias`
@@ -882,25 +1180,31 @@ ALTER TABLE `categorias`
 -- AUTO_INCREMENT de la tabla `empresa`
 --
 ALTER TABLE `empresa`
-  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+
+--
+-- AUTO_INCREMENT de la tabla `historial_busquedas`
+--
+ALTER TABLE `historial_busquedas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `log_control`
 --
 ALTER TABLE `log_control`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
 
 --
 -- AUTO_INCREMENT de la tabla `movimientos`
 --
 ALTER TABLE `movimientos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `pass_resets`
@@ -912,37 +1216,31 @@ ALTER TABLE `pass_resets`
 -- AUTO_INCREMENT de la tabla `productos`
 --
 ALTER TABLE `productos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
 -- AUTO_INCREMENT de la tabla `registro_accesos`
 --
 ALTER TABLE `registro_accesos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=248;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=424;
 
 --
 -- AUTO_INCREMENT de la tabla `subcategorias`
 --
 ALTER TABLE `subcategorias`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
-
---
--- AUTO_INCREMENT de la tabla `usuario_area_zona`
---
-ALTER TABLE `usuario_area_zona`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
 
 --
 -- AUTO_INCREMENT de la tabla `zonas`
 --
 ALTER TABLE `zonas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- Restricciones para tablas volcadas
@@ -961,6 +1259,13 @@ ALTER TABLE `empresa`
   ADD CONSTRAINT `empresa_ibfk_1` FOREIGN KEY (`usuario_creador`) REFERENCES `usuario` (`id_usuario`);
 
 --
+-- Filtros para la tabla `historial_busquedas`
+--
+ALTER TABLE `historial_busquedas`
+  ADD CONSTRAINT `fk_historial_busquedas_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_historial_busquedas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE;
+
+--
 -- Filtros para la tabla `log_control`
 --
 ALTER TABLE `log_control`
@@ -975,37 +1280,10 @@ ALTER TABLE `movimientos`
   ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`);
 
 --
--- Filtros para la tabla `notificaciones`
---
-ALTER TABLE `notificaciones`
-  ADD CONSTRAINT `fk_notificaciones_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_notificaciones_usuario_creador` FOREIGN KEY (`id_usuario_creador`) REFERENCES `usuario` (`id_usuario`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_notificaciones_usuario_destinatario` FOREIGN KEY (`id_usuario_destinatario`) REFERENCES `usuario` (`id_usuario`) ON DELETE SET NULL;
-
---
 -- Filtros para la tabla `pass_resets`
 --
 ALTER TABLE `pass_resets`
   ADD CONSTRAINT `pass_resets_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`);
-
---
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `historial_busquedas`
---
-
-CREATE TABLE IF NOT EXISTS `historial_busquedas` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_empresa` int NOT NULL,
-  `id_usuario` int NOT NULL,
-  `termino` varchar(255) NOT NULL,
-  `fecha_busqueda` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_historial_empresa_fecha` (`id_empresa`,`fecha_busqueda`),
-  CONSTRAINT `fk_historial_busquedas_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
-  CONSTRAINT `fk_historial_busquedas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Filtros para la tabla `productos`
@@ -1028,19 +1306,19 @@ ALTER TABLE `subcategorias`
   ADD CONSTRAINT `subcategorias_ibfk_1` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`) ON DELETE SET NULL;
 
 --
+-- Filtros para la tabla `usuario_area_zona`
+--
+ALTER TABLE `usuario_area_zona`
+  ADD CONSTRAINT `fk_uaz_area` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_uaz_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_uaz_zona` FOREIGN KEY (`id_zona`) REFERENCES `zonas` (`id`) ON DELETE CASCADE;
+
+--
 -- Filtros para la tabla `usuario_empresa`
 --
 ALTER TABLE `usuario_empresa`
   ADD CONSTRAINT `usuario_empresa_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
   ADD CONSTRAINT `usuario_empresa_ibfk_2` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `usuario_area_zona`
---
-ALTER TABLE `usuario_area_zona`
-  ADD CONSTRAINT `usuario_area_zona_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
-  ADD CONSTRAINT `usuario_area_zona_ibfk_2` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `usuario_area_zona_ibfk_3` FOREIGN KEY (`id_zona`) REFERENCES `zonas` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `zonas`
