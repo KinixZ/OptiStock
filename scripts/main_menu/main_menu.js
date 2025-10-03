@@ -72,8 +72,8 @@ let stockAlertPollIntervalId = null;
 let cachedNotifications = [];
 let serverNotifications = [];
 let criticalStockNotifications = [];
-let criticalStockState = new Map();
 let capacityAlertNotifications = [];
+let criticalStockState = new Map();
 let capacityAlertState = new Map();
 
 let navegadorTimeZone = null;
@@ -1700,45 +1700,120 @@ async function loadStockAlerts() {
     setButtonLoading(stockAlertsRefreshBtn, true);
     setListState(stockAlertList, 'Cargando alertas...', 'fas fa-circle-notch', 'card-loading-state');
 
+    let handledStock = false;
+
     try {
-        const productosResponse = await fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`);
+        const [productosResult, zonasResult, areasResult] = await Promise.allSettled([
+            fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`),
+            fetch(`/scripts/php/guardar_zonas.php?empresa_id=${encodeURIComponent(empresaId)}`),
+            fetch(`/scripts/php/guardar_areas.php?empresa_id=${encodeURIComponent(empresaId)}`)
+        ]);
 
-        if (!productosResponse.ok) {
-            throw new Error(`Inventario HTTP ${productosResponse.status}`);
-        }
+        let productos = [];
+        let productLoadError = null;
 
-        const payload = await productosResponse.json();
-        const productos = Array.isArray(payload) ? payload : [];
-
-        const { alerts: stockAlerts, criticalProducts } = buildStockAlertEntries(productos, threshold);
-        updateCriticalStockNotifications(criticalProducts, threshold);
-        updateCapacityAlertNotifications([]);
-
-        const combinedAlerts = stockAlerts.slice(0, 8);
-
-        updateDashboardStat('alerts', combinedAlerts.length);
-
-        if (!combinedAlerts.length) {
-            setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
-            return;
-        }
-
-        stockAlertList.innerHTML = '';
-        combinedAlerts.forEach(alert => {
-            const li = createAlertListItem(alert);
-            if (alert.type && alert.type !== 'stock') {
-                li.dataset.alertType = alert.type;
+        if (productosResult.status === 'fulfilled' && productosResult.value) {
+            if (productosResult.value.ok) {
+                try {
+                    const payload = await productosResult.value.json();
+                    productos = Array.isArray(payload) ? payload : [];
+                } catch (error) {
+                    productLoadError = error;
+                    console.error('No se pudo interpretar la respuesta de productos.', error);
+                }
+            } else {
+                productLoadError = new Error(`Inventario HTTP ${productosResult.value.status}`);
             }
-            stockAlertList.appendChild(li);
-        });
+        } else {
+            const reason = productosResult.status === 'rejected' ? productosResult.reason : 'sin respuesta';
+            productLoadError = new Error(`Inventario ${reason}`);
+        }
+
+        let zonasRaw = null;
+        if (zonasResult.status === 'fulfilled' && zonasResult.value) {
+            if (zonasResult.value.ok) {
+                try {
+                    const zonasPayload = await zonasResult.value.json();
+                    zonasRaw = Array.isArray(zonasPayload) ? zonasPayload : [];
+                } catch (error) {
+                    console.warn('No se pudo interpretar la respuesta de zonas.', error);
+                    zonasRaw = [];
+                }
+            } else {
+                console.warn(`No se pudieron cargar las zonas (HTTP ${zonasResult.value.status}).`);
+            }
+        } else if (zonasResult.status === 'rejected') {
+            console.warn('Error de red al obtener zonas.', zonasResult.reason);
+        }
+
+        let areasRaw = null;
+        if (areasResult.status === 'fulfilled' && areasResult.value) {
+            if (areasResult.value.ok) {
+                try {
+                    const areasPayload = await areasResult.value.json();
+                    areasRaw = Array.isArray(areasPayload) ? areasPayload : [];
+                } catch (error) {
+                    console.warn('No se pudo interpretar la respuesta de áreas.', error);
+                    areasRaw = [];
+                }
+            } else {
+                console.warn(`No se pudieron cargar las áreas (HTTP ${areasResult.value.status}).`);
+            }
+        } else if (areasResult.status === 'rejected') {
+            console.warn('Error de red al obtener áreas.', areasResult.reason);
+        }
+
+        if (productLoadError) {
+            console.error('No se pudieron cargar las alertas de stock.', productLoadError);
+            setListState(stockAlertList, 'No se pudo cargar la información de alertas. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+            updateDashboardStat('alerts', 0);
+            updateCriticalStockNotifications([], threshold);
+            handledStock = true;
+        } else {
+            const { alerts: stockAlerts, criticalProducts } = buildStockAlertEntries(productos, threshold);
+            updateCriticalStockNotifications(criticalProducts, threshold);
+
+            const stockDisplay = stockAlerts
+                .slice()
+                .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
+                .slice(0, 8);
+
+            updateDashboardStat('alerts', stockDisplay.length);
+
+            if (!stockDisplay.length) {
+                setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
+            } else {
+                stockAlertList.innerHTML = '';
+                stockDisplay.forEach(alert => {
+                    const li = createAlertListItem(alert);
+                    if (alert.type && alert.type !== 'stock') {
+                        li.dataset.alertType = alert.type;
+                    }
+                    stockAlertList.appendChild(li);
+                });
+            }
+
+            handledStock = true;
+        }
+
+        if (zonasRaw !== null || areasRaw !== null) {
+            const normalizedAreas = normalizeAreaData(areasRaw || []);
+            const normalizedZonas = normalizeZoneData(zonasRaw || []);
+            const capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
+            updateCapacityAlertNotifications(capacityAlerts);
+        }
     } catch (error) {
         console.error('Error loading stock alerts:', error);
-        updateCapacityAlertNotifications([]);
-        setListState(stockAlertList, 'No se pudo cargar la información de alertas. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+        if (!handledStock) {
+            setListState(stockAlertList, 'No se pudo cargar la información de alertas. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
+            updateDashboardStat('alerts', 0);
+            updateCriticalStockNotifications([], threshold);
+        }
     } finally {
         setButtonLoading(stockAlertsRefreshBtn, false);
     }
 }
+
 
 function startStockAlertAutoRefresh() {
     if (stockAlertPollIntervalId) {
