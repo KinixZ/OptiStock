@@ -912,6 +912,14 @@ function actualizarSelectSubcategorias(categoriaId) {
     });
 }
 
+function normalizarAreaId(valor) {
+  if (valor === null || valor === undefined) return null;
+  if (valor === '' || valor === 'null' || valor === 'undefined') return null;
+  if (valor === 0 || valor === '0') return null;
+  const parsed = parseInt(valor, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 function actualizarSelectAreas(areaId = null, zonaId = null) {
   if (!prodArea) return;
 
@@ -939,7 +947,7 @@ function actualizarSelectZonas(areaId = null, zonaId = undefined) {
   if (!prodZona) return;
 
   const targetAreaValue = areaId !== null ? areaId : prodArea?.value || '';
-  const targetAreaId = targetAreaValue ? parseInt(targetAreaValue, 10) : null;
+  const targetAreaId = normalizarAreaId(targetAreaValue);
   const hasExplicitZona = zonaId !== undefined;
   const previousZona = hasExplicitZona ? String(zonaId ?? '') : prodZona.value;
 
@@ -948,20 +956,22 @@ function actualizarSelectZonas(areaId = null, zonaId = undefined) {
   const placeholder = document.createElement('option');
   placeholder.value = '';
 
-  const zonasFiltradas = targetAreaId
-    ? zonas.filter(zona => parseInt(zona.area_id, 10) === targetAreaId)
-    : [];
-  const hasArea = Boolean(targetAreaId);
+  const zonasSinArea = zonas.filter(zona => normalizarAreaId(zona.area_id) === null);
+  const zonasFiltradas = targetAreaId !== null
+    ? zonas.filter(zona => normalizarAreaId(zona.area_id) === targetAreaId)
+    : zonasSinArea;
+
+  const hasArea = targetAreaId !== null;
   const hasZonas = zonasFiltradas.length > 0;
 
   placeholder.textContent = hasArea
     ? (hasZonas ? 'Selecciona una zona' : 'No hay zonas registradas para esta área')
-    : 'Selecciona un área para ver zonas';
+    : (hasZonas ? 'Selecciona una zona sin área asignada' : 'No hay zonas sin área asignada');
   placeholder.selected = true;
-  placeholder.disabled = hasArea && hasZonas;
+  placeholder.disabled = false;
   prodZona.appendChild(placeholder);
 
-  prodZona.disabled = !hasArea || !hasZonas;
+  prodZona.disabled = !hasZonas;
 
   zonasFiltradas.forEach(z => {
     const opt = document.createElement('option');
@@ -1341,8 +1351,27 @@ prodForm?.addEventListener('submit', async e => {
       return;
     }
 
-    const area_id = prodArea ? (parseInt(prodArea.value, 10) || null) : null;
-    const zona_id = prodZona ? (parseInt(prodZona.value, 10) || null) : null;
+    const areaRaw = prodArea?.value ?? '';
+    const zonaRaw = prodZona?.value ?? '';
+
+    const hasAreaSeleccionada = areaRaw !== '';
+    const hasZonaSeleccionada = zonaRaw !== '';
+
+    if (!hasAreaSeleccionada && !hasZonaSeleccionada) {
+      showToast('Selecciona al menos un área o una zona para el producto', 'error');
+      return;
+    }
+
+    const areaParsed = hasAreaSeleccionada ? Number.parseInt(areaRaw, 10) : null;
+    const zonaParsed = hasZonaSeleccionada ? Number.parseInt(zonaRaw, 10) : null;
+
+    const area_id = hasAreaSeleccionada
+      ? (Number.isNaN(areaParsed) ? areaRaw : areaParsed)
+      : null;
+    const zona_id = hasZonaSeleccionada
+      ? (Number.isNaN(zonaParsed) ? zonaRaw : zonaParsed)
+      : null;
+
     const data = {
       nombre,
       descripcion,
