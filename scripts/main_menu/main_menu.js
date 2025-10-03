@@ -76,6 +76,12 @@ let capacityAlertNotifications = [];
 let criticalStockState = new Map();
 let capacityAlertState = new Map();
 
+const CAPACITY_ZONE_THRESHOLD = 85;
+const CAPACITY_AREA_THRESHOLD = 90;
+const CAPACITY_MIN_FREE_PERCENT = 15;
+const CAPACITY_ZONE_MIN_FREE_VOLUME = 2;
+const CAPACITY_AREA_MIN_FREE_VOLUME = 5;
+
 let navegadorTimeZone = null;
 
 try {
@@ -665,6 +671,7 @@ function sortNotificationsByPriorityAndDate(notifications) {
 function refreshNotificationUI() {
     const combined = sortNotificationsByPriorityAndDate([
         ...criticalStockNotifications,
+        ...capacityAlertNotifications,
         ...serverNotifications
     ]);
     renderNotifications(combined);
@@ -996,6 +1003,285 @@ function buildStockAlertEntries(productos, threshold) {
     });
 
     return { alerts, criticalProducts };
+}
+
+function toFiniteNumber(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function computeFreePercent(disponible, total) {
+    const safeDisponible = toFiniteNumber(disponible, 0);
+    const safeTotal = toFiniteNumber(total, 0);
+    if (safeTotal <= 0) {
+        return 100;
+    }
+    return Math.max(0, Math.min(100, (safeDisponible / safeTotal) * 100));
+}
+
+function isCriticalCapacity({ porcentaje, disponible, total, threshold, minFreePercent, minFreeVolume }) {
+    const ocupacion = toFiniteNumber(porcentaje, 0);
+    const libre = toFiniteNumber(disponible, 0);
+    const capacidadTotal = toFiniteNumber(total, 0);
+
+    if (ocupacion >= threshold) {
+        return true;
+    }
+
+    if (capacidadTotal > 0) {
+        const porcentajeLibre = computeFreePercent(libre, capacidadTotal);
+        if (porcentajeLibre <= minFreePercent) {
+            return true;
+        }
+    }
+
+    if (libre > 0 && libre <= minFreeVolume) {
+        return true;
+    }
+
+    return false;
+}
+
+function buildCapacityAlertEntries(areasRaw, zonasRaw) {
+    const areas = Array.isArray(areasRaw) ? areasRaw : [];
+    const zonas = Array.isArray(zonasRaw) ? zonasRaw : [];
+
+    const alerts = [];
+    const notifications = [];
+
+    const areaMap = new Map(areas.map(area => [area.id, area]));
+
+    zonas.forEach(zona => {
+        if (!zona) return;
+
+        const area = zona.area_id && areaMap.has(zona.area_id)
+            ? areaMap.get(zona.area_id)
+            : null;
+
+        const ocupacion = toFiniteNumber(zona.porcentaje ?? zona.porcentaje_ocupacion, 0);
+        const disponible = toFiniteNumber(zona.capacidad_disponible ?? 0, 0);
+        const utilizada = toFiniteNumber(zona.capacidad_utilizada ?? 0, 0);
+        const total = disponible + utilizada;
+
+        const isCritical = isCriticalCapacity({
+            porcentaje: ocupacion,
+            disponible,
+            total,
+            threshold: CAPACITY_ZONE_THRESHOLD,
+            minFreePercent: CAPACITY_MIN_FREE_PERCENT,
+            minFreeVolume: CAPACITY_ZONE_MIN_FREE_VOLUME
+        });
+
+        if (!isCritical) {
+            return;
+        }
+
+        const zonaNombre = ((zona.nombre || (zona.id ? `Zona ${zona.id}` : 'Zona sin nombre'))).trim();
+        const areaNombre = area ? (area.nombre || '').trim() : '';
+        const detallePartes = [];
+        if (areaNombre) {
+            detallePartes.push(areaNombre);
+        }
+        if (Number.isFinite(ocupacion)) {
+            detallePartes.push(`${ocupacion.toFixed(1)}% ocupado`);
+        }
+
+        const detalle = detallePartes.join(' · ') || 'Sin detalles de ocupación';
+        const libresTexto = Number.isFinite(disponible) ? `${disponible.toFixed(2)} m³ libres` : 'Sin espacio disponible';
+        const severidad = Math.max(1, Math.round(Math.max(0, ocupacion - CAPACITY_ZONE_THRESHOLD)) + (disponible <= CAPACITY_ZONE_MIN_FREE_VOLUME ? 1 : 0));
+
+        alerts.push({
+            type: 'capacity',
+            subtype: 'zone',
+            iconClass: 'fas fa-warehouse',
+            title: `Zona crítica: ${zonaNombre}`,
+            detail: detalle,
+            value: libresTexto,
+            severity: severidad,
+            raw: { scope: 'zone', zona, area }
+        });
+
+        notifications.push({
+            scope: 'zone',
+            id: zona.id ?? zona.zona_id ?? null,
+            areaId: zona.area_id ?? (area && area.id) ?? null,
+            name: zonaNombre,
+            areaName: areaNombre || null,
+            occupancy: ocupacion,
+            freeVolume: disponible,
+            totalVolume: total,
+            severity: severidad
+        });
+    });
+
+    areas.forEach(area => {
+        if (!area) return;
+
+        const ocupacion = toFiniteNumber(area.porcentaje ?? area.porcentaje_ocupacion, 0);
+        const disponible = toFiniteNumber(area.disponible ?? area.capacidad_disponible, 0);
+        const utilizada = toFiniteNumber(area.utilizada ?? area.capacidad_utilizada, 0);
+        const total = disponible + utilizada;
+
+        const isCritical = isCriticalCapacity({
+            porcentaje: ocupacion,
+            disponible,
+            total: total > 0 ? total : toFiniteNumber(area.volumen, 0),
+            threshold: CAPACITY_AREA_THRESHOLD,
+            minFreePercent: CAPACITY_MIN_FREE_PERCENT,
+            minFreeVolume: CAPACITY_AREA_MIN_FREE_VOLUME
+        });
+
+        if (!isCritical) {
+            return;
+        }
+
+        const areaNombre = ((area.nombre || (area.id ? `Área ${area.id}` : 'Área sin nombre'))).trim();
+        const libresTexto = Number.isFinite(disponible) ? `${disponible.toFixed(2)} m³ libres` : 'Sin espacio disponible';
+        const detallePartes = [];
+        if (Number.isFinite(ocupacion)) {
+            detallePartes.push(`${ocupacion.toFixed(1)}% ocupado`);
+        }
+        if (Number.isFinite(area.productos)) {
+            const productos = Math.max(0, Math.round(area.productos));
+            detallePartes.push(`${productos} ${productos === 1 ? 'tipo' : 'tipos'}`);
+        }
+        const detalle = detallePartes.join(' · ') || 'Sin detalles de ocupación';
+        const severidad = Math.max(1, Math.round(Math.max(0, ocupacion - CAPACITY_AREA_THRESHOLD)) + (disponible <= CAPACITY_AREA_MIN_FREE_VOLUME ? 1 : 0));
+
+        alerts.push({
+            type: 'capacity',
+            subtype: 'area',
+            iconClass: 'fas fa-dolly',
+            title: `Área saturada: ${areaNombre}`,
+            detail: detalle,
+            value: libresTexto,
+            severity: severidad,
+            raw: { scope: 'area', area }
+        });
+
+        notifications.push({
+            scope: 'area',
+            id: area.id ?? null,
+            name: areaNombre,
+            areaName: areaNombre,
+            occupancy: ocupacion,
+            freeVolume: disponible,
+            totalVolume: total > 0 ? total : toFiniteNumber(area.volumen, 0),
+            severity: severidad
+        });
+    });
+
+    return { alerts, notifications };
+}
+
+function getCapacityAlertKey(entry) {
+    if (!entry) return '';
+
+    const scope = entry.scope ? String(entry.scope).toLowerCase() : 'zone';
+    const id = entry.id ? String(entry.id) : '';
+    if (id) {
+        return `${scope}-${id}`;
+    }
+
+    const baseName = (entry.name || '').toString().toLowerCase().trim();
+    if (!baseName) {
+        return '';
+    }
+
+    const sanitized = baseName
+        .normalize('NFD')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+    const areaSuffix = entry.areaId ? `-${entry.areaId}` : '';
+    return `${scope}-${sanitized}${areaSuffix}`;
+}
+
+function buildCapacityAlertNotification(entry, markAsNew, preservedTimestamp) {
+    const scope = entry && entry.scope ? String(entry.scope).toLowerCase() : 'zone';
+    const nombre = (entry && entry.name) ? entry.name : (scope === 'area' ? 'Área sin nombre' : 'Zona sin nombre');
+    const areaNombre = entry && entry.areaName ? entry.areaName : '';
+    const ocupacion = Number.isFinite(entry?.occupancy) ? entry.occupancy : null;
+    const libre = Number.isFinite(entry?.freeVolume) ? entry.freeVolume : null;
+    const timestamp = preservedTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const prioridad = entry && Number(entry.severity) >= 4 ? 'Alta' : 'Media';
+
+    const partesMensaje = [];
+    if (scope === 'area') {
+        partesMensaje.push(`El área ${nombre} presenta un nivel crítico de ocupación${ocupacion !== null ? ` (${ocupacion.toFixed(1)}% ocupado)` : ''}.`);
+    } else {
+        const ubicacion = areaNombre ? ` del área ${areaNombre}` : '';
+        partesMensaje.push(`La zona ${nombre}${ubicacion} presenta un nivel crítico de ocupación${ocupacion !== null ? ` (${ocupacion.toFixed(1)}% ocupado)` : ''}.`);
+    }
+    if (libre !== null) {
+        partesMensaje.push(libre <= 0 ? 'Sin espacio libre disponible.' : `Espacio libre: ${libre.toFixed(2)} m³.`);
+    }
+
+    const tituloBase = scope === 'area' ? 'Área con espacio crítico' : 'Zona con espacio crítico';
+
+    return {
+        id: `capacity-alert-${getCapacityAlertKey(entry)}`,
+        titulo: `${tituloBase}: ${nombre}`,
+        mensaje: partesMensaje.join(' ').trim(),
+        prioridad,
+        fecha_disponible_desde: timestamp,
+        ruta_destino: 'area_almac_v2/gestion_areas_zonas.html',
+        estado: 'Enviada',
+        es_nueva: !!markAsNew,
+        tipo_destinatario: 'Usuario',
+        es_local: true
+    };
+}
+
+function updateCapacityAlertNotifications(entries) {
+    const normalizedEntries = Array.isArray(entries) ? entries : [];
+    const previousState = new Map(capacityAlertState);
+    const nextState = new Map();
+    const newlyTriggered = [];
+
+    normalizedEntries.forEach(entry => {
+        const key = getCapacityAlertKey(entry);
+        if (!key) {
+            return;
+        }
+
+        const previousEntry = previousState.get(key);
+        const alreadyAlerted = previousEntry && previousEntry.alerted === true;
+        const preservedTimestamp = previousEntry && previousEntry.notification
+            ? previousEntry.notification.fecha_disponible_desde
+            : null;
+
+        const notification = buildCapacityAlertNotification(entry, !alreadyAlerted, preservedTimestamp);
+
+        nextState.set(key, {
+            alerted: true,
+            notification
+        });
+
+        if (!alreadyAlerted) {
+            newlyTriggered.push(notification);
+        }
+    });
+
+    if (!normalizedEntries.length) {
+        capacityAlertNotifications = [];
+        capacityAlertState.clear();
+    } else {
+        capacityAlertState = nextState;
+        capacityAlertNotifications = Array.from(nextState.values()).map(entry => entry.notification);
+    }
+
+    if (newlyTriggered.length && JSON.parse(localStorage.getItem('alertFallosInventario') || 'true')) {
+        newlyTriggered.forEach(notification => {
+            const titulo = notification.titulo || 'Espacio crítico en el almacén';
+            const mensaje = notification.mensaje || 'Se detectó una zona con espacio crítico en el almacén.';
+            showCriticalStockAlert(titulo, mensaje);
+        });
+    }
+
+    refreshNotificationUI();
 }
 
 function parseDateFromMysql(mysqlDate) {
@@ -1563,14 +1849,19 @@ async function loadStockAlerts() {
         const normalizedAreas = normalizeAreaData(areasRaw);
         const normalizedZonas = normalizeZoneData(zonasRaw);
         const capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
-        updateCapacityAlertNotifications(capacityAlerts);
+        updateCapacityAlertNotifications(capacityAlerts.notifications);
 
-        const stockDisplay = stockAlerts
+        const combinedAlerts = [
+            ...stockAlerts,
+            ...(capacityAlerts.alerts || [])
+        ];
+
+        const stockDisplay = combinedAlerts
             .slice()
             .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
             .slice(0, 8);
 
-        updateDashboardStat('alerts', stockDisplay.length);
+        updateDashboardStat('alerts', combinedAlerts.length);
 
         if (!stockDisplay.length) {
             setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
