@@ -20,6 +20,19 @@ const errorContainer = document.getElementById('error-message');
 const resumenAreasEl = document.getElementById('totalAreas');
 const resumenZonasEl = document.getElementById('totalZonas');
 const resumenZonasSinAreaEl = document.getElementById('zonasSinArea');
+const areaFilterSelect = document.getElementById('areaFilter');
+const zonaFilterSelect = document.getElementById('zonaFilter');
+const areasInventoryBody = document.getElementById('areasInventoryBody');
+const zonasInventoryBody = document.getElementById('zonasInventoryBody');
+const reasignacionOverlay = document.getElementById('reasignacionOverlay');
+const reasignacionMensaje = document.getElementById('reasignacionMensaje');
+const reasignacionSelect = document.getElementById('reasignacionSelect');
+const reasignacionError = document.getElementById('reasignacionError');
+const confirmarReasignacionBtn = document.getElementById('confirmarReasignacion');
+const cancelarReasignacionBtn = document.getElementById('cancelarReasignacion');
+
+let datosActuales = { areas: [], zonas: [] };
+let zonaPendienteReasignacion = null;
 
 // Utilidades de caché en localStorage
 function getCache(key) {
@@ -39,6 +52,163 @@ function setCache(key, data) {
   }
 }
 
+function obtenerValorNumerico(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function formatearNumero(valor) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) {
+    return '-';
+  }
+  return Number.isInteger(numero) ? numero.toString() : numero.toFixed(2);
+}
+
+function formatearDimensiones(ancho, alto, largo) {
+  return [formatearNumero(ancho), formatearNumero(alto), formatearNumero(largo)].join(' × ');
+}
+
+function contarProductosZona(zona) {
+  if (!zona) return 0;
+  let total = obtenerValorNumerico(zona.productos_activos ?? zona.productos ?? zona.total_productos);
+
+  if (Array.isArray(zona.subniveles) && zona.subniveles.length) {
+    total += zona.subniveles.reduce((acc, subnivel) => {
+      return acc + obtenerValorNumerico(subnivel.productos_activos ?? subnivel.productos ?? subnivel.total_productos);
+    }, 0);
+  }
+
+  return total;
+}
+
+function contarProductosArea(area, zonas = datosActuales.zonas) {
+  if (!area) return 0;
+  const base = obtenerValorNumerico(area.productos_activos ?? area.productos ?? area.total_productos);
+  const relacionadas = Array.isArray(zonas) ? zonas.filter(z => `${z.area_id}` === `${area.id}`) : [];
+  const totalZonas = relacionadas.reduce((acc, zona) => acc + contarProductosZona(zona), 0);
+  return base + totalZonas;
+}
+
+function formatearProductosActivos(total) {
+  const cantidad = obtenerValorNumerico(total);
+  return `${cantidad} producto${cantidad === 1 ? '' : 's'}`;
+}
+
+function obtenerNombreArea(areaId) {
+  const area = datosActuales.areas.find(a => `${a.id}` === `${areaId}`);
+  return area ? area.nombre : 'Sin área asignada';
+}
+
+function renderInventoryTables() {
+  if (!areasInventoryBody || !zonasInventoryBody) {
+    return;
+  }
+
+  const filtroAreas = areaFilterSelect ? areaFilterSelect.value : 'todas';
+  const filtroZonas = zonaFilterSelect ? zonaFilterSelect.value : 'todas';
+
+  const areasFiltradas = datosActuales.areas.filter(area => {
+    const productos = contarProductosArea(area);
+    if (filtroAreas === 'con') return productos > 0;
+    if (filtroAreas === 'sin') return productos === 0;
+    return true;
+  });
+
+  if (!areasFiltradas.length) {
+    areasInventoryBody.innerHTML = '<tr class="empty-row"><td colspan="4">No hay áreas que coincidan con el filtro seleccionado.</td></tr>';
+  } else {
+    areasInventoryBody.innerHTML = areasFiltradas.map(area => {
+      const zonasRelacionadas = datosActuales.zonas.filter(zona => `${zona.area_id}` === `${area.id}`);
+      const productos = contarProductosArea(area);
+      return `
+        <tr>
+          <td>${area.nombre || 'Sin nombre'}</td>
+          <td>${zonasRelacionadas.length}</td>
+          <td>${formatearProductosActivos(productos)}</td>
+          <td>${formatearDimensiones(area.ancho, area.alto, area.largo)}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const zonasFiltradas = datosActuales.zonas.filter(zona => {
+    const productos = contarProductosZona(zona);
+    if (filtroZonas === 'con') return productos > 0;
+    if (filtroZonas === 'sin') return productos === 0;
+    return true;
+  });
+
+  if (!zonasFiltradas.length) {
+    zonasInventoryBody.innerHTML = '<tr class="empty-row"><td colspan="4">No hay zonas que coincidan con el filtro seleccionado.</td></tr>';
+  } else {
+    zonasInventoryBody.innerHTML = zonasFiltradas.map(zona => {
+      const productos = contarProductosZona(zona);
+      return `
+        <tr>
+          <td>${zona.nombre || 'Sin nombre'}</td>
+          <td>${obtenerNombreArea(zona.area_id)}</td>
+          <td>${formatearProductosActivos(productos)}</td>
+          <td>${formatearDimensiones(zona.ancho, zona.alto, zona.largo)}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+}
+
+function cerrarReasignacionZona() {
+  if (reasignacionOverlay) {
+    reasignacionOverlay.hidden = true;
+  }
+  zonaPendienteReasignacion = null;
+  if (reasignacionSelect) {
+    reasignacionSelect.innerHTML = '';
+  }
+  if (reasignacionError) {
+    reasignacionError.textContent = '';
+  }
+}
+
+function abrirReasignacionZona(zona) {
+  if (!reasignacionOverlay || !reasignacionMensaje || !reasignacionSelect) {
+    return;
+  }
+
+  const otrasZonas = datosActuales.zonas
+    .filter(z => `${z.id}` !== `${zona.id}`)
+    .sort((a, b) => {
+      const mismaAreaA = `${a.area_id}` === `${zona.area_id}` ? 0 : 1;
+      const mismaAreaB = `${b.area_id}` === `${zona.area_id}` ? 0 : 1;
+      if (mismaAreaA !== mismaAreaB) {
+        return mismaAreaA - mismaAreaB;
+      }
+      return (a.nombre || '').localeCompare(b.nombre || '');
+    });
+
+  if (!otrasZonas.length) {
+    mostrarError('Esta zona contiene productos activos y no hay otras zonas disponibles para reasignarlos. Crea o habilita otra zona antes de eliminarla.');
+    return;
+  }
+
+  zonaPendienteReasignacion = zona;
+  const productos = contarProductosZona(zona);
+  reasignacionMensaje.textContent = `La zona "${zona.nombre}" tiene ${formatearProductosActivos(productos)}. Selecciona otra zona para trasladarlos antes de eliminarla.`;
+  reasignacionSelect.innerHTML = '<option value="">Selecciona una zona disponible</option>';
+
+  otrasZonas.forEach(otraZona => {
+    const label = `${otraZona.nombre || 'Zona sin nombre'} • ${obtenerNombreArea(otraZona.area_id)}`;
+    const option = document.createElement('option');
+    option.value = otraZona.id;
+    option.textContent = label;
+    reasignacionSelect.appendChild(option);
+  });
+
+  if (reasignacionError) {
+    reasignacionError.textContent = '';
+  }
+
+  reasignacionOverlay.hidden = false;
+}
 // Función para llamadas API mejorada
 async function fetchAPI(endpoint, method = 'GET', data = null) {
   try {
@@ -205,7 +375,13 @@ async function cargarYMostrarRegistros() {
 
 // Mostrar resumen en el panel
 function mostrarResumen(data) {
-  const { areas, zonas } = data;
+  const areas = Array.isArray(data?.areas) ? data.areas : [];
+  const zonas = Array.isArray(data?.zonas) ? data.zonas : [];
+
+  datosActuales = {
+    areas: [...areas],
+    zonas: [...zonas]
+  };
 
   if (resumenAreasEl) {
     resumenAreasEl.textContent = areas.length;
@@ -224,41 +400,52 @@ function mostrarResumen(data) {
     registroLista.innerHTML = `
       <p class="vacio">No hay áreas ni zonas registradas.</p>
     `;
+    renderInventoryTables();
     return;
   }
 
   let html = '<div class="resumen-grid">';
-  
+
   // Mostrar áreas con sus zonas
   areas.forEach(area => {
     const zonasArea = zonas.filter(z => z.area_id == area.id);
-    
+    const productosArea = contarProductosArea(area, zonas);
+
     html += `
       <div class="area-card">
         <div class="area-header">
-          <h4>${area.nombre}</h4>
+          <div class="area-meta">
+            <h4>${area.nombre}</h4>
+            <span class="area-products">${formatearProductosActivos(productosArea)} activos</span>
+          </div>
           <div class="area-actions">
             <button onclick="editarArea(${area.id})">✏️</button>
             <button onclick="eliminarArea(${area.id})">🗑️</button>
           </div>
         </div>
-        
+
         <div class="zonas-list">
-          ${zonasArea.length > 0 ? 
-            zonasArea.map(zona => `
-              <div class="zona-item">
-                <span>${zona.nombre} (${zona.tipo_almacenamiento}) - ${zona.ancho}m × ${zona.alto}m × ${zona.largo}m</span>
-                <div class="zona-actions">
-                  <button onclick="editarZona(${zona.id})">✏️</button>
+          ${zonasArea.length > 0 ?
+            zonasArea.map(zona => {
+              const productosZona = contarProductosZona(zona);
+              return `
+                <div class="zona-item">
+                  <span>
+                    ${zona.nombre} (${zona.tipo_almacenamiento}) - ${formatearDimensiones(zona.ancho, zona.alto, zona.largo)}
+                    <span class="zona-products">${formatearProductosActivos(productosZona)} activos</span>
+                  </span>
+                  <div class="zona-actions">
+                    <button onclick="editarZona(${zona.id})">✏️</button>
+                  </div>
                 </div>
-              </div>
-            `).join('') : 
+              `;
+            }).join('') :
             '<p class="vacio">No hay zonas en esta área</p>'}
         </div>
       </div>
     `;
   });
-  
+
   // Mostrar zonas sin área asignada
   const zonasSinArea = zonas.filter(z => !z.area_id);
   if (zonasSinArea.length > 0) {
@@ -267,7 +454,10 @@ function mostrarResumen(data) {
         <h4>Zonas sin área asignada</h4>
         ${zonasSinArea.map(zona => `
           <div class="zona-item">
-            <span>${zona.nombre} (${zona.tipo_almacenamiento}) - ${zona.ancho}m × ${zona.alto}m × ${zona.largo}m</span>
+            <span>
+              ${zona.nombre} (${zona.tipo_almacenamiento}) - ${formatearDimensiones(zona.ancho, zona.alto, zona.largo)}
+              <span class="zona-products">${formatearProductosActivos(contarProductosZona(zona))} activos</span>
+            </span>
             <div class="zona-actions">
               <button onclick="editarZona(${zona.id})">✏️</button>
               <button onclick="eliminarZona(${zona.id})">🗑️</button>
@@ -277,10 +467,12 @@ function mostrarResumen(data) {
       </div>
     `;
   }
-  
+
   html += '</div>';
 
   registroLista.innerHTML = html;
+
+  renderInventoryTables();
 }
 
 // Manejar formulario de área
@@ -398,13 +590,24 @@ async function editarArea(id) {
 }
 
 async function eliminarArea(id) {
-  if (confirm('¿Está seguro de eliminar esta área?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
-    try {
-      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
-      await cargarYMostrarRegistros();
-    } catch (error) {
-      console.error('Error eliminando área:', error);
+  const area = datosActuales.areas.find(a => `${a.id}` === `${id}`);
+  if (area) {
+    const productosActivos = contarProductosArea(area);
+    if (productosActivos > 0) {
+      mostrarError('No es posible eliminar esta área porque tiene productos activos en sus zonas. Reasigna o vacía las ubicaciones antes de continuar.');
+      return;
     }
+  }
+
+  if (!confirm('¿Está seguro de eliminar esta área?') || !confirm('Esta acción es irreversible, confirme de nuevo.')) {
+    return;
+  }
+
+  try {
+    await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+    await cargarYMostrarRegistros();
+  } catch (error) {
+    console.error('Error eliminando área:', error);
   }
 }
 
@@ -417,15 +620,35 @@ async function editarZona(id) {
   }
 }
 
+async function ejecutarEliminacionZona(id, zonaDestino = null) {
+  try {
+    const params = new URLSearchParams({ id, empresa_id: empresaId });
+    if (zonaDestino) {
+      params.set('reasignar_a', zonaDestino);
+    }
+
+    await fetchAPI(`${API_ENDPOINTS.zonas}?${params.toString()}`, 'DELETE');
+    await cargarYMostrarRegistros();
+  } catch (error) {
+    console.error('Error eliminando zona:', error);
+  }
+}
+
 async function eliminarZona(id) {
-  if (confirm('¿Está seguro de eliminar esta zona?') && confirm('Esta acción es irreversible, confirme de nuevo.')) {
-    try {
-      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
-      await cargarYMostrarRegistros();
-    } catch (error) {
-      console.error('Error eliminando zona:', error);
+  const zona = datosActuales.zonas.find(z => `${z.id}` === `${id}`);
+  if (zona) {
+    const productosActivos = contarProductosZona(zona);
+    if (productosActivos > 0) {
+      abrirReasignacionZona(zona);
+      return;
     }
   }
+
+  if (!confirm('¿Está seguro de eliminar esta zona?') || !confirm('Esta acción es irreversible, confirme de nuevo.')) {
+    return;
+  }
+
+  await ejecutarEliminacionZona(id);
 }
 
 // Event listeners
@@ -433,6 +656,74 @@ if (sublevelsCountInput) {
   sublevelsCountInput.addEventListener('change', (e) => {
     const count = parseInt(e.target.value) || 0;
     renderSublevels(count);
+  });
+}
+
+if (areaFilterSelect) {
+  areaFilterSelect.addEventListener('change', renderInventoryTables);
+}
+
+if (zonaFilterSelect) {
+  zonaFilterSelect.addEventListener('change', renderInventoryTables);
+}
+
+if (cancelarReasignacionBtn) {
+  cancelarReasignacionBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    cerrarReasignacionZona();
+  });
+}
+
+if (confirmarReasignacionBtn) {
+  confirmarReasignacionBtn.addEventListener('click', async (event) => {
+    event.preventDefault();
+
+    if (!zonaPendienteReasignacion) {
+      cerrarReasignacionZona();
+      return;
+    }
+
+    if (!reasignacionSelect || !reasignacionSelect.value) {
+      if (reasignacionError) {
+        reasignacionError.textContent = 'Selecciona una zona destino para continuar.';
+      }
+      return;
+    }
+
+    const destinoId = reasignacionSelect.value;
+    const zonaDestino = datosActuales.zonas.find(z => `${z.id}` === `${destinoId}`);
+    if (!zonaDestino) {
+      if (reasignacionError) {
+        reasignacionError.textContent = 'La zona seleccionada no está disponible. Intenta nuevamente.';
+      }
+      return;
+    }
+
+    const productosTrasladar = contarProductosZona(zonaPendienteReasignacion);
+    if (productosTrasladar === 0) {
+      if (reasignacionError) {
+        reasignacionError.textContent = 'La zona ya no tiene productos activos. Actualiza la vista e inténtalo otra vez.';
+      }
+      return;
+    }
+
+    const zonaId = zonaPendienteReasignacion.id;
+    cerrarReasignacionZona();
+
+    const destinoNombre = `${zonaDestino.nombre || 'zona destino'} (${obtenerNombreArea(zonaDestino.area_id)})`;
+    if (!confirm(`Se reasignarán ${formatearProductosActivos(productosTrasladar)} a ${destinoNombre} y se eliminará la zona original. ¿Deseas continuar?`)) {
+      return;
+    }
+
+    await ejecutarEliminacionZona(zonaId, destinoId);
+  });
+}
+
+if (reasignacionOverlay) {
+  reasignacionOverlay.addEventListener('click', (event) => {
+    if (event.target === reasignacionOverlay) {
+      cerrarReasignacionZona();
+    }
   });
 }
 

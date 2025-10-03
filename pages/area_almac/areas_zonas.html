@@ -133,7 +133,95 @@
           </form>
         </section>
       </div>
+
+      <section class="inventory-status" aria-labelledby="inventarioTitulo">
+        <header class="inventory-header">
+          <div>
+            <span class="inventory-eyebrow">Monitoreo de productos</span>
+            <h3 id="inventarioTitulo">Productos almacenados por área y zona</h3>
+            <p class="inventory-description">
+              El listado se actualiza automáticamente para impedir que elimines ubicaciones con productos activos sin reasignarlos primero.
+            </p>
+          </div>
+          <div class="inventory-controls">
+            <label class="inventory-filter">
+              <span>Filtrar áreas</span>
+              <select id="areaFilter">
+                <option value="todas">Todas</option>
+                <option value="con">Con productos activos</option>
+                <option value="sin">Sin productos activos</option>
+              </select>
+            </label>
+            <label class="inventory-filter">
+              <span>Filtrar zonas</span>
+              <select id="zonaFilter">
+                <option value="todas">Todas</option>
+                <option value="con">Con productos activos</option>
+                <option value="sin">Sin productos activos</option>
+              </select>
+            </label>
+          </div>
+        </header>
+
+        <div class="inventory-tables">
+          <article class="inventory-table" aria-labelledby="tablaAreasTitulo">
+            <header>
+              <h4 id="tablaAreasTitulo">Áreas registradas</h4>
+            </header>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Área</th>
+                  <th scope="col">Zonas vinculadas</th>
+                  <th scope="col">Productos activos</th>
+                  <th scope="col">Dimensiones (m)</th>
+                </tr>
+              </thead>
+              <tbody id="areasInventoryBody">
+                <tr class="empty-row">
+                  <td colspan="4">Los datos del inventario se mostrarán aquí.</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="inventory-table" aria-labelledby="tablaZonasTitulo">
+            <header>
+              <h4 id="tablaZonasTitulo">Zonas registradas</h4>
+            </header>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Zona</th>
+                  <th scope="col">Área asociada</th>
+                  <th scope="col">Productos activos</th>
+                  <th scope="col">Dimensiones (m)</th>
+                </tr>
+              </thead>
+              <tbody id="zonasInventoryBody">
+                <tr class="empty-row">
+                  <td colspan="4">Las zonas activas aparecerán aquí.</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+      </section>
     </section>
+  </div>
+
+  <div id="reasignacionOverlay" class="reasignacion-overlay" hidden>
+    <div class="reasignacion-dialog" role="dialog" aria-modal="true" aria-labelledby="reasignacionTitulo">
+      <h3 id="reasignacionTitulo">Reasignar productos de la zona</h3>
+      <p id="reasignacionMensaje"></p>
+      <label class="visually-hidden" for="reasignacionSelect">Selecciona la zona destino</label>
+      <select id="reasignacionSelect"></select>
+      <p id="reasignacionError" class="reasignacion-error" role="alert"></p>
+      <div class="reasignacion-actions">
+        <button id="confirmarReasignacion" class="shell-action shell-action--primary">Reasignar y eliminar</button>
+        <button id="cancelarReasignacion" class="shell-action">Cancelar</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>
