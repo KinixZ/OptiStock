@@ -1505,6 +1505,8 @@ async function loadStockAlerts() {
     setButtonLoading(stockAlertsRefreshBtn, true);
     setListState(stockAlertList, 'Cargando alertas...', 'fas fa-circle-notch', 'card-loading-state');
 
+    let handledStock = false;
+
     try {
         const [productosResult, zonasResult, areasResult] = await Promise.allSettled([
             fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`),
@@ -1583,8 +1585,16 @@ async function loadStockAlerts() {
             if (alert.type && alert.type !== 'stock') {
                 li.dataset.alertType = alert.type;
             }
-            stockAlertList.appendChild(li);
-        });
+
+            handledStock = true;
+        }
+
+        if (zonasRaw !== null || areasRaw !== null) {
+            const normalizedAreas = normalizeAreaData(areasRaw || []);
+            const normalizedZonas = normalizeZoneData(zonasRaw || []);
+            const capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
+            updateCapacityAlertNotifications(capacityAlerts);
+        }
     } catch (error) {
         console.error('Error loading stock alerts:', error);
         setListState(stockAlertList, 'No se pudo cargar la información de alertas. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
