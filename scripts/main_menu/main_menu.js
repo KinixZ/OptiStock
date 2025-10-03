@@ -1712,36 +1712,9 @@ async function loadStockAlerts() {
 
         const { alerts: stockAlerts, criticalProducts } = buildStockAlertEntries(productos, threshold);
         updateCriticalStockNotifications(criticalProducts, threshold);
+        updateCapacityAlertNotifications([]);
 
-        let capacityAlerts = [];
-        try {
-            const [zonasResponse, areasResponse] = await Promise.all([
-                fetch(`/scripts/php/guardar_zonas.php?empresa_id=${encodeURIComponent(empresaId)}`),
-                fetch(`/scripts/php/guardar_areas.php?empresa_id=${encodeURIComponent(empresaId)}`)
-            ]);
-
-            if (!zonasResponse.ok) {
-                throw new Error(`Infraestructura zonas HTTP ${zonasResponse.status}`);
-            }
-            if (!areasResponse.ok) {
-                throw new Error(`Infraestructura áreas HTTP ${areasResponse.status}`);
-            }
-
-            const zonasRaw = await zonasResponse.json();
-            const areasRaw = await areasResponse.json();
-            const normalizedAreas = normalizeAreaData(areasRaw);
-            const normalizedZonas = normalizeZoneData(zonasRaw);
-            capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
-        } catch (capacityError) {
-            console.warn('No se pudieron obtener las alertas de capacidad:', capacityError);
-            capacityAlerts = [];
-        }
-
-        updateCapacityAlertNotifications(capacityAlerts);
-
-        const combinedAlerts = [...stockAlerts, ...capacityAlerts]
-            .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
-            .slice(0, 8);
+        const combinedAlerts = stockAlerts.slice(0, 8);
 
         updateDashboardStat('alerts', combinedAlerts.length);
 
