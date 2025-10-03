@@ -85,10 +85,37 @@ while ($row = $result->fetch_assoc()) {
     $movimientos[] = $row;
 }
 
+$movimientosHoy = 0;
+$movimientosAyer = 0;
+
+$statsSql = "
+    SELECT
+        SUM(CASE WHEN DATE(fecha_movimiento) = CURDATE() THEN 1 ELSE 0 END) AS movimientos_hoy,
+        SUM(CASE WHEN DATE(fecha_movimiento) = DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN 1 ELSE 0 END) AS movimientos_ayer
+    FROM movimientos
+    WHERE empresa_id = ?
+";
+
+if ($statsStmt = $conn->prepare($statsSql)) {
+    $statsStmt->bind_param('i', $empresaId);
+    $statsStmt->execute();
+    $statsResult = $statsStmt->get_result();
+    if ($statsResult) {
+        $statsRow = $statsResult->fetch_assoc() ?: [];
+        $movimientosHoy = (int) ($statsRow['movimientos_hoy'] ?? 0);
+        $movimientosAyer = (int) ($statsRow['movimientos_ayer'] ?? 0);
+    }
+    $statsStmt->close();
+}
+
 $stmt->close();
 $conn->close();
 
 echo json_encode([
     'success' => true,
-    'movimientos' => $movimientos
+    'movimientos' => $movimientos,
+    'stats' => [
+        'today' => $movimientosHoy,
+        'yesterday' => $movimientosAyer
+    ]
 ]);
