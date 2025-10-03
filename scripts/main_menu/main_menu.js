@@ -31,6 +31,35 @@ const notificationBadge = document.querySelector('.notification-badge');
 const notificationCounter = document.querySelector('.notification-tray__counter');
 const notificationViewAll = document.getElementById('notificationViewAll');
 
+const DASHBOARD_HISTORY_STORAGE_PREFIX = 'dashboardStatsHistory';
+
+const dashboardNumberFormatter = (() => {
+    try {
+        return new Intl.NumberFormat('es-MX');
+    } catch (error) {
+        console.warn('No se pudo crear el formateador numérico para el dashboard.', error);
+        return null;
+    }
+})();
+
+const DASHBOARD_STATS_CONFIG = {
+    alerts: { positiveIsGood: false, singular: 'alerta', plural: 'alertas' },
+    movements: { positiveIsGood: true, singular: 'movimiento', plural: 'movimientos' },
+    criticalZones: { positiveIsGood: false, singular: 'zona crítica', plural: 'zonas críticas' }
+};
+
+const dashboardStatsElements = Object.keys(DASHBOARD_STATS_CONFIG).reduce((acc, key) => {
+    const card = document.querySelector(`.stat-card[data-stat="${key}"]`);
+    if (card) {
+        acc[key] = {
+            card,
+            valueEl: card.querySelector('[data-stat-value]'),
+            trendEl: card.querySelector('[data-stat-trend]')
+        };
+    }
+    return acc;
+}, {});
+
 let activeEmpresaId = null;
 let activeUsuarioId = null;
 let activeUsuarioRol = null;
@@ -96,6 +125,217 @@ let colorSidebarSeleccionado = getComputedStyle(document.documentElement)
 let colorTopbarSeleccionado = getComputedStyle(document.documentElement)
     .getPropertyValue('--topbar-color')
     .trim();
+
+
+function getDashboardHistoryStorageKey() {
+    let empresaId = '0';
+    if (typeof localStorage !== 'undefined') {
+        try {
+            const stored = localStorage.getItem('id_empresa');
+            if (stored) {
+                empresaId = stored;
+            }
+        } catch (error) {
+            console.warn('No se pudo acceder al identificador de empresa para el historial del dashboard.', error);
+        }
+    }
+    return `${DASHBOARD_HISTORY_STORAGE_PREFIX}_${empresaId}`;
+}
+
+function readDashboardHistory() {
+    if (typeof localStorage === 'undefined') {
+        return {};
+    }
+    try {
+        const raw = localStorage.getItem(getDashboardHistoryStorageKey());
+        if (!raw) {
+            return {};
+        }
+        const parsed = JSON.parse(raw);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (error) {
+        console.warn('No se pudo leer el historial del dashboard.', error);
+        return {};
+    }
+}
+
+function writeDashboardHistory(history) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+    try {
+        localStorage.setItem(getDashboardHistoryStorageKey(), JSON.stringify(history));
+    } catch (error) {
+        console.warn('No se pudo guardar el historial del dashboard.', error);
+    }
+}
+
+function pruneDashboardHistory(history, maxDays = 30) {
+    if (!history || typeof history !== 'object') {
+        return;
+    }
+    const dates = Object.keys(history).filter(Boolean).sort();
+    while (dates.length > maxDays) {
+        const oldest = dates.shift();
+        if (oldest && Object.prototype.hasOwnProperty.call(history, oldest)) {
+            delete history[oldest];
+        }
+    }
+}
+
+function formatDateKey(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return '';
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function addDays(baseDate, offsetDays) {
+    if (!(baseDate instanceof Date) || Number.isNaN(baseDate.getTime())) {
+        return new Date(NaN);
+    }
+    const clone = new Date(baseDate.getTime());
+    clone.setDate(clone.getDate() + offsetDays);
+    return clone;
+}
+
+function formatStatNumber(value) {
+    if (!Number.isFinite(value)) {
+        return '0';
+    }
+    if (dashboardNumberFormatter) {
+        try {
+            return dashboardNumberFormatter.format(value);
+        } catch (error) {
+            console.warn('No se pudo formatear el número del dashboard.', error);
+        }
+    }
+    return String(value);
+}
+
+function findPreviousStatValue(history, todayKey, statKey) {
+    if (!history || typeof history !== 'object') {
+        return null;
+    }
+    const candidates = Object.keys(history)
+        .filter(date => date && date < todayKey)
+        .sort();
+    for (let i = candidates.length - 1; i >= 0; i -= 1) {
+        const entry = history[candidates[i]];
+        if (!entry || typeof entry !== 'object') {
+            continue;
+        }
+        const numeric = Number(entry[statKey]);
+        if (Number.isFinite(numeric)) {
+            return numeric;
+        }
+    }
+    return null;
+}
+
+function renderDashboardStat(statKey, currentValue, previousValue) {
+    const elements = dashboardStatsElements[statKey];
+    const config = DASHBOARD_STATS_CONFIG[statKey];
+    if (!elements || !config) {
+        return;
+    }
+
+    const sanitizedCurrent = Number.isFinite(currentValue) ? currentValue : Number(currentValue) || 0;
+
+    if (elements.valueEl) {
+        elements.valueEl.textContent = formatStatNumber(sanitizedCurrent);
+    }
+
+    const trendEl = elements.trendEl;
+    if (!trendEl) {
+        return;
+    }
+
+    trendEl.classList.remove('positive', 'negative', 'neutral');
+
+    let trendClass = 'neutral';
+    let iconClass = 'fa-minus';
+    let trendText = 'Sin datos previos';
+
+    if (Number.isFinite(previousValue)) {
+        const diff = sanitizedCurrent - previousValue;
+        if (diff === 0) {
+            trendText = 'Sin cambios';
+        } else {
+            const absDiff = Math.abs(diff);
+            const formattedDiff = formatStatNumber(absDiff);
+            const unit = absDiff === 1 ? config.singular : config.plural;
+            const signSymbol = diff > 0 ? '+' : '−';
+            iconClass = diff > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+            const improvement = diff > 0 ? config.positiveIsGood : !config.positiveIsGood;
+            trendClass = improvement ? 'positive' : 'negative';
+            trendText = `${signSymbol}${formattedDiff} ${unit} vs ayer`;
+        }
+    }
+
+    trendEl.classList.add(trendClass);
+    trendEl.innerHTML = `<i class="fas ${iconClass}"></i> ${trendText}`;
+}
+
+function updateDashboardStat(statKey, currentValue, options = {}) {
+    const numericCurrent = Number(currentValue);
+    const sanitizedCurrent = Number.isFinite(numericCurrent) ? numericCurrent : 0;
+    const today = new Date();
+    const todayKey = formatDateKey(today);
+
+    if (!todayKey) {
+        renderDashboardStat(statKey, sanitizedCurrent, null);
+        return;
+    }
+
+    if (typeof localStorage === 'undefined') {
+        renderDashboardStat(statKey, sanitizedCurrent, null);
+        return;
+    }
+
+    const history = readDashboardHistory();
+    const providedPrevRaw = options?.previousDayValue;
+    if (providedPrevRaw !== undefined && providedPrevRaw !== null) {
+        const providedPrev = Number(providedPrevRaw);
+        if (Number.isFinite(providedPrev)) {
+            const yesterdayKey = formatDateKey(addDays(today, -1));
+            if (yesterdayKey) {
+                history[yesterdayKey] = history[yesterdayKey] || {};
+                history[yesterdayKey][statKey] = providedPrev;
+            }
+        }
+    }
+
+    const previousValue = findPreviousStatValue(history, todayKey, statKey);
+
+    renderDashboardStat(statKey, sanitizedCurrent, previousValue);
+
+    history[todayKey] = history[todayKey] || {};
+    history[todayKey][statKey] = sanitizedCurrent;
+
+    pruneDashboardHistory(history);
+    writeDashboardHistory(history);
+}
+
+function countMovementsForDate(movimientos, targetDate) {
+    if (!Array.isArray(movimientos)) {
+        return 0;
+    }
+    const targetKey = formatDateKey(targetDate);
+    if (!targetKey) {
+        return 0;
+    }
+    return movimientos.reduce((acc, movimiento) => {
+        const fecha = parseDateFromMysql(movimiento && movimiento.fecha_movimiento);
+        if (!fecha) {
+            return acc;
+        }
+        return formatDateKey(fecha) === targetKey ? acc + 1 : acc;
+    }, 0);
+}
 
 
 function getCriticalStockToastContainer() {
@@ -1377,6 +1617,7 @@ async function loadInfrastructureMetrics() {
         if (spaceOptimizationList) {
             setListState(spaceOptimizationList, 'Registra tu empresa para recibir sugerencias de optimización.', 'fas fa-info-circle', 'card-empty-state');
         }
+        updateDashboardStat('criticalZones', 0);
         return;
     }
 
@@ -1422,6 +1663,8 @@ async function loadInfrastructureMetrics() {
             .filter(zona => zona.porcentaje >= 75)
             .sort((a, b) => b.porcentaje - a.porcentaje);
 
+        updateDashboardStat('criticalZones', zonasCriticas.length);
+
         renderZoneCapacity(zonasCriticas, areaMap);
 
         const sugerencias = buildSpaceOptimizationSuggestions(normalizedAreas, zonasPorArea);
@@ -1450,6 +1693,7 @@ async function loadStockAlerts() {
         setListState(stockAlertList, 'Registra tu empresa para ver las alertas de stock.', 'fas fa-info-circle', 'card-empty-state');
         updateCriticalStockNotifications([], threshold);
         updateCapacityAlertNotifications([]);
+        updateDashboardStat('alerts', 0);
         return;
     }
 
@@ -1532,6 +1776,8 @@ async function loadStockAlerts() {
 
         const combinedAlerts = [...stockDisplay, ...capacityDisplay];
 
+        updateDashboardStat('alerts', combinedAlerts.length);
+
         if (!combinedAlerts.length) {
             setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
             return;
@@ -1579,6 +1825,7 @@ async function loadRecentMovements() {
     const empresaId = localStorage.getItem('id_empresa');
     if (!empresaId) {
         setListState(recentActivityList, 'Registra tu empresa para ver los movimientos recientes.', 'fas fa-info-circle', 'card-empty-state');
+        updateDashboardStat('movements', 0);
         return;
     }
 
@@ -1592,11 +1839,30 @@ async function loadRecentMovements() {
         }
         const payload = await response.json();
         if (payload && payload.success === false) {
+            updateDashboardStat('movements', 0);
             setListState(recentActivityList, payload.message || 'No hay movimientos recientes.', 'fas fa-info-circle', 'card-empty-state');
             return;
         }
 
         const movimientos = Array.isArray(payload?.movimientos) ? payload.movimientos : (Array.isArray(payload) ? payload : []);
+
+        const serverToday = Number(payload?.stats?.today);
+        const serverYesterday = Number(payload?.stats?.yesterday);
+        let movimientosHoy = Number.isFinite(serverToday) ? serverToday : null;
+        let movimientosAyer = Number.isFinite(serverYesterday) ? serverYesterday : null;
+
+        if (!Number.isFinite(movimientosHoy)) {
+            movimientosHoy = countMovementsForDate(movimientos, new Date());
+        }
+        if (!Number.isFinite(movimientosAyer)) {
+            const ayer = new Date();
+            ayer.setDate(ayer.getDate() - 1);
+            movimientosAyer = countMovementsForDate(movimientos, ayer);
+        }
+
+        const sanitizedHoy = Number.isFinite(movimientosHoy) ? movimientosHoy : 0;
+        const sanitizedAyer = Number.isFinite(movimientosAyer) ? movimientosAyer : null;
+        updateDashboardStat('movements', sanitizedHoy, { previousDayValue: sanitizedAyer });
 
         if (!movimientos.length) {
             setListState(recentActivityList, 'No se encontraron movimientos de inventario recientes.', 'fas fa-info-circle', 'card-empty-state');
