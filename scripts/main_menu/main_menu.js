@@ -986,16 +986,20 @@ function buildStockAlertEntries(productos, threshold) {
         const unidades = Number.isFinite(stockValue) ? stockValue : 0;
         const unidadesTexto = `${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`;
 
-        const locationParts = [];
-        if (prod && prod.zona_nombre) locationParts.push(prod.zona_nombre);
-        if (prod && prod.area_nombre) locationParts.push(prod.area_nombre);
-        const ubicacion = locationParts.filter(Boolean).join(' · ');
+        const detailSources = [
+            prod && typeof prod.descripcion === 'string' ? prod.descripcion.trim() : '',
+            prod && typeof prod.categoria_nombre === 'string' ? prod.categoria_nombre.trim() : '',
+            prod && typeof prod.subcategoria_nombre === 'string' ? prod.subcategoria_nombre.trim() : ''
+        ].filter(Boolean);
+
+        const detailFallback = 'Revisa el detalle del producto en el inventario.';
+        const detail = detailSources.length ? detailSources[0] : detailFallback;
 
         return {
             type: 'stock',
             iconClass: 'fas fa-box-open',
             title: ((prod && prod.nombre) || 'Producto sin nombre').trim(),
-            detail: ubicacion || 'Sin ubicación asignada',
+            detail,
             value: unidadesTexto,
             severity: Number.isFinite(stockValue) ? Math.max(0, threshold - stockValue) + 1 : 1,
             raw: prod
