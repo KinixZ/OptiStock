@@ -1701,80 +1701,20 @@ async function loadStockAlerts() {
     setListState(stockAlertList, 'Cargando alertas...', 'fas fa-circle-notch', 'card-loading-state');
 
     try {
-        const [productosResult, zonasResult, areasResult] = await Promise.allSettled([
-            fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`),
-            fetch(`/scripts/php/guardar_zonas.php?empresa_id=${encodeURIComponent(empresaId)}`),
-            fetch(`/scripts/php/guardar_areas.php?empresa_id=${encodeURIComponent(empresaId)}`)
-        ]);
+        const productosResponse = await fetch(`/scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`);
 
-        if (productosResult.status !== 'fulfilled' || !productosResult.value.ok) {
-            const statusText = productosResult.status === 'fulfilled' ? productosResult.value.status : 'sin respuesta';
-            throw new Error(`Inventario HTTP ${statusText}`);
+        if (!productosResponse.ok) {
+            throw new Error(`Inventario HTTP ${productosResponse.status}`);
         }
 
-        const productosResponse = productosResult.value;
         const payload = await productosResponse.json();
         const productos = Array.isArray(payload) ? payload : [];
 
-        let zonasRaw = [];
-        if (zonasResult.status === 'fulfilled' && zonasResult.value) {
-            if (zonasResult.value.ok) {
-                try {
-                    const zonasPayload = await zonasResult.value.json();
-                    if (Array.isArray(zonasPayload)) {
-                        zonasRaw = zonasPayload;
-                    }
-                } catch (error) {
-                    console.warn('No se pudo interpretar la respuesta de zonas.', error);
-                }
-            } else {
-                console.warn(`No se pudieron cargar las zonas (HTTP ${zonasResult.value.status}).`);
-            }
-        } else if (zonasResult.status === 'rejected') {
-            console.warn('Error de red al obtener zonas.', zonasResult.reason);
-        }
-
-        let areasRaw = [];
-        if (areasResult.status === 'fulfilled' && areasResult.value) {
-            if (areasResult.value.ok) {
-                try {
-                    const areasPayload = await areasResult.value.json();
-                    if (Array.isArray(areasPayload)) {
-                        areasRaw = areasPayload;
-                    }
-                } catch (error) {
-                    console.warn('No se pudo interpretar la respuesta de áreas.', error);
-                }
-            } else {
-                console.warn(`No se pudieron cargar las áreas (HTTP ${areasResult.value.status}).`);
-            }
-        } else if (areasResult.status === 'rejected') {
-            console.warn('Error de red al obtener áreas.', areasResult.reason);
-        }
-
         const { alerts: stockAlerts, criticalProducts } = buildStockAlertEntries(productos, threshold);
         updateCriticalStockNotifications(criticalProducts, threshold);
+        updateCapacityAlertNotifications([]);
 
-        const normalizedAreas = normalizeAreaData(areasRaw);
-        const normalizedZonas = normalizeZoneData(zonasRaw);
-        const capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
-        updateCapacityAlertNotifications(capacityAlerts);
-
-        let stockDisplay = stockAlerts.slice(0, 8);
-        let capacityDisplay = [];
-
-        if (capacityAlerts.length) {
-            const availableSlots = Math.max(0, 8 - stockDisplay.length);
-            if (availableSlots > 0) {
-                capacityDisplay = capacityAlerts.slice(0, availableSlots);
-            } else {
-                const capacitySlots = Math.min(capacityAlerts.length, 2);
-                capacityDisplay = capacityAlerts.slice(0, capacitySlots);
-                stockDisplay = stockDisplay.slice(0, Math.max(0, 8 - capacityDisplay.length));
-            }
-        }
-
-        const combinedAlerts = [...stockDisplay, ...capacityDisplay];
+        const combinedAlerts = stockAlerts.slice(0, 8);
 
         updateDashboardStat('alerts', combinedAlerts.length);
 
