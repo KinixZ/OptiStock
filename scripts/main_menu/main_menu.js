@@ -73,8 +73,6 @@ let cachedNotifications = [];
 let serverNotifications = [];
 let criticalStockNotifications = [];
 let criticalStockState = new Map();
-let capacityAlertNotifications = [];
-let capacityAlertState = new Map();
 
 let navegadorTimeZone = null;
 
@@ -665,7 +663,6 @@ function sortNotificationsByPriorityAndDate(notifications) {
 function refreshNotificationUI() {
     const combined = sortNotificationsByPriorityAndDate([
         ...criticalStockNotifications,
-        ...capacityAlertNotifications,
         ...serverNotifications
     ]);
     renderNotifications(combined);
@@ -729,7 +726,7 @@ async function fetchNotifications(options = {}) {
         }
 
         console.error('No se pudieron cargar las notificaciones:', error);
-        if (!serverNotifications.length && !criticalStockNotifications.length && !capacityAlertNotifications.length) {
+        if (!serverNotifications.length && !criticalStockNotifications.length) {
             renderNotificationPlaceholder('No se pudieron cargar las alertas.', { modifier: 'error' });
             updateNotificationCounters({ totalCount: 0, newCount: 0 });
         } else {
@@ -997,199 +994,6 @@ function buildStockAlertEntries(productos, threshold) {
     });
 
     return { alerts, criticalProducts };
-}
-
-function buildCapacityAlertEntries(normalizedAreas, normalizedZonas) {
-    const areaMap = new Map(normalizedAreas.map(area => [area.id, area]));
-    const alerts = [];
-
-    normalizedZonas
-        .filter(zona => Number.isFinite(zona.porcentaje) && zona.porcentaje >= 75)
-        .sort((a, b) => b.porcentaje - a.porcentaje)
-        .forEach(zona => {
-            const area = zona.area_id ? areaMap.get(zona.area_id) : null;
-            const detailParts = [];
-            if (area && area.nombre) {
-                detailParts.push(`Área ${area.nombre}`);
-            }
-            const disponible = formatNumber(zona.capacidad_disponible, 1);
-            if (disponible !== null) {
-                detailParts.push(`Disponible ${disponible} m³`);
-            }
-            const unidades = formatNumber(zona.unidades, 0);
-            if (unidades !== null) {
-                detailParts.push(`${unidades} uds`);
-            }
-
-            const porcentajeTexto = formatNumber(zona.porcentaje, 1);
-
-            alerts.push({
-                type: 'zone',
-                iconClass: 'fas fa-warehouse',
-                title: zona.nombre || 'Zona sin nombre',
-                detail: detailParts.join(' · ') || 'Capacidad limitada',
-                value: porcentajeTexto ? `${porcentajeTexto}% ocupado` : 'Capacidad crítica',
-                severity: Number.isFinite(zona.porcentaje) ? zona.porcentaje : 0,
-                raw: {
-                    kind: 'zone',
-                    zona,
-                    areaNombre: area && area.nombre ? area.nombre : '',
-                    areaId: area && Number.isFinite(area.id) ? area.id : (zona.area_id || null)
-                }
-            });
-        });
-
-    normalizedAreas
-        .filter(area => Number.isFinite(area.porcentaje) && area.porcentaje >= 85)
-        .sort((a, b) => b.porcentaje - a.porcentaje)
-        .forEach(area => {
-            const detailParts = [];
-            const disponible = formatNumber(area.disponible, 1);
-            if (disponible !== null) {
-                detailParts.push(`Disponible ${disponible} m³`);
-            }
-            const unidades = formatNumber(area.unidades, 0);
-            if (unidades !== null) {
-                detailParts.push(`${unidades} uds`);
-            }
-            const porcentajeTexto = formatNumber(area.porcentaje, 1);
-
-            alerts.push({
-                type: 'area',
-                iconClass: 'fas fa-layer-group',
-                title: area.nombre || 'Área sin nombre',
-                detail: detailParts.join(' · ') || 'Capacidad limitada',
-                value: porcentajeTexto ? `${porcentajeTexto}% ocupado` : 'Capacidad crítica',
-                severity: Number.isFinite(area.porcentaje) ? area.porcentaje : 0,
-                raw: {
-                    kind: 'area',
-                    area
-                }
-            });
-        });
-
-    return alerts.sort((a, b) => b.severity - a.severity);
-}
-
-function getCapacityAlertKey(alert) {
-    if (!alert || !alert.type) {
-        return '';
-    }
-
-    if (alert.type === 'zone') {
-        const zona = alert.raw && alert.raw.zona ? alert.raw.zona : null;
-        if (zona && Number.isFinite(zona.id)) {
-            return `zone-${zona.id}`;
-        }
-        const baseName = (alert.title || '').toLowerCase().trim().replace(/\s+/g, '-');
-        const areaId = zona && zona.area_id ? zona.area_id : (alert.raw && alert.raw.areaId ? alert.raw.areaId : '');
-        return `zone-${baseName || 'sin-nombre'}-${areaId}`;
-    }
-
-    if (alert.type === 'area') {
-        const area = alert.raw && alert.raw.area ? alert.raw.area : null;
-        if (area && Number.isFinite(area.id)) {
-            return `area-${area.id}`;
-        }
-        const baseName = (alert.title || '').toLowerCase().trim().replace(/\s+/g, '-');
-        return `area-${baseName || 'sin-nombre'}`;
-    }
-
-    return (alert.type || 'capacity') + '-' + ((alert.title || '').toLowerCase().trim().replace(/\s+/g, '-'));
-}
-
-function buildCapacityAlertNotification(alert, markAsNew, preservedTimestamp) {
-    const zona = alert.raw && alert.raw.kind === 'zone' ? alert.raw.zona : null;
-    const areaDesdeZona = alert.raw && alert.raw.kind === 'zone' ? alert.raw.areaNombre : '';
-    const area = alert.raw && alert.raw.kind === 'area' ? alert.raw.area : null;
-
-    const nombre = (alert.title || '').trim() || (alert.type === 'area' ? 'Área sin nombre' : 'Zona sin nombre');
-    const porcentaje = zona ? zona.porcentaje : (area ? area.porcentaje : null);
-    const disponible = zona ? zona.capacidad_disponible : (area ? area.disponible : null);
-    const unidades = zona ? zona.unidades : (area ? area.unidades : null);
-    const areaTexto = alert.type === 'zone' && areaDesdeZona
-        ? `Área ${areaDesdeZona}`
-        : '';
-
-    const detalles = [];
-    if (Number.isFinite(porcentaje)) {
-        detalles.push(`Ocupación ${porcentaje.toFixed(1)}%`);
-    }
-    if (Number.isFinite(disponible)) {
-        detalles.push(`Disponible ${disponible.toFixed(1)} m³`);
-    }
-    if (Number.isFinite(unidades)) {
-        detalles.push(`${Math.round(unidades)} unidades registradas`);
-    }
-    if (areaTexto) {
-        detalles.push(areaTexto);
-    }
-
-    const tipoEntidad = alert.type === 'area' ? 'Área' : 'Zona';
-    const mensajeBase = `La ${tipoEntidad.toLowerCase()} ${nombre} está al límite de capacidad.`;
-    const detalleMensaje = detalles.length ? ` ${detalles.join(' · ')}.` : '';
-    const timestamp = preservedTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
-
-    return {
-        id: `capacity-${getCapacityAlertKey(alert)}`,
-        titulo: `Capacidad crítica: ${tipoEntidad} ${nombre}`,
-        mensaje: `${mensajeBase}${detalleMensaje}`,
-        prioridad: 'Alta',
-        fecha_disponible_desde: timestamp,
-        ruta_destino: 'area_almac_v2/gestion_areas_zonas.html',
-        estado: 'Enviada',
-        es_nueva: !!markAsNew,
-        tipo_destinatario: 'Usuario',
-        es_local: true
-    };
-}
-
-function showCapacityAlertToast(notification) {
-    const titulo = notification.titulo || 'Capacidad crítica';
-    const mensaje = notification.mensaje || 'Se detectó una zona o área con capacidad al límite.';
-    showCriticalStockAlert(titulo, mensaje);
-}
-
-function updateCapacityAlertNotifications(alerts) {
-    const previousState = new Map(capacityAlertState);
-    const nextState = new Map();
-    const newlyTriggered = [];
-
-    (Array.isArray(alerts) ? alerts : []).forEach(alert => {
-        const key = getCapacityAlertKey(alert);
-        if (!key) return;
-
-        const previousEntry = previousState.get(key);
-        const alreadyAlerted = previousEntry && previousEntry.alerted === true;
-        const preservedTimestamp = previousEntry && previousEntry.notification
-            ? previousEntry.notification.fecha_disponible_desde
-            : null;
-
-        const notification = buildCapacityAlertNotification(alert, !alreadyAlerted, preservedTimestamp);
-
-        nextState.set(key, {
-            alerted: true,
-            notification
-        });
-
-        if (!alreadyAlerted) {
-            newlyTriggered.push(notification);
-        }
-    });
-
-    if (!alerts.length) {
-        capacityAlertNotifications = [];
-        capacityAlertState.clear();
-    } else {
-        capacityAlertState = nextState;
-        capacityAlertNotifications = Array.from(nextState.values()).map(entry => entry.notification);
-    }
-
-    if (newlyTriggered.length && JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
-        newlyTriggered.forEach(showCapacityAlertToast);
-    }
-
-    refreshNotificationUI();
 }
 
 function parseDateFromMysql(mysqlDate) {
@@ -1692,7 +1496,6 @@ async function loadStockAlerts() {
     if (!empresaId) {
         setListState(stockAlertList, 'Registra tu empresa para ver las alertas de stock.', 'fas fa-info-circle', 'card-empty-state');
         updateCriticalStockNotifications([], threshold);
-        updateCapacityAlertNotifications([]);
         updateDashboardStat('alerts', 0);
         return;
     }
@@ -1712,19 +1515,21 @@ async function loadStockAlerts() {
 
         const { alerts: stockAlerts, criticalProducts } = buildStockAlertEntries(productos, threshold);
         updateCriticalStockNotifications(criticalProducts, threshold);
-        updateCapacityAlertNotifications([]);
 
-        const combinedAlerts = stockAlerts.slice(0, 8);
+        const sortedAlerts = stockAlerts
+            .slice()
+            .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
+            .slice(0, 8);
 
-        updateDashboardStat('alerts', combinedAlerts.length);
+        updateDashboardStat('alerts', sortedAlerts.length);
 
-        if (!combinedAlerts.length) {
+        if (!sortedAlerts.length) {
             setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
             return;
         }
 
         stockAlertList.innerHTML = '';
-        combinedAlerts.forEach(alert => {
+        sortedAlerts.forEach(alert => {
             const li = createAlertListItem(alert);
             if (alert.type && alert.type !== 'stock') {
                 li.dataset.alertType = alert.type;
@@ -1733,7 +1538,6 @@ async function loadStockAlerts() {
         });
     } catch (error) {
         console.error('Error loading stock alerts:', error);
-        updateCapacityAlertNotifications([]);
         setListState(stockAlertList, 'No se pudo cargar la información de alertas. Intenta nuevamente.', 'fas fa-triangle-exclamation', 'card-empty-state');
     } finally {
         setButtonLoading(stockAlertsRefreshBtn, false);
