@@ -323,20 +323,16 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
         const palette = getBrandPalette();
         const colors = {
-          background: palette.page,
-          card: palette.card,
-          border: hexToRgba(palette.sidebar, 0.1),
-          headerStart: palette.sidebar,
-          headerEnd: palette.topbar,
-          headerOverlay: palette.topbarStrong,
-          accent: palette.topbar,
-          accentSoft: palette.topbarSoft,
-          textMain: palette.text,
-          textMuted: hexToRgba(palette.sidebar, 0.58),
-          textOnDark: palette.sidebarText,
-          qrBackdrop: hexToRgba(palette.sidebar, 0.05),
-          divider: hexToRgba(palette.sidebar, 0.18),
-          shadow: palette.sidebarShadow
+          background: '#f4f6fb',
+          card: '#ffffff',
+          border: '#e0e4f5',
+          header: '#171f34',
+          accent: '#ff6f91',
+          accentSoft: 'rgba(255, 111, 145, 0.18)',
+          textMain: '#1f2336',
+          textMuted: '#5b6478',
+          textOnDark: '#ffffff',
+          qrBackdrop: '#f4f6fb'
         };
 
         ctx.fillStyle = colors.background;
@@ -350,9 +346,9 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const radius = 28;
 
         ctx.save();
-        ctx.shadowColor = colors.shadow;
-        ctx.shadowBlur = 32;
-        ctx.shadowOffsetY = 20;
+        ctx.shadowColor = 'rgba(23, 31, 52, 0.14)';
+        ctx.shadowBlur = 28;
+        ctx.shadowOffsetY = 18;
         drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, null);
         ctx.restore();
         drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
@@ -361,13 +357,10 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         ctx.save();
         roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
         ctx.clip();
-        const headerGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + headerHeight);
-        headerGradient.addColorStop(0, colors.headerStart);
-        headerGradient.addColorStop(1, colors.headerEnd);
-        ctx.fillStyle = headerGradient;
+        ctx.fillStyle = colors.header;
         ctx.fillRect(cardX, cardY, cardW, headerHeight);
-        ctx.globalAlpha = 0.45;
-        ctx.fillStyle = colors.headerOverlay;
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = colors.accent;
         ctx.beginPath();
         ctx.ellipse(cardX + cardW * 0.75, cardY + headerHeight * 0.2, cardW * 0.4, headerHeight * 0.9, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -381,7 +374,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const badgeText = 'CÓDIGO QR';
         ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
         const badgeWidth = Math.min(cardW - paddingX * 2, ctx.measureText(badgeText).width + badgePaddingX * 2);
-        const badgeY = cardY + 42;
+        const badgeY = cardY + 44;
         drawRoundedRect(ctx, headerX, badgeY, badgeWidth, badgeHeight, 18, colors.accent, null);
         ctx.save();
         ctx.fillStyle = colors.textOnDark;
@@ -402,7 +395,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         );
 
         const headerInfoY = Math.min(cardY + headerHeight - 32, headerTitle.nextY);
-        ctx.fillStyle = hexToRgba(colors.textOnDark, 0.7);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
         ctx.font = '400 18px "Poppins", "Segoe UI", sans-serif';
         ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
 
@@ -491,7 +484,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           rightColumnY = renderInfoBlock(rightColumnX, rightColumnY, columnWidth, bloque);
         });
 
-        ctx.strokeStyle = colors.divider;
+        ctx.strokeStyle = colors.accentSoft;
         ctx.lineWidth = 2;
         ctx.setLineDash([10, 12]);
         ctx.beginPath();
