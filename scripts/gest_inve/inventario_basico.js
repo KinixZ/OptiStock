@@ -41,8 +41,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalTitle = document.getElementById('productoQrTitle');
   const qrModalDownload = document.getElementById('productoQrDownload');
   const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
+  const etiquetaPreviewSection = document.getElementById('etiquetaPreviewSection');
+  const etiquetaPreviewImage = document.getElementById('productoEtiquetaImage');
+  const etiquetaPreviewPlaceholder = document.getElementById('productoEtiquetaPlaceholder');
+  const etiquetaPreviewDownload = document.getElementById('productoEtiquetaDownload');
   let qrModalProducto = null;
   let qrModalSrc = '';
+  let etiquetaPreviewProducto = null;
+  let etiquetaPreviewSrc = '';
 
   let productoFormCollapse = null;
   if (productoFormCollapseEl && window.bootstrap?.Collapse) {
@@ -110,18 +116,10 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         qrModalImage.classList.add('d-none');
       }
       if (qrModalPlaceholder) {
-        qrModalPlaceholder.textContent = 'Generando código QR...';
+        qrModalPlaceholder.textContent = 'Genera la etiqueta del producto para verla aquí.';
         qrModalPlaceholder.classList.remove('d-none');
       }
-      if (qrModalDownload) {
-        qrModalDownload.removeAttribute('href');
-        qrModalDownload.dataset.qrSrc = '';
-        qrModalDownload.dataset.filename = '';
-        qrModalDownload.removeAttribute('download');
-        qrModalDownload.classList.remove('disabled');
-        qrModalDownload.removeAttribute('aria-disabled');
-        qrModalDownload.removeAttribute('aria-busy');
-      }
+      resetDownloadAnchor(qrModalDownload);
       qrModalProducto = null;
       qrModalSrc = '';
     });
@@ -162,6 +160,82 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       return String(producto.precio_compra);
     }
     return 'N/D';
+  }
+
+  function hexToRgba(hexColor, alpha = 1) {
+    if (!hexColor) return `rgba(0, 0, 0, ${alpha})`;
+    const input = String(hexColor).trim();
+    if (/^rgba?\(/i.test(input)) {
+      const values = input
+        .replace(/rgba?\(/i, '')
+        .replace(')', '')
+        .split(',')
+        .map(part => part.trim())
+        .filter(Boolean);
+      const [r = '0', g = '0', b = '0'] = values;
+      return `rgba(${r.replace(/%$/, '')}, ${g.replace(/%$/, '')}, ${b.replace(/%$/, '')}, ${alpha})`;
+    }
+
+    let hex = input.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.split('').map(char => char + char).join('');
+    }
+    if (hex.length !== 6) {
+      return `rgba(0, 0, 0, ${alpha})`;
+    }
+    const intVal = Number.parseInt(hex, 16);
+    const r = (intVal >> 16) & 255;
+    const g = (intVal >> 8) & 255;
+    const b = intVal & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function getBrandPalette() {
+    const styles = window.getComputedStyle(document.documentElement);
+    const readVar = (name, fallback) => {
+      const value = styles.getPropertyValue(name)?.trim();
+      return value || fallback;
+    };
+    const topbar = readVar('--topbar-color', '#ff6f91');
+    const sidebar = readVar('--sidebar-color', '#171f34');
+    const card = readVar('--card-bg', '#ffffff');
+    const page = readVar('--page-bg', '#f4f6fb');
+    const text = readVar('--text-color', '#1f2336');
+    const sidebarText = readVar('--sidebar-text-color', '#ffffff');
+    return {
+      topbar,
+      sidebar,
+      card,
+      page,
+      text,
+      sidebarText,
+      topbarSoft: hexToRgba(topbar, 0.16),
+      topbarStrong: hexToRgba(topbar, 0.35),
+      sidebarSoft: hexToRgba(sidebar, 0.12),
+      sidebarShadow: hexToRgba(sidebar, 0.22)
+    };
+  }
+
+  function resetDownloadAnchor(anchor) {
+    if (!anchor) return;
+    anchor.classList.add('disabled');
+    anchor.setAttribute('aria-disabled', 'true');
+    anchor.removeAttribute('href');
+    anchor.removeAttribute('download');
+    delete anchor.dataset.qrSrc;
+    delete anchor.dataset.filename;
+    delete anchor.dataset.etiquetaDataUrl;
+  }
+
+  function applyDownloadData(anchor, dataUrl, filenameBase) {
+    if (!anchor) return;
+    anchor.href = dataUrl;
+    anchor.download = `${filenameBase}.png`;
+    anchor.dataset.etiquetaDataUrl = dataUrl;
+    anchor.dataset.filename = filenameBase;
+    anchor.classList.remove('disabled');
+    anchor.removeAttribute('aria-disabled');
+    anchor.removeAttribute('aria-busy');
   }
 
   function roundedRectPath(ctx, x, y, width, height, radius) {
@@ -247,6 +321,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
+        const palette = getBrandPalette();
         const colors = {
           background: '#f4f6fb',
           card: '#ffffff',
@@ -473,8 +548,127 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     });
   }
 
+  async function renderEtiquetaVista(producto, qrSrc, filenameBase) {
+    if (!producto || !qrSrc) {
+      return;
+    }
+
+    const safeFilename = filenameBase || sanitizeFileName(producto?.nombre) || 'producto_etiqueta';
+    etiquetaPreviewProducto = producto;
+    etiquetaPreviewSrc = qrSrc;
+
+    etiquetaPreviewSection?.classList.remove('d-none');
+
+    if (qrModalImage) {
+      qrModalImage.classList.add('d-none');
+      qrModalImage.onload = () => {
+        qrModalImage.classList.remove('d-none');
+        qrModalPlaceholder?.classList.add('d-none');
+      };
+      qrModalImage.onerror = () => {
+        if (qrModalPlaceholder) {
+          qrModalPlaceholder.textContent = 'No se pudo mostrar la etiqueta generada.';
+          qrModalPlaceholder.classList.remove('d-none');
+        }
+        qrModalImage.classList.add('d-none');
+      };
+    }
+    if (qrModalPlaceholder) {
+      qrModalPlaceholder.textContent = 'Generando etiqueta con los colores de OptiStock...';
+      qrModalPlaceholder.classList.remove('d-none');
+    }
+
+    if (etiquetaPreviewImage) {
+      etiquetaPreviewImage.classList.add('d-none');
+      etiquetaPreviewImage.onload = () => {
+        etiquetaPreviewImage.classList.remove('d-none');
+        etiquetaPreviewPlaceholder?.classList.add('d-none');
+      };
+      etiquetaPreviewImage.onerror = () => {
+        if (etiquetaPreviewPlaceholder) {
+          etiquetaPreviewPlaceholder.textContent = 'No se pudo mostrar la etiqueta generada.';
+          etiquetaPreviewPlaceholder.classList.remove('d-none');
+        }
+        etiquetaPreviewImage.classList.add('d-none');
+      };
+    }
+    if (etiquetaPreviewPlaceholder) {
+      etiquetaPreviewPlaceholder.textContent = 'Generando etiqueta con los colores de OptiStock...';
+      etiquetaPreviewPlaceholder.classList.remove('d-none');
+    }
+
+    resetDownloadAnchor(qrModalDownload);
+    resetDownloadAnchor(etiquetaPreviewDownload);
+
+    if (qrModalDownload) {
+      qrModalDownload.dataset.qrSrc = qrSrc;
+      qrModalDownload.dataset.filename = safeFilename;
+    }
+    if (etiquetaPreviewDownload) {
+      etiquetaPreviewDownload.dataset.qrSrc = qrSrc;
+      etiquetaPreviewDownload.dataset.filename = safeFilename;
+    }
+
+    try {
+      const dataUrl = await crearEtiquetaProducto(producto, qrSrc);
+
+      if (qrModalImage) {
+        qrModalImage.src = dataUrl;
+        qrModalImage.alt = producto ? `Etiqueta del producto ${producto.nombre}` : 'Etiqueta del producto';
+      }
+      if (etiquetaPreviewImage) {
+        etiquetaPreviewImage.src = dataUrl;
+        etiquetaPreviewImage.alt = producto ? `Etiqueta del producto ${producto.nombre}` : 'Etiqueta del producto';
+      }
+
+      applyDownloadData(qrModalDownload, dataUrl, safeFilename);
+      applyDownloadData(etiquetaPreviewDownload, dataUrl, safeFilename);
+    } catch (error) {
+      console.error('Error generando vista previa de la etiqueta', error);
+
+      if (qrModalPlaceholder) {
+        qrModalPlaceholder.textContent = 'No se pudo generar la etiqueta. Mostrando código QR original.';
+        qrModalPlaceholder.classList.remove('d-none');
+      }
+      if (etiquetaPreviewPlaceholder) {
+        etiquetaPreviewPlaceholder.textContent = 'No se pudo generar la etiqueta. Intenta nuevamente.';
+        etiquetaPreviewPlaceholder.classList.remove('d-none');
+      }
+
+      if (qrModalImage) {
+        qrModalImage.src = qrSrc;
+        qrModalImage.alt = producto ? `Código QR del producto ${producto.nombre}` : 'Código QR del producto';
+      }
+
+      if (qrModalDownload) {
+        qrModalDownload.href = qrSrc;
+        qrModalDownload.classList.remove('disabled');
+        qrModalDownload.removeAttribute('aria-disabled');
+        qrModalDownload.removeAttribute('aria-busy');
+      }
+
+      if (etiquetaPreviewDownload) {
+        etiquetaPreviewDownload.classList.add('disabled');
+        etiquetaPreviewDownload.setAttribute('aria-disabled', 'true');
+        etiquetaPreviewDownload.removeAttribute('href');
+        etiquetaPreviewDownload.removeAttribute('download');
+      }
+    }
+  }
+
   async function handleEtiquetaDownload(event) {
     if (!qrModalDownload) return;
+
+    if (qrModalDownload.classList.contains('disabled')) {
+      event.preventDefault();
+      return;
+    }
+
+    if (qrModalDownload.dataset.etiquetaDataUrl) {
+      qrModalDownload.href = qrModalDownload.dataset.etiquetaDataUrl;
+      return;
+    }
+
     if (!qrModalProducto || !qrModalSrc) {
       if (qrModalSrc) {
         qrModalDownload.href = qrModalSrc;
@@ -483,9 +677,6 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     }
 
     event.preventDefault();
-    if (qrModalDownload.classList.contains('disabled')) {
-      return;
-    }
 
     try {
       qrModalDownload.classList.add('disabled');
@@ -494,12 +685,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
       const dataUrl = await crearEtiquetaProducto(qrModalProducto, qrModalSrc);
       const filenameBase = qrModalDownload.dataset.filename || 'producto_etiqueta';
-      const tempLink = document.createElement('a');
-      tempLink.href = dataUrl;
-      tempLink.download = `${filenameBase}.png`;
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      tempLink.remove();
+      applyDownloadData(qrModalDownload, dataUrl, filenameBase);
+      qrModalDownload.click();
     } catch (error) {
       console.error('Error generando etiqueta del producto', error);
       showToast('No se pudo generar la etiqueta del producto', 'error');
@@ -507,13 +694,59 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         window.open(qrModalSrc, '_blank');
       }
     } finally {
-      qrModalDownload.classList.remove('disabled');
-      qrModalDownload.removeAttribute('aria-disabled');
-      qrModalDownload.removeAttribute('aria-busy');
+      if (!qrModalDownload.dataset.etiquetaDataUrl) {
+        qrModalDownload.classList.remove('disabled');
+        qrModalDownload.removeAttribute('aria-disabled');
+        qrModalDownload.removeAttribute('aria-busy');
+      }
     }
   }
 
   qrModalDownload?.addEventListener('click', handleEtiquetaDownload);
+
+  async function handleEtiquetaPreviewDownload(event) {
+    if (!etiquetaPreviewDownload) return;
+
+    if (etiquetaPreviewDownload.classList.contains('disabled')) {
+      event.preventDefault();
+      return;
+    }
+
+    if (etiquetaPreviewDownload.dataset.etiquetaDataUrl) {
+      etiquetaPreviewDownload.href = etiquetaPreviewDownload.dataset.etiquetaDataUrl;
+      return;
+    }
+
+    if (!etiquetaPreviewProducto || !etiquetaPreviewSrc) {
+      event.preventDefault();
+      showToast('Selecciona un producto y genera su etiqueta desde la tabla.', 'info');
+      return;
+    }
+
+    event.preventDefault();
+
+    try {
+      etiquetaPreviewDownload.classList.add('disabled');
+      etiquetaPreviewDownload.setAttribute('aria-disabled', 'true');
+      etiquetaPreviewDownload.setAttribute('aria-busy', 'true');
+
+      const dataUrl = await crearEtiquetaProducto(etiquetaPreviewProducto, etiquetaPreviewSrc);
+      const filenameBase = etiquetaPreviewDownload.dataset.filename || 'producto_etiqueta';
+      applyDownloadData(etiquetaPreviewDownload, dataUrl, filenameBase);
+      etiquetaPreviewDownload.click();
+    } catch (error) {
+      console.error('Error generando etiqueta del producto', error);
+      showToast('No se pudo generar la etiqueta del producto', 'error');
+    } finally {
+      if (!etiquetaPreviewDownload.dataset.etiquetaDataUrl) {
+        etiquetaPreviewDownload.classList.remove('disabled');
+        etiquetaPreviewDownload.removeAttribute('aria-disabled');
+        etiquetaPreviewDownload.removeAttribute('aria-busy');
+      }
+    }
+  }
+
+  etiquetaPreviewDownload?.addEventListener('click', handleEtiquetaPreviewDownload);
 
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
@@ -1872,50 +2105,34 @@ if (editProdId) {
     qrModalProducto = producto;
     qrModalSrc = qrSrc;
 
+    if (!producto) {
+      window.open(qrSrc, '_blank');
+      return;
+    }
+
     if (!qrModalInstance || !qrModalImage) {
       window.open(qrSrc, '_blank');
       return;
     }
 
-    if (qrModalPlaceholder) {
-      qrModalPlaceholder.textContent = 'Generando código QR...';
-      qrModalPlaceholder.classList.remove('d-none');
-    }
-
-    qrModalImage.classList.add('d-none');
-    qrModalImage.onload = () => {
-      qrModalImage.classList.remove('d-none');
-      if (qrModalPlaceholder) {
-        qrModalPlaceholder.classList.add('d-none');
-      }
-    };
-    qrModalImage.onerror = () => {
-      if (qrModalPlaceholder) {
-        qrModalPlaceholder.textContent = 'No se pudo generar el código QR.';
-        qrModalPlaceholder.classList.remove('d-none');
-      }
-      qrModalImage.classList.add('d-none');
-      qrModalDownload?.removeAttribute('href');
-    };
-    qrModalImage.src = qrSrc;
-    qrModalImage.alt = producto ? `Código QR del producto ${producto.nombre}` : 'Código QR del producto';
-
     if (qrModalTitle) {
       qrModalTitle.textContent = producto
-        ? `Código QR – ${producto.nombre}`
-        : 'Código QR del producto';
+        ? `Etiqueta QR – ${producto.nombre}`
+        : 'Etiqueta QR del producto';
     }
+
     if (qrModalDownload) {
-      const safeName = sanitizeFileName(producto?.nombre) || `producto_${id}`;
-      qrModalDownload.href = '#';
-      qrModalDownload.dataset.qrSrc = qrSrc;
-      qrModalDownload.dataset.filename = `${safeName || 'producto'}_etiqueta`;
-      qrModalDownload.download = `${safeName || 'producto'}_etiqueta.png`;
       qrModalDownload.textContent = 'Descargar etiqueta';
-      qrModalDownload.classList.remove('disabled');
-      qrModalDownload.removeAttribute('aria-disabled');
-      qrModalDownload.removeAttribute('aria-busy');
     }
+    if (etiquetaPreviewDownload) {
+      etiquetaPreviewDownload.textContent = 'Descargar etiqueta';
+    }
+
+    const safeName = sanitizeFileName(producto?.nombre) || `producto_${id}`;
+    const filenameBase = `${safeName}_etiqueta`;
+    renderEtiquetaVista(producto, qrSrc, filenameBase).catch(error => {
+      console.error('No se pudo renderizar la etiqueta', error);
+    });
 
     qrModalInstance.show();
     return;
