@@ -307,6 +307,29 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body pt-3">
+          <div class="qr-orientation" role="radiogroup" aria-labelledby="qrOrientationLegend">
+            <span id="qrOrientationLegend" class="qr-orientation__legend">Orientación</span>
+            <div class="qr-orientation__options">
+              <input
+                type="radio"
+                class="qr-orientation__radio"
+                name="etiquetaOrientacion"
+                id="qrOrientationHorizontal"
+                value="horizontal"
+                checked
+              />
+              <label class="qr-orientation__option" for="qrOrientationHorizontal">Horizontal</label>
+
+              <input
+                type="radio"
+                class="qr-orientation__radio"
+                name="etiquetaOrientacion"
+                id="qrOrientationVertical"
+                value="vertical"
+              />
+              <label class="qr-orientation__option" for="qrOrientationVertical">Vertical</label>
+            </div>
+          </div>
           <div class="qr-preview" aria-live="polite">
             <span class="qr-preview__label">Etiqueta lista para imprimir</span>
             <div class="qr-preview__canvas">
