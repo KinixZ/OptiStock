@@ -2441,6 +2441,21 @@ if (editProdId) {
     return;
   }
 
+  // update preview when orientation changes
+  const orientRadios = document.getElementsByName('etiquetaOrientacion');
+
+  function updateLabelPreview() {
+    if (!qrModalProducto || !qrModalSrc || !productoLabelCompact) return;
+    const orient = getSelectedOrientation();
+    productoLabelCompact.innerHTML = '';
+    const node = buildCompactLabel(qrModalProducto, qrModalSrc, orient);
+    productoLabelCompact.appendChild(node);
+  }
+
+  for (const r of orientRadios) {
+    r.addEventListener('change', updateLabelPreview);
+  }
+
   // Note: download click is handled by handleEtiquetaDownload above (centralized)
 
   // 1) Eliminar
