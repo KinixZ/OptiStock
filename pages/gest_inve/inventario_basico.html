@@ -307,26 +307,27 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
-          <div class="d-flex flex-column gap-3">
-            <div class="d-flex align-items-center gap-2 justify-content-between">
-              <div class="d-flex align-items-center gap-2">
-                <label class="form-label mb-0">Orientación:</label>
-                <div class="btn-group" role="group" aria-label="Orientación etiqueta">
-                  <input type="radio" class="btn-check" name="etiquetaOrientacion" id="orientH" autocomplete="off" value="horizontal" checked>
-                  <label class="btn btn-outline-secondary btn-sm" for="orientH">Horizontal</label>
-                  <input type="radio" class="btn-check" name="etiquetaOrientacion" id="orientV" autocomplete="off" value="vertical">
-                  <label class="btn btn-outline-secondary btn-sm" for="orientV">Vertical</label>
-                </div>
+          <div class="qr-modal-content">
+            <div class="qr-modal-settings">
+              <h6 class="qr-modal-settings__title">Diseño de la etiqueta</h6>
+              <p class="qr-modal-settings__hint">Selecciona la orientación para ajustar la posición del QR cuando descargues la etiqueta.</p>
+              <div class="btn-group qr-orientation" role="group" aria-label="Orientación de la etiqueta">
+                <input type="radio" class="btn-check" name="etiquetaOrientacion" id="orientH" autocomplete="off" value="horizontal" checked>
+                <label class="btn btn-outline-secondary btn-sm" for="orientH">Horizontal</label>
+                <input type="radio" class="btn-check" name="etiquetaOrientacion" id="orientV" autocomplete="off" value="vertical">
+                <label class="btn btn-outline-secondary btn-sm" for="orientV">Vertical</label>
               </div>
             </div>
 
-            <div id="productoQrPreview" class="qr-preview label-preview p-3 d-flex align-items-center justify-content-center">
-              <div id="productoQrPlaceholder" class="qr-placeholder">Generando código QR...</div>
-              <img id="productoQrImage" class="qr-image d-none" alt="Código QR del producto" />
-              <!-- Compact label container for rendering before download -->
-              <div id="productoLabelCompact" class="d-none" aria-hidden="true"></div>
+            <div class="qr-modal-visual">
+              <div class="qr-visual">
+                <div id="productoQrPlaceholder" class="qr-placeholder">Generando código QR...</div>
+                <img id="productoQrImage" class="qr-image d-none" alt="Código QR del producto" />
+              </div>
             </div>
           </div>
+          <!-- Compact label container for rendering before download -->
+          <div id="productoLabelCompact" class="visually-hidden" aria-hidden="true"></div>
         </div>
         <div class="modal-footer border-0 d-flex flex-column flex-sm-row gap-2">
           <a id="productoQrDownload" class="btn btn-outline-primary flex-fill" download>Descargar QR</a>
