@@ -248,14 +248,16 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const ctx = canvas.getContext('2d');
 
         const colors = {
-          background: '#f5f6fb',
+          background: '#f4f6fb',
           card: '#ffffff',
-          border: '#e7e9f5',
-          headerStart: '#ff6f91',
-          headerEnd: '#ff9671',
-          textMain: '#1f2937',
-          textMuted: '#6b7280',
-          textOnAccent: '#ffffff'
+          border: '#e0e4f5',
+          header: '#171f34',
+          accent: '#ff6f91',
+          accentSoft: 'rgba(255, 111, 145, 0.18)',
+          textMain: '#1f2336',
+          textMuted: '#5b6478',
+          textOnDark: '#ffffff',
+          qrBackdrop: '#f4f6fb'
         };
 
         ctx.fillStyle = colors.background;
@@ -268,50 +270,68 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const cardH = height - margin * 2;
         const radius = 28;
 
-        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, colors.border);
+        ctx.save();
+        ctx.shadowColor = 'rgba(23, 31, 52, 0.14)';
+        ctx.shadowBlur = 28;
+        ctx.shadowOffsetY = 18;
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, null);
+        ctx.restore();
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
 
-        const headerHeight = 180;
+        const headerHeight = 190;
         ctx.save();
         roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
         ctx.clip();
-        const headerGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + headerHeight);
-        headerGradient.addColorStop(0, colors.headerStart);
-        headerGradient.addColorStop(1, colors.headerEnd);
-        ctx.fillStyle = headerGradient;
+        ctx.fillStyle = colors.header;
         ctx.fillRect(cardX, cardY, cardW, headerHeight);
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = colors.accent;
+        ctx.beginPath();
+        ctx.ellipse(cardX + cardW * 0.75, cardY + headerHeight * 0.2, cardW * 0.4, headerHeight * 0.9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
         ctx.restore();
 
-        const paddingX = 40;
+        const paddingX = 48;
         const headerX = cardX + paddingX;
-        let headerY = cardY + 60;
-
-        ctx.fillStyle = colors.textOnAccent;
+        const badgeHeight = 34;
+        const badgePaddingX = 18;
+        const badgeText = 'CÓDIGO QR';
         ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('CÓDIGO QR', headerX, headerY);
+        const badgeWidth = Math.min(cardW - paddingX * 2, ctx.measureText(badgeText).width + badgePaddingX * 2);
+        const badgeY = cardY + 44;
+        drawRoundedRect(ctx, headerX, badgeY, badgeWidth, badgeHeight, 18, colors.accent, null);
+        ctx.save();
+        ctx.fillStyle = colors.textOnDark;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText, headerX + badgePaddingX, badgeY + badgeHeight / 2);
+        ctx.restore();
 
-        headerY += 34;
-        ctx.font = '700 32px "Poppins", "Segoe UI", sans-serif';
+        let headerY = badgeY + badgeHeight + 28;
+        ctx.fillStyle = colors.textOnDark;
+        ctx.font = '700 36px "Poppins", "Segoe UI", sans-serif';
         const headerTitle = wrapText(
           ctx,
           producto?.nombre || 'Producto sin nombre',
           headerX,
           headerY,
           cardW - paddingX * 2,
-          36
+          40
         );
 
-        const headerInfoY = Math.min(cardY + headerHeight - 20, headerTitle.nextY);
-        ctx.font = '400 16px "Poppins", "Segoe UI", sans-serif';
+        const headerInfoY = Math.min(cardY + headerHeight - 32, headerTitle.nextY);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.font = '400 18px "Poppins", "Segoe UI", sans-serif';
         ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
 
         const bodyTop = cardY + headerHeight;
-        const bodyPadding = 40;
+        const bodyPadding = 44;
         let infoY = bodyTop + bodyPadding;
         const textStartX = cardX + bodyPadding;
         const qrSize = 240;
         const qrX = cardX + cardW - bodyPadding - qrSize;
         const qrY = bodyTop + bodyPadding;
-        const textWidth = qrX - textStartX - 24;
+        const textWidth = qrX - textStartX - 32;
 
         const zonaPartes = [];
         if (producto?.zona_nombre) zonaPartes.push(producto.zona_nombre);
@@ -341,7 +361,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           { etiqueta: 'Precio unitario', valor: precioTexto }
         ];
 
-        const columnGap = 64;
+        const columnGap = 56;
         const columnWidth = Math.floor((textWidth - columnGap) / 2);
         const leftColumnX = textStartX;
         const rightColumnX = textStartX + columnWidth + columnGap;
@@ -350,25 +370,32 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const renderInfoBlock = (startX, startY, width, bloque) => {
           let currentY = startY;
 
-          ctx.fillStyle = colors.textMuted;
-          ctx.font = '600 14px "Poppins", "Segoe UI", sans-serif';
-          ctx.fillText(bloque.etiqueta.toUpperCase(), startX, currentY);
-          currentY += 20;
+          const labelText = String(bloque.etiqueta || '').toUpperCase();
+          ctx.font = '600 13px "Poppins", "Segoe UI", sans-serif';
+          const labelWidth = Math.min(width, ctx.measureText(labelText).width + 28);
+          const labelHeight = 30;
+          drawRoundedRect(ctx, startX, currentY, labelWidth, labelHeight, 14, colors.accentSoft, null);
+          ctx.save();
+          ctx.fillStyle = colors.accent;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labelText, startX + 14, currentY + labelHeight / 2);
+          ctx.restore();
 
+          currentY += labelHeight + 18;
           ctx.fillStyle = colors.textMain;
-          ctx.font = bloque.font || '600 20px "Poppins", "Segoe UI", sans-serif';
+          ctx.font = bloque.font || '600 22px "Poppins", "Segoe UI", sans-serif';
 
           if (bloque.multilinea) {
-            const lineHeight = bloque.lineHeight || 26;
+            const lineHeight = bloque.lineHeight || 28;
             const wrapped = wrapText(ctx, bloque.valor, startX, currentY, width, lineHeight);
             currentY = wrapped.nextY;
           } else {
-            const lineHeight = bloque.lineHeight || 28;
+            const lineHeight = bloque.lineHeight || 30;
             ctx.fillText(bloque.valor || 'N/D', startX, currentY);
             currentY += lineHeight;
           }
 
-          currentY += 20;
+          currentY += 16;
           return currentY;
         };
 
@@ -382,41 +409,27 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           rightColumnY = renderInfoBlock(rightColumnX, rightColumnY, columnWidth, bloque);
         });
 
-        ctx.strokeStyle = colors.border;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = colors.accentSoft;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 12]);
         ctx.beginPath();
         ctx.moveTo(columnDividerX, bodyTop + bodyPadding - 12);
         ctx.lineTo(columnDividerX, Math.max(leftColumnY, rightColumnY) + 12);
         ctx.stroke();
+        ctx.setLineDash([]);
 
         infoY = Math.max(leftColumnY, rightColumnY) + 12;
 
-        const footerY = cardY + cardH - bodyPadding;
-        ctx.strokeStyle = colors.border;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(textStartX, footerY);
-        ctx.lineTo(cardX + cardW - bodyPadding, footerY);
-        ctx.stroke();
-
-        ctx.fillStyle = colors.textMuted;
-        ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('Etiqueta generada con OptiStock', textStartX, footerY + 28);
-
-        ctx.textAlign = 'right';
-        ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerY + 28);
-        ctx.textAlign = 'left';
-
-        const qrContainerPadding = 16;
+        const qrContainerPadding = 20;
         drawRoundedRect(
           ctx,
           qrX - qrContainerPadding,
           qrY - qrContainerPadding,
           qrSize + qrContainerPadding * 2,
           qrSize + qrContainerPadding * 2,
-          20,
-          colors.background,
-          colors.border
+          24,
+          colors.qrBackdrop,
+          colors.accentSoft
         );
         ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
@@ -425,6 +438,30 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         ctx.textAlign = 'center';
         ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + 48);
         ctx.textAlign = 'left';
+
+        const footerHeight = 64;
+        ctx.save();
+        roundedRectPath(ctx, cardX, cardY + cardH - footerHeight, cardW, footerHeight, {
+          tl: 0,
+          tr: 0,
+          br: radius,
+          bl: radius
+        });
+        ctx.clip();
+        ctx.fillStyle = colors.accent;
+        ctx.fillRect(cardX, cardY + cardH - footerHeight, cardW, footerHeight);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = colors.textOnDark;
+        ctx.textBaseline = 'middle';
+        const footerCenterY = cardY + cardH - footerHeight / 2;
+        ctx.font = '600 20px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('Etiqueta generada con OptiStock', textStartX, footerCenterY);
+        ctx.textAlign = 'right';
+        ctx.font = '600 20px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerCenterY);
+        ctx.restore();
 
         const dataUrl = canvas.toDataURL('image/png');
         resolve(dataUrl);
