@@ -388,64 +388,90 @@ img {
   padding: 1rem;
   min-height: 200px;
 }
-
+/* Redesigned compact label that matches the mockup style: header band, content area with left info and right QR, footer bar */
 .label-card {
+  width: 100%;
+  background: linear-gradient(180deg,#ffffff,#fafafa);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(17,24,67,0.06);
+  box-shadow: 0 10px 30px rgba(17,24,67,0.06);
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+}
+
+.label-card.vertical { flex-direction: column; }
+
+.label-header {
+  background: linear-gradient(90deg,#4b4f55,#8a8f94);
+  color: #fff;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.label-body {
   display: flex;
   gap: 1rem;
-  background: #fff;
-  border-radius: 10px;
-  padding: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 8px 18px rgba(17,24,67,0.06);
-  border: 1px solid rgba(17,24,67,0.06);
-}
-
-.label-card.vertical {
-  flex-direction: column;
+  padding: 12px 14px;
   align-items: stretch;
+  width: 100%;
 }
 
-.label-info {
-  flex: 1 1 60%;
+.label-left {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding-right: 0.5rem;
+  gap: 10px;
+  padding-right: 6px;
 }
 
-.label-title {
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: var(--text-color);
-  line-height: 1.1;
-}
-
-.label-meta {
+.label-right {
+  flex: 0 0 180px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  color: var(--muted-color);
-  font-size: 0.9rem;
+  align-items: center;
+  justify-content: center;
 }
 
-.label-qr {
-  flex: 0 0 auto;
-  width: 120px;
-  height: 120px;
+.label-qr-box {
+  width: 140px;
+  height: 140px;
+  background: #f3f4f6;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  background: #fff;
-  border-radius: 8px;
   border: 1px solid rgba(17,24,67,0.06);
 }
 
-.label-qr img { width: 100%; height: 100%; object-fit: contain; }
+.label-qr-box img { width: 92%; height: 92%; object-fit: contain; }
 
-@media (max-width: 540px) {
-  .label-card { gap: 0.5rem; }
-  .label-qr { width: 96px; height: 96px; }
-  .label-title { font-size: 0.99rem; }
+.label-field {
+  display:flex; flex-direction:column; gap:4px;
+}
+
+.label-field .label-field__key {
+  font-size:0.72rem; color:#6b7280; text-transform:uppercase; font-weight:700; letter-spacing:0.06em;
+}
+.label-field .label-field__value {
+  font-size:0.95rem; color:#111827; font-weight:600;
+}
+
+.label-footer {
+  background: linear-gradient(90deg,#6b6f74,#d1d5db);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight:600;
+  display:flex; justify-content:space-between; align-items:center;
+}
+
+/* Vertical variations */
+.label-card.vertical .label-right { flex: 0 0 auto; order: 0; padding-top: 8px; }
+.label-card.vertical .label-body { flex-direction: column; align-items: stretch; }
+
+@media (max-width:540px) {
+  .label-right { flex: 0 0 120px; }
+  .label-qr-box { width: 100px; height: 100px; }
 }
 
 .qr-placeholder {

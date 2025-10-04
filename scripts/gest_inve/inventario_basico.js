@@ -41,58 +41,75 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalDownload = document.getElementById('productoQrDownload');
   const productoLabelCompact = document.getElementById('productoLabelCompact');
 
-  // Helper: sanitize filename
-  function sanitizeFileName(name) {
-    return (name || '').replace(/[^a-z0-9\-_\.]/gi, '_').substring(0, 120);
-  }
+  // (sanitizer defined later)
 
   // Build compact label DOM for preview (horizontal or vertical)
   function buildCompactLabel(producto, qrSrc, orientation = 'horizontal') {
     const wrapper = document.createElement('div');
     wrapper.className = 'label-card' + (orientation === 'vertical' ? ' vertical' : '');
 
-    const info = document.createElement('div');
-    info.className = 'label-info';
+    // header
+    const header = document.createElement('div');
+    header.className = 'label-header';
+    header.textContent = 'Código QR';
+    wrapper.appendChild(header);
 
-    const title = document.createElement('div');
-    title.className = 'label-title';
-    title.textContent = producto?.nombre || 'Nombre del producto';
-    info.appendChild(title);
+    // body
+    const body = document.createElement('div');
+    body.className = 'label-body';
 
-    const meta = document.createElement('div');
-    meta.className = 'label-meta';
-    const categoria = document.createElement('div'); categoria.textContent = producto?.categoria_nombre || 'Sin categoría';
-    const subcat = document.createElement('div'); subcat.textContent = producto?.subcategoria_nombre || '';
-    const area = document.createElement('div'); area.textContent = producto?.area_nombre || producto?.zona_nombre || '';
-    const precio = document.createElement('div'); precio.textContent = producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : '';
-    meta.appendChild(categoria);
-    if (subcat.textContent) meta.appendChild(subcat);
-    if (area.textContent) meta.appendChild(area);
-    if (precio.textContent) meta.appendChild(precio);
-    info.appendChild(meta);
+    const left = document.createElement('div');
+    left.className = 'label-left';
+    // title
+    const titleF = document.createElement('div'); titleF.className = 'label-field';
+    const tkey = document.createElement('div'); tkey.className = 'label-field__key'; tkey.textContent = '';
+    const tval = document.createElement('div'); tval.className = 'label-field__value'; tval.textContent = producto?.nombre || 'Nombre del producto';
+    titleF.appendChild(tkey); titleF.appendChild(tval);
+    left.appendChild(titleF);
 
-    const qrWrap = document.createElement('div');
-    qrWrap.className = 'label-qr';
-    const qrImg = document.createElement('img');
-    qrImg.alt = 'QR';
-    qrImg.src = qrSrc;
-    qrWrap.appendChild(qrImg);
+    // descriptive fields (zone, category, subcategory, volume, price)
+    const fields = [
+      {k: 'Zona asignada', v: producto?.zona_nombre || producto?.area_nombre || ''},
+      {k: 'Categoría', v: producto?.categoria_nombre || ''},
+      {k: 'Subcategoría', v: producto?.subcategoria_nombre || ''},
+      {k: 'Descripción', v: producto?.descripcion || ''},
+      {k: 'Precio unitario', v: producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : ''}
+    ];
+    fields.forEach(f => {
+      const node = document.createElement('div'); node.className = 'label-field';
+      const key = document.createElement('div'); key.className = 'label-field__key'; key.textContent = f.k;
+      const val = document.createElement('div'); val.className = 'label-field__value'; val.textContent = f.v;
+      node.appendChild(key); node.appendChild(val);
+      left.appendChild(node);
+    });
+
+    const right = document.createElement('div'); right.className = 'label-right';
+    const qrBox = document.createElement('div'); qrBox.className = 'label-qr-box';
+    const img = document.createElement('img'); img.alt = 'QR'; img.src = qrSrc;
+    qrBox.appendChild(img);
+    right.appendChild(qrBox);
 
     if (orientation === 'vertical') {
-      wrapper.appendChild(qrWrap);
-      wrapper.appendChild(info);
+      body.appendChild(right);
+      body.appendChild(left);
     } else {
-      wrapper.appendChild(info);
-      wrapper.appendChild(qrWrap);
+      body.appendChild(left);
+      body.appendChild(right);
     }
+
+    wrapper.appendChild(body);
+
+    const footer = document.createElement('div'); footer.className = 'label-footer';
+    footer.innerHTML = '<span>Etiqueta generada con OptiStock</span><span>OptiStock</span>';
+    wrapper.appendChild(footer);
 
     return wrapper;
   }
 
   // Render simple PNG from label DOM: draw to canvas (text + QR image). Returns dataURL.
   async function renderLabelToPng(producto, qrSrc, orientation = 'horizontal', width = 800, dpi = 2) {
-    // load QR image
-    const qrImg = await new Promise((resolve, reject) => {
+    // load QR image (fallback resolves to null)
+    const qrImg = await new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
@@ -100,54 +117,90 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       img.src = qrSrc;
     });
 
-    // canvas size: orientation affects dimensions
+    // Define canvas size to mimic card
     const w = orientation === 'vertical' ? Math.round(width * 0.6) : width;
-    const h = orientation === 'vertical' ? Math.round(width * 1.2) : Math.round(width * 0.5);
+    const h = orientation === 'vertical' ? Math.round(width * 1.1) : Math.round(width * 0.55);
     const canvas = document.createElement('canvas');
     canvas.width = w * dpi;
     canvas.height = h * dpi;
     const ctx = canvas.getContext('2d');
-    // background
-    ctx.fillStyle = '#ffffff';
+
+    // draw background
+    ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // layout paddings
-    const pad = 24 * dpi;
+    // header
+    const headerH = 56 * dpi;
+    const grd = ctx.createLinearGradient(0,0,canvas.width,0);
+    grd.addColorStop(0,'#4b4f55'); grd.addColorStop(1,'#8a8f94');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,canvas.width,headerH);
+    ctx.fillStyle = '#fff';
+    ctx.font = `${18 * dpi}px Poppins, sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Código QR', 16 * dpi, headerH/2);
+
+    // body layout
+    const bodyY = headerH;
+    const bodyH = canvas.height - headerH - (40 * dpi);
     const gap = 16 * dpi;
+    const leftW = orientation === 'vertical' ? canvas.width - gap*2 : canvas.width - (180 * dpi) - gap*3;
+    const rightW = orientation === 'vertical' ? canvas.width - gap*2 : (180 * dpi);
 
-    // QR box
-    const qrSize = Math.min( Math.round((orientation === 'vertical' ? canvas.width - pad*2 : canvas.height - pad*2) * 0.45), 360 * dpi );
-    const qrX = orientation === 'vertical' ? (canvas.width - qrSize) / 2 : canvas.width - pad - qrSize;
-    const qrY = orientation === 'vertical' ? pad : (canvas.height - qrSize) / 2;
-    if (qrImg) ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+    // draw QR box on right (or top for vertical)
+    const qrBoxSize = Math.min(rightW - 16 * dpi, bodyH - 16 * dpi, 360 * dpi);
+    const qrX = orientation === 'vertical' ? (canvas.width - qrBoxSize) / 2 : canvas.width - gap - qrBoxSize;
+    const qrY = orientation === 'vertical' ? bodyY + 12 * dpi : bodyY + (bodyH - qrBoxSize) / 2;
+    // qr backdrop
+    ctx.fillStyle = '#f3f4f6';
+    roundRect(ctx, qrX, qrY, qrBoxSize, qrBoxSize, 12 * dpi, true, false);
+    if (qrImg) ctx.drawImage(qrImg, qrX + (qrBoxSize*0.04), qrY + (qrBoxSize*0.04), qrBoxSize*0.92, qrBoxSize*0.92);
 
-    // Text area
+    // left content
+    const textX = 16 * dpi;
+    let cursorY = bodyY + 16 * dpi;
     ctx.fillStyle = '#111827';
-    ctx.textBaseline = 'top';
-    const titleFontSize = 22 * dpi;
-    ctx.font = `700 ${titleFontSize}px Poppins, sans-serif`;
-    const titleX = pad;
-    const titleY = pad;
-    const maxTextWidth = orientation === 'vertical' ? canvas.width - pad*2 : canvas.width - pad*3 - qrSize;
-    // wrap title
-    const title = producto?.nombre || 'Nombre del producto';
-    wrapText(ctx, title, titleX, titleY, maxTextWidth, titleFontSize + 6 * dpi, 2);
+    ctx.font = `700 ${16 * dpi}px Poppins, sans-serif`;
+    wrapText(ctx, producto?.nombre || 'Nombre del producto', textX, cursorY, leftW - 16 * dpi, 20 * dpi, 3);
+    cursorY += 64 * dpi;
 
-    // meta lines
-    ctx.font = `${14 * dpi}px Poppins, sans-serif`;
-    ctx.fillStyle = '#374151';
-    const metaYStart = titleY + (titleFontSize + 6 * dpi) * 2 + 6 * dpi;
-    const metas = [];
-    if (producto?.categoria_nombre) metas.push(producto.categoria_nombre);
-    if (producto?.subcategoria_nombre) metas.push(producto.subcategoria_nombre);
-    if (producto?.area_nombre) metas.push(producto.area_nombre + (producto.zona_nombre ? ' · ' + producto.zona_nombre : ''));
-    if (producto?.precio_compra) metas.push(`Precio: $${Number(producto.precio_compra).toFixed(2)}`);
-    metas.forEach((m, i) => {
-      const y = metaYStart + i * (18 * dpi + 4 * dpi);
-      wrapText(ctx, m, titleX, y, maxTextWidth, 18 * dpi, 2);
+    ctx.font = `${12 * dpi}px Poppins, sans-serif`;
+    ctx.fillStyle = '#6b7280';
+    const infoLines = [];
+    if (producto?.zona_nombre || producto?.area_nombre) infoLines.push('Zona: ' + (producto?.zona_nombre || producto?.area_nombre));
+    if (producto?.categoria_nombre) infoLines.push('Categoría: ' + producto.categoria_nombre);
+    if (producto?.subcategoria_nombre) infoLines.push('Subcategoría: ' + producto.subcategoria_nombre);
+    if (producto?.descripcion) infoLines.push('Descripción: ' + producto.descripcion);
+    if (producto?.precio_compra) infoLines.push('Precio: $' + Number(producto.precio_compra).toFixed(2));
+    infoLines.forEach((ln, i) => {
+      wrapText(ctx, ln, textX, cursorY + i*(18*dpi), leftW - 16 * dpi, 18 * dpi, 2);
     });
 
+    // footer
+    const footerH = 40 * dpi;
+    const footerY = canvas.height - footerH;
+    const fGrd = ctx.createLinearGradient(0,footerY,canvas.width,footerY);
+    fGrd.addColorStop(0,'#6b6f74'); fGrd.addColorStop(1,'#d1d5db');
+    ctx.fillStyle = fGrd; ctx.fillRect(0, footerY, canvas.width, footerH);
+    ctx.fillStyle = '#fff'; ctx.font = `${12 * dpi}px Poppins, sans-serif`;
+    ctx.fillText('Etiqueta generada con OptiStock', 16 * dpi, footerY + footerH/2 - 6 * dpi);
+    ctx.fillText('OptiStock', canvas.width - (90 * dpi), footerY + footerH/2 - 6 * dpi);
+
     return canvas.toDataURL('image/png');
+  }
+
+  // helper: rounded rect
+  function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+    if (typeof r === 'undefined') r = 5;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
   }
 
   // simple text wrapper
@@ -2161,6 +2214,8 @@ if (editProdId) {
       if (qrModalPlaceholder) {
         qrModalPlaceholder.classList.add('d-none');
       }
+      // update preview with loaded QR
+      try { updateLabelPreview(); } catch (e) { /* ignore if not yet ready */ }
     };
     qrModalImage.onerror = () => {
       if (qrModalPlaceholder) {
@@ -2191,6 +2246,8 @@ if (editProdId) {
     }
 
     qrModalInstance.show();
+    // ensure preview built when opening modal (in case image is cached)
+    try { updateLabelPreview(); } catch (e) { /* ignore */ }
     return;
   }
 
