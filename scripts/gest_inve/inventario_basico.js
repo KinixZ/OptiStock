@@ -203,95 +203,31 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     }
   }
 
-  function getTextHeight(ctx, text) {
-    const metrics = ctx.measureText(text);
-    const ascent = Number.isFinite(metrics.actualBoundingBoxAscent)
-      ? metrics.actualBoundingBoxAscent
-      : 0;
-    const descent = Number.isFinite(metrics.actualBoundingBoxDescent)
-      ? metrics.actualBoundingBoxDescent
-      : 0;
-    if (ascent + descent > 0) {
-      return ascent + descent;
-    }
-    const fontSizeMatch = /([0-9]+(?:\.[0-9]+)?)px/.exec(ctx.font || '');
-    return fontSizeMatch ? Number.parseFloat(fontSizeMatch[1]) : 16;
-  }
-
-  function getWrappedLines(ctx, text, maxWidth) {
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     const words = String(text ?? '')
       .trim()
       .split(/\s+/)
       .filter(Boolean);
     if (words.length === 0) {
-      return ['N/D'];
+      const placeholder = 'N/D';
+      ctx.fillText(placeholder, x, y);
+      return { lastY: y, nextY: y + lineHeight };
     }
 
-    const lines = [];
     let line = words[0];
+    let currentY = y;
     for (let i = 1; i < words.length; i += 1) {
       const testLine = `${line} ${words[i]}`;
       if (ctx.measureText(testLine).width > maxWidth) {
-        lines.push(line);
+        ctx.fillText(line, x, currentY);
         line = words[i];
+        currentY += lineHeight;
       } else {
         line = testLine;
       }
     }
-    lines.push(line);
-    return lines;
-  }
-
-  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-    const lines = getWrappedLines(ctx, text, maxWidth);
-    let currentY = y;
-    lines.forEach((line, index) => {
-      ctx.fillText(line, x, currentY);
-      if (index < lines.length - 1) {
-        currentY += lineHeight;
-      }
-    });
+    ctx.fillText(line, x, currentY);
     return { lastY: currentY, nextY: currentY + lineHeight };
-  }
-
-  function drawInfoChip(ctx, text, x, y, options = {}) {
-    const {
-      paddingX = 18,
-      paddingY = 10,
-      radius = 18,
-      background = 'rgba(15, 23, 42, 0.08)',
-      color = '#1f2937',
-      font = '600 16px "Poppins", "Segoe UI", sans-serif',
-      maxWidth = Infinity
-    } = options;
-
-    const label = String(text ?? '').trim() || 'N/D';
-    ctx.save();
-    const previousBaseline = ctx.textBaseline;
-    ctx.font = font;
-    ctx.textBaseline = 'top';
-    const metrics = ctx.measureText(label);
-    const textHeight = getTextHeight(ctx, label);
-    const chipHeight = textHeight + paddingY * 2;
-    let displayLabel = label;
-    let effectiveWidth = metrics.width + paddingX * 2;
-    if (effectiveWidth > maxWidth) {
-      const ellipsis = '…';
-      let truncated = label;
-      while (truncated.length > 1 && ctx.measureText(`${truncated}${ellipsis}`).width + paddingX * 2 > maxWidth) {
-        truncated = truncated.slice(0, -1);
-      }
-      displayLabel = `${truncated}${ellipsis}`;
-      effectiveWidth = Math.min(maxWidth, ctx.measureText(displayLabel).width + paddingX * 2);
-    }
-
-    drawRoundedRect(ctx, x, y, effectiveWidth, chipHeight, radius, background);
-    ctx.fillStyle = color;
-    ctx.fillText(displayLabel, x + paddingX, y + paddingY);
-
-    ctx.textBaseline = previousBaseline;
-    ctx.restore();
-    return { width: effectiveWidth, height: chipHeight };
   }
 
   function crearEtiquetaProducto(producto, qrSrc) {
@@ -312,19 +248,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const ctx = canvas.getContext('2d');
 
         const colors = {
-          background: '#eef2ff',
+          background: '#f5f6fb',
           card: '#ffffff',
-          shadow: 'rgba(15, 23, 42, 0.12)',
-          border: '#e2e8f0',
-          borderSoft: 'rgba(148, 163, 184, 0.32)',
+          border: '#e7e9f5',
           headerStart: '#ff6f91',
           headerEnd: '#ff9671',
-          accentStrong: '#ff6f91',
-          accentSoft: 'rgba(255, 111, 145, 0.16)',
-          textMain: '#1e293b',
-          textMuted: '#64748b',
-          textOnAccent: '#ffffff',
-          surfaceSubtle: '#f8fafc'
+          textMain: '#1f2937',
+          textMuted: '#6b7280',
+          textOnAccent: '#ffffff'
         };
 
         ctx.fillStyle = colors.background;
@@ -337,15 +268,9 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const cardH = height - margin * 2;
         const radius = 28;
 
-        ctx.save();
-        ctx.shadowColor = colors.shadow;
-        ctx.shadowBlur = 32;
-        ctx.shadowOffsetY = 18;
-        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card);
-        ctx.restore();
-        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, colors.border);
 
-        const headerHeight = 188;
+        const headerHeight = 180;
         ctx.save();
         roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
         ctx.clip();
@@ -356,16 +281,16 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         ctx.fillRect(cardX, cardY, cardW, headerHeight);
         ctx.restore();
 
-        const paddingX = 44;
+        const paddingX = 40;
         const headerX = cardX + paddingX;
-        let headerY = cardY + 72;
+        let headerY = cardY + 60;
 
         ctx.fillStyle = colors.textOnAccent;
         ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('Etiqueta de inventario', headerX, headerY);
+        ctx.fillText('CÓDIGO QR', headerX, headerY);
 
-        headerY += 36;
-        ctx.font = '700 34px "Poppins", "Segoe UI", sans-serif';
+        headerY += 34;
+        ctx.font = '700 32px "Poppins", "Segoe UI", sans-serif';
         const headerTitle = wrapText(
           ctx,
           producto?.nombre || 'Producto sin nombre',
@@ -375,22 +300,22 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           36
         );
 
-        const headerInfoY = Math.min(cardY + headerHeight - 28, headerTitle.nextY);
+        const headerInfoY = Math.min(cardY + headerHeight - 20, headerTitle.nextY);
         ctx.font = '400 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('OptiStock', headerX, headerInfoY);
+        ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
 
         const bodyTop = cardY + headerHeight;
-        const bodyPadding = 48;
+        const bodyPadding = 40;
         let infoY = bodyTop + bodyPadding;
         const textStartX = cardX + bodyPadding;
-        const qrSize = 232;
+        const qrSize = 240;
         const qrX = cardX + cardW - bodyPadding - qrSize;
         const qrY = bodyTop + bodyPadding;
-        const textWidth = qrX - textStartX - 32;
+        const textWidth = qrX - textStartX - 24;
 
         const zonaPartes = [];
-        if (producto?.zona_nombre) zonaPartes.push(`Zona ${producto.zona_nombre}`);
-        if (producto?.area_nombre) zonaPartes.push(`Área ${producto.area_nombre}`);
+        if (producto?.zona_nombre) zonaPartes.push(producto.zona_nombre);
+        if (producto?.area_nombre) zonaPartes.push(producto.area_nombre);
         const zonaTexto = zonaPartes.length ? zonaPartes.join(' · ') : 'Sin zona asignada';
         const descripcionTexto = producto?.descripcion?.trim() ? producto.descripcion.trim() : 'Sin descripción disponible';
         const categoriaTexto = producto?.categoria_nombre || 'Sin categoría';
@@ -398,136 +323,32 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const volumenTexto = formatDimensionTriplet(producto);
         const precioTexto = formatPrecioUnitario(producto);
 
-        ctx.font = '600 15px "Poppins", "Segoe UI", sans-serif';
-        const chip = drawInfoChip(ctx, zonaTexto, textStartX, infoY, {
-          background: colors.accentSoft,
-          color: colors.accentStrong,
-          font: '600 15px "Poppins", "Segoe UI", sans-serif',
-          maxWidth: textWidth
-        });
-        infoY += chip.height + 28;
-
-        const descripcionPadding = 24;
-        const descripcionLabelFont = '600 14px "Poppins", "Segoe UI", sans-serif';
-        const descripcionValorFont = '400 18px "Poppins", "Segoe UI", sans-serif';
-        const descripcionLineHeight = 26;
-        ctx.font = descripcionLabelFont;
-        const descripcionLabelHeight = getTextHeight(ctx, 'DESCRIPCIÓN');
-        ctx.font = descripcionValorFont;
-        const descripcionLineas = getWrappedLines(
-          ctx,
-          descripcionTexto,
-          textWidth - descripcionPadding * 2
-        );
-        const descripcionHeight =
-          descripcionPadding * 2 +
-          descripcionLabelHeight +
-          10 +
-          Math.max(descripcionLineas.length, 1) * descripcionLineHeight;
-
-        drawRoundedRect(
-          ctx,
-          textStartX,
-          infoY,
-          textWidth,
-          descripcionHeight,
-          22,
-          colors.surfaceSubtle,
-          colors.borderSoft
-        );
-
-        ctx.fillStyle = colors.textMuted;
-        ctx.font = descripcionLabelFont;
-        ctx.fillText('DESCRIPCIÓN', textStartX + descripcionPadding, infoY + descripcionPadding);
-
-        ctx.fillStyle = colors.textMain;
-        ctx.font = descripcionValorFont;
-        let descripcionY = infoY + descripcionPadding + descripcionLabelHeight + 12;
-        descripcionLineas.forEach(linea => {
-          ctx.fillText(linea, textStartX + descripcionPadding, descripcionY);
-          descripcionY += descripcionLineHeight;
-        });
-
-        infoY += descripcionHeight + 36;
-
-        const detalleTarjetas = [
+        const bloques = [
+          { etiqueta: 'Zona asignada', valor: zonaTexto },
+          { etiqueta: 'Descripción', valor: descripcionTexto, multilinea: true, lineHeight: 26, font: '400 18px "Poppins", "Segoe UI", sans-serif' },
           { etiqueta: 'Categoría', valor: categoriaTexto },
           { etiqueta: 'Subcategoría', valor: subcategoriaTexto },
           { etiqueta: 'Volumen', valor: volumenTexto },
-          { etiqueta: 'Precio unitario', valor: precioTexto, resaltar: true }
+          { etiqueta: 'Precio unitario', valor: precioTexto }
         ];
 
-        const detalleColumnas = 2;
-        const detalleGap = 18;
-        const detalleAncho = (textWidth - detalleGap) / detalleColumnas;
-        const detallePaddingX = 20;
-        const detallePaddingY = 18;
-        const detalleLabelFont = '600 13px "Poppins", "Segoe UI", sans-serif';
-        const detalleValorFont = '600 22px "Poppins", "Segoe UI", sans-serif';
-        const detalleLineaAltura = 28;
-        const detalleFilas = [];
+        bloques.forEach(bloque => {
+          ctx.fillStyle = colors.textMuted;
+          ctx.font = '600 14px "Poppins", "Segoe UI", sans-serif';
+          ctx.fillText(bloque.etiqueta.toUpperCase(), textStartX, infoY);
+          infoY += 18;
 
-        for (let i = 0; i < detalleTarjetas.length; i += detalleColumnas) {
-          const filaItems = detalleTarjetas.slice(i, i + detalleColumnas).map((detalle, indiceColumna) => {
-            const itemX = textStartX + indiceColumna * (detalleAncho + detalleGap);
-            const etiqueta = detalle.etiqueta.toUpperCase();
-            ctx.font = detalleLabelFont;
-            const etiquetaAltura = getTextHeight(ctx, etiqueta);
-            ctx.font = detalleValorFont;
-            const lineas = getWrappedLines(
-              ctx,
-              detalle.valor || 'N/D',
-              detalleAncho - detallePaddingX * 2
-            );
-            const valorAltura = Math.max(lineas.length, 1) * detalleLineaAltura;
-            const tarjetaAltura =
-              detallePaddingY * 2 +
-              etiquetaAltura +
-              10 +
-              valorAltura;
-            return {
-              ...detalle,
-              etiqueta,
-              lineas,
-              x: itemX,
-              altura: tarjetaAltura,
-              etiquetaAltura
-            };
-          });
-          const filaAltura = filaItems.reduce((acc, item) => Math.max(acc, item.altura), 0);
-          detalleFilas.push({ items: filaItems, altura: filaAltura });
-        }
-
-        let filaY = infoY;
-        detalleFilas.forEach(fila => {
-          fila.items.forEach(item => {
-            drawRoundedRect(
-              ctx,
-              item.x,
-              filaY,
-              detalleAncho,
-              item.altura,
-              20,
-              colors.surfaceSubtle,
-              colors.borderSoft
-            );
-
-            ctx.fillStyle = colors.textMuted;
-            ctx.font = detalleLabelFont;
-            ctx.fillText(item.etiqueta, item.x + detallePaddingX, filaY + detallePaddingY);
-
-            ctx.font = detalleValorFont;
-            ctx.fillStyle = item.resaltar ? colors.accentStrong : colors.textMain;
-            let valorY = filaY + detallePaddingY + item.etiquetaAltura + 12;
-            item.lineas.forEach(linea => {
-              ctx.fillText(linea, item.x + detallePaddingX, valorY);
-              valorY += detalleLineaAltura;
-            });
-          });
-          filaY += fila.altura + detalleGap;
+          ctx.fillStyle = colors.textMain;
+          ctx.font = bloque.font || '600 22px "Poppins", "Segoe UI", sans-serif';
+          if (bloque.multilinea) {
+            const wrapped = wrapText(ctx, bloque.valor, textStartX, infoY, textWidth, bloque.lineHeight || 28);
+            infoY = wrapped.nextY;
+          } else {
+            ctx.fillText(bloque.valor || 'N/D', textStartX, infoY);
+            infoY += 30;
+          }
+          infoY += 12;
         });
-
-        infoY = filaY + 12;
 
         const footerY = cardY + cardH - bodyPadding;
         ctx.strokeStyle = colors.border;
@@ -545,21 +366,21 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerY + 28);
         ctx.textAlign = 'left';
 
-        const qrContainerPadding = 20;
+        const qrContainerPadding = 16;
         drawRoundedRect(
           ctx,
           qrX - qrContainerPadding,
           qrY - qrContainerPadding,
           qrSize + qrContainerPadding * 2,
           qrSize + qrContainerPadding * 2,
-          24,
-          colors.surfaceSubtle,
-          colors.borderSoft
+          20,
+          colors.background,
+          colors.border
         );
         ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
         ctx.fillStyle = colors.textMuted;
-        ctx.font = '500 15px "Poppins", "Segoe UI", sans-serif';
+        ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + 48);
         ctx.textAlign = 'left';
