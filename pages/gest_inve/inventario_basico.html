@@ -297,7 +297,7 @@
   </div>
 
   <div class="modal fade" id="productoQrModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content qr-modal shadow-lg">
         <button type="button" class="btn-close qr-modal__close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         <header class="qr-modal__hero">
@@ -308,9 +308,7 @@
           <div class="qr-modal-content">
             <section class="qr-modal-settings" aria-labelledby="qrModalDesignTitle">
               <h3 id="qrModalDesignTitle" class="qr-modal-settings__title">Diseño de la etiqueta</h3>
-              <p class="qr-modal-settings__hint">
-                Selecciona la orientación para ajustar la posición del QR cuando descargues la etiqueta.
-              </p>
+              <p class="qr-modal-settings__hint">Elige cómo se acomodará la etiqueta al descargarla.</p>
               <div class="qr-orientation" role="radiogroup" aria-label="Orientación de la etiqueta">
                 <input
                   type="radio"
@@ -345,7 +343,7 @@
           <div id="productoLabelCompact" class="visually-hidden" aria-hidden="true"></div>
         </div>
         <div class="modal-footer qr-modal__actions">
-          <a id="productoQrDownload" class="qr-modal__action qr-modal__action--primary" download>Descargar etiqueta</a>
+          <a id="productoQrDownload" class="qr-modal__action qr-modal__action--primary" download>Descargar QR</a>
           <button class="qr-modal__action qr-modal__action--secondary" type="button" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
