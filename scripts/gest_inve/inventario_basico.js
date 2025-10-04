@@ -508,7 +508,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   // Read currently selected orientation from radios
   function getSelectedOrientation() {
     for (const r of orientRadios) if (r.checked) return r.value;
-    return 'horizontal';
+    return 'vertical';
   }
 
   function parseDimensionValue(value) {
