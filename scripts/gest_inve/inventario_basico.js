@@ -323,6 +323,13 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       .toLowerCase();
   }
 
+  // Read currently selected orientation from radios
+  function getSelectedOrientation() {
+    const radios = document.getElementsByName('etiquetaOrientacion');
+    for (const r of radios) if (r.checked) return r.value;
+    return 'horizontal';
+  }
+
   function parseDimensionValue(value) {
     const num = Number.parseFloat(value);
     return Number.isFinite(num) && num > 0 ? num : null;
@@ -807,7 +814,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       }
       return;
     }
-
+    // Use the new renderer which supports orientation
     event.preventDefault();
     if (qrModalDownload.classList.contains('disabled')) {
       return;
@@ -818,7 +825,9 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       qrModalDownload.setAttribute('aria-disabled', 'true');
       qrModalDownload.setAttribute('aria-busy', 'true');
 
-      const dataUrl = await crearEtiquetaProducto(qrModalProducto, qrModalSrc);
+      const orient = getSelectedOrientation();
+      // renderLabelToPng supports orientation and produces a consistent PNG
+      const dataUrl = await renderLabelToPng(qrModalProducto, qrModalSrc, orient, 900, 2);
       const filenameBase = qrModalDownload.dataset.filename || 'producto_etiqueta';
       const tempLink = document.createElement('a');
       tempLink.href = dataUrl;
@@ -2253,10 +2262,6 @@ if (editProdId) {
 
   // update preview when orientation changes
   const orientRadios = document.getElementsByName('etiquetaOrientacion');
-  function getSelectedOrientation() {
-    for (const r of orientRadios) if (r.checked) return r.value;
-    return 'horizontal';
-  }
 
   function updateLabelPreview() {
     if (!qrModalProducto || !qrModalSrc || !productoLabelCompact) return;
@@ -2274,32 +2279,7 @@ if (editProdId) {
     r.addEventListener('change', updateLabelPreview);
   }
 
-  // Download click: render label to PNG and set link
-  qrModalDownload?.addEventListener('click', async (ev) => {
-    ev.preventDefault();
-    if (!qrModalProducto || !qrModalSrc) return;
-    const orient = getSelectedOrientation();
-    // small visual busy state
-    qrModalDownload.setAttribute('aria-busy', 'true');
-    qrModalDownload.classList.add('disabled');
-    try {
-      const dataUrl = await renderLabelToPng(qrModalProducto, qrModalSrc, orient, 900, 2);
-      const filename = qrModalDownload?.dataset?.filename || `etiqueta_${Date.now()}`;
-      // force download
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = filename + '.png';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (err) {
-      console.error('Error generando etiqueta:', err);
-      showToast('No se pudo generar la etiqueta.', 'error');
-    } finally {
-      qrModalDownload.removeAttribute('aria-busy');
-      qrModalDownload.classList.remove('disabled');
-    }
-  });
+  // Note: download click is handled by handleEtiquetaDownload above (centralized)
 
   // 1) Eliminar
   if (accion === 'del') {
