@@ -1852,20 +1852,15 @@ async function loadStockAlerts() {
 
         const normalizedAreas = normalizeAreaData(areasRaw);
         const normalizedZonas = normalizeZoneData(zonasRaw);
-        const capacityAlerts = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
-        updateCapacityAlertNotifications(capacityAlerts.notifications);
+        const { notifications: capacityAlertNotifications = [] } = buildCapacityAlertEntries(normalizedAreas, normalizedZonas);
+        updateCapacityAlertNotifications(capacityAlertNotifications);
 
-        const combinedAlerts = [
-            ...stockAlerts,
-            ...(capacityAlerts.alerts || [])
-        ];
-
-        const stockDisplay = combinedAlerts
+        const stockDisplay = stockAlerts
             .slice()
             .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
             .slice(0, 8);
 
-        updateDashboardStat('alerts', combinedAlerts.length);
+        updateDashboardStat('alerts', stockAlerts.length);
 
         if (!stockDisplay.length) {
             setListState(stockAlertList, 'No hay alertas activas en este momento.', 'fas fa-check-circle', 'card-empty-state');
