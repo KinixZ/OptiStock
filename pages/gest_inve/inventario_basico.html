@@ -302,34 +302,37 @@
         <button type="button" class="btn-close qr-modal__close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         <header class="qr-modal__hero">
           <span class="qr-modal__badge">Código QR</span>
-          <h2 id="productoQrTitle" class="qr-modal__title">Código QR del producto</h2>
-          <p class="qr-modal__subtitle">Vista previa compacta – QR destacado</p>
+          <div class="qr-modal__header-row">
+            <h2 id="productoQrTitle" class="qr-modal__title">Código QR del producto</h2>
+            <p class="qr-modal__subtitle">Vista previa compacta – QR destacado</p>
+          </div>
         </header>
         <div class="modal-body qr-modal__body">
           <div class="qr-modal-content">
             <section class="qr-modal-settings" aria-labelledby="qrModalDesignTitle">
-              <h3 id="qrModalDesignTitle" class="qr-modal-settings__title">Diseño de la etiqueta</h3>
-              <p class="qr-modal-settings__hint">Elige cómo se acomodará la etiqueta al descargarla.</p>
-              <div class="qr-orientation" role="radiogroup" aria-label="Orientación de la etiqueta">
-                <input
-                  type="radio"
-                  class="qr-orientation__input"
-                  name="etiquetaOrientacion"
-                  id="orientH"
-                  autocomplete="off"
-                  value="horizontal"
-                  checked
-                />
-                <label class="qr-orientation__option" for="orientH">Horizontal</label>
-                <input
-                  type="radio"
-                  class="qr-orientation__input"
-                  name="etiquetaOrientacion"
-                  id="orientV"
-                  autocomplete="off"
-                  value="vertical"
-                />
-                <label class="qr-orientation__option" for="orientV">Vertical</label>
+              <div class="qr-modal-settings__row">
+                <span id="qrModalDesignTitle" class="qr-modal-settings__label">Orientación:</span>
+                <div class="qr-orientation" role="radiogroup" aria-labelledby="qrModalDesignTitle">
+                  <input
+                    type="radio"
+                    class="qr-orientation__input"
+                    name="etiquetaOrientacion"
+                    id="orientH"
+                    autocomplete="off"
+                    value="horizontal"
+                  />
+                  <label class="qr-orientation__option" for="orientH">Horizontal</label>
+                  <input
+                    type="radio"
+                    class="qr-orientation__input"
+                    name="etiquetaOrientacion"
+                    id="orientV"
+                    autocomplete="off"
+                    value="vertical"
+                    checked
+                  />
+                  <label class="qr-orientation__option" for="orientV">Vertical</label>
+                </div>
               </div>
             </section>
 
