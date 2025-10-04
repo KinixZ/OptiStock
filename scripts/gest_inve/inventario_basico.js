@@ -40,6 +40,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalImage = document.getElementById('productoQrImage');
   const qrModalDownload = document.getElementById('productoQrDownload');
   const productoLabelCompact = document.getElementById('productoLabelCompact');
+  const orientRadios = document.getElementsByName('etiquetaOrientacion');
 
   // (sanitizer defined later)
 
@@ -396,6 +397,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   let qrModalProducto = null;
   let qrModalSrc = '';
 
+  function updateLabelPreview() {
+    if (!qrModalProducto || !qrModalSrc || !productoLabelCompact) return;
+    const orient = getSelectedOrientation();
+    productoLabelCompact.innerHTML = '';
+    const node = buildCompactLabel(qrModalProducto, qrModalSrc, orient);
+    productoLabelCompact.appendChild(node);
+  }
+
   let productoFormCollapse = null;
   if (productoFormCollapseEl && window.bootstrap?.Collapse) {
     productoFormCollapse = window.bootstrap.Collapse.getOrCreateInstance(productoFormCollapseEl, {
@@ -476,7 +485,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       }
       qrModalProducto = null;
       qrModalSrc = '';
+      if (productoLabelCompact) {
+        productoLabelCompact.innerHTML = '';
+      }
     });
+  }
+
+  for (const radio of orientRadios) {
+    radio.addEventListener('change', updateLabelPreview);
   }
 
   function sanitizeFileName(text) {
@@ -491,8 +507,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
   // Read currently selected orientation from radios
   function getSelectedOrientation() {
-    const radios = document.getElementsByName('etiquetaOrientacion');
-    for (const r of radios) if (r.checked) return r.value;
+    for (const r of orientRadios) if (r.checked) return r.value;
     return 'horizontal';
   }
 
