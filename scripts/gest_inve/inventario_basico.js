@@ -203,6 +203,49 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     }
   }
 
+  function parseHexColor(hex) {
+    if (typeof hex !== 'string') return null;
+    let normalized = hex.trim().replace(/^#/, '');
+    if (!normalized) return null;
+    if (normalized.length === 3) {
+      normalized = normalized.split('').map(char => char + char).join('');
+    }
+    if (normalized.length !== 6) return null;
+    const value = Number.parseInt(normalized, 16);
+    if (Number.isNaN(value)) return null;
+    return {
+      r: (value >> 16) & 0xff,
+      g: (value >> 8) & 0xff,
+      b: value & 0xff
+    };
+  }
+
+  function hexChannelToString(value) {
+    return Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0');
+  }
+
+  function hexToRgba(hex, alpha = 1) {
+    const rgb = parseHexColor(hex);
+    if (!rgb) {
+      const safeAlpha = Math.max(0, Math.min(1, alpha));
+      return `rgba(0, 0, 0, ${safeAlpha})`;
+    }
+    const safeAlpha = Math.max(0, Math.min(1, alpha));
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`;
+  }
+
+  function mixWithWhite(hex, weight = 0.2) {
+    const rgb = parseHexColor(hex);
+    if (!rgb) {
+      return '#ffffff';
+    }
+    const ratio = Math.max(0, Math.min(1, weight));
+    const r = rgb.r + (255 - rgb.r) * ratio;
+    const g = rgb.g + (255 - rgb.g) * ratio;
+    const b = rgb.b + (255 - rgb.b) * ratio;
+    return `#${hexChannelToString(r)}${hexChannelToString(g)}${hexChannelToString(b)}`;
+  }
+
   function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     const words = String(text ?? '')
       .trim()
@@ -230,6 +273,31 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     return { lastY: currentY, nextY: currentY + lineHeight };
   }
 
+  function measureWrappedTextHeight(ctx, text, maxWidth, lineHeight) {
+    const content = String(text ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (content.length === 0) {
+      return lineHeight;
+    }
+
+    let line = content[0];
+    let lines = 1;
+    for (let i = 1; i < content.length; i += 1) {
+      const testLine = `${line} ${content[i]}`;
+      if (ctx.measureText(testLine).width > maxWidth) {
+        line = content[i];
+        lines += 1;
+      } else {
+        line = testLine;
+      }
+    }
+
+    return lines * lineHeight;
+  }
+
   function crearEtiquetaProducto(producto, qrSrc) {
     return new Promise((resolve, reject) => {
       if (!producto || !qrSrc) {
@@ -241,97 +309,67 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       qrImage.crossOrigin = 'anonymous';
       qrImage.onload = () => {
         const width = 960;
-        const height = 540;
         const canvas = document.createElement('canvas');
         canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        canvas.height = 1;
+        let ctx = canvas.getContext('2d');
 
-        const colors = {
-          background: '#f4f6fb',
-          card: '#ffffff',
-          border: '#e0e4f5',
-          header: '#171f34',
-          accent: '#ff6f91',
-          accentSoft: 'rgba(255, 111, 145, 0.18)',
-          textMain: '#1f2336',
-          textMuted: '#5b6478',
-          textOnDark: '#ffffff',
-          qrBackdrop: '#f4f6fb'
+        const rootStyles = window.getComputedStyle ? window.getComputedStyle(document.documentElement) : null;
+        const paletteColors = {
+          header: rootStyles?.getPropertyValue('--sidebar-color')?.trim() || '#171f34',
+          headerText: rootStyles?.getPropertyValue('--sidebar-text-color')?.trim() || '#ffffff',
+          accent: rootStyles?.getPropertyValue('--topbar-color')?.trim() || '#ff6f91',
+          accentText: rootStyles?.getPropertyValue('--topbar-text-color')?.trim() || '#ffffff',
+          pageBg: rootStyles?.getPropertyValue('--page-bg')?.trim() || ''
         };
 
-        ctx.fillStyle = colors.background;
-        ctx.fillRect(0, 0, width, height);
+        const colors = {
+          background: paletteColors.pageBg || mixWithWhite(paletteColors.header, 0.92),
+          card: '#ffffff',
+          border: hexToRgba(paletteColors.header, 0.14),
+          header: paletteColors.header,
+          headerShadow: hexToRgba(paletteColors.header, 0.22),
+          accent: paletteColors.accent,
+          accentSoft: hexToRgba(paletteColors.accent, 0.16),
+          accentOutline: hexToRgba(paletteColors.accent, 0.28),
+          textMain: mixWithWhite(paletteColors.header, 0.14),
+          textMuted: mixWithWhite(paletteColors.header, 0.38),
+          textOnDark: paletteColors.headerText,
+          textOnDarkMuted: hexToRgba(paletteColors.headerText, 0.72),
+          textOnAccent: paletteColors.accentText,
+          qrBackdrop: mixWithWhite(paletteColors.accent, 0.85),
+          divider: hexToRgba(paletteColors.header, 0.2)
+        };
 
         const margin = 40;
         const cardX = margin;
         const cardY = margin;
         const cardW = width - margin * 2;
-        const cardH = height - margin * 2;
         const radius = 28;
-
-        ctx.save();
-        ctx.shadowColor = 'rgba(23, 31, 52, 0.14)';
-        ctx.shadowBlur = 28;
-        ctx.shadowOffsetY = 18;
-        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, null);
-        ctx.restore();
-        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
-
-        const headerHeight = 190;
-        ctx.save();
-        roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
-        ctx.clip();
-        ctx.fillStyle = colors.header;
-        ctx.fillRect(cardX, cardY, cardW, headerHeight);
-        ctx.globalAlpha = 0.4;
-        ctx.fillStyle = colors.accent;
-        ctx.beginPath();
-        ctx.ellipse(cardX + cardW * 0.75, cardY + headerHeight * 0.2, cardW * 0.4, headerHeight * 0.9, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.restore();
-
-        const paddingX = 48;
-        const headerX = cardX + paddingX;
-        const badgeHeight = 34;
-        const badgePaddingX = 18;
-        const badgeText = 'CÓDIGO QR';
-        ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
-        const badgeWidth = Math.min(cardW - paddingX * 2, ctx.measureText(badgeText).width + badgePaddingX * 2);
-        const badgeY = cardY + 44;
-        drawRoundedRect(ctx, headerX, badgeY, badgeWidth, badgeHeight, 18, colors.accent, null);
-        ctx.save();
-        ctx.fillStyle = colors.textOnDark;
-        ctx.textBaseline = 'middle';
-        ctx.fillText(badgeText, headerX + badgePaddingX, badgeY + badgeHeight / 2);
-        ctx.restore();
-
-        let headerY = badgeY + badgeHeight + 28;
-        ctx.fillStyle = colors.textOnDark;
-        ctx.font = '700 36px "Poppins", "Segoe UI", sans-serif';
-        const headerTitle = wrapText(
-          ctx,
-          producto?.nombre || 'Producto sin nombre',
-          headerX,
-          headerY,
-          cardW - paddingX * 2,
-          40
-        );
-
-        const headerInfoY = Math.min(cardY + headerHeight - 32, headerTitle.nextY);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        ctx.font = '400 18px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
-
+        const headerHeight = 208;
+        const bodyPadding = 48;
+        const qrSize = 232;
+        const qrContainerPadding = 28;
+        const qrCaptionOffset = 36;
+        const qrCaptionLineHeight = 24;
+        const columnGap = 72;
+        const infoBlockGap = 28;
+        const labelHeight = 30;
+        const labelSpacing = 18;
         const bodyTop = cardY + headerHeight;
-        const bodyPadding = 44;
-        let infoY = bodyTop + bodyPadding;
+        const infoStartY = bodyTop + bodyPadding;
+        const qrAreaWidth = qrSize + qrContainerPadding * 2;
+        const qrAreaX = cardX + cardW - bodyPadding - qrAreaWidth;
+        const qrX = qrAreaX + qrContainerPadding;
+        const qrY = infoStartY;
         const textStartX = cardX + bodyPadding;
-        const qrSize = 240;
-        const qrX = cardX + cardW - bodyPadding - qrSize;
-        const qrY = bodyTop + bodyPadding;
-        const textWidth = qrX - textStartX - 32;
+        const textWidth = qrAreaX - textStartX - 40;
+        const columnWidth = Math.max(200, Math.floor((textWidth - columnGap) / 2));
+        const infoColumnsWidth = columnWidth * 2 + columnGap;
+        const columnDividerX = textStartX + columnWidth + columnGap / 2;
+        const footerHeight = 76;
+        const labelFont = '600 13px "Poppins", "Segoe UI", sans-serif';
+        const defaultValueFont = '600 22px "Poppins", "Segoe UI", sans-serif';
 
         const zonaPartes = [];
         if (producto?.zona_nombre) zonaPartes.push(producto.zona_nombre);
@@ -360,30 +398,128 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           { etiqueta: 'Volumen', valor: volumenTexto },
           { etiqueta: 'Precio unitario', valor: precioTexto }
         ];
+        const measureColumnHeight = column => {
+          let total = 0;
+          column.forEach(bloque => {
+            total += labelHeight + labelSpacing;
+            ctx.font = bloque.font || defaultValueFont;
+            const lineHeight = bloque.multilinea ? (bloque.lineHeight || 28) : (bloque.lineHeight || 30);
+            const textValue = bloque.valor || 'N/D';
+            const textHeight = bloque.multilinea
+              ? measureWrappedTextHeight(ctx, textValue, columnWidth, lineHeight)
+              : lineHeight;
+            total += textHeight + infoBlockGap;
+          });
+          return total;
+        };
 
-        const columnGap = 56;
-        const columnWidth = Math.floor((textWidth - columnGap) / 2);
+        const leftColumnHeight = measureColumnHeight(columnaIzquierda);
+        const rightColumnHeight = measureColumnHeight(columnaDerecha);
+        const columnContentHeight = Math.max(leftColumnHeight, rightColumnHeight);
+        const qrContentHeight = qrContainerPadding * 2 + qrSize + qrCaptionOffset + qrCaptionLineHeight;
+        const bodyContentHeight = Math.max(columnContentHeight, qrContentHeight);
+        const cardH = headerHeight + bodyPadding + bodyContentHeight + bodyPadding + footerHeight;
+        const height = cardH + margin * 2;
+
+        canvas.height = height;
+        ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        ctx.fillStyle = colors.background;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.save();
+        ctx.shadowColor = colors.headerShadow;
+        ctx.shadowBlur = 32;
+        ctx.shadowOffsetY = 20;
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, null);
+        ctx.restore();
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
+
+        ctx.save();
+        roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
+        ctx.clip();
+        const headerGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + headerHeight);
+        headerGradient.addColorStop(0, colors.header);
+        headerGradient.addColorStop(1, colors.accent);
+        ctx.fillStyle = headerGradient;
+        ctx.fillRect(cardX, cardY, cardW, headerHeight);
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = colors.accent;
+        ctx.beginPath();
+        ctx.ellipse(cardX + cardW * 0.78, cardY + headerHeight * 0.18, cardW * 0.42, headerHeight * 0.9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        const paddingX = 48;
+        const headerX = cardX + paddingX;
+        const badgeHeight = 36;
+        const badgePaddingX = 20;
+        const badgeText = 'CÓDIGO QR';
+        ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
+        const badgeWidth = Math.min(cardW - paddingX * 2, ctx.measureText(badgeText).width + badgePaddingX * 2);
+        const badgeY = cardY + 46;
+        drawRoundedRect(ctx, headerX, badgeY, badgeWidth, badgeHeight, 18, colors.accent, colors.accentOutline);
+        ctx.save();
+        ctx.fillStyle = colors.textOnAccent;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText, headerX + badgePaddingX, badgeY + badgeHeight / 2);
+        ctx.restore();
+
+        let headerY = badgeY + badgeHeight + 32;
+        ctx.fillStyle = colors.textOnDark;
+        ctx.font = '700 38px "Poppins", "Segoe UI", sans-serif';
+        const headerTitle = wrapText(
+          ctx,
+          producto?.nombre || 'Producto sin nombre',
+          headerX,
+          headerY,
+          cardW - paddingX * 2,
+          42
+        );
+
+        const headerInfoY = Math.min(cardY + headerHeight - 36, headerTitle.nextY);
+        ctx.fillStyle = colors.textOnDarkMuted;
+        ctx.font = '400 18px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
+
         const leftColumnX = textStartX;
         const rightColumnX = textStartX + columnWidth + columnGap;
-        const columnDividerX = textStartX + columnWidth + columnGap / 2;
+
+        const infoBackdropPaddingX = 24;
+        const infoBackdropPaddingY = 20;
+        const infoBackdropX = leftColumnX - infoBackdropPaddingX;
+        const infoBackdropY = infoStartY - infoBackdropPaddingY;
+        const infoBackdropHeight = columnContentHeight + infoBackdropPaddingY * 2;
+        drawRoundedRect(
+          ctx,
+          infoBackdropX,
+          infoBackdropY,
+          infoColumnsWidth + infoBackdropPaddingX * 2,
+          infoBackdropHeight,
+          26,
+          hexToRgba(colors.header, 0.06),
+          hexToRgba(colors.header, 0.12)
+        );
 
         const renderInfoBlock = (startX, startY, width, bloque) => {
           let currentY = startY;
 
           const labelText = String(bloque.etiqueta || '').toUpperCase();
-          ctx.font = '600 13px "Poppins", "Segoe UI", sans-serif';
-          const labelWidth = Math.min(width, ctx.measureText(labelText).width + 28);
-          const labelHeight = 30;
-          drawRoundedRect(ctx, startX, currentY, labelWidth, labelHeight, 14, colors.accentSoft, null);
+          ctx.font = labelFont;
+          const labelWidth = Math.min(width, ctx.measureText(labelText).width + 32);
+          drawRoundedRect(ctx, startX, currentY, labelWidth, labelHeight, 16, colors.accentSoft, colors.accentOutline);
           ctx.save();
           ctx.fillStyle = colors.accent;
           ctx.textBaseline = 'middle';
-          ctx.fillText(labelText, startX + 14, currentY + labelHeight / 2);
+          ctx.fillText(labelText, startX + 16, currentY + labelHeight / 2);
           ctx.restore();
 
-          currentY += labelHeight + 18;
+          currentY += labelHeight + labelSpacing;
           ctx.fillStyle = colors.textMain;
-          ctx.font = bloque.font || '600 22px "Poppins", "Segoe UI", sans-serif';
+          ctx.font = bloque.font || defaultValueFont;
 
           if (bloque.multilinea) {
             const lineHeight = bloque.lineHeight || 28;
@@ -395,51 +531,52 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
             currentY += lineHeight;
           }
 
-          currentY += 16;
+          currentY += infoBlockGap;
           return currentY;
         };
 
-        let leftColumnY = infoY;
+        let leftColumnY = infoStartY;
         columnaIzquierda.forEach(bloque => {
           leftColumnY = renderInfoBlock(leftColumnX, leftColumnY, columnWidth, bloque);
         });
 
-        let rightColumnY = infoY;
+        let rightColumnY = infoStartY;
         columnaDerecha.forEach(bloque => {
           rightColumnY = renderInfoBlock(rightColumnX, rightColumnY, columnWidth, bloque);
         });
 
-        ctx.strokeStyle = colors.accentSoft;
+        ctx.strokeStyle = colors.divider;
         ctx.lineWidth = 2;
-        ctx.setLineDash([10, 12]);
+        ctx.setLineDash([10, 14]);
         ctx.beginPath();
-        ctx.moveTo(columnDividerX, bodyTop + bodyPadding - 12);
-        ctx.lineTo(columnDividerX, Math.max(leftColumnY, rightColumnY) + 12);
+        const dividerTop = infoStartY - 12;
+        const dividerBottom = Math.max(leftColumnY, rightColumnY) - infoBlockGap * 0.5;
+        ctx.moveTo(columnDividerX, dividerTop);
+        ctx.lineTo(columnDividerX, dividerBottom);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        infoY = Math.max(leftColumnY, rightColumnY) + 12;
-
-        const qrContainerPadding = 20;
+        const qrContainerX = qrX - qrContainerPadding;
+        const qrContainerY = qrY - qrContainerPadding;
+        const qrContainerSize = qrSize + qrContainerPadding * 2;
         drawRoundedRect(
           ctx,
-          qrX - qrContainerPadding,
-          qrY - qrContainerPadding,
-          qrSize + qrContainerPadding * 2,
-          qrSize + qrContainerPadding * 2,
-          24,
+          qrContainerX,
+          qrContainerY,
+          qrContainerSize,
+          qrContainerSize,
+          26,
           colors.qrBackdrop,
-          colors.accentSoft
+          colors.accentOutline
         );
         ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
         ctx.fillStyle = colors.textMuted;
         ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + 48);
+        ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + qrCaptionOffset);
         ctx.textAlign = 'left';
 
-        const footerHeight = 64;
         ctx.save();
         roundedRectPath(ctx, cardX, cardY + cardH - footerHeight, cardW, footerHeight, {
           tl: 0,
@@ -448,19 +585,22 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           bl: radius
         });
         ctx.clip();
-        ctx.fillStyle = colors.accent;
+        const footerGradient = ctx.createLinearGradient(cardX, cardY + cardH - footerHeight, cardX + cardW, cardY + cardH);
+        footerGradient.addColorStop(0, colors.accent);
+        footerGradient.addColorStop(1, colors.header);
+        ctx.fillStyle = footerGradient;
         ctx.fillRect(cardX, cardY + cardH - footerHeight, cardW, footerHeight);
         ctx.restore();
 
         ctx.save();
-        ctx.fillStyle = colors.textOnDark;
+        ctx.fillStyle = colors.textOnAccent;
         ctx.textBaseline = 'middle';
         const footerCenterY = cardY + cardH - footerHeight / 2;
         ctx.font = '600 20px "Poppins", "Segoe UI", sans-serif';
         ctx.fillText('Etiqueta generada con OptiStock', textStartX, footerCenterY);
         ctx.textAlign = 'right';
-        ctx.font = '600 20px "Poppins", "Segoe UI", sans-serif';
         ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerCenterY);
+        ctx.textAlign = 'left';
         ctx.restore();
 
         const dataUrl = canvas.toDataURL('image/png');
