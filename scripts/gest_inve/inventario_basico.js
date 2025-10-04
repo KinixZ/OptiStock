@@ -41,8 +41,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalTitle = document.getElementById('productoQrTitle');
   const qrModalDownload = document.getElementById('productoQrDownload');
   const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
+  const etiquetaPreviewSection = document.getElementById('etiquetaPreviewSection');
+  const etiquetaPreviewImage = document.getElementById('productoEtiquetaImage');
+  const etiquetaPreviewPlaceholder = document.getElementById('productoEtiquetaPlaceholder');
+  const etiquetaPreviewDownload = document.getElementById('productoEtiquetaDownload');
   let qrModalProducto = null;
   let qrModalSrc = '';
+  let etiquetaPreviewProducto = null;
+  let etiquetaPreviewSrc = '';
 
   let productoFormCollapse = null;
   if (productoFormCollapseEl && window.bootstrap?.Collapse) {
@@ -110,18 +116,10 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         qrModalImage.classList.add('d-none');
       }
       if (qrModalPlaceholder) {
-        qrModalPlaceholder.textContent = 'Generando código QR...';
+        qrModalPlaceholder.textContent = 'Genera la etiqueta del producto para verla aquí.';
         qrModalPlaceholder.classList.remove('d-none');
       }
-      if (qrModalDownload) {
-        qrModalDownload.removeAttribute('href');
-        qrModalDownload.dataset.qrSrc = '';
-        qrModalDownload.dataset.filename = '';
-        qrModalDownload.removeAttribute('download');
-        qrModalDownload.classList.remove('disabled');
-        qrModalDownload.removeAttribute('aria-disabled');
-        qrModalDownload.removeAttribute('aria-busy');
-      }
+      resetDownloadAnchor(qrModalDownload);
       qrModalProducto = null;
       qrModalSrc = '';
     });
@@ -162,6 +160,82 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       return String(producto.precio_compra);
     }
     return 'N/D';
+  }
+
+  function hexToRgba(hexColor, alpha = 1) {
+    if (!hexColor) return `rgba(0, 0, 0, ${alpha})`;
+    const input = String(hexColor).trim();
+    if (/^rgba?\(/i.test(input)) {
+      const values = input
+        .replace(/rgba?\(/i, '')
+        .replace(')', '')
+        .split(',')
+        .map(part => part.trim())
+        .filter(Boolean);
+      const [r = '0', g = '0', b = '0'] = values;
+      return `rgba(${r.replace(/%$/, '')}, ${g.replace(/%$/, '')}, ${b.replace(/%$/, '')}, ${alpha})`;
+    }
+
+    let hex = input.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.split('').map(char => char + char).join('');
+    }
+    if (hex.length !== 6) {
+      return `rgba(0, 0, 0, ${alpha})`;
+    }
+    const intVal = Number.parseInt(hex, 16);
+    const r = (intVal >> 16) & 255;
+    const g = (intVal >> 8) & 255;
+    const b = intVal & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function getBrandPalette() {
+    const styles = window.getComputedStyle(document.documentElement);
+    const readVar = (name, fallback) => {
+      const value = styles.getPropertyValue(name)?.trim();
+      return value || fallback;
+    };
+    const topbar = readVar('--topbar-color', '#ff6f91');
+    const sidebar = readVar('--sidebar-color', '#171f34');
+    const card = readVar('--card-bg', '#ffffff');
+    const page = readVar('--page-bg', '#f4f6fb');
+    const text = readVar('--text-color', '#1f2336');
+    const sidebarText = readVar('--sidebar-text-color', '#ffffff');
+    return {
+      topbar,
+      sidebar,
+      card,
+      page,
+      text,
+      sidebarText,
+      topbarSoft: hexToRgba(topbar, 0.16),
+      topbarStrong: hexToRgba(topbar, 0.35),
+      sidebarSoft: hexToRgba(sidebar, 0.12),
+      sidebarShadow: hexToRgba(sidebar, 0.22)
+    };
+  }
+
+  function resetDownloadAnchor(anchor) {
+    if (!anchor) return;
+    anchor.classList.add('disabled');
+    anchor.setAttribute('aria-disabled', 'true');
+    anchor.removeAttribute('href');
+    anchor.removeAttribute('download');
+    delete anchor.dataset.qrSrc;
+    delete anchor.dataset.filename;
+    delete anchor.dataset.etiquetaDataUrl;
+  }
+
+  function applyDownloadData(anchor, dataUrl, filenameBase) {
+    if (!anchor) return;
+    anchor.href = dataUrl;
+    anchor.download = `${filenameBase}.png`;
+    anchor.dataset.etiquetaDataUrl = dataUrl;
+    anchor.dataset.filename = filenameBase;
+    anchor.classList.remove('disabled');
+    anchor.removeAttribute('aria-disabled');
+    anchor.removeAttribute('aria-busy');
   }
 
   function roundedRectPath(ctx, x, y, width, height, radius) {
@@ -247,15 +321,22 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
+        const palette = getBrandPalette();
         const colors = {
-          background: '#f5f6fb',
-          card: '#ffffff',
-          border: '#e7e9f5',
-          headerStart: '#ff6f91',
-          headerEnd: '#ff9671',
-          textMain: '#1f2937',
-          textMuted: '#6b7280',
-          textOnAccent: '#ffffff'
+          background: palette.page,
+          card: palette.card,
+          border: hexToRgba(palette.sidebar, 0.1),
+          headerStart: palette.sidebar,
+          headerEnd: palette.topbar,
+          headerOverlay: palette.topbarStrong,
+          accent: palette.topbar,
+          accentSoft: palette.topbarSoft,
+          textMain: palette.text,
+          textMuted: hexToRgba(palette.sidebar, 0.58),
+          textOnDark: palette.sidebarText,
+          qrBackdrop: hexToRgba(palette.sidebar, 0.05),
+          divider: hexToRgba(palette.sidebar, 0.18),
+          shadow: palette.sidebarShadow
         };
 
         ctx.fillStyle = colors.background;
@@ -268,9 +349,15 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const cardH = height - margin * 2;
         const radius = 28;
 
-        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, colors.border);
+        ctx.save();
+        ctx.shadowColor = colors.shadow;
+        ctx.shadowBlur = 32;
+        ctx.shadowOffsetY = 20;
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, null);
+        ctx.restore();
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
 
-        const headerHeight = 180;
+        const headerHeight = 190;
         ctx.save();
         roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
         ctx.clip();
@@ -279,39 +366,54 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         headerGradient.addColorStop(1, colors.headerEnd);
         ctx.fillStyle = headerGradient;
         ctx.fillRect(cardX, cardY, cardW, headerHeight);
+        ctx.globalAlpha = 0.45;
+        ctx.fillStyle = colors.headerOverlay;
+        ctx.beginPath();
+        ctx.ellipse(cardX + cardW * 0.75, cardY + headerHeight * 0.2, cardW * 0.4, headerHeight * 0.9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
         ctx.restore();
 
-        const paddingX = 40;
+        const paddingX = 48;
         const headerX = cardX + paddingX;
-        let headerY = cardY + 60;
-
-        ctx.fillStyle = colors.textOnAccent;
+        const badgeHeight = 34;
+        const badgePaddingX = 18;
+        const badgeText = 'CÓDIGO QR';
         ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('CÓDIGO QR', headerX, headerY);
+        const badgeWidth = Math.min(cardW - paddingX * 2, ctx.measureText(badgeText).width + badgePaddingX * 2);
+        const badgeY = cardY + 42;
+        drawRoundedRect(ctx, headerX, badgeY, badgeWidth, badgeHeight, 18, colors.accent, null);
+        ctx.save();
+        ctx.fillStyle = colors.textOnDark;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText, headerX + badgePaddingX, badgeY + badgeHeight / 2);
+        ctx.restore();
 
-        headerY += 34;
-        ctx.font = '700 32px "Poppins", "Segoe UI", sans-serif';
+        let headerY = badgeY + badgeHeight + 28;
+        ctx.fillStyle = colors.textOnDark;
+        ctx.font = '700 36px "Poppins", "Segoe UI", sans-serif';
         const headerTitle = wrapText(
           ctx,
           producto?.nombre || 'Producto sin nombre',
           headerX,
           headerY,
           cardW - paddingX * 2,
-          36
+          40
         );
 
-        const headerInfoY = Math.min(cardY + headerHeight - 20, headerTitle.nextY);
-        ctx.font = '400 16px "Poppins", "Segoe UI", sans-serif';
+        const headerInfoY = Math.min(cardY + headerHeight - 32, headerTitle.nextY);
+        ctx.fillStyle = hexToRgba(colors.textOnDark, 0.7);
+        ctx.font = '400 18px "Poppins", "Segoe UI", sans-serif';
         ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
 
         const bodyTop = cardY + headerHeight;
-        const bodyPadding = 40;
+        const bodyPadding = 44;
         let infoY = bodyTop + bodyPadding;
         const textStartX = cardX + bodyPadding;
         const qrSize = 240;
         const qrX = cardX + cardW - bodyPadding - qrSize;
         const qrY = bodyTop + bodyPadding;
-        const textWidth = qrX - textStartX - 24;
+        const textWidth = qrX - textStartX - 32;
 
         const zonaPartes = [];
         if (producto?.zona_nombre) zonaPartes.push(producto.zona_nombre);
@@ -341,7 +443,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           { etiqueta: 'Precio unitario', valor: precioTexto }
         ];
 
-        const columnGap = 64;
+        const columnGap = 56;
         const columnWidth = Math.floor((textWidth - columnGap) / 2);
         const leftColumnX = textStartX;
         const rightColumnX = textStartX + columnWidth + columnGap;
@@ -350,25 +452,32 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const renderInfoBlock = (startX, startY, width, bloque) => {
           let currentY = startY;
 
-          ctx.fillStyle = colors.textMuted;
-          ctx.font = '600 14px "Poppins", "Segoe UI", sans-serif';
-          ctx.fillText(bloque.etiqueta.toUpperCase(), startX, currentY);
-          currentY += 20;
+          const labelText = String(bloque.etiqueta || '').toUpperCase();
+          ctx.font = '600 13px "Poppins", "Segoe UI", sans-serif';
+          const labelWidth = Math.min(width, ctx.measureText(labelText).width + 28);
+          const labelHeight = 30;
+          drawRoundedRect(ctx, startX, currentY, labelWidth, labelHeight, 14, colors.accentSoft, null);
+          ctx.save();
+          ctx.fillStyle = colors.accent;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labelText, startX + 14, currentY + labelHeight / 2);
+          ctx.restore();
 
+          currentY += labelHeight + 18;
           ctx.fillStyle = colors.textMain;
-          ctx.font = bloque.font || '600 20px "Poppins", "Segoe UI", sans-serif';
+          ctx.font = bloque.font || '600 22px "Poppins", "Segoe UI", sans-serif';
 
           if (bloque.multilinea) {
-            const lineHeight = bloque.lineHeight || 26;
+            const lineHeight = bloque.lineHeight || 28;
             const wrapped = wrapText(ctx, bloque.valor, startX, currentY, width, lineHeight);
             currentY = wrapped.nextY;
           } else {
-            const lineHeight = bloque.lineHeight || 28;
+            const lineHeight = bloque.lineHeight || 30;
             ctx.fillText(bloque.valor || 'N/D', startX, currentY);
             currentY += lineHeight;
           }
 
-          currentY += 20;
+          currentY += 16;
           return currentY;
         };
 
@@ -382,41 +491,27 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           rightColumnY = renderInfoBlock(rightColumnX, rightColumnY, columnWidth, bloque);
         });
 
-        ctx.strokeStyle = colors.border;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = colors.divider;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 12]);
         ctx.beginPath();
         ctx.moveTo(columnDividerX, bodyTop + bodyPadding - 12);
         ctx.lineTo(columnDividerX, Math.max(leftColumnY, rightColumnY) + 12);
         ctx.stroke();
+        ctx.setLineDash([]);
 
         infoY = Math.max(leftColumnY, rightColumnY) + 12;
 
-        const footerY = cardY + cardH - bodyPadding;
-        ctx.strokeStyle = colors.border;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(textStartX, footerY);
-        ctx.lineTo(cardX + cardW - bodyPadding, footerY);
-        ctx.stroke();
-
-        ctx.fillStyle = colors.textMuted;
-        ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText('Etiqueta generada con OptiStock', textStartX, footerY + 28);
-
-        ctx.textAlign = 'right';
-        ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerY + 28);
-        ctx.textAlign = 'left';
-
-        const qrContainerPadding = 16;
+        const qrContainerPadding = 20;
         drawRoundedRect(
           ctx,
           qrX - qrContainerPadding,
           qrY - qrContainerPadding,
           qrSize + qrContainerPadding * 2,
           qrSize + qrContainerPadding * 2,
-          20,
-          colors.background,
-          colors.border
+          24,
+          colors.qrBackdrop,
+          colors.accentSoft
         );
         ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
@@ -425,6 +520,30 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         ctx.textAlign = 'center';
         ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + 48);
         ctx.textAlign = 'left';
+
+        const footerHeight = 64;
+        ctx.save();
+        roundedRectPath(ctx, cardX, cardY + cardH - footerHeight, cardW, footerHeight, {
+          tl: 0,
+          tr: 0,
+          br: radius,
+          bl: radius
+        });
+        ctx.clip();
+        ctx.fillStyle = colors.accent;
+        ctx.fillRect(cardX, cardY + cardH - footerHeight, cardW, footerHeight);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = colors.textOnDark;
+        ctx.textBaseline = 'middle';
+        const footerCenterY = cardY + cardH - footerHeight / 2;
+        ctx.font = '600 20px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('Etiqueta generada con OptiStock', textStartX, footerCenterY);
+        ctx.textAlign = 'right';
+        ctx.font = '600 20px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerCenterY);
+        ctx.restore();
 
         const dataUrl = canvas.toDataURL('image/png');
         resolve(dataUrl);
@@ -436,8 +555,127 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     });
   }
 
+  async function renderEtiquetaVista(producto, qrSrc, filenameBase) {
+    if (!producto || !qrSrc) {
+      return;
+    }
+
+    const safeFilename = filenameBase || sanitizeFileName(producto?.nombre) || 'producto_etiqueta';
+    etiquetaPreviewProducto = producto;
+    etiquetaPreviewSrc = qrSrc;
+
+    etiquetaPreviewSection?.classList.remove('d-none');
+
+    if (qrModalImage) {
+      qrModalImage.classList.add('d-none');
+      qrModalImage.onload = () => {
+        qrModalImage.classList.remove('d-none');
+        qrModalPlaceholder?.classList.add('d-none');
+      };
+      qrModalImage.onerror = () => {
+        if (qrModalPlaceholder) {
+          qrModalPlaceholder.textContent = 'No se pudo mostrar la etiqueta generada.';
+          qrModalPlaceholder.classList.remove('d-none');
+        }
+        qrModalImage.classList.add('d-none');
+      };
+    }
+    if (qrModalPlaceholder) {
+      qrModalPlaceholder.textContent = 'Generando etiqueta con los colores de OptiStock...';
+      qrModalPlaceholder.classList.remove('d-none');
+    }
+
+    if (etiquetaPreviewImage) {
+      etiquetaPreviewImage.classList.add('d-none');
+      etiquetaPreviewImage.onload = () => {
+        etiquetaPreviewImage.classList.remove('d-none');
+        etiquetaPreviewPlaceholder?.classList.add('d-none');
+      };
+      etiquetaPreviewImage.onerror = () => {
+        if (etiquetaPreviewPlaceholder) {
+          etiquetaPreviewPlaceholder.textContent = 'No se pudo mostrar la etiqueta generada.';
+          etiquetaPreviewPlaceholder.classList.remove('d-none');
+        }
+        etiquetaPreviewImage.classList.add('d-none');
+      };
+    }
+    if (etiquetaPreviewPlaceholder) {
+      etiquetaPreviewPlaceholder.textContent = 'Generando etiqueta con los colores de OptiStock...';
+      etiquetaPreviewPlaceholder.classList.remove('d-none');
+    }
+
+    resetDownloadAnchor(qrModalDownload);
+    resetDownloadAnchor(etiquetaPreviewDownload);
+
+    if (qrModalDownload) {
+      qrModalDownload.dataset.qrSrc = qrSrc;
+      qrModalDownload.dataset.filename = safeFilename;
+    }
+    if (etiquetaPreviewDownload) {
+      etiquetaPreviewDownload.dataset.qrSrc = qrSrc;
+      etiquetaPreviewDownload.dataset.filename = safeFilename;
+    }
+
+    try {
+      const dataUrl = await crearEtiquetaProducto(producto, qrSrc);
+
+      if (qrModalImage) {
+        qrModalImage.src = dataUrl;
+        qrModalImage.alt = producto ? `Etiqueta del producto ${producto.nombre}` : 'Etiqueta del producto';
+      }
+      if (etiquetaPreviewImage) {
+        etiquetaPreviewImage.src = dataUrl;
+        etiquetaPreviewImage.alt = producto ? `Etiqueta del producto ${producto.nombre}` : 'Etiqueta del producto';
+      }
+
+      applyDownloadData(qrModalDownload, dataUrl, safeFilename);
+      applyDownloadData(etiquetaPreviewDownload, dataUrl, safeFilename);
+    } catch (error) {
+      console.error('Error generando vista previa de la etiqueta', error);
+
+      if (qrModalPlaceholder) {
+        qrModalPlaceholder.textContent = 'No se pudo generar la etiqueta. Mostrando código QR original.';
+        qrModalPlaceholder.classList.remove('d-none');
+      }
+      if (etiquetaPreviewPlaceholder) {
+        etiquetaPreviewPlaceholder.textContent = 'No se pudo generar la etiqueta. Intenta nuevamente.';
+        etiquetaPreviewPlaceholder.classList.remove('d-none');
+      }
+
+      if (qrModalImage) {
+        qrModalImage.src = qrSrc;
+        qrModalImage.alt = producto ? `Código QR del producto ${producto.nombre}` : 'Código QR del producto';
+      }
+
+      if (qrModalDownload) {
+        qrModalDownload.href = qrSrc;
+        qrModalDownload.classList.remove('disabled');
+        qrModalDownload.removeAttribute('aria-disabled');
+        qrModalDownload.removeAttribute('aria-busy');
+      }
+
+      if (etiquetaPreviewDownload) {
+        etiquetaPreviewDownload.classList.add('disabled');
+        etiquetaPreviewDownload.setAttribute('aria-disabled', 'true');
+        etiquetaPreviewDownload.removeAttribute('href');
+        etiquetaPreviewDownload.removeAttribute('download');
+      }
+    }
+  }
+
   async function handleEtiquetaDownload(event) {
     if (!qrModalDownload) return;
+
+    if (qrModalDownload.classList.contains('disabled')) {
+      event.preventDefault();
+      return;
+    }
+
+    if (qrModalDownload.dataset.etiquetaDataUrl) {
+      qrModalDownload.href = qrModalDownload.dataset.etiquetaDataUrl;
+      return;
+    }
+
     if (!qrModalProducto || !qrModalSrc) {
       if (qrModalSrc) {
         qrModalDownload.href = qrModalSrc;
@@ -446,9 +684,6 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     }
 
     event.preventDefault();
-    if (qrModalDownload.classList.contains('disabled')) {
-      return;
-    }
 
     try {
       qrModalDownload.classList.add('disabled');
@@ -457,12 +692,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
       const dataUrl = await crearEtiquetaProducto(qrModalProducto, qrModalSrc);
       const filenameBase = qrModalDownload.dataset.filename || 'producto_etiqueta';
-      const tempLink = document.createElement('a');
-      tempLink.href = dataUrl;
-      tempLink.download = `${filenameBase}.png`;
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      tempLink.remove();
+      applyDownloadData(qrModalDownload, dataUrl, filenameBase);
+      qrModalDownload.click();
     } catch (error) {
       console.error('Error generando etiqueta del producto', error);
       showToast('No se pudo generar la etiqueta del producto', 'error');
@@ -470,13 +701,59 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         window.open(qrModalSrc, '_blank');
       }
     } finally {
-      qrModalDownload.classList.remove('disabled');
-      qrModalDownload.removeAttribute('aria-disabled');
-      qrModalDownload.removeAttribute('aria-busy');
+      if (!qrModalDownload.dataset.etiquetaDataUrl) {
+        qrModalDownload.classList.remove('disabled');
+        qrModalDownload.removeAttribute('aria-disabled');
+        qrModalDownload.removeAttribute('aria-busy');
+      }
     }
   }
 
   qrModalDownload?.addEventListener('click', handleEtiquetaDownload);
+
+  async function handleEtiquetaPreviewDownload(event) {
+    if (!etiquetaPreviewDownload) return;
+
+    if (etiquetaPreviewDownload.classList.contains('disabled')) {
+      event.preventDefault();
+      return;
+    }
+
+    if (etiquetaPreviewDownload.dataset.etiquetaDataUrl) {
+      etiquetaPreviewDownload.href = etiquetaPreviewDownload.dataset.etiquetaDataUrl;
+      return;
+    }
+
+    if (!etiquetaPreviewProducto || !etiquetaPreviewSrc) {
+      event.preventDefault();
+      showToast('Selecciona un producto y genera su etiqueta desde la tabla.', 'info');
+      return;
+    }
+
+    event.preventDefault();
+
+    try {
+      etiquetaPreviewDownload.classList.add('disabled');
+      etiquetaPreviewDownload.setAttribute('aria-disabled', 'true');
+      etiquetaPreviewDownload.setAttribute('aria-busy', 'true');
+
+      const dataUrl = await crearEtiquetaProducto(etiquetaPreviewProducto, etiquetaPreviewSrc);
+      const filenameBase = etiquetaPreviewDownload.dataset.filename || 'producto_etiqueta';
+      applyDownloadData(etiquetaPreviewDownload, dataUrl, filenameBase);
+      etiquetaPreviewDownload.click();
+    } catch (error) {
+      console.error('Error generando etiqueta del producto', error);
+      showToast('No se pudo generar la etiqueta del producto', 'error');
+    } finally {
+      if (!etiquetaPreviewDownload.dataset.etiquetaDataUrl) {
+        etiquetaPreviewDownload.classList.remove('disabled');
+        etiquetaPreviewDownload.removeAttribute('aria-disabled');
+        etiquetaPreviewDownload.removeAttribute('aria-busy');
+      }
+    }
+  }
+
+  etiquetaPreviewDownload?.addEventListener('click', handleEtiquetaPreviewDownload);
 
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
@@ -1835,50 +2112,34 @@ if (editProdId) {
     qrModalProducto = producto;
     qrModalSrc = qrSrc;
 
+    if (!producto) {
+      window.open(qrSrc, '_blank');
+      return;
+    }
+
     if (!qrModalInstance || !qrModalImage) {
       window.open(qrSrc, '_blank');
       return;
     }
 
-    if (qrModalPlaceholder) {
-      qrModalPlaceholder.textContent = 'Generando código QR...';
-      qrModalPlaceholder.classList.remove('d-none');
-    }
-
-    qrModalImage.classList.add('d-none');
-    qrModalImage.onload = () => {
-      qrModalImage.classList.remove('d-none');
-      if (qrModalPlaceholder) {
-        qrModalPlaceholder.classList.add('d-none');
-      }
-    };
-    qrModalImage.onerror = () => {
-      if (qrModalPlaceholder) {
-        qrModalPlaceholder.textContent = 'No se pudo generar el código QR.';
-        qrModalPlaceholder.classList.remove('d-none');
-      }
-      qrModalImage.classList.add('d-none');
-      qrModalDownload?.removeAttribute('href');
-    };
-    qrModalImage.src = qrSrc;
-    qrModalImage.alt = producto ? `Código QR del producto ${producto.nombre}` : 'Código QR del producto';
-
     if (qrModalTitle) {
       qrModalTitle.textContent = producto
-        ? `Código QR – ${producto.nombre}`
-        : 'Código QR del producto';
+        ? `Etiqueta QR – ${producto.nombre}`
+        : 'Etiqueta QR del producto';
     }
+
     if (qrModalDownload) {
-      const safeName = sanitizeFileName(producto?.nombre) || `producto_${id}`;
-      qrModalDownload.href = '#';
-      qrModalDownload.dataset.qrSrc = qrSrc;
-      qrModalDownload.dataset.filename = `${safeName || 'producto'}_etiqueta`;
-      qrModalDownload.download = `${safeName || 'producto'}_etiqueta.png`;
       qrModalDownload.textContent = 'Descargar etiqueta';
-      qrModalDownload.classList.remove('disabled');
-      qrModalDownload.removeAttribute('aria-disabled');
-      qrModalDownload.removeAttribute('aria-busy');
     }
+    if (etiquetaPreviewDownload) {
+      etiquetaPreviewDownload.textContent = 'Descargar etiqueta';
+    }
+
+    const safeName = sanitizeFileName(producto?.nombre) || `producto_${id}`;
+    const filenameBase = `${safeName}_etiqueta`;
+    renderEtiquetaVista(producto, qrSrc, filenameBase).catch(error => {
+      console.error('No se pudo renderizar la etiqueta', error);
+    });
 
     qrModalInstance.show();
     return;
