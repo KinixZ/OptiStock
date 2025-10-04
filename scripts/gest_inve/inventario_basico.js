@@ -41,6 +41,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalTitle = document.getElementById('productoQrTitle');
   const qrModalDownload = document.getElementById('productoQrDownload');
   const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
+  let qrModalProducto = null;
+  let qrModalSrc = '';
 
   let productoFormCollapse = null;
   if (productoFormCollapseEl && window.bootstrap?.Collapse) {
@@ -113,9 +115,506 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       }
       if (qrModalDownload) {
         qrModalDownload.removeAttribute('href');
+        qrModalDownload.dataset.qrSrc = '';
+        qrModalDownload.dataset.filename = '';
+        qrModalDownload.removeAttribute('download');
+        qrModalDownload.classList.remove('disabled');
+        qrModalDownload.removeAttribute('aria-disabled');
+        qrModalDownload.removeAttribute('aria-busy');
       }
+      qrModalProducto = null;
+      qrModalSrc = '';
     });
   }
+
+  function sanitizeFileName(text) {
+    return (text || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9_-]+/gi, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^_|_$/g, '')
+      .toLowerCase();
+  }
+
+  function parseDimensionValue(value) {
+    const num = Number.parseFloat(value);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }
+
+  function formatDimensionTriplet(producto) {
+    const dimensiones = [producto?.dim_x, producto?.dim_y, producto?.dim_z]
+      .map(parseDimensionValue);
+    if (dimensiones.every(num => Number.isFinite(num))) {
+      return dimensiones
+        .map(num => (Number.isInteger(num) ? num.toString() : num.toFixed(1)) + ' cm')
+        .join(' × ');
+    }
+    return 'N/D';
+  }
+
+  function formatPrecioUnitario(producto) {
+    const precio = Number.parseFloat(producto?.precio_compra);
+    if (Number.isFinite(precio) && precio >= 0) {
+      return `$${precio.toFixed(2)}`;
+    }
+    if (producto?.precio_compra) {
+      return String(producto.precio_compra);
+    }
+    return 'N/D';
+  }
+
+  function roundedRectPath(ctx, x, y, width, height, radius) {
+    let r = radius;
+    if (typeof r === 'number') {
+      r = { tl: r, tr: r, br: r, bl: r };
+    } else {
+      r = {
+        tl: Math.max(0, r.tl || 0),
+        tr: Math.max(0, r.tr || 0),
+        br: Math.max(0, r.br || 0),
+        bl: Math.max(0, r.bl || 0)
+      };
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(x + r.tl, y);
+    ctx.lineTo(x + width - r.tr, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r.tr);
+    ctx.lineTo(x + width, y + height - r.br);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r.br, y + height);
+    ctx.lineTo(x + r.bl, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r.bl);
+    ctx.lineTo(x, y + r.tl);
+    ctx.quadraticCurveTo(x, y, x + r.tl, y);
+    ctx.closePath();
+  }
+
+  function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle, strokeStyle) {
+    roundedRectPath(ctx, x, y, width, height, radius);
+    if (fillStyle) {
+      ctx.fillStyle = fillStyle;
+      ctx.fill();
+    }
+    if (strokeStyle) {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  function getTextHeight(ctx, text) {
+    const metrics = ctx.measureText(text);
+    const ascent = Number.isFinite(metrics.actualBoundingBoxAscent)
+      ? metrics.actualBoundingBoxAscent
+      : 0;
+    const descent = Number.isFinite(metrics.actualBoundingBoxDescent)
+      ? metrics.actualBoundingBoxDescent
+      : 0;
+    if (ascent + descent > 0) {
+      return ascent + descent;
+    }
+    const fontSizeMatch = /([0-9]+(?:\.[0-9]+)?)px/.exec(ctx.font || '');
+    return fontSizeMatch ? Number.parseFloat(fontSizeMatch[1]) : 16;
+  }
+
+  function getWrappedLines(ctx, text, maxWidth) {
+    const words = String(text ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (words.length === 0) {
+      return ['N/D'];
+    }
+
+    const lines = [];
+    let line = words[0];
+    for (let i = 1; i < words.length; i += 1) {
+      const testLine = `${line} ${words[i]}`;
+      if (ctx.measureText(testLine).width > maxWidth) {
+        lines.push(line);
+        line = words[i];
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+    return lines;
+  }
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const lines = getWrappedLines(ctx, text, maxWidth);
+    let currentY = y;
+    lines.forEach((line, index) => {
+      ctx.fillText(line, x, currentY);
+      if (index < lines.length - 1) {
+        currentY += lineHeight;
+      }
+    });
+    return { lastY: currentY, nextY: currentY + lineHeight };
+  }
+
+  function drawInfoChip(ctx, text, x, y, options = {}) {
+    const {
+      paddingX = 18,
+      paddingY = 10,
+      radius = 18,
+      background = 'rgba(15, 23, 42, 0.08)',
+      color = '#1f2937',
+      font = '600 16px "Poppins", "Segoe UI", sans-serif',
+      maxWidth = Infinity
+    } = options;
+
+    const label = String(text ?? '').trim() || 'N/D';
+    ctx.save();
+    const previousBaseline = ctx.textBaseline;
+    ctx.font = font;
+    ctx.textBaseline = 'top';
+    const metrics = ctx.measureText(label);
+    const textHeight = getTextHeight(ctx, label);
+    const chipHeight = textHeight + paddingY * 2;
+    let displayLabel = label;
+    let effectiveWidth = metrics.width + paddingX * 2;
+    if (effectiveWidth > maxWidth) {
+      const ellipsis = '…';
+      let truncated = label;
+      while (truncated.length > 1 && ctx.measureText(`${truncated}${ellipsis}`).width + paddingX * 2 > maxWidth) {
+        truncated = truncated.slice(0, -1);
+      }
+      displayLabel = `${truncated}${ellipsis}`;
+      effectiveWidth = Math.min(maxWidth, ctx.measureText(displayLabel).width + paddingX * 2);
+    }
+
+    drawRoundedRect(ctx, x, y, effectiveWidth, chipHeight, radius, background);
+    ctx.fillStyle = color;
+    ctx.fillText(displayLabel, x + paddingX, y + paddingY);
+
+    ctx.textBaseline = previousBaseline;
+    ctx.restore();
+    return { width: effectiveWidth, height: chipHeight };
+  }
+
+  function crearEtiquetaProducto(producto, qrSrc) {
+    return new Promise((resolve, reject) => {
+      if (!producto || !qrSrc) {
+        reject(new Error('Falta información para generar la etiqueta.'));
+        return;
+      }
+
+      const qrImage = new Image();
+      qrImage.crossOrigin = 'anonymous';
+      qrImage.onload = () => {
+        const width = 960;
+        const height = 540;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        const colors = {
+          background: '#eef2ff',
+          card: '#ffffff',
+          shadow: 'rgba(15, 23, 42, 0.12)',
+          border: '#e2e8f0',
+          borderSoft: 'rgba(148, 163, 184, 0.32)',
+          headerStart: '#ff6f91',
+          headerEnd: '#ff9671',
+          accentStrong: '#ff6f91',
+          accentSoft: 'rgba(255, 111, 145, 0.16)',
+          textMain: '#1e293b',
+          textMuted: '#64748b',
+          textOnAccent: '#ffffff',
+          surfaceSubtle: '#f8fafc'
+        };
+
+        ctx.fillStyle = colors.background;
+        ctx.fillRect(0, 0, width, height);
+
+        const margin = 40;
+        const cardX = margin;
+        const cardY = margin;
+        const cardW = width - margin * 2;
+        const cardH = height - margin * 2;
+        const radius = 28;
+
+        ctx.save();
+        ctx.shadowColor = colors.shadow;
+        ctx.shadowBlur = 32;
+        ctx.shadowOffsetY = 18;
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card);
+        ctx.restore();
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, null, colors.border);
+
+        const headerHeight = 188;
+        ctx.save();
+        roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
+        ctx.clip();
+        const headerGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + headerHeight);
+        headerGradient.addColorStop(0, colors.headerStart);
+        headerGradient.addColorStop(1, colors.headerEnd);
+        ctx.fillStyle = headerGradient;
+        ctx.fillRect(cardX, cardY, cardW, headerHeight);
+        ctx.restore();
+
+        const paddingX = 44;
+        const headerX = cardX + paddingX;
+        let headerY = cardY + 72;
+
+        ctx.fillStyle = colors.textOnAccent;
+        ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('Etiqueta de inventario', headerX, headerY);
+
+        headerY += 36;
+        ctx.font = '700 34px "Poppins", "Segoe UI", sans-serif';
+        const headerTitle = wrapText(
+          ctx,
+          producto?.nombre || 'Producto sin nombre',
+          headerX,
+          headerY,
+          cardW - paddingX * 2,
+          36
+        );
+
+        const headerInfoY = Math.min(cardY + headerHeight - 28, headerTitle.nextY);
+        ctx.font = '400 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('OptiStock', headerX, headerInfoY);
+
+        const bodyTop = cardY + headerHeight;
+        const bodyPadding = 48;
+        let infoY = bodyTop + bodyPadding;
+        const textStartX = cardX + bodyPadding;
+        const qrSize = 232;
+        const qrX = cardX + cardW - bodyPadding - qrSize;
+        const qrY = bodyTop + bodyPadding;
+        const textWidth = qrX - textStartX - 32;
+
+        const zonaPartes = [];
+        if (producto?.zona_nombre) zonaPartes.push(`Zona ${producto.zona_nombre}`);
+        if (producto?.area_nombre) zonaPartes.push(`Área ${producto.area_nombre}`);
+        const zonaTexto = zonaPartes.length ? zonaPartes.join(' · ') : 'Sin zona asignada';
+        const descripcionTexto = producto?.descripcion?.trim() ? producto.descripcion.trim() : 'Sin descripción disponible';
+        const categoriaTexto = producto?.categoria_nombre || 'Sin categoría';
+        const subcategoriaTexto = producto?.subcategoria_nombre || 'Sin subcategoría';
+        const volumenTexto = formatDimensionTriplet(producto);
+        const precioTexto = formatPrecioUnitario(producto);
+
+        ctx.font = '600 15px "Poppins", "Segoe UI", sans-serif';
+        const chip = drawInfoChip(ctx, zonaTexto, textStartX, infoY, {
+          background: colors.accentSoft,
+          color: colors.accentStrong,
+          font: '600 15px "Poppins", "Segoe UI", sans-serif',
+          maxWidth: textWidth
+        });
+        infoY += chip.height + 28;
+
+        const descripcionPadding = 24;
+        const descripcionLabelFont = '600 14px "Poppins", "Segoe UI", sans-serif';
+        const descripcionValorFont = '400 18px "Poppins", "Segoe UI", sans-serif';
+        const descripcionLineHeight = 26;
+        ctx.font = descripcionLabelFont;
+        const descripcionLabelHeight = getTextHeight(ctx, 'DESCRIPCIÓN');
+        ctx.font = descripcionValorFont;
+        const descripcionLineas = getWrappedLines(
+          ctx,
+          descripcionTexto,
+          textWidth - descripcionPadding * 2
+        );
+        const descripcionHeight =
+          descripcionPadding * 2 +
+          descripcionLabelHeight +
+          10 +
+          Math.max(descripcionLineas.length, 1) * descripcionLineHeight;
+
+        drawRoundedRect(
+          ctx,
+          textStartX,
+          infoY,
+          textWidth,
+          descripcionHeight,
+          22,
+          colors.surfaceSubtle,
+          colors.borderSoft
+        );
+
+        ctx.fillStyle = colors.textMuted;
+        ctx.font = descripcionLabelFont;
+        ctx.fillText('DESCRIPCIÓN', textStartX + descripcionPadding, infoY + descripcionPadding);
+
+        ctx.fillStyle = colors.textMain;
+        ctx.font = descripcionValorFont;
+        let descripcionY = infoY + descripcionPadding + descripcionLabelHeight + 12;
+        descripcionLineas.forEach(linea => {
+          ctx.fillText(linea, textStartX + descripcionPadding, descripcionY);
+          descripcionY += descripcionLineHeight;
+        });
+
+        infoY += descripcionHeight + 36;
+
+        const detalleTarjetas = [
+          { etiqueta: 'Categoría', valor: categoriaTexto },
+          { etiqueta: 'Subcategoría', valor: subcategoriaTexto },
+          { etiqueta: 'Volumen', valor: volumenTexto },
+          { etiqueta: 'Precio unitario', valor: precioTexto, resaltar: true }
+        ];
+
+        const detalleColumnas = 2;
+        const detalleGap = 18;
+        const detalleAncho = (textWidth - detalleGap) / detalleColumnas;
+        const detallePaddingX = 20;
+        const detallePaddingY = 18;
+        const detalleLabelFont = '600 13px "Poppins", "Segoe UI", sans-serif';
+        const detalleValorFont = '600 22px "Poppins", "Segoe UI", sans-serif';
+        const detalleLineaAltura = 28;
+        const detalleFilas = [];
+
+        for (let i = 0; i < detalleTarjetas.length; i += detalleColumnas) {
+          const filaItems = detalleTarjetas.slice(i, i + detalleColumnas).map((detalle, indiceColumna) => {
+            const itemX = textStartX + indiceColumna * (detalleAncho + detalleGap);
+            const etiqueta = detalle.etiqueta.toUpperCase();
+            ctx.font = detalleLabelFont;
+            const etiquetaAltura = getTextHeight(ctx, etiqueta);
+            ctx.font = detalleValorFont;
+            const lineas = getWrappedLines(
+              ctx,
+              detalle.valor || 'N/D',
+              detalleAncho - detallePaddingX * 2
+            );
+            const valorAltura = Math.max(lineas.length, 1) * detalleLineaAltura;
+            const tarjetaAltura =
+              detallePaddingY * 2 +
+              etiquetaAltura +
+              10 +
+              valorAltura;
+            return {
+              ...detalle,
+              etiqueta,
+              lineas,
+              x: itemX,
+              altura: tarjetaAltura,
+              etiquetaAltura
+            };
+          });
+          const filaAltura = filaItems.reduce((acc, item) => Math.max(acc, item.altura), 0);
+          detalleFilas.push({ items: filaItems, altura: filaAltura });
+        }
+
+        let filaY = infoY;
+        detalleFilas.forEach(fila => {
+          fila.items.forEach(item => {
+            drawRoundedRect(
+              ctx,
+              item.x,
+              filaY,
+              detalleAncho,
+              item.altura,
+              20,
+              colors.surfaceSubtle,
+              colors.borderSoft
+            );
+
+            ctx.fillStyle = colors.textMuted;
+            ctx.font = detalleLabelFont;
+            ctx.fillText(item.etiqueta, item.x + detallePaddingX, filaY + detallePaddingY);
+
+            ctx.font = detalleValorFont;
+            ctx.fillStyle = item.resaltar ? colors.accentStrong : colors.textMain;
+            let valorY = filaY + detallePaddingY + item.etiquetaAltura + 12;
+            item.lineas.forEach(linea => {
+              ctx.fillText(linea, item.x + detallePaddingX, valorY);
+              valorY += detalleLineaAltura;
+            });
+          });
+          filaY += fila.altura + detalleGap;
+        });
+
+        infoY = filaY + 12;
+
+        const footerY = cardY + cardH - bodyPadding;
+        ctx.strokeStyle = colors.border;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(textStartX, footerY);
+        ctx.lineTo(cardX + cardW - bodyPadding, footerY);
+        ctx.stroke();
+
+        ctx.fillStyle = colors.textMuted;
+        ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText(`ID producto: ${producto?.id ?? 'N/D'}`, textStartX, footerY + 28);
+
+        ctx.textAlign = 'right';
+        ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerY + 28);
+        ctx.textAlign = 'left';
+
+        const qrContainerPadding = 20;
+        drawRoundedRect(
+          ctx,
+          qrX - qrContainerPadding,
+          qrY - qrContainerPadding,
+          qrSize + qrContainerPadding * 2,
+          qrSize + qrContainerPadding * 2,
+          24,
+          colors.surfaceSubtle,
+          colors.borderSoft
+        );
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+        ctx.fillStyle = colors.textMuted;
+        ctx.font = '500 15px "Poppins", "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + 48);
+        ctx.textAlign = 'left';
+
+        const dataUrl = canvas.toDataURL('image/png');
+        resolve(dataUrl);
+      };
+      qrImage.onerror = () => {
+        reject(new Error('No se pudo cargar la imagen del código QR.'));
+      };
+      qrImage.src = qrSrc;
+    });
+  }
+
+  async function handleEtiquetaDownload(event) {
+    if (!qrModalDownload) return;
+    if (!qrModalProducto || !qrModalSrc) {
+      if (qrModalSrc) {
+        qrModalDownload.href = qrModalSrc;
+      }
+      return;
+    }
+
+    event.preventDefault();
+    if (qrModalDownload.classList.contains('disabled')) {
+      return;
+    }
+
+    try {
+      qrModalDownload.classList.add('disabled');
+      qrModalDownload.setAttribute('aria-disabled', 'true');
+      qrModalDownload.setAttribute('aria-busy', 'true');
+
+      const dataUrl = await crearEtiquetaProducto(qrModalProducto, qrModalSrc);
+      const filenameBase = qrModalDownload.dataset.filename || 'producto_etiqueta';
+      const tempLink = document.createElement('a');
+      tempLink.href = dataUrl;
+      tempLink.download = `${filenameBase}.png`;
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      tempLink.remove();
+    } catch (error) {
+      console.error('Error generando etiqueta del producto', error);
+      showToast('No se pudo generar la etiqueta del producto', 'error');
+      if (qrModalSrc) {
+        window.open(qrModalSrc, '_blank');
+      }
+    } finally {
+      qrModalDownload.classList.remove('disabled');
+      qrModalDownload.removeAttribute('aria-disabled');
+      qrModalDownload.removeAttribute('aria-busy');
+    }
+  }
+
+  qrModalDownload?.addEventListener('click', handleEtiquetaDownload);
 
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
@@ -1471,6 +1970,8 @@ if (editProdId) {
   if (accion === 'qr' && tipo === 'producto') {
     const producto = productos.find(pr => parseInt(pr.id, 10) === id) || null;
     const qrSrc = `../../scripts/php/generar_qr_producto.php?producto_id=${id}&cache=${Date.now()}`;
+    qrModalProducto = producto;
+    qrModalSrc = qrSrc;
 
     if (!qrModalInstance || !qrModalImage) {
       window.open(qrSrc, '_blank');
@@ -1506,9 +2007,15 @@ if (editProdId) {
         : 'Código QR del producto';
     }
     if (qrModalDownload) {
-      qrModalDownload.href = qrSrc;
-      const safeName = producto?.nombre ? producto.nombre.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() : `producto_${id}`;
-      qrModalDownload.download = `${safeName || 'producto'}_qr.png`;
+      const safeName = sanitizeFileName(producto?.nombre) || `producto_${id}`;
+      qrModalDownload.href = '#';
+      qrModalDownload.dataset.qrSrc = qrSrc;
+      qrModalDownload.dataset.filename = `${safeName || 'producto'}_etiqueta`;
+      qrModalDownload.download = `${safeName || 'producto'}_etiqueta.png`;
+      qrModalDownload.textContent = 'Descargar etiqueta';
+      qrModalDownload.classList.remove('disabled');
+      qrModalDownload.removeAttribute('aria-disabled');
+      qrModalDownload.removeAttribute('aria-busy');
     }
 
     qrModalInstance.show();
