@@ -41,6 +41,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalTitle = document.getElementById('productoQrTitle');
   const qrModalDownload = document.getElementById('productoQrDownload');
   const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
+  let qrModalProducto = null;
+  let qrModalSrc = '';
 
   let productoFormCollapse = null;
   if (productoFormCollapseEl && window.bootstrap?.Collapse) {
@@ -113,9 +115,327 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       }
       if (qrModalDownload) {
         qrModalDownload.removeAttribute('href');
+        qrModalDownload.dataset.qrSrc = '';
+        qrModalDownload.dataset.filename = '';
+        qrModalDownload.removeAttribute('download');
+        qrModalDownload.classList.remove('disabled');
+        qrModalDownload.removeAttribute('aria-disabled');
+        qrModalDownload.removeAttribute('aria-busy');
       }
+      qrModalProducto = null;
+      qrModalSrc = '';
     });
   }
+
+  function sanitizeFileName(text) {
+    return (text || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9_-]+/gi, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^_|_$/g, '')
+      .toLowerCase();
+  }
+
+  function parseDimensionValue(value) {
+    const num = Number.parseFloat(value);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }
+
+  function formatDimensionTriplet(producto) {
+    const dimensiones = [producto?.dim_x, producto?.dim_y, producto?.dim_z]
+      .map(parseDimensionValue);
+    if (dimensiones.every(num => Number.isFinite(num))) {
+      return dimensiones
+        .map(num => (Number.isInteger(num) ? num.toString() : num.toFixed(1)) + ' cm')
+        .join(' × ');
+    }
+    return 'N/D';
+  }
+
+  function formatPrecioUnitario(producto) {
+    const precio = Number.parseFloat(producto?.precio_compra);
+    if (Number.isFinite(precio) && precio >= 0) {
+      return `$${precio.toFixed(2)}`;
+    }
+    if (producto?.precio_compra) {
+      return String(producto.precio_compra);
+    }
+    return 'N/D';
+  }
+
+  function roundedRectPath(ctx, x, y, width, height, radius) {
+    let r = radius;
+    if (typeof r === 'number') {
+      r = { tl: r, tr: r, br: r, bl: r };
+    } else {
+      r = {
+        tl: Math.max(0, r.tl || 0),
+        tr: Math.max(0, r.tr || 0),
+        br: Math.max(0, r.br || 0),
+        bl: Math.max(0, r.bl || 0)
+      };
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(x + r.tl, y);
+    ctx.lineTo(x + width - r.tr, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r.tr);
+    ctx.lineTo(x + width, y + height - r.br);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r.br, y + height);
+    ctx.lineTo(x + r.bl, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r.bl);
+    ctx.lineTo(x, y + r.tl);
+    ctx.quadraticCurveTo(x, y, x + r.tl, y);
+    ctx.closePath();
+  }
+
+  function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle, strokeStyle) {
+    roundedRectPath(ctx, x, y, width, height, radius);
+    if (fillStyle) {
+      ctx.fillStyle = fillStyle;
+      ctx.fill();
+    }
+    if (strokeStyle) {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = String(text ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (words.length === 0) {
+      const placeholder = 'N/D';
+      ctx.fillText(placeholder, x, y);
+      return { lastY: y, nextY: y + lineHeight };
+    }
+
+    let line = words[0];
+    let currentY = y;
+    for (let i = 1; i < words.length; i += 1) {
+      const testLine = `${line} ${words[i]}`;
+      if (ctx.measureText(testLine).width > maxWidth) {
+        ctx.fillText(line, x, currentY);
+        line = words[i];
+        currentY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, currentY);
+    return { lastY: currentY, nextY: currentY + lineHeight };
+  }
+
+  function crearEtiquetaProducto(producto, qrSrc) {
+    return new Promise((resolve, reject) => {
+      if (!producto || !qrSrc) {
+        reject(new Error('Falta información para generar la etiqueta.'));
+        return;
+      }
+
+      const qrImage = new Image();
+      qrImage.crossOrigin = 'anonymous';
+      qrImage.onload = () => {
+        const width = 960;
+        const height = 540;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        const colors = {
+          background: '#f5f6fb',
+          card: '#ffffff',
+          border: '#e7e9f5',
+          headerStart: '#ff6f91',
+          headerEnd: '#ff9671',
+          textMain: '#1f2937',
+          textMuted: '#6b7280',
+          textOnAccent: '#ffffff'
+        };
+
+        ctx.fillStyle = colors.background;
+        ctx.fillRect(0, 0, width, height);
+
+        const margin = 40;
+        const cardX = margin;
+        const cardY = margin;
+        const cardW = width - margin * 2;
+        const cardH = height - margin * 2;
+        const radius = 28;
+
+        drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius, colors.card, colors.border);
+
+        const headerHeight = 180;
+        ctx.save();
+        roundedRectPath(ctx, cardX, cardY, cardW, headerHeight, { tl: radius, tr: radius, br: 0, bl: 0 });
+        ctx.clip();
+        const headerGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + headerHeight);
+        headerGradient.addColorStop(0, colors.headerStart);
+        headerGradient.addColorStop(1, colors.headerEnd);
+        ctx.fillStyle = headerGradient;
+        ctx.fillRect(cardX, cardY, cardW, headerHeight);
+        ctx.restore();
+
+        const paddingX = 40;
+        const headerX = cardX + paddingX;
+        let headerY = cardY + 60;
+
+        ctx.fillStyle = colors.textOnAccent;
+        ctx.font = '600 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('CÓDIGO QR', headerX, headerY);
+
+        headerY += 34;
+        ctx.font = '700 32px "Poppins", "Segoe UI", sans-serif';
+        const headerTitle = wrapText(
+          ctx,
+          producto?.nombre || 'Producto sin nombre',
+          headerX,
+          headerY,
+          cardW - paddingX * 2,
+          36
+        );
+
+        const headerInfoY = Math.min(cardY + headerHeight - 20, headerTitle.nextY);
+        ctx.font = '400 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText('Etiqueta de inventario OptiStock', headerX, headerInfoY);
+
+        const bodyTop = cardY + headerHeight;
+        const bodyPadding = 40;
+        let infoY = bodyTop + bodyPadding;
+        const textStartX = cardX + bodyPadding;
+        const qrSize = 240;
+        const qrX = cardX + cardW - bodyPadding - qrSize;
+        const qrY = bodyTop + bodyPadding;
+        const textWidth = qrX - textStartX - 24;
+
+        const zonaPartes = [];
+        if (producto?.zona_nombre) zonaPartes.push(producto.zona_nombre);
+        if (producto?.area_nombre) zonaPartes.push(producto.area_nombre);
+        const zonaTexto = zonaPartes.length ? zonaPartes.join(' · ') : 'Sin zona asignada';
+        const descripcionTexto = producto?.descripcion?.trim() ? producto.descripcion.trim() : 'Sin descripción disponible';
+        const categoriaTexto = producto?.categoria_nombre || 'Sin categoría';
+        const subcategoriaTexto = producto?.subcategoria_nombre || 'Sin subcategoría';
+        const volumenTexto = formatDimensionTriplet(producto);
+        const precioTexto = formatPrecioUnitario(producto);
+
+        const bloques = [
+          { etiqueta: 'Zona asignada', valor: zonaTexto },
+          { etiqueta: 'Descripción', valor: descripcionTexto, multilinea: true, lineHeight: 26, font: '400 18px "Poppins", "Segoe UI", sans-serif' },
+          { etiqueta: 'Categoría', valor: categoriaTexto },
+          { etiqueta: 'Subcategoría', valor: subcategoriaTexto },
+          { etiqueta: 'Volumen', valor: volumenTexto },
+          { etiqueta: 'Precio unitario', valor: precioTexto }
+        ];
+
+        bloques.forEach(bloque => {
+          ctx.fillStyle = colors.textMuted;
+          ctx.font = '600 14px "Poppins", "Segoe UI", sans-serif';
+          ctx.fillText(bloque.etiqueta.toUpperCase(), textStartX, infoY);
+          infoY += 18;
+
+          ctx.fillStyle = colors.textMain;
+          ctx.font = bloque.font || '600 22px "Poppins", "Segoe UI", sans-serif';
+          if (bloque.multilinea) {
+            const wrapped = wrapText(ctx, bloque.valor, textStartX, infoY, textWidth, bloque.lineHeight || 28);
+            infoY = wrapped.nextY;
+          } else {
+            ctx.fillText(bloque.valor || 'N/D', textStartX, infoY);
+            infoY += 30;
+          }
+          infoY += 12;
+        });
+
+        const footerY = cardY + cardH - bodyPadding;
+        ctx.strokeStyle = colors.border;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(textStartX, footerY);
+        ctx.lineTo(cardX + cardW - bodyPadding, footerY);
+        ctx.stroke();
+
+        ctx.fillStyle = colors.textMuted;
+        ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.fillText(`ID producto: ${producto?.id ?? 'N/D'}`, textStartX, footerY + 28);
+
+        ctx.textAlign = 'right';
+        ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerY + 28);
+        ctx.textAlign = 'left';
+
+        const qrContainerPadding = 16;
+        drawRoundedRect(
+          ctx,
+          qrX - qrContainerPadding,
+          qrY - qrContainerPadding,
+          qrSize + qrContainerPadding * 2,
+          qrSize + qrContainerPadding * 2,
+          20,
+          colors.background,
+          colors.border
+        );
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+        ctx.fillStyle = colors.textMuted;
+        ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Escanea para ver detalles', qrX + qrSize / 2, qrY + qrSize + 48);
+        ctx.textAlign = 'left';
+
+        const dataUrl = canvas.toDataURL('image/png');
+        resolve(dataUrl);
+      };
+      qrImage.onerror = () => {
+        reject(new Error('No se pudo cargar la imagen del código QR.'));
+      };
+      qrImage.src = qrSrc;
+    });
+  }
+
+  async function handleEtiquetaDownload(event) {
+    if (!qrModalDownload) return;
+    if (!qrModalProducto || !qrModalSrc) {
+      if (qrModalSrc) {
+        qrModalDownload.href = qrModalSrc;
+      }
+      return;
+    }
+
+    event.preventDefault();
+    if (qrModalDownload.classList.contains('disabled')) {
+      return;
+    }
+
+    try {
+      qrModalDownload.classList.add('disabled');
+      qrModalDownload.setAttribute('aria-disabled', 'true');
+      qrModalDownload.setAttribute('aria-busy', 'true');
+
+      const dataUrl = await crearEtiquetaProducto(qrModalProducto, qrModalSrc);
+      const filenameBase = qrModalDownload.dataset.filename || 'producto_etiqueta';
+      const tempLink = document.createElement('a');
+      tempLink.href = dataUrl;
+      tempLink.download = `${filenameBase}.png`;
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      tempLink.remove();
+    } catch (error) {
+      console.error('Error generando etiqueta del producto', error);
+      showToast('No se pudo generar la etiqueta del producto', 'error');
+      if (qrModalSrc) {
+        window.open(qrModalSrc, '_blank');
+      }
+    } finally {
+      qrModalDownload.classList.remove('disabled');
+      qrModalDownload.removeAttribute('aria-disabled');
+      qrModalDownload.removeAttribute('aria-busy');
+    }
+  }
+
+  qrModalDownload?.addEventListener('click', handleEtiquetaDownload);
 
   const productoFormContainer = document.getElementById('productoFormContainer');
   const categoriaFormContainer = document.getElementById('categoriaFormContainer');
@@ -1471,6 +1791,8 @@ if (editProdId) {
   if (accion === 'qr' && tipo === 'producto') {
     const producto = productos.find(pr => parseInt(pr.id, 10) === id) || null;
     const qrSrc = `../../scripts/php/generar_qr_producto.php?producto_id=${id}&cache=${Date.now()}`;
+    qrModalProducto = producto;
+    qrModalSrc = qrSrc;
 
     if (!qrModalInstance || !qrModalImage) {
       window.open(qrSrc, '_blank');
@@ -1506,9 +1828,15 @@ if (editProdId) {
         : 'Código QR del producto';
     }
     if (qrModalDownload) {
-      qrModalDownload.href = qrSrc;
-      const safeName = producto?.nombre ? producto.nombre.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() : `producto_${id}`;
-      qrModalDownload.download = `${safeName || 'producto'}_qr.png`;
+      const safeName = sanitizeFileName(producto?.nombre) || `producto_${id}`;
+      qrModalDownload.href = '#';
+      qrModalDownload.dataset.qrSrc = qrSrc;
+      qrModalDownload.dataset.filename = `${safeName || 'producto'}_etiqueta`;
+      qrModalDownload.download = `${safeName || 'producto'}_etiqueta.png`;
+      qrModalDownload.textContent = 'Descargar etiqueta';
+      qrModalDownload.classList.remove('disabled');
+      qrModalDownload.removeAttribute('aria-disabled');
+      qrModalDownload.removeAttribute('aria-busy');
     }
 
     qrModalInstance.show();
