@@ -383,6 +383,71 @@ img {
   background: var(--card-bg);
 }
 
+/* Compact label preview styles */
+.label-preview {
+  padding: 1rem;
+  min-height: 200px;
+}
+
+.label-card {
+  display: flex;
+  gap: 1rem;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 18px rgba(17,24,67,0.06);
+  border: 1px solid rgba(17,24,67,0.06);
+}
+
+.label-card.vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.label-info {
+  flex: 1 1 60%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-right: 0.5rem;
+}
+
+.label-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-color);
+  line-height: 1.1;
+}
+
+.label-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: var(--muted-color);
+  font-size: 0.9rem;
+}
+
+.label-qr {
+  flex: 0 0 auto;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(17,24,67,0.06);
+}
+
+.label-qr img { width: 100%; height: 100%; object-fit: contain; }
+
+@media (max-width: 540px) {
+  .label-card { gap: 0.5rem; }
+  .label-qr { width: 96px; height: 96px; }
+  .label-title { font-size: 0.99rem; }
+}
+
 .qr-placeholder {
   font-size: 1rem;
   color: var(--sidebar-color);

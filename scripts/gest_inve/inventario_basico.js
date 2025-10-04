@@ -38,8 +38,141 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
   const qrModalElement = document.getElementById('productoQrModal');
   const qrModalImage = document.getElementById('productoQrImage');
-  const qrModalTitle = document.getElementById('productoQrTitle');
   const qrModalDownload = document.getElementById('productoQrDownload');
+  const productoLabelCompact = document.getElementById('productoLabelCompact');
+
+  // Helper: sanitize filename
+  function sanitizeFileName(name) {
+    return (name || '').replace(/[^a-z0-9\-_\.]/gi, '_').substring(0, 120);
+  }
+
+  // Build compact label DOM for preview (horizontal or vertical)
+  function buildCompactLabel(producto, qrSrc, orientation = 'horizontal') {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'label-card' + (orientation === 'vertical' ? ' vertical' : '');
+
+    const info = document.createElement('div');
+    info.className = 'label-info';
+
+    const title = document.createElement('div');
+    title.className = 'label-title';
+    title.textContent = producto?.nombre || 'Nombre del producto';
+    info.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'label-meta';
+    const categoria = document.createElement('div'); categoria.textContent = producto?.categoria_nombre || 'Sin categoría';
+    const subcat = document.createElement('div'); subcat.textContent = producto?.subcategoria_nombre || '';
+    const area = document.createElement('div'); area.textContent = producto?.area_nombre || producto?.zona_nombre || '';
+    const precio = document.createElement('div'); precio.textContent = producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : '';
+    meta.appendChild(categoria);
+    if (subcat.textContent) meta.appendChild(subcat);
+    if (area.textContent) meta.appendChild(area);
+    if (precio.textContent) meta.appendChild(precio);
+    info.appendChild(meta);
+
+    const qrWrap = document.createElement('div');
+    qrWrap.className = 'label-qr';
+    const qrImg = document.createElement('img');
+    qrImg.alt = 'QR';
+    qrImg.src = qrSrc;
+    qrWrap.appendChild(qrImg);
+
+    if (orientation === 'vertical') {
+      wrapper.appendChild(qrWrap);
+      wrapper.appendChild(info);
+    } else {
+      wrapper.appendChild(info);
+      wrapper.appendChild(qrWrap);
+    }
+
+    return wrapper;
+  }
+
+  // Render simple PNG from label DOM: draw to canvas (text + QR image). Returns dataURL.
+  async function renderLabelToPng(producto, qrSrc, orientation = 'horizontal', width = 800, dpi = 2) {
+    // load QR image
+    const qrImg = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = qrSrc;
+    });
+
+    // canvas size: orientation affects dimensions
+    const w = orientation === 'vertical' ? Math.round(width * 0.6) : width;
+    const h = orientation === 'vertical' ? Math.round(width * 1.2) : Math.round(width * 0.5);
+    const canvas = document.createElement('canvas');
+    canvas.width = w * dpi;
+    canvas.height = h * dpi;
+    const ctx = canvas.getContext('2d');
+    // background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // layout paddings
+    const pad = 24 * dpi;
+    const gap = 16 * dpi;
+
+    // QR box
+    const qrSize = Math.min( Math.round((orientation === 'vertical' ? canvas.width - pad*2 : canvas.height - pad*2) * 0.45), 360 * dpi );
+    const qrX = orientation === 'vertical' ? (canvas.width - qrSize) / 2 : canvas.width - pad - qrSize;
+    const qrY = orientation === 'vertical' ? pad : (canvas.height - qrSize) / 2;
+    if (qrImg) ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+    // Text area
+    ctx.fillStyle = '#111827';
+    ctx.textBaseline = 'top';
+    const titleFontSize = 22 * dpi;
+    ctx.font = `700 ${titleFontSize}px Poppins, sans-serif`;
+    const titleX = pad;
+    const titleY = pad;
+    const maxTextWidth = orientation === 'vertical' ? canvas.width - pad*2 : canvas.width - pad*3 - qrSize;
+    // wrap title
+    const title = producto?.nombre || 'Nombre del producto';
+    wrapText(ctx, title, titleX, titleY, maxTextWidth, titleFontSize + 6 * dpi, 2);
+
+    // meta lines
+    ctx.font = `${14 * dpi}px Poppins, sans-serif`;
+    ctx.fillStyle = '#374151';
+    const metaYStart = titleY + (titleFontSize + 6 * dpi) * 2 + 6 * dpi;
+    const metas = [];
+    if (producto?.categoria_nombre) metas.push(producto.categoria_nombre);
+    if (producto?.subcategoria_nombre) metas.push(producto.subcategoria_nombre);
+    if (producto?.area_nombre) metas.push(producto.area_nombre + (producto.zona_nombre ? ' · ' + producto.zona_nombre : ''));
+    if (producto?.precio_compra) metas.push(`Precio: $${Number(producto.precio_compra).toFixed(2)}`);
+    metas.forEach((m, i) => {
+      const y = metaYStart + i * (18 * dpi + 4 * dpi);
+      wrapText(ctx, m, titleX, y, maxTextWidth, 18 * dpi, 2);
+    });
+
+    return canvas.toDataURL('image/png');
+  }
+
+  // simple text wrapper
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+    const words = String(text).split(' ');
+    let line = '';
+    let lines = 0;
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      const testWidth = metrics.width;
+      if (testWidth > maxWidth && n > 0) {
+        ctx.fillText(line.trim(), x, y + lines * lineHeight);
+        line = words[n] + ' ';
+        lines++;
+        if (lines >= maxLines) { ctx.fillText('…', x + maxWidth - 10, y + lines * lineHeight); return; }
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) {
+      ctx.fillText(line.trim(), x, y + lines * lineHeight);
+    }
+  }
+  const qrModalTitle = document.getElementById('productoQrTitle');
   const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
   let qrModalProducto = null;
   let qrModalSrc = '';
@@ -2060,6 +2193,56 @@ if (editProdId) {
     qrModalInstance.show();
     return;
   }
+
+  // update preview when orientation changes
+  const orientRadios = document.getElementsByName('etiquetaOrientacion');
+  function getSelectedOrientation() {
+    for (const r of orientRadios) if (r.checked) return r.value;
+    return 'horizontal';
+  }
+
+  function updateLabelPreview() {
+    if (!qrModalProducto || !qrModalSrc || !productoLabelCompact) return;
+    const orient = getSelectedOrientation();
+    productoLabelCompact.innerHTML = '';
+    const node = buildCompactLabel(qrModalProducto, qrModalSrc, orient);
+    productoLabelCompact.appendChild(node);
+    productoLabelCompact.classList.remove('d-none');
+    // ensure visible in preview area
+    if (qrModalPlaceholder) qrModalPlaceholder.classList.add('d-none');
+    if (qrModalImage) qrModalImage.classList.add('d-none');
+  }
+
+  for (const r of orientRadios) {
+    r.addEventListener('change', updateLabelPreview);
+  }
+
+  // Download click: render label to PNG and set link
+  qrModalDownload?.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    if (!qrModalProducto || !qrModalSrc) return;
+    const orient = getSelectedOrientation();
+    // small visual busy state
+    qrModalDownload.setAttribute('aria-busy', 'true');
+    qrModalDownload.classList.add('disabled');
+    try {
+      const dataUrl = await renderLabelToPng(qrModalProducto, qrModalSrc, orient, 900, 2);
+      const filename = qrModalDownload?.dataset?.filename || `etiqueta_${Date.now()}`;
+      // force download
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      console.error('Error generando etiqueta:', err);
+      showToast('No se pudo generar la etiqueta.', 'error');
+    } finally {
+      qrModalDownload.removeAttribute('aria-busy');
+      qrModalDownload.classList.remove('disabled');
+    }
+  });
 
   // 1) Eliminar
   if (accion === 'del') {
