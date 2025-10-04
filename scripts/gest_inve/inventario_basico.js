@@ -323,32 +323,73 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const volumenTexto = formatDimensionTriplet(producto);
         const precioTexto = formatPrecioUnitario(producto);
 
-        const bloques = [
+        const columnaIzquierda = [
           { etiqueta: 'Zona asignada', valor: zonaTexto },
-          { etiqueta: 'Descripción', valor: descripcionTexto, multilinea: true, lineHeight: 26, font: '400 18px "Poppins", "Segoe UI", sans-serif' },
+          {
+            etiqueta: 'Descripción',
+            valor: descripcionTexto,
+            multilinea: true,
+            lineHeight: 26,
+            font: '400 18px "Poppins", "Segoe UI", sans-serif'
+          }
+        ];
+
+        const columnaDerecha = [
           { etiqueta: 'Categoría', valor: categoriaTexto },
           { etiqueta: 'Subcategoría', valor: subcategoriaTexto },
           { etiqueta: 'Volumen', valor: volumenTexto },
           { etiqueta: 'Precio unitario', valor: precioTexto }
         ];
 
-        bloques.forEach(bloque => {
+        const columnGap = 64;
+        const columnWidth = Math.floor((textWidth - columnGap) / 2);
+        const leftColumnX = textStartX;
+        const rightColumnX = textStartX + columnWidth + columnGap;
+        const columnDividerX = textStartX + columnWidth + columnGap / 2;
+
+        const renderInfoBlock = (startX, startY, width, bloque) => {
+          let currentY = startY;
+
           ctx.fillStyle = colors.textMuted;
           ctx.font = '600 14px "Poppins", "Segoe UI", sans-serif';
-          ctx.fillText(bloque.etiqueta.toUpperCase(), textStartX, infoY);
-          infoY += 18;
+          ctx.fillText(bloque.etiqueta.toUpperCase(), startX, currentY);
+          currentY += 20;
 
           ctx.fillStyle = colors.textMain;
-          ctx.font = bloque.font || '600 22px "Poppins", "Segoe UI", sans-serif';
+          ctx.font = bloque.font || '600 20px "Poppins", "Segoe UI", sans-serif';
+
           if (bloque.multilinea) {
-            const wrapped = wrapText(ctx, bloque.valor, textStartX, infoY, textWidth, bloque.lineHeight || 28);
-            infoY = wrapped.nextY;
+            const lineHeight = bloque.lineHeight || 26;
+            const wrapped = wrapText(ctx, bloque.valor, startX, currentY, width, lineHeight);
+            currentY = wrapped.nextY;
           } else {
-            ctx.fillText(bloque.valor || 'N/D', textStartX, infoY);
-            infoY += 30;
+            const lineHeight = bloque.lineHeight || 28;
+            ctx.fillText(bloque.valor || 'N/D', startX, currentY);
+            currentY += lineHeight;
           }
-          infoY += 12;
+
+          currentY += 20;
+          return currentY;
+        };
+
+        let leftColumnY = infoY;
+        columnaIzquierda.forEach(bloque => {
+          leftColumnY = renderInfoBlock(leftColumnX, leftColumnY, columnWidth, bloque);
         });
+
+        let rightColumnY = infoY;
+        columnaDerecha.forEach(bloque => {
+          rightColumnY = renderInfoBlock(rightColumnX, rightColumnY, columnWidth, bloque);
+        });
+
+        ctx.strokeStyle = colors.border;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(columnDividerX, bodyTop + bodyPadding - 12);
+        ctx.lineTo(columnDividerX, Math.max(leftColumnY, rightColumnY) + 12);
+        ctx.stroke();
+
+        infoY = Math.max(leftColumnY, rightColumnY) + 12;
 
         const footerY = cardY + cardH - bodyPadding;
         ctx.strokeStyle = colors.border;
@@ -360,7 +401,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
         ctx.fillStyle = colors.textMuted;
         ctx.font = '500 16px "Poppins", "Segoe UI", sans-serif';
-        ctx.fillText(`ID producto: ${producto?.id ?? 'N/D'}`, textStartX, footerY + 28);
+        ctx.fillText('Etiqueta generada con OptiStock', textStartX, footerY + 28);
 
         ctx.textAlign = 'right';
         ctx.fillText('OptiStock', cardX + cardW - bodyPadding, footerY + 28);
