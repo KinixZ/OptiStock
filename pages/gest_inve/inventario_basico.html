@@ -297,58 +297,29 @@
   </div>
 
   <div class="modal fade" id="productoQrModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content qr-modal shadow-lg">
-        <button type="button" class="btn-close qr-modal__close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        <header class="qr-modal__hero">
-          <span class="qr-modal__badge">Código QR</span>
-          <div class="qr-modal__header-row">
-            <h2 id="productoQrTitle" class="qr-modal__title">Código QR del producto</h2>
-            <p class="qr-modal__subtitle">Vista previa compacta – QR destacado</p>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <div>
+            <span class="modal-eyebrow">Código QR</span>
+            <h5 id="productoQrTitle" class="modal-title fw-bold mb-0">Código QR del producto</h5>
           </div>
-        </header>
-        <div class="modal-body qr-modal__body">
-          <div class="qr-modal-content">
-            <section class="qr-modal-settings" aria-labelledby="qrModalDesignTitle">
-              <div class="qr-modal-settings__row">
-                <span id="qrModalDesignTitle" class="qr-modal-settings__label">Orientación:</span>
-                <div class="qr-orientation" role="radiogroup" aria-labelledby="qrModalDesignTitle">
-                  <input
-                    type="radio"
-                    class="qr-orientation__input"
-                    name="etiquetaOrientacion"
-                    id="orientH"
-                    autocomplete="off"
-                    value="horizontal"
-                  />
-                  <label class="qr-orientation__option" for="orientH">Horizontal</label>
-                  <input
-                    type="radio"
-                    class="qr-orientation__input"
-                    name="etiquetaOrientacion"
-                    id="orientV"
-                    autocomplete="off"
-                    value="vertical"
-                    checked
-                  />
-                  <label class="qr-orientation__option" for="orientV">Vertical</label>
-                </div>
-              </div>
-            </section>
-
-            <div class="qr-modal-visual" aria-live="polite">
-              <div class="qr-visual">
-                <div id="productoQrPlaceholder" class="qr-placeholder">Generando código QR...</div>
-                <img id="productoQrImage" class="qr-image d-none" alt="Código QR del producto" />
-              </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body pt-3">
+          <div class="qr-preview" aria-live="polite">
+            <span class="qr-preview__label">Etiqueta lista para imprimir</span>
+            <div class="qr-preview__canvas">
+              <div id="productoQrPlaceholder" class="qr-preview__placeholder">Generando código QR...</div>
+              <img id="productoQrImage" class="qr-preview__image d-none" alt="Código QR del producto" />
             </div>
+            <p class="qr-preview__hint">Escanea el código para ver el detalle del producto.</p>
           </div>
-          <!-- Compact label container for rendering before download -->
           <div id="productoLabelCompact" class="visually-hidden" aria-hidden="true"></div>
         </div>
-        <div class="modal-footer qr-modal__actions">
-          <a id="productoQrDownload" class="qr-modal__action qr-modal__action--primary" download>Descargar QR</a>
-          <button class="qr-modal__action qr-modal__action--secondary" type="button" data-bs-dismiss="modal">Cerrar</button>
+        <div class="modal-footer border-0 d-flex flex-column flex-sm-row gap-2">
+          <a id="productoQrDownload" class="btn btn-primary flex-fill" download>Descargar etiqueta</a>
+          <button class="btn btn-outline-secondary flex-fill" type="button" data-bs-dismiss="modal">Cancelar</button>
         </div>
       </div>
     </div>
