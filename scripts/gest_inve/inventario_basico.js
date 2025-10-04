@@ -40,74 +40,106 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalImage = document.getElementById('productoQrImage');
   const qrModalDownload = document.getElementById('productoQrDownload');
   const productoLabelCompact = document.getElementById('productoLabelCompact');
+  const orientRadios = document.getElementsByName('etiquetaOrientacion');
 
   // (sanitizer defined later)
 
-  // Build compact label DOM for preview (horizontal or vertical)
+  // Build compact label DOM for orientation selection (hidden in modal)
   function buildCompactLabel(producto, qrSrc, orientation = 'horizontal') {
     const wrapper = document.createElement('div');
-    wrapper.className = 'label-card' + (orientation === 'vertical' ? ' vertical' : '');
+    wrapper.className = `label-card ${orientation === 'vertical' ? 'vertical' : 'horizontal'}`.trim();
 
-    // header
     const header = document.createElement('div');
     header.className = 'label-header';
-    header.textContent = 'Código QR';
+    const headerTitle = document.createElement('span');
+    headerTitle.textContent = 'Etiqueta QR';
+    const headerBrand = document.createElement('span');
+    headerBrand.className = 'label-header__brand';
+    headerBrand.textContent = 'OptiStock';
+    header.appendChild(headerTitle);
+    header.appendChild(headerBrand);
     wrapper.appendChild(header);
 
-    // body
     const body = document.createElement('div');
     body.className = 'label-body';
 
-    const left = document.createElement('div');
-    left.className = 'label-left';
-    // title
-    const titleF = document.createElement('div'); titleF.className = 'label-field';
-    const tkey = document.createElement('div'); tkey.className = 'label-field__key'; tkey.textContent = '';
-    const tval = document.createElement('div'); tval.className = 'label-field__value'; tval.textContent = producto?.nombre || 'Nombre del producto';
-    titleF.appendChild(tkey); titleF.appendChild(tval);
-    left.appendChild(titleF);
+    const qrColumn = document.createElement('div');
+    qrColumn.className = 'label-qr';
+    const qrCanvas = document.createElement('div');
+    qrCanvas.className = 'label-qr__canvas';
+    const img = document.createElement('img');
+    img.alt = producto?.nombre ? `Código QR de ${producto.nombre}` : 'Código QR del producto';
+    img.src = qrSrc;
+    qrCanvas.appendChild(img);
+    qrColumn.appendChild(qrCanvas);
 
-    // descriptive fields (zone, category, subcategory, volume, price)
+    const infoColumn = document.createElement('div');
+    infoColumn.className = 'label-info';
+    const title = document.createElement('div');
+    title.className = 'label-info__name';
+    title.textContent = producto?.nombre || 'Nombre del producto';
+    infoColumn.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'label-info__meta';
     const fields = [
-      {k: 'Zona asignada', v: producto?.zona_nombre || producto?.area_nombre || ''},
-      {k: 'Categoría', v: producto?.categoria_nombre || ''},
-      {k: 'Subcategoría', v: producto?.subcategoria_nombre || ''},
-      {k: 'Descripción', v: producto?.descripcion || ''},
-      {k: 'Precio unitario', v: producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : ''}
-    ];
-    fields.forEach(f => {
-      const node = document.createElement('div'); node.className = 'label-field';
-      const key = document.createElement('div'); key.className = 'label-field__key'; key.textContent = f.k;
-      const val = document.createElement('div'); val.className = 'label-field__value'; val.textContent = f.v;
-      node.appendChild(key); node.appendChild(val);
-      left.appendChild(node);
-    });
+      { k: 'Zona', v: producto?.zona_nombre || producto?.area_nombre || '' },
+      { k: 'Categoría', v: producto?.categoria_nombre || '' },
+      { k: 'Subcategoría', v: producto?.subcategoria_nombre || '' },
+      { k: 'Descripción', v: producto?.descripcion || '' },
+      { k: 'Precio', v: producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : '' }
+    ].filter(f => Boolean(f.v));
 
-    const right = document.createElement('div'); right.className = 'label-right';
-    const qrBox = document.createElement('div'); qrBox.className = 'label-qr-box';
-    const img = document.createElement('img'); img.alt = 'QR'; img.src = qrSrc;
-    qrBox.appendChild(img);
-    right.appendChild(qrBox);
+    if (fields.length === 0) {
+      const placeholderField = document.createElement('div');
+      placeholderField.className = 'label-field';
+      const pk = document.createElement('div');
+      pk.className = 'label-field__key';
+      pk.textContent = 'Información';
+      const pv = document.createElement('div');
+      pv.className = 'label-field__value';
+      pv.textContent = 'Completa los datos del producto para mostrarlos en la etiqueta.';
+      placeholderField.appendChild(pk);
+      placeholderField.appendChild(pv);
+      meta.appendChild(placeholderField);
+    } else {
+      fields.forEach(f => {
+        const node = document.createElement('div');
+        node.className = 'label-field';
+        const key = document.createElement('div');
+        key.className = 'label-field__key';
+        key.textContent = f.k;
+        const val = document.createElement('div');
+        val.className = 'label-field__value';
+        val.textContent = f.v;
+        node.appendChild(key);
+        node.appendChild(val);
+        meta.appendChild(node);
+      });
+    }
+
+    infoColumn.appendChild(meta);
 
     if (orientation === 'vertical') {
-      body.appendChild(right);
-      body.appendChild(left);
+      body.appendChild(qrColumn);
+      body.appendChild(infoColumn);
     } else {
-      body.appendChild(left);
-      body.appendChild(right);
+      body.appendChild(qrColumn);
+      body.appendChild(infoColumn);
     }
 
     wrapper.appendChild(body);
 
-    const footer = document.createElement('div'); footer.className = 'label-footer';
-    footer.innerHTML = '<span>Etiqueta generada con OptiStock</span><span>OptiStock</span>';
+    const footer = document.createElement('div');
+    footer.className = 'label-footer';
+    footer.innerHTML = '<span>Etiqueta generada con OptiStock</span><span>optistock.com</span>';
     wrapper.appendChild(footer);
 
     return wrapper;
   }
 
-  // Render simple PNG from label DOM: draw to canvas (text + QR image). Returns dataURL.
-  async function renderLabelToPng(producto, qrSrc, orientation = 'horizontal', width = 800, dpi = 2) {
+  // Render label to PNG with emphasis on QR visibility.
+  async function renderLabelToPng(producto, qrSrc, orientation = 'horizontal', width = 900, dpi = 2) {
     // load QR image (fallback resolves to null)
     const qrImg = await new Promise((resolve) => {
       const img = new Image();
@@ -117,9 +149,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       img.src = qrSrc;
     });
 
-    // Define canvas size to mimic card
-    const w = orientation === 'vertical' ? Math.round(width * 0.6) : width;
-    const h = orientation === 'vertical' ? Math.round(width * 1.1) : Math.round(width * 0.55);
+    const w = orientation === 'vertical' ? Math.round(width * 0.68) : width;
+    const h = orientation === 'vertical' ? Math.round(width * 1.18) : Math.round(width * 0.6);
     const canvas = document.createElement('canvas');
     canvas.width = w * dpi;
     canvas.height = h * dpi;
@@ -129,62 +160,198 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // header
-    const headerH = 56 * dpi;
-    const grd = ctx.createLinearGradient(0,0,canvas.width,0);
-    grd.addColorStop(0,'#4b4f55'); grd.addColorStop(1,'#8a8f94');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0,0,canvas.width,headerH);
-    ctx.fillStyle = '#fff';
-    ctx.font = `${18 * dpi}px Poppins, sans-serif`;
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Código QR', 16 * dpi, headerH/2);
-
-    // body layout
+    const headerH = 70 * dpi;
+    const footerH = 54 * dpi;
     const bodyY = headerH;
-    const bodyH = canvas.height - headerH - (40 * dpi);
-    const gap = 16 * dpi;
-    const leftW = orientation === 'vertical' ? canvas.width - gap*2 : canvas.width - (180 * dpi) - gap*3;
-    const rightW = orientation === 'vertical' ? canvas.width - gap*2 : (180 * dpi);
+    const bodyH = canvas.height - headerH - footerH;
+    const gap = 24 * dpi;
 
-    // draw QR box on right (or top for vertical)
-    const qrBoxSize = Math.min(rightW - 16 * dpi, bodyH - 16 * dpi, 360 * dpi);
-    const qrX = orientation === 'vertical' ? (canvas.width - qrBoxSize) / 2 : canvas.width - gap - qrBoxSize;
-    const qrY = orientation === 'vertical' ? bodyY + 12 * dpi : bodyY + (bodyH - qrBoxSize) / 2;
-    // qr backdrop
-    ctx.fillStyle = '#f3f4f6';
-    roundRect(ctx, qrX, qrY, qrBoxSize, qrBoxSize, 12 * dpi, true, false);
-    if (qrImg) ctx.drawImage(qrImg, qrX + (qrBoxSize*0.04), qrY + (qrBoxSize*0.04), qrBoxSize*0.92, qrBoxSize*0.92);
+    // header with gradient
+    const headerGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    headerGradient.addColorStop(0, '#30374f');
+    headerGradient.addColorStop(1, '#505a76');
+    ctx.fillStyle = headerGradient;
+    ctx.fillRect(0, 0, canvas.width, headerH);
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${18 * dpi}px Poppins, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('Etiqueta QR', 24 * dpi, headerH / 2);
+    ctx.textAlign = 'right';
+    ctx.font = `600 ${16 * dpi}px Poppins, sans-serif`;
+    ctx.fillText('OptiStock', canvas.width - 24 * dpi, headerH / 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
 
-    // left content
-    const textX = 16 * dpi;
-    let cursorY = bodyY + 16 * dpi;
-    ctx.fillStyle = '#111827';
-    ctx.font = `700 ${16 * dpi}px Poppins, sans-serif`;
-    wrapText(ctx, producto?.nombre || 'Nombre del producto', textX, cursorY, leftW - 16 * dpi, 20 * dpi, 3);
-    cursorY += 64 * dpi;
+    const blocks = [
+      { label: 'Zona', value: producto?.zona_nombre || producto?.area_nombre || '' },
+      { label: 'Categoría', value: producto?.categoria_nombre || '' },
+      { label: 'Subcategoría', value: producto?.subcategoria_nombre || '' },
+      { label: 'Descripción', value: producto?.descripcion || '' },
+      { label: 'Precio', value: producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : '' }
+    ].filter(item => item.value);
 
-    ctx.font = `${12 * dpi}px Poppins, sans-serif`;
-    ctx.fillStyle = '#6b7280';
-    const infoLines = [];
-    if (producto?.zona_nombre || producto?.area_nombre) infoLines.push('Zona: ' + (producto?.zona_nombre || producto?.area_nombre));
-    if (producto?.categoria_nombre) infoLines.push('Categoría: ' + producto.categoria_nombre);
-    if (producto?.subcategoria_nombre) infoLines.push('Subcategoría: ' + producto.subcategoria_nombre);
-    if (producto?.descripcion) infoLines.push('Descripción: ' + producto.descripcion);
-    if (producto?.precio_compra) infoLines.push('Precio: $' + Number(producto.precio_compra).toFixed(2));
-    infoLines.forEach((ln, i) => {
-      wrapText(ctx, ln, textX, cursorY + i*(18*dpi), leftW - 16 * dpi, 18 * dpi, 2);
-    });
+    const drawParagraph = (text, startX, startY, maxWidth, lineHeight, maxLines = 4) => {
+      const words = String(text ?? '').trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) {
+        ctx.fillText('—', startX, startY);
+        return startY + lineHeight;
+      }
+      let line = '';
+      let y = startY;
+      let lines = 0;
+      for (const word of words) {
+        const testLine = line ? `${line} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxWidth && line) {
+          ctx.fillText(line, startX, y);
+          line = word;
+          y += lineHeight;
+          lines += 1;
+          if (lines >= maxLines - 1) {
+            ctx.fillText(`${line}…`, startX, y);
+            return y + lineHeight;
+          }
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) {
+        ctx.fillText(line, startX, y);
+        y += lineHeight;
+      }
+      return y;
+    };
+
+    const drawField = (label, value, startX, startY, maxWidth) => {
+      ctx.fillStyle = '#6b7280';
+      ctx.font = `600 ${12 * dpi}px Poppins, sans-serif`;
+      ctx.fillText(label.toUpperCase(), startX, startY);
+      ctx.fillStyle = '#111827';
+      ctx.font = `500 ${15 * dpi}px Poppins, sans-serif`;
+      const nextY = drawParagraph(value, startX, startY + 18 * dpi, maxWidth, 22 * dpi, 4);
+      return nextY + 10 * dpi;
+    };
+
+    if (orientation === 'horizontal') {
+      const qrAreaWidth = Math.round(canvas.width * 0.46);
+      const infoAreaWidth = canvas.width - qrAreaWidth - gap * 3;
+      const infoX = gap * 2;
+      const infoY = bodyY + gap;
+      const infoHeight = bodyH - gap * 2;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
+      roundRect(ctx, infoX, infoY, infoAreaWidth, infoHeight, 32 * dpi, true, false);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(17, 24, 67, 0.08)';
+      roundRect(ctx, infoX, infoY, infoAreaWidth, infoHeight, 32 * dpi, false, true);
+      ctx.restore();
+
+      const textX = infoX + 32 * dpi;
+      let cursorY = infoY + 34 * dpi;
+
+      ctx.fillStyle = '#101828';
+      ctx.font = `700 ${24 * dpi}px Poppins, sans-serif`;
+      cursorY = drawParagraph(producto?.nombre || 'Nombre del producto', textX, cursorY, infoAreaWidth - 64 * dpi, 30 * dpi, 3) + 8 * dpi;
+
+      if (blocks.length > 0) {
+        blocks.forEach(block => {
+          cursorY = drawField(block.label, block.value, textX, cursorY, infoAreaWidth - 64 * dpi);
+        });
+      } else {
+        cursorY = drawField('Información', 'Completa los datos del producto para mostrarlos en la etiqueta.', textX, cursorY, infoAreaWidth - 64 * dpi);
+      }
+
+      const qrAreaX = canvas.width - qrAreaWidth - gap;
+      const qrAreaY = bodyY + gap;
+      const qrAreaHeight = bodyH - gap * 2;
+      const qrGradient = ctx.createLinearGradient(qrAreaX, qrAreaY, qrAreaX + qrAreaWidth, qrAreaY + qrAreaHeight);
+      qrGradient.addColorStop(0, '#eef2ff');
+      qrGradient.addColorStop(1, '#dbe2ff');
+      ctx.fillStyle = qrGradient;
+      roundRect(ctx, qrAreaX, qrAreaY, qrAreaWidth, qrAreaHeight, 36 * dpi, true, false);
+
+      const qrSize = Math.min(qrAreaWidth - gap * 2, qrAreaHeight - gap * 2);
+      const qrInnerX = qrAreaX + (qrAreaWidth - qrSize) / 2;
+      const qrInnerY = qrAreaY + (qrAreaHeight - qrSize) / 2;
+      ctx.fillStyle = '#fff';
+      roundRect(ctx, qrInnerX - 12 * dpi, qrInnerY - 12 * dpi, qrSize + 24 * dpi, qrSize + 24 * dpi, 28 * dpi, true, false);
+      if (qrImg) {
+        ctx.drawImage(qrImg, qrInnerX, qrInnerY, qrSize, qrSize);
+      } else {
+        ctx.strokeStyle = '#c7cffc';
+        ctx.lineWidth = 4;
+        roundRect(ctx, qrInnerX, qrInnerY, qrSize, qrSize, 20 * dpi, false, true);
+      }
+    } else {
+      const qrAreaWidth = canvas.width - gap * 4;
+      const qrAreaHeight = Math.min(bodyH * 0.55, qrAreaWidth);
+      const qrAreaX = (canvas.width - qrAreaWidth) / 2;
+      const qrAreaY = bodyY + gap;
+
+      const qrGradient = ctx.createLinearGradient(qrAreaX, qrAreaY, qrAreaX, qrAreaY + qrAreaHeight);
+      qrGradient.addColorStop(0, '#eef2ff');
+      qrGradient.addColorStop(1, '#d6defc');
+      ctx.fillStyle = qrGradient;
+      roundRect(ctx, qrAreaX, qrAreaY, qrAreaWidth, qrAreaHeight, 36 * dpi, true, false);
+
+      const qrSize = Math.min(qrAreaWidth - gap * 2, qrAreaHeight - gap * 2);
+      const qrInnerX = qrAreaX + (qrAreaWidth - qrSize) / 2;
+      const qrInnerY = qrAreaY + (qrAreaHeight - qrSize) / 2;
+      ctx.fillStyle = '#fff';
+      roundRect(ctx, qrInnerX - 12 * dpi, qrInnerY - 12 * dpi, qrSize + 24 * dpi, qrSize + 24 * dpi, 28 * dpi, true, false);
+      if (qrImg) {
+        ctx.drawImage(qrImg, qrInnerX, qrInnerY, qrSize, qrSize);
+      } else {
+        ctx.strokeStyle = '#c7cffc';
+        ctx.lineWidth = 4;
+        roundRect(ctx, qrInnerX, qrInnerY, qrSize, qrSize, 20 * dpi, false, true);
+      }
+
+      const infoX = gap * 2;
+      const infoY = qrAreaY + qrAreaHeight + gap;
+      const infoWidth = canvas.width - infoX * 2;
+      const infoHeight = bodyY + bodyH - infoY - gap;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
+      roundRect(ctx, infoX, infoY, infoWidth, infoHeight, 32 * dpi, true, false);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(17, 24, 67, 0.08)';
+      roundRect(ctx, infoX, infoY, infoWidth, infoHeight, 32 * dpi, false, true);
+      ctx.restore();
+
+      let cursorY = infoY + 28 * dpi;
+      const textX = infoX + 32 * dpi;
+
+      ctx.fillStyle = '#101828';
+      ctx.font = `700 ${24 * dpi}px Poppins, sans-serif`;
+      cursorY = drawParagraph(producto?.nombre || 'Nombre del producto', textX, cursorY, infoWidth - 64 * dpi, 30 * dpi, 3) + 12 * dpi;
+
+      if (blocks.length > 0) {
+        blocks.forEach(block => {
+          cursorY = drawField(block.label, block.value, textX, cursorY, infoWidth - 64 * dpi);
+        });
+      } else {
+        cursorY = drawField('Información', 'Completa los datos del producto para mostrarlos en la etiqueta.', textX, cursorY, infoWidth - 64 * dpi);
+      }
+    }
 
     // footer
-    const footerH = 40 * dpi;
     const footerY = canvas.height - footerH;
-    const fGrd = ctx.createLinearGradient(0,footerY,canvas.width,footerY);
-    fGrd.addColorStop(0,'#6b6f74'); fGrd.addColorStop(1,'#d1d5db');
-    ctx.fillStyle = fGrd; ctx.fillRect(0, footerY, canvas.width, footerH);
-    ctx.fillStyle = '#fff'; ctx.font = `${12 * dpi}px Poppins, sans-serif`;
-    ctx.fillText('Etiqueta generada con OptiStock', 16 * dpi, footerY + footerH/2 - 6 * dpi);
-    ctx.fillText('OptiStock', canvas.width - (90 * dpi), footerY + footerH/2 - 6 * dpi);
+    const footerGradient = ctx.createLinearGradient(0, footerY, canvas.width, footerY);
+    footerGradient.addColorStop(0, '#4c5168');
+    footerGradient.addColorStop(1, '#79829e');
+    ctx.fillStyle = footerGradient;
+    ctx.fillRect(0, footerY, canvas.width, footerH);
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 ${13 * dpi}px Poppins, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('Etiqueta generada con OptiStock', 24 * dpi, footerY + footerH / 2);
+    ctx.textAlign = 'right';
+    ctx.fillText('optistock.com', canvas.width - 24 * dpi, footerY + footerH / 2);
+    ctx.textAlign = 'left';
 
     return canvas.toDataURL('image/png');
   }
@@ -229,6 +396,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalPlaceholder = document.getElementById('productoQrPlaceholder');
   let qrModalProducto = null;
   let qrModalSrc = '';
+
+  function updateLabelPreview() {
+    if (!qrModalProducto || !qrModalSrc || !productoLabelCompact) return;
+    const orient = getSelectedOrientation();
+    productoLabelCompact.innerHTML = '';
+    const node = buildCompactLabel(qrModalProducto, qrModalSrc, orient);
+    productoLabelCompact.appendChild(node);
+  }
 
   let productoFormCollapse = null;
   if (productoFormCollapseEl && window.bootstrap?.Collapse) {
@@ -310,7 +485,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       }
       qrModalProducto = null;
       qrModalSrc = '';
+      if (productoLabelCompact) {
+        productoLabelCompact.innerHTML = '';
+      }
     });
+  }
+
+  for (const radio of orientRadios) {
+    radio.addEventListener('change', updateLabelPreview);
   }
 
   function sanitizeFileName(text) {
@@ -325,8 +507,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
   // Read currently selected orientation from radios
   function getSelectedOrientation() {
-    const radios = document.getElementsByName('etiquetaOrientacion');
-    for (const r of radios) if (r.checked) return r.value;
+    for (const r of orientRadios) if (r.checked) return r.value;
     return 'horizontal';
   }
 
@@ -2258,25 +2439,6 @@ if (editProdId) {
     // ensure preview built when opening modal (in case image is cached)
     try { updateLabelPreview(); } catch (e) { /* ignore */ }
     return;
-  }
-
-  // update preview when orientation changes
-  const orientRadios = document.getElementsByName('etiquetaOrientacion');
-
-  function updateLabelPreview() {
-    if (!qrModalProducto || !qrModalSrc || !productoLabelCompact) return;
-    const orient = getSelectedOrientation();
-    productoLabelCompact.innerHTML = '';
-    const node = buildCompactLabel(qrModalProducto, qrModalSrc, orient);
-    productoLabelCompact.appendChild(node);
-    productoLabelCompact.classList.remove('d-none');
-    // ensure visible in preview area
-    if (qrModalPlaceholder) qrModalPlaceholder.classList.add('d-none');
-    if (qrModalImage) qrModalImage.classList.add('d-none');
-  }
-
-  for (const r of orientRadios) {
-    r.addEventListener('change', updateLabelPreview);
   }
 
   // Note: download click is handled by handleEtiquetaDownload above (centralized)
