@@ -132,45 +132,6 @@
       </section>
 
       <div class="inventory-card">
-        <section
-          id="etiquetaPreviewSection"
-          class="panel-card etiqueta-preview-section d-none"
-          aria-labelledby="productoEtiquetaHeading"
-          aria-live="polite"
-        >
-          <header class="panel-header">
-            <span class="panel-eyebrow">Etiqueta</span>
-            <h2 id="productoEtiquetaHeading" class="panel-title">Vista previa de la etiqueta</h2>
-            <p class="panel-description">
-              Visualiza la etiqueta con los colores corporativos de OptiStock y descárgala al instante.
-            </p>
-          </header>
-
-          <div class="etiqueta-preview__body">
-            <div id="productoEtiquetaPreview" class="etiqueta-preview__canvas qr-preview">
-              <div id="productoEtiquetaPlaceholder" class="qr-placeholder etiqueta-preview__placeholder">
-                Selecciona un producto para ver su etiqueta.
-              </div>
-              <img
-                id="productoEtiquetaImage"
-                class="qr-image etiqueta-preview__image d-none"
-                alt="Vista previa de la etiqueta del producto"
-                loading="lazy"
-              />
-            </div>
-            <div class="etiqueta-preview__actions">
-              <a
-                id="productoEtiquetaDownload"
-                class="btn btn-primary disabled"
-                download
-                aria-disabled="true"
-              >
-                Descargar etiqueta
-              </a>
-            </div>
-          </div>
-        </section>
-
         <section id="productoFormContainer" class="panel-card" aria-labelledby="btnProductos">
           <header class="panel-header panel-header--collapsible">
             <div class="panel-header__content">
@@ -347,8 +308,8 @@
         </div>
         <div class="modal-body">
           <div id="productoQrPreview" class="qr-preview">
-            <div id="productoQrPlaceholder" class="qr-placeholder">Genera la etiqueta del producto para verla aquí.</div>
-            <img id="productoQrImage" class="qr-image d-none" alt="Vista previa de la etiqueta del producto" />
+            <div id="productoQrPlaceholder" class="qr-placeholder">Generando código QR...</div>
+            <img id="productoQrImage" class="qr-image d-none" alt="Código QR del producto" />
           </div>
         </div>
         <div class="modal-footer border-0 d-flex flex-column flex-sm-row gap-2">
