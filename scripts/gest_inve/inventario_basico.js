@@ -69,6 +69,18 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
     const palette = getBrandPalette();
     const empresaNombre = getEmpresaNombre();
+    const infoBackground = '#ffffff';
+    const primaryTextColor = ensureReadableTextColor(palette.header, infoBackground, {
+      fallbackDark: '#111827'
+    });
+    const secondaryTextColor = ensureReadableTextColor(mixWithWhite(palette.header, 0.35), infoBackground, {
+      minContrast: 3.2,
+      fallbackDark: '#4b5565'
+    });
+    const accentTextColor = ensureReadableTextColor(mixWithWhite(palette.header, 0.45), infoBackground, {
+      minContrast: 3,
+      fallbackDark: '#6b7280'
+    });
 
     const header = document.createElement('div');
     header.className = 'label-header';
@@ -107,11 +119,12 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     const title = document.createElement('div');
     title.className = 'label-info__name';
     title.textContent = producto?.nombre || 'Nombre del producto';
-    title.style.color = palette.header;
+    title.style.color = primaryTextColor;
     infoColumn.appendChild(title);
 
     const meta = document.createElement('div');
     meta.className = 'label-info__meta';
+    meta.style.color = secondaryTextColor;
     const dimensionValue = formatDimensionTriplet(producto);
     const fields = [
       { k: 'Zona', v: producto?.zona_nombre || producto?.area_nombre || '' },
@@ -128,9 +141,11 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       const pk = document.createElement('div');
       pk.className = 'label-field__key';
       pk.textContent = 'Información';
+      pk.style.color = accentTextColor;
       const pv = document.createElement('div');
       pv.className = 'label-field__value';
       pv.textContent = 'Completa los datos del producto para mostrarlos en la etiqueta.';
+      pv.style.color = primaryTextColor;
       placeholderField.appendChild(pk);
       placeholderField.appendChild(pv);
       meta.appendChild(placeholderField);
@@ -141,11 +156,11 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const key = document.createElement('div');
         key.className = 'label-field__key';
         key.textContent = f.k;
-        key.style.color = hexToRgba(palette.header, 0.6);
+        key.style.color = accentTextColor;
         const val = document.createElement('div');
         val.className = 'label-field__value';
         val.textContent = f.v;
-        val.style.color = palette.header;
+        val.style.color = primaryTextColor;
         node.style.borderLeftColor = hexToRgba(palette.accent, 0.35);
         node.appendChild(key);
         node.appendChild(val);
@@ -198,13 +213,22 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const paletteColors = getBrandPalette();
+    const infoBackgroundColor = '#ffffff';
+    const primaryCanvasText = ensureReadableTextColor(mixWithWhite(paletteColors.header, 0.14), infoBackgroundColor, {
+      fallbackDark: '#1f2538'
+    });
+    const secondaryCanvasText = ensureReadableTextColor(mixWithWhite(paletteColors.header, 0.38), infoBackgroundColor, {
+      minContrast: 3.2,
+      fallbackDark: '#4b5565'
+    });
+
     const colors = {
       background: paletteColors.pageBg || mixWithWhite(paletteColors.header, 0.92),
       cardBorder: hexToRgba(paletteColors.header, 0.14),
       header: paletteColors.header,
       accent: paletteColors.accent,
-      textMain: mixWithWhite(paletteColors.header, 0.14),
-      textMuted: mixWithWhite(paletteColors.header, 0.38),
+      textMain: primaryCanvasText,
+      textMuted: secondaryCanvasText,
       textOnDark: paletteColors.headerText,
       textOnAccent: paletteColors.accentText
     };
@@ -658,6 +682,10 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`;
   }
 
+  function rgbToHex({ r, g, b }) {
+    return `#${hexChannelToString(r)}${hexChannelToString(g)}${hexChannelToString(b)}`;
+  }
+
   function mixWithWhite(hex, weight = 0.2) {
     const rgb = parseHexColor(hex);
     if (!rgb) {
@@ -668,6 +696,45 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     const g = rgb.g + (255 - rgb.g) * ratio;
     const b = rgb.b + (255 - rgb.b) * ratio;
     return `#${hexChannelToString(r)}${hexChannelToString(g)}${hexChannelToString(b)}`;
+  }
+
+  function getRelativeLuminance({ r, g, b }) {
+    const channels = [r, g, b].map((value) => {
+      const channel = value / 255;
+      return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  }
+
+  function getContrastRatio(colorA, colorB) {
+    const luminanceA = getRelativeLuminance(colorA);
+    const luminanceB = getRelativeLuminance(colorB);
+    const lighter = Math.max(luminanceA, luminanceB);
+    const darker = Math.min(luminanceA, luminanceB);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function ensureReadableTextColor(colorHex, backgroundHex, options = {}) {
+    const {
+      minContrast = 4.5,
+      fallbackDark = '#1f2538',
+      fallbackLight = '#f5f5f5'
+    } = options;
+
+    const foregroundRgb = parseHexColor(colorHex) || parseHexColor(fallbackDark);
+    const backgroundRgb = parseHexColor(backgroundHex) || { r: 255, g: 255, b: 255 };
+
+    if (!foregroundRgb) {
+      return fallbackDark;
+    }
+
+    const contrast = getContrastRatio(foregroundRgb, backgroundRgb);
+    if (contrast >= minContrast) {
+      return rgbToHex(foregroundRgb);
+    }
+
+    const backgroundLuminance = getRelativeLuminance(backgroundRgb);
+    return backgroundLuminance > 0.5 ? fallbackDark : fallbackLight;
   }
 
   function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -747,6 +814,15 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           pageBg: rootStyles?.getPropertyValue('--page-bg')?.trim() || ''
         };
 
+        const infoBackgroundColor = '#ffffff';
+        const primaryCanvasText = ensureReadableTextColor(mixWithWhite(paletteColors.header, 0.14), infoBackgroundColor, {
+          fallbackDark: '#1f2538'
+        });
+        const secondaryCanvasText = ensureReadableTextColor(mixWithWhite(paletteColors.header, 0.38), infoBackgroundColor, {
+          minContrast: 3.2,
+          fallbackDark: '#4b5565'
+        });
+
         const colors = {
           background: paletteColors.pageBg || mixWithWhite(paletteColors.header, 0.92),
           card: '#ffffff',
@@ -756,8 +832,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
           accent: paletteColors.accent,
           accentSoft: hexToRgba(paletteColors.accent, 0.16),
           accentOutline: hexToRgba(paletteColors.accent, 0.28),
-          textMain: mixWithWhite(paletteColors.header, 0.14),
-          textMuted: mixWithWhite(paletteColors.header, 0.38),
+          textMain: primaryCanvasText,
+          textMuted: secondaryCanvasText,
           textOnDark: paletteColors.headerText,
           textOnDarkMuted: hexToRgba(paletteColors.headerText, 0.72),
           textOnAccent: paletteColors.accentText,
