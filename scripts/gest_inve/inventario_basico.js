@@ -45,9 +45,30 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   // (sanitizer defined later)
 
   // Build compact label DOM for orientation selection (hidden in modal)
+  function getEmpresaNombre() {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('empresa_nombre') : '';
+    if (typeof stored === 'string' && stored.trim()) {
+      return stored.trim();
+    }
+    return 'OptiStock';
+  }
+
+  function getBrandPalette() {
+    const rootStyles = window.getComputedStyle ? window.getComputedStyle(document.documentElement) : null;
+    const header = rootStyles?.getPropertyValue('--sidebar-color')?.trim() || '#30374f';
+    const headerText = rootStyles?.getPropertyValue('--sidebar-text-color')?.trim() || '#ffffff';
+    const accent = rootStyles?.getPropertyValue('--topbar-color')?.trim() || '#505a76';
+    const accentText = rootStyles?.getPropertyValue('--topbar-text-color')?.trim() || '#ffffff';
+    const pageBg = rootStyles?.getPropertyValue('--page-bg')?.trim() || '';
+    return { header, headerText, accent, accentText, pageBg };
+  }
+
   function buildCompactLabel(producto, qrSrc, orientation = 'horizontal') {
     const wrapper = document.createElement('div');
     wrapper.className = `label-card ${orientation === 'vertical' ? 'vertical' : 'horizontal'}`.trim();
+
+    const palette = getBrandPalette();
+    const empresaNombre = getEmpresaNombre();
 
     const header = document.createElement('div');
     header.className = 'label-header';
@@ -55,18 +76,26 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     headerTitle.textContent = 'Etiqueta QR';
     const headerBrand = document.createElement('span');
     headerBrand.className = 'label-header__brand';
-    headerBrand.textContent = 'OptiStock';
+    headerBrand.textContent = empresaNombre;
     header.appendChild(headerTitle);
     header.appendChild(headerBrand);
+    header.style.background = `linear-gradient(90deg, ${palette.header} 0%, ${mixWithWhite(palette.accent, 0.25)} 100%)`;
+    header.style.color = palette.headerText;
+    headerTitle.style.color = palette.headerText;
+    headerBrand.style.color = palette.headerText;
     wrapper.appendChild(header);
 
     const body = document.createElement('div');
     body.className = 'label-body';
+    wrapper.style.background = `linear-gradient(150deg, ${palette.pageBg || mixWithWhite(palette.header, 0.95)} 0%, ${mixWithWhite(palette.accent, 0.92)} 100%)`;
+    wrapper.style.borderColor = hexToRgba(palette.header, 0.12);
 
     const qrColumn = document.createElement('div');
     qrColumn.className = 'label-qr';
     const qrCanvas = document.createElement('div');
     qrCanvas.className = 'label-qr__canvas';
+    qrCanvas.style.background = `radial-gradient(circle at 30% 20%, ${mixWithWhite(palette.accent, 0.1)} 0%, ${mixWithWhite(palette.accent, 0.4)} 100%)`;
+    qrCanvas.style.borderColor = hexToRgba(palette.header, 0.18);
     const img = document.createElement('img');
     img.alt = producto?.nombre ? `Código QR de ${producto.nombre}` : 'Código QR del producto';
     img.src = qrSrc;
@@ -78,14 +107,17 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     const title = document.createElement('div');
     title.className = 'label-info__name';
     title.textContent = producto?.nombre || 'Nombre del producto';
+    title.style.color = palette.header;
     infoColumn.appendChild(title);
 
     const meta = document.createElement('div');
     meta.className = 'label-info__meta';
+    const dimensionValue = formatDimensionTriplet(producto);
     const fields = [
       { k: 'Zona', v: producto?.zona_nombre || producto?.area_nombre || '' },
       { k: 'Categoría', v: producto?.categoria_nombre || '' },
       { k: 'Subcategoría', v: producto?.subcategoria_nombre || '' },
+      { k: 'Dimensiones', v: dimensionValue },
       { k: 'Descripción', v: producto?.descripcion || '' },
       { k: 'Precio', v: producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : '' }
     ].filter(f => Boolean(f.v));
@@ -109,9 +141,12 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const key = document.createElement('div');
         key.className = 'label-field__key';
         key.textContent = f.k;
+        key.style.color = hexToRgba(palette.header, 0.6);
         const val = document.createElement('div');
         val.className = 'label-field__value';
         val.textContent = f.v;
+        val.style.color = palette.header;
+        node.style.borderLeftColor = hexToRgba(palette.accent, 0.35);
         node.appendChild(key);
         node.appendChild(val);
         meta.appendChild(node);
@@ -132,7 +167,9 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
     const footer = document.createElement('div');
     footer.className = 'label-footer';
-    footer.innerHTML = '<span>Etiqueta generada con OptiStock</span><span>optistock.com</span>';
+    footer.innerHTML = '<span>Etiqueta generada con OptiStock</span><span>optistock.site</span>';
+    footer.style.background = `linear-gradient(90deg, ${mixWithWhite(palette.accent, 0.35)} 0%, ${palette.accent} 100%)`;
+    footer.style.color = palette.accentText;
     wrapper.appendChild(footer);
 
     return wrapper;
@@ -160,6 +197,18 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    const paletteColors = getBrandPalette();
+    const colors = {
+      background: paletteColors.pageBg || mixWithWhite(paletteColors.header, 0.92),
+      cardBorder: hexToRgba(paletteColors.header, 0.14),
+      header: paletteColors.header,
+      accent: paletteColors.accent,
+      textMain: mixWithWhite(paletteColors.header, 0.14),
+      textMuted: mixWithWhite(paletteColors.header, 0.38),
+      textOnDark: paletteColors.headerText,
+      textOnAccent: paletteColors.accentText
+    };
+
     const headerH = 70 * dpi;
     const footerH = 54 * dpi;
     const bodyY = headerH;
@@ -168,18 +217,18 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
     // header with gradient
     const headerGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    headerGradient.addColorStop(0, '#30374f');
-    headerGradient.addColorStop(1, '#505a76');
+    headerGradient.addColorStop(0, colors.header);
+    headerGradient.addColorStop(1, mixWithWhite(colors.accent, 0.2));
     ctx.fillStyle = headerGradient;
     ctx.fillRect(0, 0, canvas.width, headerH);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = colors.textOnDark;
     ctx.textBaseline = 'middle';
     ctx.font = `700 ${18 * dpi}px Poppins, sans-serif`;
     ctx.textAlign = 'left';
     ctx.fillText('Etiqueta QR', 24 * dpi, headerH / 2);
     ctx.textAlign = 'right';
     ctx.font = `600 ${16 * dpi}px Poppins, sans-serif`;
-    ctx.fillText('OptiStock', canvas.width - 24 * dpi, headerH / 2);
+    ctx.fillText(getEmpresaNombre(), canvas.width - 24 * dpi, headerH / 2);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
@@ -187,6 +236,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       { label: 'Zona', value: producto?.zona_nombre || producto?.area_nombre || '' },
       { label: 'Categoría', value: producto?.categoria_nombre || '' },
       { label: 'Subcategoría', value: producto?.subcategoria_nombre || '' },
+      { label: 'Dimensiones', value: formatDimensionTriplet(producto) },
       { label: 'Descripción', value: producto?.descripcion || '' },
       { label: 'Precio', value: producto?.precio_compra ? `$${Number(producto.precio_compra).toFixed(2)}` : '' }
     ].filter(item => item.value);
@@ -223,10 +273,10 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     };
 
     const drawField = (label, value, startX, startY, maxWidth) => {
-      ctx.fillStyle = '#6b7280';
+      ctx.fillStyle = colors.textMuted;
       ctx.font = `600 ${12 * dpi}px Poppins, sans-serif`;
       ctx.fillText(label.toUpperCase(), startX, startY);
-      ctx.fillStyle = '#111827';
+      ctx.fillStyle = colors.textMain;
       ctx.font = `500 ${15 * dpi}px Poppins, sans-serif`;
       const nextY = drawParagraph(value, startX, startY + 18 * dpi, maxWidth, 22 * dpi, 4);
       return nextY + 10 * dpi;
@@ -243,14 +293,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
       roundRect(ctx, infoX, infoY, infoAreaWidth, infoHeight, 32 * dpi, true, false);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(17, 24, 67, 0.08)';
+      ctx.strokeStyle = colors.cardBorder;
       roundRect(ctx, infoX, infoY, infoAreaWidth, infoHeight, 32 * dpi, false, true);
       ctx.restore();
 
       const textX = infoX + 32 * dpi;
       let cursorY = infoY + 34 * dpi;
 
-      ctx.fillStyle = '#101828';
+      ctx.fillStyle = colors.textMain;
       ctx.font = `700 ${24 * dpi}px Poppins, sans-serif`;
       cursorY = drawParagraph(producto?.nombre || 'Nombre del producto', textX, cursorY, infoAreaWidth - 64 * dpi, 30 * dpi, 3) + 8 * dpi;
 
@@ -266,8 +316,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       const qrAreaY = bodyY + gap;
       const qrAreaHeight = bodyH - gap * 2;
       const qrGradient = ctx.createLinearGradient(qrAreaX, qrAreaY, qrAreaX + qrAreaWidth, qrAreaY + qrAreaHeight);
-      qrGradient.addColorStop(0, '#eef2ff');
-      qrGradient.addColorStop(1, '#dbe2ff');
+      qrGradient.addColorStop(0, mixWithWhite(colors.accent, 0.65));
+      qrGradient.addColorStop(1, mixWithWhite(colors.accent, 0.4));
       ctx.fillStyle = qrGradient;
       roundRect(ctx, qrAreaX, qrAreaY, qrAreaWidth, qrAreaHeight, 36 * dpi, true, false);
 
@@ -279,7 +329,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       if (qrImg) {
         ctx.drawImage(qrImg, qrInnerX, qrInnerY, qrSize, qrSize);
       } else {
-        ctx.strokeStyle = '#c7cffc';
+        ctx.strokeStyle = mixWithWhite(colors.accent, 0.4);
         ctx.lineWidth = 4;
         roundRect(ctx, qrInnerX, qrInnerY, qrSize, qrSize, 20 * dpi, false, true);
       }
@@ -290,8 +340,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       const qrAreaY = bodyY + gap;
 
       const qrGradient = ctx.createLinearGradient(qrAreaX, qrAreaY, qrAreaX, qrAreaY + qrAreaHeight);
-      qrGradient.addColorStop(0, '#eef2ff');
-      qrGradient.addColorStop(1, '#d6defc');
+      qrGradient.addColorStop(0, mixWithWhite(colors.accent, 0.65));
+      qrGradient.addColorStop(1, mixWithWhite(colors.accent, 0.38));
       ctx.fillStyle = qrGradient;
       roundRect(ctx, qrAreaX, qrAreaY, qrAreaWidth, qrAreaHeight, 36 * dpi, true, false);
 
@@ -303,7 +353,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       if (qrImg) {
         ctx.drawImage(qrImg, qrInnerX, qrInnerY, qrSize, qrSize);
       } else {
-        ctx.strokeStyle = '#c7cffc';
+        ctx.strokeStyle = mixWithWhite(colors.accent, 0.4);
         ctx.lineWidth = 4;
         roundRect(ctx, qrInnerX, qrInnerY, qrSize, qrSize, 20 * dpi, false, true);
       }
@@ -317,14 +367,14 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
       roundRect(ctx, infoX, infoY, infoWidth, infoHeight, 32 * dpi, true, false);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(17, 24, 67, 0.08)';
+      ctx.strokeStyle = colors.cardBorder;
       roundRect(ctx, infoX, infoY, infoWidth, infoHeight, 32 * dpi, false, true);
       ctx.restore();
 
       let cursorY = infoY + 28 * dpi;
       const textX = infoX + 32 * dpi;
 
-      ctx.fillStyle = '#101828';
+      ctx.fillStyle = colors.textMain;
       ctx.font = `700 ${24 * dpi}px Poppins, sans-serif`;
       cursorY = drawParagraph(producto?.nombre || 'Nombre del producto', textX, cursorY, infoWidth - 64 * dpi, 30 * dpi, 3) + 12 * dpi;
 
@@ -340,17 +390,17 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     // footer
     const footerY = canvas.height - footerH;
     const footerGradient = ctx.createLinearGradient(0, footerY, canvas.width, footerY);
-    footerGradient.addColorStop(0, '#4c5168');
-    footerGradient.addColorStop(1, '#79829e');
+    footerGradient.addColorStop(0, mixWithWhite(colors.accent, 0.35));
+    footerGradient.addColorStop(1, colors.accent);
     ctx.fillStyle = footerGradient;
     ctx.fillRect(0, footerY, canvas.width, footerH);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = colors.textOnAccent;
     ctx.textBaseline = 'middle';
     ctx.font = `600 ${13 * dpi}px Poppins, sans-serif`;
     ctx.textAlign = 'left';
     ctx.fillText('Etiqueta generada con OptiStock', 24 * dpi, footerY + footerH / 2);
     ctx.textAlign = 'right';
-    ctx.fillText('optistock.com', canvas.width - 24 * dpi, footerY + footerH / 2);
+    ctx.fillText('optistock.site', canvas.width - 24 * dpi, footerY + footerH / 2);
     ctx.textAlign = 'left';
 
     return canvas.toDataURL('image/png');
@@ -522,7 +572,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
     if (dimensiones.every(num => Number.isFinite(num))) {
       return dimensiones
         .map(num => (Number.isInteger(num) ? num.toString() : num.toFixed(1)) + ' cm')
-        .join(' × ');
+        .join(' x ');
     }
     return 'N/D';
   }
@@ -752,7 +802,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const descripcionTexto = producto?.descripcion?.trim() ? producto.descripcion.trim() : 'Sin descripción disponible';
         const categoriaTexto = producto?.categoria_nombre || 'Sin categoría';
         const subcategoriaTexto = producto?.subcategoria_nombre || 'Sin subcategoría';
-        const volumenTexto = formatDimensionTriplet(producto);
+        const dimensionesTexto = formatDimensionTriplet(producto);
         const precioTexto = formatPrecioUnitario(producto);
 
         const columnaIzquierda = [
@@ -769,7 +819,7 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
         const columnaDerecha = [
           { etiqueta: 'Categoría', valor: categoriaTexto },
           { etiqueta: 'Subcategoría', valor: subcategoriaTexto },
-          { etiqueta: 'Volumen', valor: volumenTexto },
+          { etiqueta: 'Dimensiones', valor: dimensionesTexto },
           { etiqueta: 'Precio unitario', valor: precioTexto }
         ];
         const measureColumnHeight = column => {
