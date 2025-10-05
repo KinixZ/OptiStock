@@ -126,6 +126,59 @@ function extraerReferenciasDesdeLogs(array $logs): array
     ];
 }
 
+function obtenerAreasDesdeReferencias(array $referencias, array $productosInfo, array $zonasInfo): array
+{
+    $areas = [];
+
+    if (!empty($referencias['areas'])) {
+        foreach ($referencias['areas'] as $areaId) {
+            $areaId = (int) $areaId;
+            if ($areaId > 0) {
+                $areas[] = $areaId;
+            }
+        }
+    }
+
+    if (!empty($referencias['zonas'])) {
+        foreach ($referencias['zonas'] as $zonaId) {
+            $zonaId = (int) $zonaId;
+            if ($zonaId <= 0 || !isset($zonasInfo[$zonaId])) {
+                continue;
+            }
+
+            $zonaAreaId = isset($zonasInfo[$zonaId]['area_id']) ? (int) $zonasInfo[$zonaId]['area_id'] : 0;
+            if ($zonaAreaId > 0) {
+                $areas[] = $zonaAreaId;
+            }
+        }
+    }
+
+    if (!empty($referencias['productos'])) {
+        foreach ($referencias['productos'] as $productoId) {
+            $productoId = (int) $productoId;
+            if ($productoId <= 0 || !isset($productosInfo[$productoId])) {
+                continue;
+            }
+
+            $producto = $productosInfo[$productoId];
+            $productoAreaId = isset($producto['area_id']) ? (int) $producto['area_id'] : 0;
+
+            if ($productoAreaId <= 0 && isset($producto['zona_id'])) {
+                $zonaId = (int) $producto['zona_id'];
+                if ($zonaId > 0 && isset($zonasInfo[$zonaId])) {
+                    $productoAreaId = isset($zonasInfo[$zonaId]['area_id']) ? (int) $zonasInfo[$zonaId]['area_id'] : 0;
+                }
+            }
+
+            if ($productoAreaId > 0) {
+                $areas[] = $productoAreaId;
+            }
+        }
+    }
+
+    return normalizarListaIds($areas);
+}
+
 function obtenerDatosProductos(mysqli $conn, array $ids): array
 {
     $ids = normalizarListaIds($ids);
@@ -136,7 +189,7 @@ function obtenerDatosProductos(mysqli $conn, array $ids): array
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $types = str_repeat('i', count($ids));
 
-    $sql = "SELECT p.id, p.nombre, p.descripcion, z.nombre AS zona_nombre, a.nombre AS area_nombre
+    $sql = "SELECT p.id, p.nombre, p.descripcion, p.zona_id, z.nombre AS zona_nombre, z.area_id AS area_id, a.nombre AS area_nombre
             FROM productos p
             LEFT JOIN zonas z ON p.zona_id = z.id
             LEFT JOIN areas a ON z.area_id = a.id
@@ -149,7 +202,11 @@ function obtenerDatosProductos(mysqli $conn, array $ids): array
 
     $datos = [];
     while ($row = $result->fetch_assoc()) {
-        $datos[(int) $row['id']] = $row;
+        $productoId = (int) $row['id'];
+        $row['id'] = $productoId;
+        $row['zona_id'] = isset($row['zona_id']) ? ($row['zona_id'] !== null ? (int) $row['zona_id'] : null) : null;
+        $row['area_id'] = isset($row['area_id']) ? ($row['area_id'] !== null ? (int) $row['area_id'] : null) : null;
+        $datos[$productoId] = $row;
     }
 
     $stmt->close();
@@ -194,7 +251,7 @@ function obtenerDatosZonas(mysqli $conn, array $ids): array
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $types = str_repeat('i', count($ids));
 
-    $sql = "SELECT z.id, z.nombre, z.descripcion, a.nombre AS area_nombre
+    $sql = "SELECT z.id, z.nombre, z.descripcion, z.area_id AS area_id, a.nombre AS area_nombre
             FROM zonas z
             LEFT JOIN areas a ON z.area_id = a.id
             WHERE z.id IN ($placeholders)";
@@ -206,7 +263,10 @@ function obtenerDatosZonas(mysqli $conn, array $ids): array
 
     $datos = [];
     while ($row = $result->fetch_assoc()) {
-        $datos[(int) $row['id']] = $row;
+        $zonaId = (int) $row['id'];
+        $row['id'] = $zonaId;
+        $row['area_id'] = isset($row['area_id']) ? ($row['area_id'] !== null ? (int) $row['area_id'] : null) : null;
+        $datos[$zonaId] = $row;
     }
 
     $stmt->close();
@@ -404,14 +464,49 @@ $stmt->close();
 
 $referencias = extraerReferenciasDesdeLogs($logs);
 $productosInfo = obtenerDatosProductos($conn, $referencias['productos']);
-$areasInfo = obtenerDatosAreas($conn, $referencias['areas']);
-$zonasInfo = obtenerDatosZonas($conn, $referencias['zonas']);
 
-foreach ($logs as &$log) {
-    $accion = isset($log['accion']) && is_string($log['accion']) ? $log['accion'] : '';
-    $log['accion'] = enriquecerAccionConDetalles($accion, $productosInfo, $areasInfo, $zonasInfo);
+$zonasReferenciadas = $referencias['zonas'];
+foreach ($productosInfo as $producto) {
+    if (isset($producto['zona_id']) && $producto['zona_id']) {
+        $zonasReferenciadas[] = (int) $producto['zona_id'];
+    }
 }
-unset($log);
+$zonasInfo = obtenerDatosZonas($conn, $zonasReferenciadas);
+
+$areasInfo = obtenerDatosAreas($conn, $referencias['areas']);
+
+$areasPermitidasSet = [];
+if ($filtrarPorAreas && !empty($areasPermitidas)) {
+    $areasPermitidasSet = array_fill_keys($areasPermitidas, true);
+}
+
+$logsFiltrados = [];
+foreach ($logs as $log) {
+    $accionOriginal = isset($log['accion']) && is_string($log['accion']) ? $log['accion'] : '';
+    $referenciasLog = extraerReferenciasDesdeAccion($accionOriginal);
+    $areasAsociadas = obtenerAreasDesdeReferencias($referenciasLog, $productosInfo, $zonasInfo);
+
+    if ($filtrarPorAreas && !empty($areasPermitidas)) {
+        if (!empty($areasAsociadas)) {
+            $tieneAcceso = false;
+            foreach ($areasAsociadas as $areaId) {
+                if (isset($areasPermitidasSet[$areaId])) {
+                    $tieneAcceso = true;
+                    break;
+                }
+            }
+
+            if (!$tieneAcceso) {
+                continue;
+            }
+        }
+    }
+
+    $log['accion'] = enriquecerAccionConDetalles($accionOriginal, $productosInfo, $areasInfo, $zonasInfo);
+    $logsFiltrados[] = $log;
+}
+
+$logs = $logsFiltrados;
 
 $usuariosSql = "SELECT DISTINCT u.id_usuario, CONCAT(u.nombre, ' ', u.apellido) AS nombre, u.rol
         FROM usuario u
