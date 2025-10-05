@@ -2,6 +2,9 @@
 session_start();
 header("Content-Type: application/json");
 
+require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/accesos_utils.php';
+
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $servername = "localhost";
@@ -28,6 +31,13 @@ if ($empresaId <= 0) {
 $modulo  = trim($_GET['modulo']  ?? '');
 $usuario = trim($_GET['usuario'] ?? '');
 $rol     = trim($_GET['rol']     ?? '');
+
+$usuarioIdSesion = obtenerUsuarioIdSesion() ?? (int) ($_SESSION['usuario_id'] ?? 0);
+$mapaAccesos     = construirMapaAccesosUsuario($conn, $usuarioIdSesion);
+$filtrarPorAreas = debeFiltrarPorAccesos($mapaAccesos);
+$areasPermitidas = array_values(array_filter(array_map('intval', array_keys($mapaAccesos)), function ($areaId) {
+    return $areaId > 0;
+}));
 
 $sql = "SELECT l.fecha, l.hora, CONCAT(u.nombre,' ',u.apellido) AS usuario, u.rol, l.modulo, l.accion
         FROM log_control l
@@ -59,6 +69,16 @@ if ($rol !== '') {
     $params[] = $rol;
 }
 
+if ($filtrarPorAreas && !empty($areasPermitidas)) {
+    $placeholders = implode(',', array_fill(0, count($areasPermitidas), '?'));
+    $sql .= " AND (NOT EXISTS (SELECT 1 FROM usuario_area_zona uaz_all WHERE uaz_all.id_usuario = u.id_usuario)
+                   OR EXISTS (SELECT 1 FROM usuario_area_zona uaz_perm WHERE uaz_perm.id_usuario = u.id_usuario AND uaz_perm.id_area IN ($placeholders)))";
+    $types  .= str_repeat('i', count($areasPermitidas));
+    foreach ($areasPermitidas as $areaId) {
+        $params[] = (int) $areaId;
+    }
+}
+
 $sql .= " ORDER BY l.fecha DESC, l.hora DESC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param($types, ...$params);
@@ -77,11 +97,29 @@ $usuariosSql = "SELECT DISTINCT u.id_usuario, CONCAT(u.nombre, ' ', u.apellido) 
             SELECT usuario_creador FROM empresa WHERE id_empresa = ?
             UNION
             SELECT id_usuario FROM usuario_empresa WHERE id_empresa = ?
-        )
-        ORDER BY nombre";
+        )";
+
+if ($filtrarPorAreas && !empty($areasPermitidas)) {
+    $usuariosPlaceholders = implode(',', array_fill(0, count($areasPermitidas), '?'));
+    $usuariosSql .= " AND (NOT EXISTS (SELECT 1 FROM usuario_area_zona uaz_all WHERE uaz_all.id_usuario = u.id_usuario)
+                   OR EXISTS (SELECT 1 FROM usuario_area_zona uaz_perm WHERE uaz_perm.id_usuario = u.id_usuario AND uaz_perm.id_area IN ($usuariosPlaceholders)))";
+}
+
+$usuariosSql .= " ORDER BY nombre";
 
 $usuariosStmt = $conn->prepare($usuariosSql);
-$usuariosStmt->bind_param('ii', $empresaId, $empresaId);
+
+$usuariosParams = [$empresaId, $empresaId];
+$usuariosTypes  = 'ii';
+
+if ($filtrarPorAreas && !empty($areasPermitidas)) {
+    $usuariosTypes .= str_repeat('i', count($areasPermitidas));
+    foreach ($areasPermitidas as $areaId) {
+        $usuariosParams[] = (int) $areaId;
+    }
+}
+
+$usuariosStmt->bind_param($usuariosTypes, ...$usuariosParams);
 $usuariosStmt->execute();
 $usuariosResult = $usuariosStmt->get_result();
 
