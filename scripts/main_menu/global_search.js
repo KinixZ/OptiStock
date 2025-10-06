@@ -237,8 +237,11 @@
     let pendingQuery = '';
     let searchDataPromise = null;
 
-    const pendingSearchTerms = [];
-    let processingPendingSearches = false;
+    const LOCAL_PENDING_SEARCHES_KEY = 'globalSearchPendingTerms';
+    let pendingSearchTerms = [];
+    let syncingPendingSearches = false;
+
+    cargarBusquedasPendientesLocales();
 
     function mostrarPlaceholder(titulo, descripcion = '', iconClass = 'fa-search') {
         if (!searchResultsContainer) return;
@@ -320,6 +323,104 @@
         }
     }
 
+    function obtenerEmpresaIdActual() {
+        const cachedId = Number(empresaIdCache);
+        if (cachedId) {
+            return cachedId;
+        }
+
+        try {
+            const stored = Number(localStorage.getItem('id_empresa'));
+            if (stored) {
+                empresaIdCache = stored;
+                return stored;
+            }
+        } catch (error) {
+            console.warn('No se pudo leer el id de la empresa desde el almacenamiento local:', error);
+        }
+
+        return 0;
+    }
+
+    function cargarBusquedasPendientesLocales() {
+        try {
+            const stored = localStorage.getItem(LOCAL_PENDING_SEARCHES_KEY);
+            if (!stored) {
+                pendingSearchTerms = [];
+                return;
+            }
+
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                pendingSearchTerms = parsed
+                    .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+                    .filter(entry => entry.length > 0)
+                    .slice(-20);
+                return;
+            }
+        } catch (error) {
+            console.warn('No se pudieron recuperar las búsquedas pendientes:', error);
+        }
+
+        pendingSearchTerms = [];
+    }
+
+    function persistirBusquedasPendientes() {
+        try {
+            if (!pendingSearchTerms.length) {
+                localStorage.removeItem(LOCAL_PENDING_SEARCHES_KEY);
+                return;
+            }
+
+            localStorage.setItem(LOCAL_PENDING_SEARCHES_KEY, JSON.stringify(pendingSearchTerms.slice(-20)));
+        } catch (error) {
+            console.warn('No se pudieron guardar las búsquedas pendientes localmente:', error);
+        }
+    }
+
+    function agregarBusquedaPendiente(termino) {
+        pendingSearchTerms.push(termino);
+        if (pendingSearchTerms.length > 20) {
+            pendingSearchTerms = pendingSearchTerms.slice(-20);
+        }
+        persistirBusquedasPendientes();
+    }
+
+    async function sincronizarBusquedasPendientes(empresaId) {
+        if (syncingPendingSearches) {
+            return;
+        }
+
+        const empresaIdNumero = Number(empresaId);
+        if (!empresaIdNumero) {
+            return;
+        }
+
+        if (!pendingSearchTerms.length) {
+            return;
+        }
+
+        syncingPendingSearches = true;
+
+        const termsToProcess = [...pendingSearchTerms];
+        pendingSearchTerms = [];
+        persistirBusquedasPendientes();
+
+        try {
+            for (let index = 0; index < termsToProcess.length; index += 1) {
+                const terminoPendiente = termsToProcess[index];
+                const exito = await guardarBusquedaRemota(terminoPendiente, empresaIdNumero);
+                if (!exito) {
+                    pendingSearchTerms = termsToProcess.slice(index);
+                    persistirBusquedasPendientes();
+                    break;
+                }
+            }
+        } finally {
+            syncingPendingSearches = false;
+        }
+    }
+
     async function guardarBusquedaRemota(termino, empresaId) {
         const terminoNormalizado = (termino || '').trim();
         const empresaIdNumero = Number(empresaId);
@@ -355,6 +456,28 @@
         } catch (error) {
             console.warn('No se pudo registrar la búsqueda:', error);
             return false;
+        }
+    }
+
+    async function registrarBusqueda(consulta) {
+        const termino = (consulta || '').trim();
+        if (!termino) {
+            return;
+        }
+
+        const empresaId = obtenerEmpresaIdActual();
+
+        if (!empresaId) {
+            agregarBusquedaPendiente(termino);
+            return;
+        }
+
+        await sincronizarBusquedasPendientes(empresaId);
+
+        const exito = await guardarBusquedaRemota(termino, empresaId);
+
+        if (!exito) {
+            agregarBusquedaPendiente(termino);
         }
     }
 
@@ -691,7 +814,7 @@
                     cargarHistorialBusquedas(empresaIdNumero)
                 ]);
 
-                procesarBusquedasPendientes();
+                await sincronizarBusquedasPendientes(empresaIdNumero);
             })()
             .catch(error => {
                 console.error('No se pudo inicializar el buscador global:', error);
