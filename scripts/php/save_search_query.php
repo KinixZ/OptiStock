@@ -64,6 +64,22 @@ function ensureHistoryTable(mysqli $conn): bool
     return $conn->query($sql) === true;
 }
 
+function ensureRecentSearchesTable(mysqli $conn): bool
+{
+    $sql = "CREATE TABLE IF NOT EXISTS busquedas_recientes_empresa (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        id_empresa INT NOT NULL,
+        termino VARCHAR(255) NOT NULL,
+        ultima_busqueda DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        total_coincidencias INT UNSIGNED NOT NULL DEFAULT 1,
+        PRIMARY KEY (id),
+        UNIQUE KEY uniq_empresa_termino (id_empresa, termino),
+        CONSTRAINT fk_recientes_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+
+    return $conn->query($sql) === true;
+}
+
 function usuarioPerteneceAEmpresa(mysqli $conn, int $empresaId, int $usuarioId): bool
 {
     $sql = "SELECT 1
@@ -84,7 +100,7 @@ function usuarioPerteneceAEmpresa(mysqli $conn, int $empresaId, int $usuarioId):
     return false;
 }
 
-if (!ensureHistoryTable($conn)) {
+if (!ensureHistoryTable($conn) || !ensureRecentSearchesTable($conn)) {
     $conn->close();
     echo json_encode([
         'success' => false,
@@ -110,11 +126,21 @@ if ($stmt = $conn->prepare('INSERT INTO historial_busquedas (id_empresa, id_usua
     $stmt->close();
 }
 
+$sqlRecientes = 'INSERT INTO busquedas_recientes_empresa (id_empresa, termino, ultima_busqueda, total_coincidencias)
+        VALUES (?, ?, NOW(), 1)
+        ON DUPLICATE KEY UPDATE ultima_busqueda = VALUES(ultima_busqueda), total_coincidencias = total_coincidencias + 1';
+
+if ($stmt = $conn->prepare($sqlRecientes)) {
+    $stmt->bind_param('is', $idEmpresa, $termino);
+    $stmt->execute();
+    $stmt->close();
+}
+
 $historial = [];
-$sql = "SELECT termino, fecha_busqueda
-        FROM historial_busquedas
+$sql = "SELECT termino, ultima_busqueda
+        FROM busquedas_recientes_empresa
         WHERE id_empresa = ?
-        ORDER BY fecha_busqueda DESC
+        ORDER BY ultima_busqueda DESC
         LIMIT 5";
 
 if ($stmt = $conn->prepare($sql)) {
@@ -125,7 +151,7 @@ if ($stmt = $conn->prepare($sql)) {
     while ($row = $result->fetch_assoc()) {
         $historial[] = [
             'termino' => $row['termino'],
-            'fecha_busqueda' => $row['fecha_busqueda']
+            'fecha_busqueda' => $row['ultima_busqueda']
         ];
     }
 
