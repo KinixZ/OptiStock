@@ -60,9 +60,14 @@
             </article>
             <article class="search-summary-card">
                 <div class="summary-label">Atajos destacados</div>
-                <ul class="summary-links" id="quickLinks">
-                    <li class="empty-message">Cargando accesos rápidos…</li>
-                </ul>
+                <div class="summary-links">
+                    <select id="quickTagSelect" class="quick-tag-select">
+                        <option value="" selected>Selecciona un acceso rápido</option>
+                    </select>
+                    <ul class="quick-history" id="quickHistoryList">
+                        <li class="empty-message">Aún no hay búsquedas recientes.</li>
+                    </ul>
+                </div>
             </article>
         </section>
 
