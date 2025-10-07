@@ -786,14 +786,61 @@
       });
   }
 
-  function exportarExcel() {
+  function descargarBlob(blob, fileName) {
+    if (!(blob instanceof Blob)) {
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async function guardarReporteUsuarios(blob, fileName, notes) {
+    if (!(blob instanceof Blob)) {
+      return;
+    }
+    if (!window.ReportHistory || typeof window.ReportHistory.saveGeneratedFile !== 'function') {
+      return;
+    }
+    try {
+      await window.ReportHistory.saveGeneratedFile({
+        blob,
+        fileName,
+        source: 'Administración de usuarios',
+        notes
+      });
+    } catch (error) {
+      console.warn('No se pudo guardar el reporte en el historial:', error);
+    }
+  }
+
+  async function exportarExcel() {
     const tabla = document.getElementById('tablaUsuariosEmpresa');
     if (!tabla) {
       alert('❌ No se encontró la tabla de usuarios.');
       return;
     }
     const wb = XLSX.utils.table_to_book(tabla, { sheet: 'Usuarios' });
-    XLSX.writeFile(wb, 'usuarios_empresa.xlsx');
+    let wbArrayBuffer;
+    try {
+      wbArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    } catch (error) {
+      console.error('No se pudo generar el archivo de Excel:', error);
+      alert('❌ No se pudo generar el archivo de Excel.');
+      return;
+    }
+
+    const fileName = 'usuarios_empresa.xlsx';
+    const blob = new Blob([wbArrayBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    descargarBlob(blob, fileName);
+    await guardarReporteUsuarios(blob, fileName, 'Exportación de usuarios a Excel');
   }
 
   async function exportarPDF() {
@@ -823,7 +870,20 @@
       styles: { fontSize: 10 }
     });
 
-    doc.save('usuarios_empresa.pdf');
+    const fileName = 'usuarios_empresa.pdf';
+    let blob = null;
+    if (typeof doc.output === 'function') {
+      try {
+        blob = doc.output('blob');
+      } catch (error) {
+        console.warn('No se pudo obtener el Blob del PDF generado:', error);
+      }
+    }
+
+    doc.save(fileName);
+    if (blob) {
+      await guardarReporteUsuarios(blob, fileName, 'Exportación de usuarios a PDF');
+    }
   }
 
   window.exportarExcel = exportarExcel;
