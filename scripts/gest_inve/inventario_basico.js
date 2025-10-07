@@ -14,6 +14,8 @@
   const areas = [];
   const zonas = [];
   let vistaActual = 'producto';
+  let ordenCampo = 'clasico';
+  let ordenDireccion = 'asc';
   let editProdId = null;
   let editCatId = null;
   let editSubcatId = null;
@@ -1268,6 +1270,7 @@ async function fetchAPI(url, method = 'GET', data) {
     });
 
     vistaActual = seccion;
+    actualizarControlesOrden();
     renderResumen();
 
     const activeContainer = tabContainers[seccion];
@@ -1332,6 +1335,8 @@ prodCategoria?.addEventListener('change', () => {
     closeAllActionMenus();
   });
   const tablaHead = document.getElementById('tablaHead');
+  const ordenCampoSelect = document.getElementById('tablaOrdenCampo');
+  const ordenDireccionSelect = document.getElementById('tablaOrdenDireccion');
   const btnRecargarResumen = document.getElementById('btnRecargarResumen');
   const btnScanQR = document.getElementById('btnScanQR');
   const btnIngreso = document.getElementById('btnIngreso');
@@ -1365,6 +1370,45 @@ prodCategoria?.addEventListener('change', () => {
   let preferredCameraId = null;
   let fallbackCameraId = null;
   let avisoCantidadCeroMostrado = false;
+
+  function actualizarDireccionDisponibilidad() {
+    if (!ordenDireccionSelect) return;
+    const shouldDisable = vistaActual !== 'producto' || ordenCampo === 'clasico';
+    ordenDireccionSelect.disabled = shouldDisable;
+  }
+
+  function actualizarControlesOrden() {
+    if (ordenCampoSelect) {
+      ordenCampoSelect.disabled = vistaActual !== 'producto';
+      if (ordenCampoSelect.value !== ordenCampo) {
+        ordenCampoSelect.value = ordenCampo;
+      }
+    }
+    if (ordenDireccionSelect && ordenDireccionSelect.value !== ordenDireccion) {
+      ordenDireccionSelect.value = ordenDireccion;
+    }
+    actualizarDireccionDisponibilidad();
+  }
+
+  ordenCampoSelect?.addEventListener('change', event => {
+    const value = event.target.value;
+    ordenCampo = value;
+    if (ordenCampo === 'clasico') {
+      ordenDireccion = 'asc';
+      if (ordenDireccionSelect) {
+        ordenDireccionSelect.value = 'asc';
+      }
+    }
+    actualizarDireccionDisponibilidad();
+    renderResumen();
+  });
+
+  ordenDireccionSelect?.addEventListener('change', event => {
+    ordenDireccion = event.target.value;
+    renderResumen();
+  });
+
+  actualizarControlesOrden();
 
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
@@ -2122,9 +2166,53 @@ movGuardar?.addEventListener('click', async () => {
       const volumen = x * y * z;
       // Formatear con dos decimales, o vacío si falta algún dato
       p.volumen = volumen > 0 ? volumen.toFixed(2) + ' cm³' : '';
+      p.volumen_valor = volumen || 0;
+      p.precio_compra_valor = parseFloat(p.precio_compra) || 0;
+      p.stock_valor = parseFloat(p.stock) || 0;
       productos.push(p);
     });
     actualizarIndicadores();
+  }
+
+  function obtenerProductosOrdenados() {
+    if (ordenCampo === 'clasico' || vistaActual !== 'producto') {
+      return productos.slice();
+    }
+
+    const direccionFactor = ordenDireccion === 'desc' ? -1 : 1;
+    const lista = productos.slice();
+
+    lista.sort((a, b) => {
+      let resultado = 0;
+
+      if (ordenCampo === 'nombre') {
+        const nombreA = (a.nombre || '').toString();
+        const nombreB = (b.nombre || '').toString();
+        resultado = nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+      } else if (ordenCampo === 'precio') {
+        const precioA = Number.isFinite(a.precio_compra_valor) ? a.precio_compra_valor : 0;
+        const precioB = Number.isFinite(b.precio_compra_valor) ? b.precio_compra_valor : 0;
+        resultado = precioA - precioB;
+      } else if (ordenCampo === 'stock') {
+        const stockA = Number.isFinite(a.stock_valor) ? a.stock_valor : 0;
+        const stockB = Number.isFinite(b.stock_valor) ? b.stock_valor : 0;
+        resultado = stockA - stockB;
+      } else if (ordenCampo === 'volumen') {
+        const volA = Number.isFinite(a.volumen_valor) ? a.volumen_valor : 0;
+        const volB = Number.isFinite(b.volumen_valor) ? b.volumen_valor : 0;
+        resultado = volA - volB;
+      }
+
+      if (resultado === 0 && ordenCampo !== 'nombre') {
+        const nombreA = (a.nombre || '').toString();
+        const nombreB = (b.nombre || '').toString();
+        resultado = nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+      }
+
+      return resultado * direccionFactor;
+    });
+
+    return lista;
   }
 
   function renderResumen() {
@@ -2154,82 +2242,84 @@ movGuardar?.addEventListener('click', async () => {
       }
     }
 
-if (vistaActual === 'producto') {
-  tablaHead.innerHTML = `
-    <tr>
-      <th>Imagen</th>
-      <th>Nombre</th>
-      <th>Área</th>
-      <th>Zona</th>
-      <th>Descripción</th>
-      <th>Categoría</th>
-      <th>Subcategoría</th>
-      <th>Volumen (cm³)</th>
-      <th>Stock</th>
-      <th>Precio compra</th>
-      <th>Acciones</th>
-    </tr>`;
+    if (vistaActual === 'producto') {
+      tablaHead.innerHTML = `
+        <tr>
+          <th>Imagen</th>
+          <th>Nombre</th>
+          <th>Área</th>
+          <th>Zona</th>
+          <th>Descripción</th>
+          <th>Categoría</th>
+          <th>Subcategoría</th>
+          <th>Volumen (cm³)</th>
+          <th>Stock</th>
+          <th>Precio compra</th>
+          <th>Acciones</th>
+        </tr>`;
 
-  productos.forEach(p => {
-const cat = p.categoria_nombre   || '';
-const sub = p.subcategoria_nombre || '';
-    const zona= p.zona_nombre || '';
-    const area= p.area_nombre || '';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail">` : ''}</td>
-      <td>${p.nombre}</td>
-      <td>${area}</td>
-      <td>${zona}</td>
-      <td>${p.descripcion}</td>
-      <td>${cat}</td>
-      <td>${sub}</td>
-      <td>${p.volumen}</td>
-      <td>${p.stock}</td>
-      <td>${p.precio_compra}</td>
-      <td>
-        <div class="table-action-menu">
-          <button
-            type="button"
-            class="table-action-menu__toggle"
-            aria-expanded="false"
-            aria-haspopup="true"
-            aria-label="Abrir acciones del producto"
-          >
-            &#8942;
-          </button>
-          <div class="table-action-menu__dropdown" role="menu">
-            <button
-              type="button"
-              class="table-action-menu__item btn btn-sm btn-secondary"
-              data-accion="qr"
-              data-tipo="producto"
-              data-id="${p.id}"
-              role="menuitem"
-            >QR</button>
-            <button
-              type="button"
-              class="table-action-menu__item btn btn-sm btn-primary"
-              data-accion="edit"
-              data-tipo="producto"
-              data-id="${p.id}"
-              role="menuitem"
-            >Editar</button>
-            <button
-              type="button"
-              class="table-action-menu__item btn btn-sm btn-danger"
-              data-accion="del"
-              data-tipo="producto"
-              data-id="${p.id}"
-              role="menuitem"
-            >Eliminar</button>
-          </div>
-        </div>
-      </td>
-    `;
-    tablaResumen.appendChild(tr);
-  });
-} else if (vistaActual === 'categoria') {
+      const productosOrdenados = obtenerProductosOrdenados();
+
+      productosOrdenados.forEach(p => {
+        const cat = p.categoria_nombre || '';
+        const sub = p.subcategoria_nombre || '';
+        const zona = p.zona_nombre || '';
+        const area = p.area_nombre || '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail">` : ''}</td>
+          <td>${p.nombre}</td>
+          <td>${area}</td>
+          <td>${zona}</td>
+          <td>${p.descripcion}</td>
+          <td>${cat}</td>
+          <td>${sub}</td>
+          <td>${p.volumen}</td>
+          <td>${p.stock}</td>
+          <td>${p.precio_compra}</td>
+          <td>
+            <div class="table-action-menu">
+              <button
+                type="button"
+                class="table-action-menu__toggle"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-label="Abrir acciones del producto"
+              >
+                &#8942;
+              </button>
+              <div class="table-action-menu__dropdown" role="menu">
+                <button
+                  type="button"
+                  class="table-action-menu__item btn btn-sm btn-secondary"
+                  data-accion="qr"
+                  data-tipo="producto"
+                  data-id="${p.id}"
+                  role="menuitem"
+                >QR</button>
+                <button
+                  type="button"
+                  class="table-action-menu__item btn btn-sm btn-primary"
+                  data-accion="edit"
+                  data-tipo="producto"
+                  data-id="${p.id}"
+                  role="menuitem"
+                >Editar</button>
+                <button
+                  type="button"
+                  class="table-action-menu__item btn btn-sm btn-danger"
+                  data-accion="del"
+                  data-tipo="producto"
+                  data-id="${p.id}"
+                  role="menuitem"
+                >Eliminar</button>
+              </div>
+            </div>
+          </td>
+        `;
+        tablaResumen.appendChild(tr);
+      });
+    } else if (vistaActual === 'categoria') {
       tablaHead.innerHTML = `
         <tr>
           <th>Nombre</th>
@@ -2790,6 +2880,7 @@ if (editProdId) {
     await cargarAreas();
     await cargarZonas();
     await cargarProductos();
+    actualizarControlesOrden();
     renderResumen();
   })();
 })();

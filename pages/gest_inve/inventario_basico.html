@@ -74,6 +74,25 @@
             <h2 class="table-title">Resumen del inventario</h2>
             <span class="table-subtitle" id="tablaResumenDescripcion">Selecciona una vista para consultar los registros disponibles.</span>
           </div>
+          <div class="table-controls" aria-label="Ordenar productos">
+            <div class="table-controls__group">
+              <label class="table-controls__label" for="tablaOrdenCampo">Ordenar por</label>
+              <select id="tablaOrdenCampo" class="table-controls__select">
+                <option value="clasico" selected>Clásico</option>
+                <option value="nombre">Nombre</option>
+                <option value="precio">Precio de compra</option>
+                <option value="stock">Nivel de stock</option>
+                <option value="volumen">Volumen total</option>
+              </select>
+            </div>
+            <div class="table-controls__group">
+              <label class="table-controls__label" for="tablaOrdenDireccion">Dirección</label>
+              <select id="tablaOrdenDireccion" class="table-controls__select">
+                <option value="asc" selected>Ascendente</option>
+                <option value="desc">Descendente</option>
+              </select>
+            </div>
+          </div>
           <div class="summary-actions">
             <button id="btnIngreso" class="btn-icon btn-icon--success" type="button" title="Registrar ingreso">
               <span class="btn-icon__circle" aria-hidden="true">

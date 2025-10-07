@@ -689,6 +689,45 @@ img {
   gap: 1rem;
 }
 
+.table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.table-controls__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 160px;
+}
+
+.table-controls__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-color);
+}
+
+.table-controls__select {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 0.45rem 0.65rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  min-height: 2.25rem;
+}
+
+.table-controls__select:disabled {
+  background: var(--surface-muted);
+  color: var(--muted-color);
+  cursor: not-allowed;
+}
+
 .table-title {
   margin: 0;
   font-size: clamp(1.2rem, 3vw, 1.6rem);
