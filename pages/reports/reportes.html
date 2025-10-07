@@ -17,7 +17,7 @@
   <div class="reports-page container-fluid py-4 px-3 px-md-4">
     <section class="page-header">
       <span class="header-eyebrow">Reportes</span>
-      <h1 class="header-title">Historial centralizado de reportes</h1>
+      <h1 class="header-title">Reportes</h1>
       <p class="header-description">
         Cada PDF o Excel generado desde OptiStock queda almacenado durante dos meses para que puedas volver a descargarlo cuando
         lo necesites. También puedes subir archivos externos para mantener todo tu historial en un solo lugar.
@@ -44,7 +44,7 @@
     <section class="reports-shell">
       <div class="shell-header">
         <div class="shell-header__info">
-          <span class="shell-eyebrow">Historial vivo</span>
+          <span class="shell-eyebrow">Historial</span>
           <h2 class="shell-title">Consulta, filtra y descarga reportes sin salir de la página.</h2>
           <p class="shell-subtitle">
             Almacenar los reportes evita que tengas que repetir procesos de exportación. Cada archivo guarda su origen para que
@@ -99,38 +99,6 @@
         </div>
       </div>
 
-      <div class="upload-card">
-        <h3 class="upload-title">Sube reportes manualmente</h3>
-        <p class="upload-description">
-          Si exportaste un documento fuera del sistema, súbelo aquí para conservarlo junto con el resto de tus reportes.
-        </p>
-        <form id="manualUploadForm" novalidate>
-          <div class="upload-grid">
-            <label class="upload-field">
-              <span class="upload-label">Archivo PDF o Excel</span>
-              <input
-                id="uploadFileInput"
-                class="upload-file"
-                type="file"
-                accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx,application/vnd.ms-excel,.xls,.csv"
-                required
-              />
-            </label>
-            <label class="upload-field">
-              <span class="upload-label">Origen (opcional)</span>
-              <input id="uploadSourceInput" class="upload-input" type="text" maxlength="120" placeholder="Ej. Inventario" />
-            </label>
-          </div>
-          <label class="upload-field">
-            <span class="upload-label">Notas</span>
-            <textarea id="uploadNotesInput" class="upload-textarea" rows="3" maxlength="240" placeholder="Descripción breve"></textarea>
-          </label>
-          <div class="upload-actions">
-            <button id="uploadSubmitBtn" type="submit">Guardar en historial</button>
-            <span class="upload-hint" id="uploadHint">Los reportes se eliminan automáticamente a los 60 días.</span>
-          </div>
-        </form>
-      </div>
     </section>
   </div>
 
