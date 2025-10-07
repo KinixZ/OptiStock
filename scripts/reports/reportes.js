@@ -1,5 +1,7 @@
 (function () {
-  const reportHistory = window.ReportHistory;
+  const HISTORY_API_URL = '../../scripts/php/report_history.php';
+  const RETENTION_DAYS_FALLBACK = 60;
+
   const elements = {
     summaryTotal: document.getElementById('summaryTotal'),
     summaryMonth: document.getElementById('summaryMonth'),
@@ -25,17 +27,32 @@
   const state = {
     reports: [],
     filteredReports: [],
-    retentionDays: (reportHistory && reportHistory.RETENTION_DAYS_FALLBACK) || 60,
+    retentionDays: RETENTION_DAYS_FALLBACK,
     loading: false,
     alertTimerId: null
   };
 
-  if (!reportHistory) {
-    if (elements.historyAlert) {
-      elements.historyAlert.textContent = 'El módulo de historial de reportes no está disponible en esta instalación.';
-      elements.historyAlert.classList.remove('d-none');
+  function setHistoryUnavailableState(message) {
+    if (elements.historyLoading) {
+      elements.historyLoading.classList.add('d-none');
     }
-    return;
+    if (elements.historyTableWrapper) {
+      elements.historyTableWrapper.classList.add('d-none');
+    }
+    if (elements.historyEmpty) {
+      elements.historyEmpty.classList.remove('d-none');
+      elements.historyEmpty.innerHTML = `<p class="mb-1 fw-semibold">No se pudo conectar con el historial.</p><p class="mb-0">${escapeHtml(
+        message
+      )}</p>`;
+    }
+    if (elements.historyCaption) {
+      elements.historyCaption.textContent = 'El historial no está disponible.';
+    }
+    if (elements.historyAlert) {
+      elements.historyAlert.textContent = message;
+      elements.historyAlert.classList.remove('d-none', 'alert-danger', 'alert-success', 'alert-warning', 'alert-info');
+      elements.historyAlert.classList.add('alert-danger');
+    }
   }
 
   const BYTES_UNITS = ['B', 'KB', 'MB', 'GB'];
@@ -52,6 +69,115 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function getActiveEmpresaId() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = window.localStorage.getItem('id_empresa');
+        const parsed = stored ? parseInt(stored, 10) : NaN;
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn('No se pudo leer el ID de empresa desde localStorage:', error);
+    }
+
+    return null;
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        const commaIndex = result.indexOf(',');
+        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+      };
+      reader.onerror = () => {
+        reject(new Error('No se pudo leer el archivo para guardarlo.'));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function fetchHistoryFromServer() {
+    const empresaId = getActiveEmpresaId();
+    if (!empresaId) {
+      throw new Error('No se encontró una empresa activa para consultar el historial.');
+    }
+
+    const params = new URLSearchParams({ empresa: String(empresaId) });
+    const response = await fetch(`${HISTORY_API_URL}?${params.toString()}`, { method: 'GET' });
+    const data = await response.json().catch(() => ({ success: false }));
+
+    if (!response.ok || !data.success) {
+      const message = (data && data.message) || 'No se pudo consultar el historial de reportes.';
+      throw new Error(message);
+    }
+
+    if (typeof data.retentionDays !== 'number') {
+      data.retentionDays = RETENTION_DAYS_FALLBACK;
+    }
+
+    return data;
+  }
+
+  async function uploadFileToServer(file, metadata = {}) {
+    if (!(file instanceof Blob)) {
+      throw new Error('El archivo proporcionado no es válido.');
+    }
+
+    const empresaId = getActiveEmpresaId();
+    if (!empresaId) {
+      throw new Error('No se encontró una empresa activa para asociar el reporte.');
+    }
+
+    const payload = {
+      fileName: typeof file.name === 'string' ? file.name : `reporte-${Date.now()}`,
+      mimeType: file.type || 'application/octet-stream',
+      fileContent: await readFileAsBase64(file),
+      source: metadata.source || '',
+      notes: metadata.notes || '',
+      empresaId
+    };
+
+    const response = await fetch(HISTORY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({ success: false }));
+    if (!response.ok || !data.success) {
+      const message = (data && data.message) || 'No se pudo guardar el reporte en el historial.';
+      throw new Error(message);
+    }
+  }
+
+  function downloadReportFromServer(reportId) {
+    if (!reportId) {
+      return;
+    }
+
+    const empresaId = getActiveEmpresaId();
+    if (!empresaId) {
+      showAlert('No se encontró una empresa activa para descargar el reporte.', 'warning');
+      return;
+    }
+
+    const url = new URL(HISTORY_API_URL, window.location.origin);
+    url.searchParams.set('action', 'download');
+    url.searchParams.set('id', reportId);
+    url.searchParams.set('empresa', String(empresaId));
+
+    const link = document.createElement('a');
+    link.href = url.toString();
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function formatBytes(bytes) {
@@ -314,7 +440,7 @@
     hideAlert();
 
     try {
-      const response = await reportHistory.fetchReportHistory();
+      const response = await fetchHistoryFromServer();
       state.reports = Array.isArray(response.reports) ? response.reports : [];
       state.retentionDays = typeof response.retentionDays === 'number' ? response.retentionDays : state.retentionDays;
       updateSummary();
@@ -348,7 +474,7 @@
     elements.uploadSubmitBtn.textContent = 'Guardando...';
 
     try {
-      await reportHistory.uploadFile(file, {
+      await uploadFileToServer(file, {
         source: elements.uploadSourceInput ? elements.uploadSourceInput.value : '',
         notes: elements.uploadNotesInput ? elements.uploadNotesInput.value : ''
       });
@@ -376,12 +502,16 @@
       return;
     }
     const reportId = button.getAttribute('data-download-id');
-    if (reportId) {
-      reportHistory.downloadReport(reportId);
-    }
+    downloadReportFromServer(reportId);
   }
 
-  function init() {
+  function bootstrap() {
+    const empresaId = getActiveEmpresaId();
+    if (!empresaId) {
+      setHistoryUnavailableState('Inicia sesión o selecciona una empresa para ver el historial.');
+      return;
+    }
+
     if (elements.searchInput) {
       elements.searchInput.addEventListener('input', () => applyFilters());
     }
@@ -401,5 +531,5 @@
     loadHistory();
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', bootstrap);
 })();
