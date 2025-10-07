@@ -16,6 +16,55 @@
     let empresaIdCache = null;
     let layoutListenersBound = false;
 
+    const DEFAULT_QUICK_TAGS = [
+        {
+            label: 'Ver todo',
+            query: 'ver todo',
+            description: 'Muestra todos los registros disponibles en el buscador.'
+        },
+        {
+            label: 'Productos',
+            query: 'productos',
+            description: 'Ir directo al inventario general de artículos.'
+        },
+        {
+            label: 'Movimientos',
+            query: 'movimientos',
+            description: 'Consultar entradas, salidas y ajustes recientes.'
+        },
+        {
+            label: 'Usuarios',
+            query: 'usuarios',
+            description: 'Administrar integrantes del equipo y sus roles.'
+        },
+        {
+            label: 'Áreas',
+            query: 'areas',
+            description: 'Ver la organización por áreas del almacén.'
+        },
+        {
+            label: 'Zonas',
+            query: 'zonas',
+            description: 'Accede a las zonas y ubicaciones específicas.'
+        }
+    ];
+
+    const SHOW_ALL_QUERIES = new Set([
+        '*',
+        'todo',
+        'todos',
+        'ver todo',
+        'mostrar todo',
+        'todo el inventario',
+        'todos los registros',
+        'inventario completo',
+        'buscar todo',
+        'todo inventario',
+        'inventario total',
+        'inventario general',
+        'ver inventario'
+    ]);
+
     const menuToggleListener = () => {
         if (!menuToggle || !sidebar || !body) return;
         if (window.innerWidth <= 992) {
@@ -45,12 +94,14 @@
         const button = event.target.closest('button[data-query]');
         if (!button) return;
         const query = button.getAttribute('data-query') || '';
+        const fillValue = button.getAttribute('data-fill') || query;
         cancelarAutoGuardado();
         if (searchInput) {
-            searchInput.value = query;
+            searchInput.value = fillValue;
+            searchInput.focus();
         }
-        renderResultados(query);
-        registrarBusqueda(query, { force: true });
+        renderResultados(fillValue);
+        registrarBusqueda(fillValue, { force: true });
     };
 
     const searchInputListener = event => {
@@ -299,40 +350,77 @@
         `;
     }
 
-    function renderHistorialBusquedas(historial) {
+    function renderQuickLinks(historial) {
         if (!quickLinks) return;
 
         quickLinks.innerHTML = '';
 
-        if (!Array.isArray(historial) || historial.length === 0) {
-            const emptyItem = document.createElement('li');
-            emptyItem.className = 'empty-message';
-            emptyItem.textContent = 'Aún no hay búsquedas recientes.';
-            quickLinks.appendChild(emptyItem);
-            return;
-        }
+        const fragment = document.createDocumentFragment();
 
-        historial.forEach(entry => {
-            const termino = (entry && entry.termino ? entry.termino : '').toString().trim();
-            if (!termino) {
+        DEFAULT_QUICK_TAGS.forEach(tag => {
+            if (!tag || !tag.query) {
                 return;
             }
 
             const listItem = document.createElement('li');
+            listItem.className = 'quick-tag';
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.query = tag.query;
+            button.dataset.fill = tag.fill || tag.query;
+            button.textContent = tag.label || tag.query;
+            if (tag.description) {
+                button.title = tag.description;
+            }
+
+            listItem.appendChild(button);
+            fragment.appendChild(listItem);
+        });
+
+        const historialNormalizado = Array.isArray(historial)
+            ? historial
+                .map(entry => (entry && entry.termino ? entry.termino : '').toString().trim())
+                .filter(termino => termino.length > 0)
+            : [];
+
+        const historialUnico = Array.from(new Set(historialNormalizado))
+            .filter(termino => termino.length > 0)
+            .filter(termino => {
+                const normalizedTerm = termino.toLowerCase();
+                return !DEFAULT_QUICK_TAGS.some(tag => {
+                    const query = (tag.query || '').toLowerCase();
+                    const label = (tag.label || '').toLowerCase();
+                    const fill = (tag.fill || '').toLowerCase();
+                    return normalizedTerm === query || normalizedTerm === label || normalizedTerm === fill;
+                });
+            })
+            .slice(0, 6);
+
+        historialUnico.forEach(termino => {
+            const listItem = document.createElement('li');
+            listItem.className = 'history-tag';
+
             const button = document.createElement('button');
             button.type = 'button';
             button.dataset.query = termino;
+            button.dataset.fill = termino;
             button.textContent = termino;
+            button.title = 'Repetir búsqueda reciente';
+
             listItem.appendChild(button);
-            quickLinks.appendChild(listItem);
+            fragment.appendChild(listItem);
         });
 
-        if (!quickLinks.children.length) {
+        if (!fragment.childNodes.length) {
             const emptyItem = document.createElement('li');
             emptyItem.className = 'empty-message';
-            emptyItem.textContent = 'Aún no hay búsquedas recientes.';
+            emptyItem.textContent = 'Aún no hay accesos rápidos disponibles.';
             quickLinks.appendChild(emptyItem);
+            return;
         }
+
+        quickLinks.appendChild(fragment);
     }
 
     async function cargarHistorialBusquedas(idEmpresa) {
@@ -342,7 +430,7 @@
 
         const empresaId = Number(idEmpresa);
         if (!empresaId) {
-            renderHistorialBusquedas([]);
+            renderQuickLinks([]);
             return;
         }
 
@@ -358,13 +446,13 @@
             const data = await response.json();
 
             if (data.success && Array.isArray(data.historial)) {
-                renderHistorialBusquedas(data.historial);
+                renderQuickLinks(data.historial);
             } else {
-                renderHistorialBusquedas([]);
+                renderQuickLinks([]);
             }
         } catch (error) {
             console.warn('No se pudo cargar el historial de búsquedas:', error);
-            renderHistorialBusquedas([]);
+            renderQuickLinks([]);
         }
     }
 
@@ -497,7 +585,7 @@
             const data = await response.json();
 
             if (data.success && Array.isArray(data.historial)) {
-                renderHistorialBusquedas(data.historial);
+                renderQuickLinks(data.historial);
             } else if (data.success) {
                 cargarHistorialBusquedas(empresaIdNumero);
             }
@@ -561,6 +649,58 @@
             .replace(/[\u0300-\u036f]/g, '');
     }
 
+    function esConsultaVerTodo(terminoNormalizado) {
+        if (!terminoNormalizado) return false;
+        const compacto = terminoNormalizado.replace(/\s+/g, ' ').trim();
+        if (!compacto) return false;
+        return SHOW_ALL_QUERIES.has(compacto);
+    }
+
+    function construirHaystack(item) {
+        const partes = [
+            item && item.titulo ? item.titulo : '',
+            item && item.descripcion ? item.descripcion : '',
+            item && item.categoria ? item.categoria : '',
+            item && item.accion ? item.accion : '',
+            item && item.url ? item.url : '',
+            item && item.keywords ? item.keywords : ''
+        ];
+
+        return partes
+            .map(parte => normalizarTexto((parte || '').toString()))
+            .filter(parte => parte.length > 0)
+            .join(' ');
+    }
+
+    function obtenerHaystack(item) {
+        if (!item) return '';
+        if (typeof item.__haystack === 'string') {
+            return item.__haystack;
+        }
+        const haystack = construirHaystack(item);
+        Object.defineProperty(item, '__haystack', {
+            value: haystack,
+            writable: false,
+            configurable: true,
+            enumerable: false
+        });
+        return haystack;
+    }
+
+    function prepararDatasetParaBusqueda() {
+        if (!Array.isArray(searchDataset)) {
+            searchDataset = [];
+            return;
+        }
+
+        searchDataset = searchDataset.map(item => {
+            if (item && typeof item === 'object' && !item.__haystack) {
+                return { ...item, __haystack: construirHaystack(item) };
+            }
+            return item;
+        });
+    }
+
     function filtrarResultados(termino) {
         const terminoNormalizado = normalizarTexto((termino || '').trim());
 
@@ -568,15 +708,25 @@
             return searchDataset;
         }
 
+        if (esConsultaVerTodo(terminoNormalizado)) {
+            return searchDataset;
+        }
+
+        const tokens = terminoNormalizado
+            .split(/\s+/)
+            .map(token => token.trim())
+            .filter(token => token.length > 0);
+
+        if (!tokens.length) {
+            return searchDataset;
+        }
+
         return searchDataset.filter(item => {
-            const titulo = normalizarTexto(item.titulo || '');
-            const descripcion = normalizarTexto(item.descripcion || '');
-            const categoria = normalizarTexto(item.categoria || '');
-            return (
-                titulo.includes(terminoNormalizado) ||
-                descripcion.includes(terminoNormalizado) ||
-                categoria.includes(terminoNormalizado)
-            );
+            const haystack = obtenerHaystack(item);
+            if (!haystack) {
+                return false;
+            }
+            return tokens.every(token => haystack.includes(token));
         });
     }
 
@@ -679,7 +829,7 @@
         }
 
         if (!consultaRecortada) {
-            mostrarPlaceholder('Comienza a escribir para ver resultados', 'Puedes buscar productos, movimientos, áreas o usuarios de tu equipo.');
+            mostrarPlaceholder('Comienza a escribir para ver resultados', 'Puedes buscar productos, movimientos, áreas o usuarios del equipo, o usa los atajos de etiquetas.');
             return;
         }
 
@@ -759,6 +909,7 @@
             }
 
             searchDataset = Array.isArray(data.results) ? data.results : [];
+            prepararDatasetParaBusqueda();
             datasetReady = true;
             datasetError = null;
 
@@ -858,7 +1009,7 @@
             body.classList.add('search-page-body');
         }
 
-        renderHistorialBusquedas([]);
+        renderQuickLinks([]);
         attachLayoutListeners();
         attachSearchListeners();
 

@@ -70,6 +70,51 @@ function sanitizeText(?string $value): string {
     return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function rawText($value): string {
+    if ($value === null) {
+        return '';
+    }
+
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+
+    if (is_numeric($value)) {
+        return (string) $value;
+    }
+
+    return trim(strip_tags((string) $value));
+}
+
+function collectKeywords(array $values): string {
+    $keywords = [];
+
+    foreach ($values as $value) {
+        if (is_array($value)) {
+            foreach ($value as $nested) {
+                $text = rawText($nested);
+                if ($text !== '') {
+                    $keywords[] = $text;
+                }
+            }
+            continue;
+        }
+
+        $text = rawText($value);
+        if ($text !== '') {
+            $keywords[] = $text;
+        }
+    }
+
+    if (!$keywords) {
+        return '';
+    }
+
+    $keywords = array_unique($keywords);
+
+    return implode(' ', $keywords);
+}
+
 function formatDateTime(?string $value): string {
     if (!$value) {
         return '';
@@ -125,7 +170,17 @@ if ($productosStmt = $conn->prepare($productosSql)) {
             'titulo' => sanitizeText($row['nombre']),
             'descripcion' => $descripcion,
             'accion' => 'Ver en inventario',
-            'url' => '../gest_inve/inventario_basico.html'
+            'url' => '../gest_inve/inventario_basico.html',
+            'keywords' => collectKeywords([
+                'producto',
+                'inventario',
+                'stock',
+                $row['nombre'] ?? '',
+                $row['descripcion'] ?? '',
+                $row['zona_nombre'] ?? '',
+                $row['last_tipo'] ?? '',
+                $row['last_movimiento'] ? formatDateTime($row['last_movimiento']) : ''
+            ])
         ];
     }
 
@@ -173,7 +228,15 @@ if ($movimientosStmt = $conn->prepare($movimientosSql)) {
             'titulo' => sanitizeText($titulo),
             'descripcion' => implode(' · ', array_filter($descripcionPartes)),
             'accion' => 'Revisar movimiento',
-            'url' => '../control_log/log.html'
+            'url' => '../control_log/log.html',
+            'keywords' => collectKeywords([
+                'movimiento',
+                'kardex',
+                $row['tipo'] ?? '',
+                $row['producto_nombre'] ?? '',
+                'cantidad ' . (int) $row['cantidad'],
+                $row['fecha_movimiento'] ? formatDateTime($row['fecha_movimiento']) : ''
+            ])
         ];
     }
 
@@ -207,7 +270,13 @@ if ($usuariosStmt = $conn->prepare($usuariosSql)) {
             'titulo' => sanitizeText($nombreCompleto ?: 'Usuario sin nombre'),
             'descripcion' => implode(' · ', $descripcionPartes),
             'accion' => 'Gestionar usuario',
-            'url' => '../admin_usuar/administracion_usuarios.html'
+            'url' => '../admin_usuar/administracion_usuarios.html',
+            'keywords' => collectKeywords([
+                'usuario',
+                $nombreCompleto,
+                $row['rol'] ?? '',
+                $row['correo'] ?? ''
+            ])
         ];
     }
 
@@ -238,7 +307,14 @@ if ($areasStmt = $conn->prepare($areasSql)) {
             'titulo' => sanitizeText($row['nombre']),
             'descripcion' => implode(' · ', array_filter($descripcionPartes)),
             'accion' => 'Gestionar áreas',
-            'url' => '../area_almac_v2/gestion_areas_zonas.html'
+            'url' => '../area_almac_v2/gestion_areas_zonas.html',
+            'keywords' => collectKeywords([
+                'area',
+                'almacen',
+                $row['nombre'] ?? '',
+                $row['descripcion'] ?? '',
+                $row['volumen'] ?? ''
+            ])
         ];
     }
 
@@ -272,7 +348,14 @@ if ($zonasStmt = $conn->prepare($zonasSql)) {
             'titulo' => sanitizeText($row['nombre']),
             'descripcion' => implode(' · ', array_filter($descripcionPartes)),
             'accion' => 'Gestionar zonas',
-            'url' => '../area_almac_v2/gestion_areas_zonas.html'
+            'url' => '../area_almac_v2/gestion_areas_zonas.html',
+            'keywords' => collectKeywords([
+                'zona',
+                'almacen',
+                $row['nombre'] ?? '',
+                $row['descripcion'] ?? '',
+                $row['tipo_almacenamiento'] ?? ''
+            ])
         ];
     }
 
