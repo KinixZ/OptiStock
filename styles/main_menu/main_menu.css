@@ -276,6 +276,30 @@ img {
 }
 
 .summary-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.quick-tag-select {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(15, 180, 212, 0.25);
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quick-tag-select:focus {
+    border-color: rgba(15, 180, 212, 0.55);
+    box-shadow: 0 0 0 3px rgba(15, 180, 212, 0.2);
+    outline: none;
+}
+
+.quick-history {
     list-style: none;
     display: flex;
     flex-wrap: wrap;
@@ -298,7 +322,7 @@ img {
     font-weight: 500;
 }
 
-.summary-links button {
+.quick-history button {
     border: 1px solid rgba(15, 180, 212, 0.25);
     border-radius: var(--radius-pill);
     padding: 0.6rem 1.3rem;
@@ -309,7 +333,7 @@ img {
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
-.summary-links button:hover {
+.quick-history button:hover {
     background: rgba(15, 180, 212, 0.18);
     border-color: rgba(15, 180, 212, 0.45);
     transform: translateY(-2px);

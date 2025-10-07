@@ -5,7 +5,8 @@
     let searchInput;
     let searchResultsContainer;
     let resultsCount;
-    let quickLinks;
+    let quickTagSelect;
+    let quickHistoryList;
     let summaryDescription;
 
     const DUPLICATE_SAVE_INTERVAL_MS = 60000;
@@ -90,7 +91,7 @@
         }
     };
 
-    const quickLinksClickListener = event => {
+    const quickHistoryClickListener = event => {
         const button = event.target.closest('button[data-query]');
         if (!button) return;
         const query = button.getAttribute('data-query') || '';
@@ -108,6 +109,31 @@
         const value = event.target.value;
         renderResultados(value);
         programarAutoGuardado(value);
+    };
+
+    const quickTagSelectListener = event => {
+        const select = event.currentTarget;
+        if (!select) return;
+        const selectedOption = select.selectedOptions && select.selectedOptions[0];
+        if (!selectedOption || !selectedOption.value) {
+            return;
+        }
+
+        const fillValue = selectedOption.dataset.fill || selectedOption.value;
+        cancelarAutoGuardado();
+        if (searchInput) {
+            searchInput.value = fillValue;
+            searchInput.focus();
+        }
+        renderResultados(fillValue);
+        registrarBusqueda(fillValue, { force: true });
+
+        if (select.options.length > 0) {
+            select.value = '';
+            if (select.selectedIndex !== 0) {
+                select.selectedIndex = 0;
+            }
+        }
     };
 
     const searchInputKeyListener = event => {
@@ -151,7 +177,8 @@
         searchInput = document.getElementById('globalSearchInput');
         searchResultsContainer = document.getElementById('searchResults');
         resultsCount = document.getElementById('resultsCount');
-        quickLinks = document.getElementById('quickLinks');
+        quickTagSelect = document.getElementById('quickTagSelect');
+        quickHistoryList = document.getElementById('quickHistoryList');
         summaryDescription = document.querySelector('.summary-description');
     }
 
@@ -204,9 +231,14 @@
     }
 
     function attachSearchListeners() {
-        if (quickLinks && !quickLinks.dataset.globalSearchBound) {
-            quickLinks.addEventListener('click', quickLinksClickListener);
-            quickLinks.dataset.globalSearchBound = 'true';
+        if (quickHistoryList && !quickHistoryList.dataset.globalSearchBound) {
+            quickHistoryList.addEventListener('click', quickHistoryClickListener);
+            quickHistoryList.dataset.globalSearchBound = 'true';
+        }
+
+        if (quickTagSelect && !quickTagSelect.dataset.globalSearchBound) {
+            quickTagSelect.addEventListener('change', quickTagSelectListener);
+            quickTagSelect.dataset.globalSearchBound = 'true';
         }
 
         if (searchInput) {
@@ -353,7 +385,11 @@
     function renderQuickLinks(historial) {
         if (!quickLinks) return;
 
-        quickLinks.innerHTML = '';
+        const historialNormalizado = Array.isArray(historial)
+            ? historial
+                .map(entry => (entry && entry.termino ? entry.termino : '').toString().trim())
+                .filter(termino => termino.length > 0)
+            : [];
 
         const fragment = document.createDocumentFragment();
 
@@ -424,7 +460,7 @@
     }
 
     async function cargarHistorialBusquedas(idEmpresa) {
-        if (!quickLinks) {
+        if (!quickHistoryList) {
             return;
         }
 
@@ -1004,6 +1040,8 @@
     function initializeGlobalSearchPage(initialQueryOverride = null) {
         cacheDomElements();
         empresaIdCache = null;
+
+        populateQuickTagSelect(quickTagSelect);
 
         if (body) {
             body.classList.add('search-page-body');
