@@ -24,6 +24,12 @@ const areaFilterSelect = document.getElementById('areaFilter');
 const zonaFilterSelect = document.getElementById('zonaFilter');
 const areasInventoryBody = document.getElementById('areasInventoryBody');
 const zonasInventoryBody = document.getElementById('zonasInventoryBody');
+const exportAreasPdfBtn = document.getElementById('exportAreasPdf');
+const exportAreasExcelBtn = document.getElementById('exportAreasExcel');
+const exportZonasPdfBtn = document.getElementById('exportZonasPdf');
+const exportZonasExcelBtn = document.getElementById('exportZonasExcel');
+const tablaAreasRegistradas = document.getElementById('tablaAreasRegistradas');
+const tablaZonasRegistradas = document.getElementById('tablaZonasRegistradas');
 const reasignacionOverlay = document.getElementById('reasignacionOverlay');
 const reasignacionMensaje = document.getElementById('reasignacionMensaje');
 const reasignacionSelect = document.getElementById('reasignacionSelect');
@@ -98,6 +104,117 @@ function formatearProductosActivos(total) {
 function obtenerNombreArea(areaId) {
   const area = datosActuales.areas.find(a => `${a.id}` === `${areaId}`);
   return area ? area.nombre : 'Sin área asignada';
+}
+
+function construirSubtituloExport(dataset, countLabel) {
+  const exporter = window.ReportExporter || null;
+  const empresaNombre = exporter?.getEmpresaNombre
+    ? exporter.getEmpresaNombre()
+    : 'OptiStock';
+  const timestamp = exporter?.formatTimestamp
+    ? exporter.formatTimestamp()
+    : new Date().toLocaleString();
+
+  let conteo = '';
+  if (typeof countLabel === 'function') {
+    conteo = countLabel(dataset.rowCount);
+  } else if (exporter?.pluralize) {
+    conteo = exporter.pluralize(dataset.rowCount, 'registro');
+  } else {
+    conteo = `${dataset.rowCount} registros`;
+  }
+
+  return [
+    `Empresa: ${empresaNombre}`,
+    conteo,
+    `Generado: ${timestamp}`
+  ].filter(Boolean).join(' · ');
+}
+
+async function guardarReporteAlmacen(blob, fileName, notes) {
+  if (!(blob instanceof Blob)) {
+    return;
+  }
+  if (!window.ReportHistory || typeof window.ReportHistory.saveGeneratedFile !== 'function') {
+    return;
+  }
+
+  try {
+    await window.ReportHistory.saveGeneratedFile({
+      blob,
+      fileName,
+      source: 'Áreas y zonas de almacén',
+      notes
+    });
+  } catch (error) {
+    console.warn('No se pudo guardar el reporte en el historial:', error);
+  }
+}
+
+async function exportarInventarioAlmacen({ formato, tabla, meta = {} }) {
+  const exporter = window.ReportExporter;
+  if (!exporter) {
+    mostrarError('No se pudo cargar el módulo de exportación. Recarga la página e inténtalo nuevamente.');
+    return;
+  }
+  if (!(tabla instanceof HTMLTableElement)) {
+    mostrarError('No se encontró la tabla para exportar.');
+    return;
+  }
+
+  const dataset = exporter.extractTableData(tabla);
+  if (!dataset || !dataset.rowCount) {
+    mostrarError('No hay registros disponibles para exportar.');
+    return;
+  }
+
+  const subtitle = construirSubtituloExport(dataset, meta.countLabel);
+  const historyLabel = meta.historyLabel || meta.title || 'reporte';
+  const notes = {
+    pdf: meta.notes?.pdf || `Exportación de ${historyLabel} a PDF`,
+    excel: meta.notes?.excel || `Exportación de ${historyLabel} a Excel`
+  };
+
+  try {
+    if (formato === 'pdf') {
+      const result = exporter.exportTableToPdf({
+        table: tabla,
+        data: dataset,
+        title: meta.title || 'Reporte',
+        subtitle,
+        fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
+        orientation: meta.orientation || 'landscape'
+      });
+      if (result?.blob) {
+        await guardarReporteAlmacen(result.blob, result.fileName, notes.pdf);
+      }
+      return;
+    }
+
+    if (formato === 'excel') {
+      const result = exporter.exportTableToExcel({
+        table: tabla,
+        data: dataset,
+        fileName: `${meta.fileNameBase || 'reporte'}.xlsx`,
+        sheetName: meta.sheetName || 'Datos'
+      });
+      if (result?.blob) {
+        await guardarReporteAlmacen(result.blob, result.fileName, notes.excel);
+      }
+      return;
+    }
+  } catch (error) {
+    console.error('Error al exportar el reporte:', error);
+    if (error && error.message === 'PDF_LIBRARY_MISSING') {
+      mostrarError('La librería para generar PDF no está disponible. Actualiza la página e inténtalo nuevamente.');
+      return;
+    }
+    if (error && error.message === 'EXCEL_LIBRARY_MISSING') {
+      mostrarError('La librería para generar Excel no está disponible. Actualiza la página e inténtalo nuevamente.');
+      return;
+    }
+    mostrarError('No se pudo generar el reporte solicitado. Inténtalo nuevamente.');
+  }
 }
 
 function renderInventoryTables() {
@@ -665,6 +782,74 @@ if (areaFilterSelect) {
 
 if (zonaFilterSelect) {
   zonaFilterSelect.addEventListener('change', renderInventoryTables);
+}
+
+if (exportAreasPdfBtn) {
+  exportAreasPdfBtn.addEventListener('click', () => {
+    exportarInventarioAlmacen({
+      formato: 'pdf',
+      tabla: tablaAreasRegistradas,
+      meta: {
+        title: 'Áreas registradas del almacén',
+        fileNameBase: 'areas_almacen',
+        sheetName: 'Áreas',
+        historyLabel: 'Áreas registradas',
+        countLabel: total => (total === 1 ? '1 área registrada' : `${total} áreas registradas`),
+        orientation: 'landscape'
+      }
+    });
+  });
+}
+
+if (exportAreasExcelBtn) {
+  exportAreasExcelBtn.addEventListener('click', () => {
+    exportarInventarioAlmacen({
+      formato: 'excel',
+      tabla: tablaAreasRegistradas,
+      meta: {
+        title: 'Áreas registradas del almacén',
+        fileNameBase: 'areas_almacen',
+        sheetName: 'Áreas',
+        historyLabel: 'Áreas registradas',
+        countLabel: total => (total === 1 ? '1 área registrada' : `${total} áreas registradas`),
+        orientation: 'landscape'
+      }
+    });
+  });
+}
+
+if (exportZonasPdfBtn) {
+  exportZonasPdfBtn.addEventListener('click', () => {
+    exportarInventarioAlmacen({
+      formato: 'pdf',
+      tabla: tablaZonasRegistradas,
+      meta: {
+        title: 'Zonas registradas del almacén',
+        fileNameBase: 'zonas_almacen',
+        sheetName: 'Zonas',
+        historyLabel: 'Zonas registradas',
+        countLabel: total => (total === 1 ? '1 zona registrada' : `${total} zonas registradas`),
+        orientation: 'landscape'
+      }
+    });
+  });
+}
+
+if (exportZonasExcelBtn) {
+  exportZonasExcelBtn.addEventListener('click', () => {
+    exportarInventarioAlmacen({
+      formato: 'excel',
+      tabla: tablaZonasRegistradas,
+      meta: {
+        title: 'Zonas registradas del almacén',
+        fileNameBase: 'zonas_almacen',
+        sheetName: 'Zonas',
+        historyLabel: 'Zonas registradas',
+        countLabel: total => (total === 1 ? '1 zona registrada' : `${total} zonas registradas`),
+        orientation: 'landscape'
+      }
+    });
+  });
 }
 
 if (cancelarReasignacionBtn) {
