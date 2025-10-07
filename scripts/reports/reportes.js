@@ -175,7 +175,7 @@
     if (!reportId) {
       return;
     }
-    // Prefer client API if present (it handles URL resolution and empresaId lookup).
+
     if (historyClient && typeof historyClient.downloadReport === 'function') {
       return historyClient.downloadReport(reportId);
     }
@@ -393,7 +393,13 @@
               <td data-label="Tamaño">${formatBytes(report.size)}</td>
               <td data-label="Acciones">
                 <div class="history-actions justify-content-end">
-                  <button type="button" class="history-download-btn" data-download-id="${escapeHtml(report.id)}">Descargar</button>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-light dropdown-toggle history-actions-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋯</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li><button class="dropdown-item history-download-btn" data-download-id="${escapeHtml(report.id)}">Descargar</button></li>
+                      <li><button class="dropdown-item text-danger history-delete-btn" data-delete-id="${escapeHtml(report.id)}" data-delete-name="${escapeHtml(report.originalName)}">Eliminar</button></li>
+                    </ul>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -517,17 +523,58 @@
     }
   }
 
-  function handleDownloadClick(event) {
+  async function handleTableActionClick(event) {
     const target = event.target instanceof HTMLElement ? event.target : null;
-    if (!target) {
+    if (!target) return;
+
+    // Download
+    const dl = target.closest('[data-download-id]');
+    if (dl) {
+      const reportId = dl.getAttribute('data-download-id');
+      downloadReportFromServer(reportId);
       return;
     }
-    const button = target.closest('[data-download-id]');
-    if (!button) {
+
+    // Delete
+    const delBtn = target.closest('[data-delete-id]');
+    if (!delBtn) return;
+    const reportId = delBtn.getAttribute('data-delete-id');
+    const reportName = delBtn.getAttribute('data-delete-name') || '';
+
+    // Double confirmation
+    const ok1 = window.confirm(`¿Eliminar "${reportName}"? Esta acción quitará el archivo del historial.`);
+    if (!ok1) return;
+    const ok2 = window.confirm('Por favor confirma de nuevo. Esta eliminación es permanente. ¿Deseas continuar?');
+    if (!ok2) return;
+
+    const empresaId = getActiveEmpresaId();
+    if (!empresaId) {
+      showAlert('No se encontró la empresa activa para realizar la eliminación.', 'warning');
       return;
     }
-    const reportId = button.getAttribute('data-download-id');
-    downloadReportFromServer(reportId);
+
+    try {
+      const url = new URL(HISTORY_API_URL, window.location.origin);
+      url.searchParams.set('action', 'delete');
+
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: reportId, empresaId })
+      });
+
+      const data = await response.json().catch(() => ({ success: false }));
+      if (!response.ok || !data.success) {
+        showAlert((data && data.message) || 'No se pudo eliminar el reporte.', 'danger', true);
+        return;
+      }
+
+      showAlert('Reporte eliminado correctamente.', 'success');
+      await loadHistory({ showSpinner: false });
+    } catch (error) {
+      console.error('Error al eliminar reporte:', error);
+      showAlert(error.message || 'Ocurrió un error al eliminar el reporte.', 'danger', true);
+    }
   }
 
   function bootstrap() {
@@ -550,7 +597,7 @@
       elements.uploadForm.addEventListener('submit', handleManualUpload);
     }
     if (elements.historyTableBody) {
-      elements.historyTableBody.addEventListener('click', handleDownloadClick);
+      elements.historyTableBody.addEventListener('click', handleTableActionClick);
     }
 
     loadHistory();

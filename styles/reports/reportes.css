@@ -331,6 +331,20 @@ body {
   gap: 0.5rem;
 }
 
+.history-actions-toggle {
+  border: none;
+  background: #f5f6f8;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dropdown-menu .dropdown-item.text-danger {
+  color: #b91c1c;
+}
+
 .history-download-btn {
   display: inline-flex;
   align-items: center;

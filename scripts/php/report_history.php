@@ -520,6 +520,85 @@ function download_report(): void
     exit;
 }
 
+function delete_report(): void
+{
+    $input = json_decode(file_get_contents('php://input') ?: 'null', true);
+    if (!is_array($input)) {
+        respond_json(400, ['success' => false, 'message' => 'Solicitud inválida.']);
+    }
+
+    $id = isset($input['id']) ? trim((string) $input['id']) : '';
+    $empresaId = isset($input['empresaId']) ? (int) $input['empresaId'] : 0;
+
+    if ($id === '') {
+        respond_json(400, ['success' => false, 'message' => 'Identificador de reporte inválido.']);
+    }
+
+    try {
+        $conn = db_connect();
+    } catch (mysqli_sql_exception $exception) {
+        error_log('delete_report: no se pudo conectar a la BD: ' . $exception->getMessage());
+        respond_json(500, ['success' => false, 'message' => 'No se pudo conectar al servidor.']);
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT storage_name, original_name, id_empresa FROM reportes_historial WHERE uuid = ?');
+        $stmt->bind_param('s', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc() ?: null;
+        $stmt->close();
+
+        if ($row === null) {
+            $conn->close();
+            respond_json(404, ['success' => false, 'message' => 'Reporte no encontrado.']);
+        }
+
+        if ($empresaId > 0 && (int) ($row['id_empresa'] ?? 0) !== $empresaId) {
+            $conn->close();
+            respond_json(403, ['success' => false, 'message' => 'No tienes permiso para eliminar este reporte.']);
+        }
+
+        $storageName = $row['storage_name'] ?? '';
+        $originalName = $row['original_name'] ?? '';
+
+        // Remove file from storage
+        if ($storageName !== '') {
+            remove_report_file($storageName);
+        }
+
+        // Delete reference in the same DB connection
+        try {
+            $del = $conn->prepare('DELETE FROM reportes_historial WHERE uuid = ?');
+            $del->bind_param('s', $id);
+            $del->execute();
+            $del->close();
+        } catch (mysqli_sql_exception $ex) {
+            error_log('delete_report: no se pudo eliminar referencia DB para ' . $id . ': ' . $ex->getMessage());
+            // continue, attempt to log the action anyway
+        }
+
+        // Try to register action in log (best-effort)
+        try {
+            require_once __DIR__ . '/log_utils.php';
+            // registrarLog expects ($conn, $idUsuario, $modulo, $accion)
+            $accion = 'Eliminó reporte: ' . ($originalName ?: $id);
+            @registrarLog($conn, null, 'Reportes', $accion);
+        } catch (Throwable $e) {
+            error_log('delete_report: no se pudo registrar en log: ' . $e->getMessage());
+        }
+
+        $conn->close();
+        respond_json(200, ['success' => true, 'message' => 'Reporte eliminado correctamente.']);
+    } catch (mysqli_sql_exception $exception) {
+        error_log('delete_report: excepción: ' . $exception->getMessage());
+        if (isset($conn) && $conn instanceof mysqli) {
+            $conn->close();
+        }
+        respond_json(500, ['success' => false, 'message' => 'Ocurrió un error al eliminar el reporte.']);
+    }
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? '';
 
@@ -537,7 +616,14 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-    save_report();
+    if ($action === 'delete') {
+        delete_report();
+    }
+
+    // If action was delete, delete_report already exited with a response.
+    if ($action !== 'delete') {
+        save_report();
+    }
 }
 
 http_response_code(405);
