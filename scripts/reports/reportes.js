@@ -1,5 +1,6 @@
 (function () {
   const HISTORY_API_URL = '../../scripts/php/report_history.php';
+  const AUTOMATIONS_API_URL = '../../scripts/php/report_automations.php';
   const RETENTION_DAYS_FALLBACK = 60;
 
   // Provide a local alias for the optional external history client.
@@ -53,7 +54,6 @@
   const state = {
     reports: [],
     serverReports: [],
-    localAutomationReports: [],
     filteredReports: [],
     retentionDays: RETENTION_DAYS_FALLBACK,
     loading: false,
@@ -90,10 +90,7 @@
   const BYTES_UNITS = ['B', 'KB', 'MB', 'GB'];
   const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
   const EXPIRING_THRESHOLD_MS = 10 * 24 * 60 * 60 * 1000;
-  const AUTOMATION_STORAGE_PREFIX = 'optistock:automations:';
-  const AUTOMATION_REPORTS_PREFIX = 'optistock:automationReports:';
-  const MAX_AUTOMATION_CATCHUP = 4;
-  const LOCAL_AUTOMATION_HISTORY_LIMIT = 30;
+  const AUTOMATION_POLL_INTERVAL_MS = 60 * 1000;
 
   function ensureModuleOption(value) {
     if (!value || !elements.automationModuleInput || elements.automationModuleInput.tagName !== 'SELECT') {
@@ -122,56 +119,6 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
-  }
-
-  function encodeBase64(uint8Array) {
-    if (!(uint8Array instanceof Uint8Array)) {
-      return '';
-    }
-
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.subarray(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, chunk);
-    }
-
-    try {
-      return window.btoa(binary);
-    } catch (error) {
-      console.warn('No se pudo convertir a base64:', error);
-      return '';
-    }
-  }
-
-  function decodeBase64(base64) {
-    if (!base64) {
-      return new Uint8Array();
-    }
-
-    try {
-      const binary = window.atob(base64);
-      const output = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        output[i] = binary.charCodeAt(i);
-      }
-      return output;
-    } catch (error) {
-      console.warn('No se pudo decodificar base64:', error);
-      return new Uint8Array();
-    }
-  }
-
-  function encodeText(text) {
-    if (typeof TextEncoder !== 'undefined') {
-      return new TextEncoder().encode(text);
-    }
-    const normalized = String(text);
-    const buffer = new Uint8Array(normalized.length);
-    for (let i = 0; i < normalized.length; i += 1) {
-      buffer[i] = normalized.charCodeAt(i) & 0xff;
-    }
-    return buffer;
   }
 
   function getActiveEmpresaId() {
@@ -268,30 +215,37 @@
     }
   }
 
-  function downloadReport(reportId) {
-    if (!reportId) {
-      return;
+  async function requestAutomationApi({ action = '', method = 'GET', params = {}, payload = null } = {}) {
+    const url = new URL(AUTOMATIONS_API_URL, window.location.href);
+    if (action) {
+      url.searchParams.set('action', action);
+    }
+    Object.keys(params || {}).forEach((key) => {
+      const value = params[key];
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value));
+      }
+    });
+
+    const options = { method, headers: {} };
+    if (payload !== null && payload !== undefined) {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(payload);
     }
 
-    if (typeof reportId === 'string' && reportId.startsWith('local-auto:')) {
-      const report = state.localAutomationReports.find((item) => item.id === reportId);
-      if (!report) {
-        showAlert('No encontramos el archivo generado automáticamente.', 'warning');
-        return;
-      }
+    const response = await fetch(url.toString(), options);
+    const data = await response.json().catch(() => ({ success: false }));
 
-      const bytes = decodeBase64(report.fileContent);
-      const blob = new Blob([bytes], { type: report.mimeType || 'application/octet-stream' });
-      const objectUrl = URL.createObjectURL(blob);
+    if (!response.ok || !data.success) {
+      const message = (data && data.message) || 'No se pudo comunicar con el servicio de automatizaciones.';
+      throw new Error(message);
+    }
 
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = report.originalName || 'reporte-automatico';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
+    return data;
+  }
+
+  function downloadReport(reportId) {
+    if (!reportId) {
       return;
     }
 
@@ -413,99 +367,8 @@
     }
   }
 
-  function getAutomationStorageKey(empresaId) {
-    return `${AUTOMATION_STORAGE_PREFIX}${empresaId}`;
-  }
-
-  function getAutomationReportsKey(empresaId) {
-    return `${AUTOMATION_REPORTS_PREFIX}${empresaId}`;
-  }
-
-  function loadAutomationsFromStorage() {
-    const empresaId = state.activeEmpresaId;
-    if (!empresaId || !window.localStorage) {
-      return [];
-    }
-    try {
-      const raw = window.localStorage.getItem(getAutomationStorageKey(empresaId));
-      if (!raw) {
-        return [];
-      }
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      console.warn('No se pudieron leer las automatizaciones almacenadas:', error);
-      return [];
-    }
-  }
-
-  function saveAutomationsToStorage() {
-    const empresaId = state.activeEmpresaId;
-    if (!empresaId || !window.localStorage) {
-      return;
-    }
-    try {
-      const payload = JSON.stringify(state.automations);
-      window.localStorage.setItem(getAutomationStorageKey(empresaId), payload);
-    } catch (error) {
-      console.warn('No se pudieron guardar las automatizaciones:', error);
-    }
-  }
-
-  function loadLocalAutomationReports() {
-    const empresaId = state.activeEmpresaId;
-    if (!empresaId || !window.localStorage) {
-      state.localAutomationReports = [];
-      return;
-    }
-    try {
-      const raw = window.localStorage.getItem(getAutomationReportsKey(empresaId));
-      if (!raw) {
-        state.localAutomationReports = [];
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      state.localAutomationReports = Array.isArray(parsed)
-        ? parsed
-            .map((item) => ({
-              id: item.id,
-              automationId: item.automationId,
-              originalName: item.originalName,
-              mimeType: item.mimeType,
-              source: item.source,
-              notes: item.notes,
-              createdAt: item.createdAt,
-              expiresAt: item.expiresAt || null,
-              size: item.size || 0,
-              fileContent: item.fileContent,
-              fileExtension: item.fileExtension || ''
-            }))
-            .filter((item) => item.id && item.fileContent)
-        : [];
-      if (state.localAutomationReports.length > LOCAL_AUTOMATION_HISTORY_LIMIT) {
-        state.localAutomationReports = state.localAutomationReports.slice(-LOCAL_AUTOMATION_HISTORY_LIMIT);
-      }
-    } catch (error) {
-      console.warn('No se pudieron leer los reportes automáticos locales:', error);
-      state.localAutomationReports = [];
-    }
-  }
-
-  function saveLocalAutomationReports() {
-    const empresaId = state.activeEmpresaId;
-    if (!empresaId || !window.localStorage) {
-      return;
-    }
-    try {
-      const payload = JSON.stringify(state.localAutomationReports);
-      window.localStorage.setItem(getAutomationReportsKey(empresaId), payload);
-    } catch (error) {
-      console.warn('No se pudieron guardar los reportes automáticos locales:', error);
-    }
-  }
-
   function rebuildReportCollection() {
-    const combined = [...state.serverReports, ...state.localAutomationReports];
+    const combined = [...state.serverReports];
     combined.sort((a, b) => {
       const aTime = new Date(a.createdAt || 0).getTime();
       const bTime = new Date(b.createdAt || 0).getTime();
@@ -770,14 +633,6 @@
     const ok2 = window.confirm('Por favor confirma de nuevo. Esta eliminación es permanente. ¿Deseas continuar?');
     if (!ok2) return;
 
-    if (reportId && reportId.startsWith('local-auto:')) {
-      state.localAutomationReports = state.localAutomationReports.filter((item) => item.id !== reportId);
-      saveLocalAutomationReports();
-      rebuildReportCollection();
-      showAlert('Reporte automático eliminado correctamente.', 'success');
-      return;
-    }
-
     const empresaId = getActiveEmpresaId();
     if (!empresaId) {
       showAlert('No se encontró la empresa activa para realizar la eliminación.', 'warning');
@@ -818,6 +673,56 @@
     return { hours, minutes };
   }
 
+  function normalizeAutomation(raw = {}) {
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+
+    const frequencyKey = String(raw.frequency ?? raw.frecuencia ?? '').toLowerCase();
+    const frequencyMap = {
+      daily: 'daily',
+      diario: 'daily',
+      weekly: 'weekly',
+      semanal: 'weekly',
+      biweekly: 'biweekly',
+      quincenal: 'biweekly',
+      fortnightly: 'biweekly',
+      monthly: 'monthly',
+      mensual: 'monthly'
+    };
+    const frequency = frequencyMap[frequencyKey] || 'daily';
+
+    const format = raw.format === 'excel' || raw.formato === 'excel' ? 'excel' : 'pdf';
+    const weekdayValue = raw.weekday ?? raw.dia_semana;
+    const monthdayValue = raw.monthday ?? raw.dia_mes;
+    const weekday = Number.isFinite(Number(weekdayValue)) ? Math.min(Math.max(parseInt(weekdayValue, 10), 0), 6) : 1;
+    const monthday = Number.isFinite(Number(monthdayValue)) ? Math.min(Math.max(parseInt(monthdayValue, 10), 1), 31) : 1;
+    const activeValue = raw.active ?? raw.activo;
+    const idValue = raw.id ?? raw.uuid ?? raw.identificador;
+    const normalized = {
+      id: idValue ? String(idValue) : `auto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: raw.name || raw.nombre || 'Reporte automatizado',
+      module: raw.module || raw.modulo || '',
+      format,
+      frequency,
+      time: raw.time || raw.hora || '08:00',
+      weekday,
+      monthday,
+      notes: raw.notes || raw.notas || '',
+      active: !(activeValue === false || activeValue === '0' || activeValue === 0 || activeValue === 'false'),
+      nextRunAt: raw.nextRunAt || raw.proxima_ejecucion || null,
+      lastRunAt: raw.lastRunAt || raw.ultima_ejecucion || null,
+      createdAt: raw.createdAt || raw.creado_en || null,
+      updatedAt: raw.updatedAt || raw.actualizado_en || null
+    };
+
+    if (normalized.module) {
+      ensureModuleOption(normalized.module);
+    }
+
+    return normalized;
+  }
+
   function getWeekdayName(index) {
     const names = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     return names[index] || 'Día';
@@ -834,53 +739,15 @@
     }
   }
 
-  function computeMonthDate(year, month, day, hours, minutes) {
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const safeDay = Math.min(Math.max(day, 1), lastDay);
-    return new Date(year, month, safeDay, hours, minutes, 0, 0);
-  }
-
-  function computeNextRunAt(automation, reference = new Date()) {
-    const { hours, minutes } = getTimeParts(automation.time || '08:00');
-    const now = new Date(reference.getTime());
-    now.setSeconds(0, 0);
-
-    if (automation.frequency === 'weekly') {
-      const desiredDay = Number.isFinite(Number(automation.weekday)) ? parseInt(automation.weekday, 10) : 1;
-      const base = new Date(now.getTime());
-      base.setHours(hours, minutes, 0, 0);
-      const currentDay = base.getDay();
-      let diff = desiredDay - currentDay;
-      if (diff < 0 || (diff === 0 && base <= now)) {
-        diff += 7;
-      }
-      base.setDate(base.getDate() + diff);
-      return base.toISOString();
-    }
-
-    if (automation.frequency === 'monthly') {
-      const desiredDay = Number.isFinite(Number(automation.monthday)) ? parseInt(automation.monthday, 10) : 1;
-      const base = computeMonthDate(now.getFullYear(), now.getMonth(), desiredDay, hours, minutes);
-      if (base <= now) {
-        const next = computeMonthDate(now.getFullYear(), now.getMonth() + 1, desiredDay, hours, minutes);
-        return next.toISOString();
-      }
-      return base.toISOString();
-    }
-
-    const base = new Date(now.getTime());
-    base.setHours(hours, minutes, 0, 0);
-    if (base <= now) {
-      base.setDate(base.getDate() + 1);
-    }
-    return base.toISOString();
-  }
-
   function formatAutomationFrequency(automation) {
     const timeLabel = formatTimeLabel(automation.time || '08:00');
     if (automation.frequency === 'weekly') {
       const dayName = getWeekdayName(Number.isFinite(Number(automation.weekday)) ? parseInt(automation.weekday, 10) : 1);
       return `Semanal · ${dayName} · ${timeLabel}`;
+    }
+    if (automation.frequency === 'biweekly') {
+      const dayName = getWeekdayName(Number.isFinite(Number(automation.weekday)) ? parseInt(automation.weekday, 10) : 1);
+      return `Quincenal · ${dayName} · ${timeLabel}`;
     }
     if (automation.frequency === 'monthly') {
       const day = Number.isFinite(Number(automation.monthday)) ? parseInt(automation.monthday, 10) : 1;
@@ -1019,7 +886,7 @@
     }
     const value = elements.automationFrequencySelect.value;
     if (elements.automationWeekdayWrapper) {
-      elements.automationWeekdayWrapper.classList.toggle('d-none', value !== 'weekly');
+      elements.automationWeekdayWrapper.classList.toggle('d-none', value !== 'weekly' && value !== 'biweekly');
     }
     if (elements.automationMonthdayWrapper) {
       elements.automationMonthdayWrapper.classList.toggle('d-none', value !== 'monthly');
@@ -1090,18 +957,7 @@
     state.automationModalInstance.show();
   }
 
-  function upsertAutomation(automationData) {
-    const existingIndex = state.automations.findIndex((item) => item.id === automationData.id);
-    if (existingIndex >= 0) {
-      state.automations[existingIndex] = { ...state.automations[existingIndex], ...automationData, updatedAt: new Date().toISOString() };
-    } else {
-      state.automations.push({ ...automationData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-    }
-    saveAutomationsToStorage();
-    renderAutomations();
-  }
-
-  function handleAutomationFormSubmit(event) {
+  async function handleAutomationFormSubmit(event) {
     event.preventDefault();
     if (!elements.automationForm) {
       return;
@@ -1113,7 +969,12 @@
       return;
     }
 
-    const id = elements.automationIdInput && elements.automationIdInput.value ? elements.automationIdInput.value : `auto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (!state.activeEmpresaId) {
+      showAlert('Vincula una empresa antes de crear automatizaciones.', 'warning', true);
+      return;
+    }
+
+    const id = elements.automationIdInput && elements.automationIdInput.value ? elements.automationIdInput.value : null;
     const name = elements.automationNameInput ? elements.automationNameInput.value.trim() : '';
     const module = elements.automationModuleInput ? elements.automationModuleInput.value.trim() : '';
     const format = elements.automationFormatSelect ? elements.automationFormatSelect.value : 'pdf';
@@ -1127,15 +988,15 @@
     const active = elements.automationActiveInput ? elements.automationActiveInput.checked : true;
 
     if (!name) {
-      elements.automationNameInput.focus();
+      if (elements.automationNameInput) {
+        elements.automationNameInput.focus();
+      }
       return;
     }
 
-    const target = state.automations.find((item) => item.id === id);
-    const nextRunAt = computeNextRunAt({ frequency, time, weekday, monthday }, new Date());
-
-    const automationPayload = {
+    const payload = {
       id,
+      empresaId: state.activeEmpresaId,
       name,
       module,
       format,
@@ -1144,207 +1005,135 @@
       weekday,
       monthday,
       notes,
-      active,
-      nextRunAt,
-      lastRunAt: target ? target.lastRunAt : null
+      active
     };
 
-    upsertAutomation(automationPayload);
-
-    if (state.automationModalInstance) {
-      state.automationModalInstance.hide();
+    let previousLabel = '';
+    if (elements.automationSubmitBtn) {
+      previousLabel = elements.automationSubmitBtn.textContent;
+      elements.automationSubmitBtn.disabled = true;
+      elements.automationSubmitBtn.textContent = 'Guardando...';
     }
 
-    showAlert(`Automatización "${name}" guardada correctamente.`, 'success');
+    try {
+      const response = await requestAutomationApi({ action: 'save', method: 'POST', payload });
+      if (response.automation) {
+        upsertAutomation(response.automation);
+      }
 
-    if (active) {
-      runPendingAutomations({ catchUp: true });
+      if (state.automationModalInstance) {
+        state.automationModalInstance.hide();
+      }
+
+      showAlert(`Automatización "${name}" guardada correctamente.`, 'success');
+
+      if (Array.isArray(response.generatedReports) && response.generatedReports.length) {
+        await loadHistory({ showSpinner: false });
+      }
+    } catch (error) {
+      console.error('No se pudo guardar la automatización:', error);
+      showAlert(error.message || 'No se pudo guardar la automatización.', 'danger', true);
+    } finally {
+      if (elements.automationSubmitBtn) {
+        elements.automationSubmitBtn.disabled = false;
+        elements.automationSubmitBtn.textContent = previousLabel || 'Guardar automatización';
+      }
+    }
+  }
+
+  function upsertAutomation(automationData) {
+    const normalized = normalizeAutomation(automationData);
+    if (!normalized) {
+      return;
+    }
+
+    const existingIndex = state.automations.findIndex((item) => item.id === normalized.id);
+    if (existingIndex >= 0) {
+      state.automations[existingIndex] = { ...state.automations[existingIndex], ...normalized };
     } else {
-      renderAutomations();
+      state.automations.push(normalized);
     }
-  }
 
-  function deleteAutomation(automationId) {
-    const index = state.automations.findIndex((item) => item.id === automationId);
-    if (index < 0) {
-      return;
-    }
-    state.automations.splice(index, 1);
-    saveAutomationsToStorage();
     renderAutomations();
-    showAlert('Automatización eliminada correctamente.', 'success');
   }
 
-  function generateAutomationCsv(automation, executedAt) {
-    const executedDate = new Date(executedAt);
-    let generatedAt;
-    try {
-      generatedAt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short' }).format(executedDate);
-    } catch (error) {
-      generatedAt = executedDate.toLocaleString();
-    }
-    const rows = [
-      ['Nombre del reporte', automation.name],
-      ['Módulo', automation.module || 'No especificado'],
-      ['Generado automáticamente', generatedAt],
-      ['Frecuencia', formatAutomationFrequency(automation)],
-      ['Notas', automation.notes || '']
-    ];
-    const csv = rows
-      .map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-    const bytes = encodeText(csv);
-    return { bytes, mimeType: 'text/csv', extension: 'csv' };
-  }
-
-  function generateAutomationPdf(automation, executedAt) {
-    const executedDate = new Date(executedAt);
-    let generatedAt;
-    try {
-      generatedAt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short' }).format(executedDate);
-    } catch (error) {
-      generatedAt = executedDate.toLocaleString();
-    }
-    const lines = [
-      automation.name,
-      '',
-      `Generado automáticamente el ${generatedAt}`,
-      automation.module ? `Módulo origen: ${automation.module}` : null,
-      `Frecuencia: ${formatAutomationFrequency(automation)}`,
-      automation.notes ? `Notas: ${automation.notes}` : null
-    ].filter(Boolean);
-
-    const sanitizedLines = lines.map((line) =>
-      String(line)
-        .replace(/\\/g, '\\\\')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)')
-    );
-    let stream = 'BT /F1 16 Tf 72 760 Td ';
-    sanitizedLines.forEach((line, index) => {
-      if (index === 0) {
-        stream += `(${line}) Tj`;
-      } else {
-        stream += ` T* (${line}) Tj`;
-      }
-    });
-    stream += ' ET';
-
-    const offsets = [];
-    let pdf = '%PDF-1.4\n';
-
-    function addObject(content) {
-      offsets.push(pdf.length);
-      pdf += content;
-    }
-
-    addObject('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
-    addObject('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
-    addObject('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n');
-    addObject(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`);
-    addObject('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
-
-    const xrefOffset = pdf.length;
-    pdf += 'xref\n0 6\n0000000000 65535 f \n';
-    offsets.forEach((offset) => {
-      pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
-    });
-    pdf += 'trailer\n<< /Root 1 0 R /Size 6 >>\nstartxref\n';
-    pdf += `${xrefOffset}\n%%EOF`;
-
-    const bytes = encodeText(pdf);
-    return { bytes, mimeType: 'application/pdf', extension: 'pdf' };
-  }
-
-  function createAutomationFile(automation, executedAt) {
-    if (automation.format === 'excel') {
-      return generateAutomationCsv(automation, executedAt);
-    }
-    return generateAutomationPdf(automation, executedAt);
-  }
-
-  function registerAutomationReport(automation, executedAt) {
-    const file = createAutomationFile(automation, executedAt);
-    const fileNameDate = new Date(executedAt);
-    const safeDate = Number.isFinite(fileNameDate.getTime()) ? fileNameDate : new Date();
-    const iso = safeDate.toISOString();
-    const formattedDate = `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}-${String(
-      safeDate.getDate()
-    ).padStart(2, '0')} ${String(safeDate.getHours()).padStart(2, '0')}-${String(safeDate.getMinutes()).padStart(2, '0')}`;
-    const extension = file.extension || (automation.format === 'excel' ? 'csv' : 'pdf');
-    const originalName = `${automation.name} - ${formattedDate}.${extension}`;
-    const base64Content = encodeBase64(file.bytes);
-
-    const reportRecord = {
-      id: `local-auto:${automation.id}:${safeDate.getTime()}`,
-      automationId: automation.id,
-      originalName,
-      mimeType: file.mimeType,
-      source: automation.module ? `Automatización · ${automation.module}` : 'Automatización',
-      notes: automation.notes ? `Notas: ${automation.notes}` : 'Generado automáticamente',
-      createdAt: iso,
-      expiresAt: null,
-      size: file.bytes.length,
-      fileContent: base64Content,
-      fileExtension: extension
-    };
-
-    state.localAutomationReports.push(reportRecord);
-    if (state.localAutomationReports.length > LOCAL_AUTOMATION_HISTORY_LIMIT) {
-      state.localAutomationReports.splice(0, state.localAutomationReports.length - LOCAL_AUTOMATION_HISTORY_LIMIT);
-    }
-    saveLocalAutomationReports();
-    rebuildReportCollection();
-  }
-
-  function runPendingAutomations({ catchUp = false } = {}) {
-    if (!state.automations.length) {
+  async function deleteAutomation(automationId) {
+    if (!automationId || !state.activeEmpresaId) {
       return;
     }
 
-    const now = new Date();
-    let changed = false;
-
-    state.automations.forEach((automation) => {
-      if (!automation.nextRunAt) {
-        automation.nextRunAt = computeNextRunAt(automation, now);
-        changed = true;
-      }
-
-      if (!automation.active) {
-        return;
-      }
-
-      let iterations = 0;
-      while (automation.nextRunAt) {
-        const nextRun = new Date(automation.nextRunAt);
-        if (!Number.isFinite(nextRun.getTime())) {
-          automation.nextRunAt = computeNextRunAt(automation, now);
-          changed = true;
-          break;
-        }
-
-        if (nextRun > now && !catchUp) {
-          break;
-        }
-
-        registerAutomationReport(automation, nextRun);
-        if (!catchUp) {
-          showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
-        }
-        automation.lastRunAt = nextRun.toISOString();
-        automation.nextRunAt = computeNextRunAt(automation, new Date(nextRun.getTime() + 60 * 1000));
-        changed = true;
-        iterations += 1;
-        if (!catchUp || iterations >= MAX_AUTOMATION_CATCHUP) {
-          break;
-        }
-      }
-    });
-
-    if (changed) {
-      saveAutomationsToStorage();
+    try {
+      await requestAutomationApi({
+        action: 'delete',
+        method: 'POST',
+        payload: { id: automationId, empresaId: state.activeEmpresaId }
+      });
+      state.automations = state.automations.filter((item) => item.id !== automationId);
       renderAutomations();
+      showAlert('Automatización eliminada correctamente.', 'success');
+    } catch (error) {
+      console.error('No se pudo eliminar la automatización:', error);
+      showAlert(error.message || 'Ocurrió un error al eliminar la automatización.', 'danger', true);
+    }
+  }
+
+  async function runAutomationNow(automationId) {
+    if (!automationId || !state.activeEmpresaId) {
+      return;
+    }
+
+    try {
+      const response = await requestAutomationApi({
+        action: 'run',
+        method: 'POST',
+        payload: { id: automationId, empresaId: state.activeEmpresaId }
+      });
+
+      if (response.automation) {
+        upsertAutomation(response.automation);
+      }
+
+      if (Array.isArray(response.generatedReports) && response.generatedReports.length) {
+        await loadHistory({ showSpinner: false });
+      }
+
+      const automation = state.automations.find((item) => item.id === automationId);
+      const automationName = automation ? automation.name : 'Reporte automático';
+      showAlert(`Se generó el reporte automático "${automationName}".`, 'success');
+    } catch (error) {
+      console.error('No se pudo ejecutar la automatización:', error);
+      showAlert(error.message || 'No se pudo generar el reporte automático.', 'danger', true);
+    }
+  }
+
+  async function runDueAutomations({ silent = false } = {}) {
+    if (!state.activeEmpresaId) {
+      return;
+    }
+
+    try {
+      const response = await requestAutomationApi({
+        action: 'run_due',
+        method: 'POST',
+        payload: { empresaId: state.activeEmpresaId }
+      });
+
+      if (Array.isArray(response.automations)) {
+        state.automations = response.automations.map((item) => normalizeAutomation(item)).filter(Boolean);
+        renderAutomations();
+      }
+
+      if (Array.isArray(response.generatedReports) && response.generatedReports.length) {
+        if (!silent) {
+          showAlert('Se generaron reportes programados automáticamente.', 'success');
+        }
+        await loadHistory({ showSpinner: false });
+      }
+    } catch (error) {
+      console.error('No se pudieron ejecutar las automatizaciones programadas:', error);
+      if (!silent) {
+        showAlert(error.message || 'No se pudieron ejecutar las automatizaciones programadas.', 'danger', true);
+      }
     }
   }
 
@@ -1357,17 +1146,17 @@
     const runBtn = target.closest('[data-automation-run]');
     if (runBtn) {
       const automationId = runBtn.getAttribute('data-automation-run');
-      const automation = state.automations.find((item) => item.id === automationId);
-      if (!automation) {
+      if (!automationId) {
         return;
       }
-      const executedAt = new Date();
-      registerAutomationReport(automation, executedAt);
-      automation.lastRunAt = executedAt.toISOString();
-      automation.nextRunAt = computeNextRunAt(automation, new Date(executedAt.getTime() + 60 * 1000));
-      saveAutomationsToStorage();
-      renderAutomations();
-      showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+      if (runBtn instanceof HTMLButtonElement) {
+        runBtn.disabled = true;
+      }
+      runAutomationNow(automationId).finally(() => {
+        if (runBtn instanceof HTMLButtonElement) {
+          runBtn.disabled = false;
+        }
+      });
       return;
     }
 
@@ -1386,11 +1175,17 @@
   function startAutomationScheduler() {
     if (state.automationTimerId) {
       window.clearInterval(state.automationTimerId);
+      state.automationTimerId = null;
     }
-    runPendingAutomations({ catchUp: true });
+
+    if (!state.activeEmpresaId) {
+      return;
+    }
+
+    runDueAutomations({ silent: true });
     state.automationTimerId = window.setInterval(() => {
-      runPendingAutomations();
-    }, 60 * 1000);
+      runDueAutomations({ silent: true });
+    }, AUTOMATION_POLL_INTERVAL_MS);
   }
 
   function handleAutomationToggleChange(event) {
@@ -1405,61 +1200,63 @@
       return;
     }
 
-    automation.active = target.checked;
-    if (automation.active && !automation.nextRunAt) {
-      automation.nextRunAt = computeNextRunAt(automation, new Date());
-    }
-    saveAutomationsToStorage();
-    renderAutomations();
-    if (automation.active) {
-      runPendingAutomations({ catchUp: true });
-    }
+    const desiredState = target.checked;
+    target.disabled = true;
+
+    requestAutomationApi({
+      action: 'toggle',
+      method: 'POST',
+      payload: { id: automationId, empresaId: state.activeEmpresaId, active: desiredState }
+    })
+      .then((response) => {
+        if (response.automation) {
+          upsertAutomation(response.automation);
+        }
+        if (Array.isArray(response.generatedReports) && response.generatedReports.length) {
+          loadHistory({ showSpinner: false });
+        }
+      })
+      .catch((error) => {
+        console.error('No se pudo actualizar el estado de la automatización:', error);
+        target.checked = !desiredState;
+        showAlert(error.message || 'No se pudo actualizar la automatización.', 'danger', true);
+      })
+      .finally(() => {
+        target.disabled = false;
+      });
   }
 
-  function initializeAutomations() {
-    state.automations = loadAutomationsFromStorage().map((item) => {
-      const storedWeekday = Number.isFinite(Number(item.weekday)) ? parseInt(item.weekday, 10) : 1;
-      const storedMonthday = Number.isFinite(Number(item.monthday)) ? parseInt(item.monthday, 10) : 1;
-      return {
-        id: item.id,
-        name: item.name || 'Reporte automatizado',
-        module: item.module || '',
-        format: item.format === 'excel' ? 'excel' : 'pdf',
-        frequency: item.frequency === 'weekly' || item.frequency === 'monthly' ? item.frequency : 'daily',
-        time: item.time || '08:00',
-        weekday: Math.min(Math.max(storedWeekday, 0), 6),
-        monthday: Math.min(Math.max(storedMonthday, 1), 31),
-        notes: item.notes || '',
-        active: !(item.active === false || item.active === 'false'),
-        nextRunAt: item.nextRunAt || null,
-        lastRunAt: item.lastRunAt || null,
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || new Date().toISOString()
-      };
-    });
+  async function initializeAutomations() {
+    state.automations = [];
 
-    const now = new Date();
-    let needsSave = false;
-    state.automations.forEach((automation) => {
-      if (!automation.nextRunAt) {
-        automation.nextRunAt = computeNextRunAt(automation, now);
-        needsSave = true;
-      }
-    });
-
-    if (needsSave) {
-      saveAutomationsToStorage();
+    if (!state.activeEmpresaId) {
+      renderAutomations();
+      startAutomationScheduler();
+      return;
     }
 
-    renderAutomations();
-    loadLocalAutomationReports();
-    rebuildReportCollection();
-    startAutomationScheduler();
+    try {
+      const response = await requestAutomationApi({
+        action: 'list',
+        method: 'GET',
+        params: { empresa: state.activeEmpresaId }
+      });
+      state.automations = Array.isArray(response.automations)
+        ? response.automations.map((item) => normalizeAutomation(item)).filter(Boolean)
+        : [];
+      renderAutomations();
+    } catch (error) {
+      console.error('No se pudieron cargar las automatizaciones:', error);
+      renderAutomations();
+      showAlert(error.message || 'No se pudieron cargar las automatizaciones.', 'danger', true);
+    } finally {
+      startAutomationScheduler();
+    }
   }
 
   function bootstrap() {
     const empresaId = getActiveEmpresaId();
-    state.activeEmpresaId = empresaId || 'local';
+    state.activeEmpresaId = empresaId ? String(empresaId) : null;
 
     if (elements.searchInput) {
       elements.searchInput.addEventListener('input', () => applyFilters());
@@ -1521,7 +1318,7 @@
       loadHistory();
     } else {
       setLoading(false);
-      showAlert('Los reportes automáticos se guardan en este navegador hasta que vincules una empresa.', 'info', true);
+      showAlert('Vincula una empresa para habilitar el historial y las automatizaciones de reportes.', 'info', true);
     }
   }
 

@@ -1313,12 +1313,70 @@ ALTER TABLE `usuario_area_zona`
   ADD CONSTRAINT `fk_uaz_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_uaz_zona` FOREIGN KEY (`id_zona`) REFERENCES `zonas` (`id`) ON DELETE CASCADE;
 
---
--- Filtros para la tabla `usuario_empresa`
---
 ALTER TABLE `usuario_empresa`
   ADD CONSTRAINT `usuario_empresa_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
   ADD CONSTRAINT `usuario_empresa_ibfk_2` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+--
+-- Estructura de tabla para la tabla `reportes_historial`
+--
+
+CREATE TABLE `reportes_historial` (
+  `uuid` char(32) NOT NULL,
+  `id_empresa` int NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `storage_name` varchar(255) NOT NULL,
+  `mime_type` varchar(120) NOT NULL,
+  `file_size` int NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL,
+  `expires_at` datetime DEFAULT NULL,
+  `source` varchar(120) DEFAULT NULL,
+  `notes` varchar(200) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  KEY `idx_reportes_historial_empresa` (`id_empresa`),
+  KEY `idx_reportes_historial_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+--
+-- Estructura de tabla para la tabla `reportes_automatizaciones`
+--
+
+CREATE TABLE `reportes_automatizaciones` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_empresa` int NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `modulo` varchar(120) DEFAULT NULL,
+  `formato` enum('pdf','excel') NOT NULL DEFAULT 'pdf',
+  `frecuencia` enum('daily','weekly','biweekly','monthly') NOT NULL DEFAULT 'daily',
+  `hora` time NOT NULL DEFAULT '08:00:00',
+  `dia_semana` tinyint DEFAULT NULL,
+  `dia_mes` tinyint DEFAULT NULL,
+  `notas` text,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `proxima_ejecucion` datetime DEFAULT NULL,
+  `ultima_ejecucion` datetime DEFAULT NULL,
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_reportes_auto_empresa` (`id_empresa`),
+  KEY `idx_reportes_auto_proxima` (`proxima_ejecucion`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Filtros para la tabla `reportes_automatizaciones`
+--
+ALTER TABLE `reportes_automatizaciones`
+  ADD CONSTRAINT `fk_reportes_auto_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+--
+-- Filtros para la tabla `reportes_historial`
+--
+ALTER TABLE `reportes_historial`
+  ADD CONSTRAINT `fk_reportes_historial_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
+
 
 --
 -- Filtros para la tabla `zonas`

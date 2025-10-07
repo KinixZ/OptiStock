@@ -6,6 +6,38 @@ Este documento detalla la organización y las funciones sugeridas para la págin
 
 > **Registro en base de datos**: además del archivo JSON local, cada reporte se registra en la tabla `reportes_historial` para poder filtrar por empresa en consultas SQL. Puedes crearla desde phpMyAdmin copiando el contenido de `docs/report-history/create_table.sql` en la consola SQL y ejecutándolo.
 
+### Script SQL para `reportes_automatizaciones`
+
+Si aún no tienes la tabla donde se guardan las configuraciones de los reportes programados, copia y ejecuta el siguiente bloque en la consola SQL de phpMyAdmin. La definición usa únicamente características estándar de MySQL, por lo que funciona sin depender de servicios externos como Firebase o AWS.
+
+```sql
+CREATE TABLE `reportes_automatizaciones` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_empresa` INT NOT NULL,
+  `nombre` VARCHAR(120) NOT NULL,
+  `modulo` VARCHAR(120) DEFAULT NULL,
+  `formato` ENUM('pdf','excel') NOT NULL DEFAULT 'pdf',
+  `frecuencia` ENUM('daily','weekly','biweekly','monthly') NOT NULL DEFAULT 'daily',
+  `hora` TIME NOT NULL DEFAULT '08:00:00',
+  `dia_semana` TINYINT DEFAULT NULL,
+  `dia_mes` TINYINT DEFAULT NULL,
+  `notas` TEXT,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `proxima_ejecucion` DATETIME DEFAULT NULL,
+  `ultima_ejecucion` DATETIME DEFAULT NULL,
+  `creado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_reportes_auto_empresa` (`id_empresa`),
+  KEY `idx_reportes_auto_proxima` (`proxima_ejecucion`),
+  CONSTRAINT `fk_reportes_auto_empresa`
+    FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+```
+
+> 💡 **Nota**: si prefieres que la tabla se llame `reportes_automatizacion`, simplemente sustituye el nombre en la sentencia `CREATE TABLE` y en las claves/índices asociados antes de ejecutarla.
+
 ## 1. Organización general de la página de reportes
 - **Secciones principales**:
   - *Panel de carga manual*: formulario para subir archivos PDF generados en cualquier sección.
