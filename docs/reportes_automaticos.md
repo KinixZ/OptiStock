@@ -2,7 +2,9 @@
 
 Este documento detalla la organización y las funciones sugeridas para la página de reportes, incluyendo la generación automática de reportes con periodos personalizados. Se busca mantener el uso de herramientas básicas y almacenamiento local.
 
-> **Implementación actual**: el historial centralizado ya guarda de forma automática cada PDF o Excel generado en los módulos principales dentro de `docs/report-history/`. Los archivos permanecen disponibles por 60 días y se sirven a través de la API local (`/api/report-history`). La página `pages/reports/reportes.html` ofrece filtros, descargas y carga manual de archivos adicionales.
+> **Implementación actual**: el historial centralizado ya guarda de forma automática cada PDF o Excel generado en los módulos principales dentro de `docs/report-history/`. Los archivos permanecen disponibles por 60 días y se sirven a través del script PHP local (`/scripts/php/report_history.php`). La página `pages/reports/reportes.html` ofrece filtros, descargas y carga manual de archivos adicionales.
+
+> **Registro en base de datos**: además del archivo JSON local, cada reporte se registra en la tabla `reportes_historial` para poder filtrar por empresa en consultas SQL. Puedes crearla desde phpMyAdmin copiando el contenido de `docs/report-history/create_table.sql` en la consola SQL y ejecutándolo.
 
 ## 1. Organización general de la página de reportes
 - **Secciones principales**:

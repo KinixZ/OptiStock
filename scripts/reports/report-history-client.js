@@ -1,6 +1,40 @@
 (function () {
-  const API_BASE = '/api/report-history';
+  const API_BASE = '/scripts/php/report_history.php';
   const RETENTION_DAYS_FALLBACK = 60;
+
+  function normalizeEmpresaId(value) {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) && value > 0 ? value : null;
+    }
+    if (typeof value === 'string') {
+      const parsed = parseInt(value, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
+  function resolveEmpresaId(explicitValue) {
+    const explicit = normalizeEmpresaId(explicitValue);
+    if (explicit) {
+      return explicit;
+    }
+
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = window.localStorage.getItem('id_empresa');
+        const normalized = normalizeEmpresaId(stored);
+        if (normalized) {
+          return normalized;
+        }
+      }
+    } catch (error) {
+      console.warn('No se pudo obtener la empresa actual desde localStorage:', error);
+    }
+
+    return null;
+  }
 
   function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
@@ -28,15 +62,22 @@
       blob,
       fileName = `reporte-${new Date().toISOString()}`,
       source = '',
-      notes = ''
+      notes = '',
+      empresaId: explicitEmpresaId
     } = options;
+
+    const empresaId = resolveEmpresaId(explicitEmpresaId);
+    if (!empresaId) {
+      throw new Error('No se encontró una empresa activa para asociar el reporte.');
+    }
 
     const payload = {
       fileName,
       mimeType: blob.type || 'application/octet-stream',
       fileContent: await blobToBase64(blob),
       source,
-      notes
+      notes,
+      empresaId
     };
 
     const response = await fetch(API_BASE, {
@@ -68,7 +109,13 @@
   }
 
   async function fetchReportHistory() {
-    const response = await fetch(API_BASE, { method: 'GET' });
+    const empresaId = resolveEmpresaId();
+    if (!empresaId) {
+      throw new Error('No se encontró una empresa activa para consultar el historial.');
+    }
+
+    const params = new URLSearchParams({ empresa: String(empresaId) });
+    const response = await fetch(`${API_BASE}?${params.toString()}`, { method: 'GET' });
     const data = await response.json().catch(() => ({ success: false }));
 
     if (!response.ok || !data.success) {
@@ -87,8 +134,17 @@
     if (!reportId) {
       return;
     }
+    const empresaId = resolveEmpresaId();
+    if (!empresaId) {
+      console.warn('No se encontró una empresa activa para descargar el reporte.');
+      return;
+    }
     const link = document.createElement('a');
-    link.href = `${API_BASE}/${encodeURIComponent(reportId)}/download`;
+    const url = new URL(API_BASE, window.location.origin);
+    url.searchParams.set('action', 'download');
+    url.searchParams.set('id', reportId);
+    url.searchParams.set('empresa', String(empresaId));
+    link.href = url.toString();
     link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
