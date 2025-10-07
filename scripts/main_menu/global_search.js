@@ -382,36 +382,8 @@
         `;
     }
 
-    function populateQuickTagSelect(selectElement) {
-        if (!selectElement) return;
-
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = 'Selecciona un acceso rápido';
-        placeholder.dataset.placeholder = 'true';
-        placeholder.selected = true;
-
-        selectElement.innerHTML = '';
-        selectElement.appendChild(placeholder);
-
-        DEFAULT_QUICK_TAGS.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag.query;
-            option.dataset.fill = tag.fill || tag.label || tag.query;
-            option.textContent = tag.label;
-            if (tag.description) {
-                option.title = tag.description;
-            }
-            selectElement.appendChild(option);
-        });
-
-        selectElement.selectedIndex = 0;
-    }
-
-    function renderHistorialBusquedas(historial) {
-        if (!quickHistoryList) return;
-
-        quickHistoryList.innerHTML = '';
+    function renderQuickLinks(historial) {
+        if (!quickLinks) return;
 
         const historialNormalizado = Array.isArray(historial)
             ? historial
@@ -419,27 +391,72 @@
                 .filter(termino => termino.length > 0)
             : [];
 
-        const historialUnico = Array.from(new Set(historialNormalizado)).slice(0, 6);
+        const fragment = document.createDocumentFragment();
 
-        if (historialUnico.length === 0) {
-            const emptyItem = document.createElement('li');
-            emptyItem.className = 'empty-message';
-            emptyItem.textContent = 'Aún no hay búsquedas recientes.';
-            quickHistoryList.appendChild(emptyItem);
-            return;
-        }
+        DEFAULT_QUICK_TAGS.forEach(tag => {
+            if (!tag || !tag.query) {
+                return;
+            }
+
+            const listItem = document.createElement('li');
+            listItem.className = 'quick-tag';
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.query = tag.query;
+            button.dataset.fill = tag.fill || tag.query;
+            button.textContent = tag.label || tag.query;
+            if (tag.description) {
+                button.title = tag.description;
+            }
+
+            listItem.appendChild(button);
+            fragment.appendChild(listItem);
+        });
+
+        const historialNormalizado = Array.isArray(historial)
+            ? historial
+                .map(entry => (entry && entry.termino ? entry.termino : '').toString().trim())
+                .filter(termino => termino.length > 0)
+            : [];
+
+        const historialUnico = Array.from(new Set(historialNormalizado))
+            .filter(termino => termino.length > 0)
+            .filter(termino => {
+                const normalizedTerm = termino.toLowerCase();
+                return !DEFAULT_QUICK_TAGS.some(tag => {
+                    const query = (tag.query || '').toLowerCase();
+                    const label = (tag.label || '').toLowerCase();
+                    const fill = (tag.fill || '').toLowerCase();
+                    return normalizedTerm === query || normalizedTerm === label || normalizedTerm === fill;
+                });
+            })
+            .slice(0, 6);
 
         historialUnico.forEach(termino => {
             const listItem = document.createElement('li');
             listItem.className = 'history-tag';
+
             const button = document.createElement('button');
             button.type = 'button';
             button.dataset.query = termino;
             button.dataset.fill = termino;
             button.textContent = termino;
+            button.title = 'Repetir búsqueda reciente';
+
             listItem.appendChild(button);
-            quickHistoryList.appendChild(listItem);
+            fragment.appendChild(listItem);
         });
+
+        if (!fragment.childNodes.length) {
+            const emptyItem = document.createElement('li');
+            emptyItem.className = 'empty-message';
+            emptyItem.textContent = 'Aún no hay accesos rápidos disponibles.';
+            quickLinks.appendChild(emptyItem);
+            return;
+        }
+
+        quickLinks.appendChild(fragment);
     }
 
     async function cargarHistorialBusquedas(idEmpresa) {
@@ -449,7 +466,7 @@
 
         const empresaId = Number(idEmpresa);
         if (!empresaId) {
-            renderHistorialBusquedas([]);
+            renderQuickLinks([]);
             return;
         }
 
@@ -465,13 +482,13 @@
             const data = await response.json();
 
             if (data.success && Array.isArray(data.historial)) {
-                renderHistorialBusquedas(data.historial);
+                renderQuickLinks(data.historial);
             } else {
-                renderHistorialBusquedas([]);
+                renderQuickLinks([]);
             }
         } catch (error) {
             console.warn('No se pudo cargar el historial de búsquedas:', error);
-            renderHistorialBusquedas([]);
+            renderQuickLinks([]);
         }
     }
 
@@ -604,7 +621,7 @@
             const data = await response.json();
 
             if (data.success && Array.isArray(data.historial)) {
-                renderHistorialBusquedas(data.historial);
+                renderQuickLinks(data.historial);
             } else if (data.success) {
                 cargarHistorialBusquedas(empresaIdNumero);
             }
@@ -1030,7 +1047,7 @@
             body.classList.add('search-page-body');
         }
 
-        renderHistorialBusquedas([]);
+        renderQuickLinks([]);
         attachLayoutListeners();
         attachSearchListeners();
 
