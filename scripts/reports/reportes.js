@@ -2,6 +2,12 @@
   const HISTORY_API_URL = '../../scripts/php/report_history.php';
   const RETENTION_DAYS_FALLBACK = 60;
 
+  // Provide a local alias for the optional external history client.
+  // Some installations include `scripts/reports/report-history-client.js` which
+  // exposes `window.ReportHistory`. Older code expects a `historyClient`
+  // variable — define it here as a safe reference or `null` when absent.
+  const historyClient = (typeof window !== 'undefined' && window.ReportHistory) ? window.ReportHistory : null;
+
   const elements = {
     summaryTotal: document.getElementById('summaryTotal'),
     summaryMonth: document.getElementById('summaryMonth'),
@@ -107,6 +113,10 @@
     if (!empresaId) {
       throw new Error('No se encontró una empresa activa para consultar el historial.');
     }
+    // Prefer the optional client API when available (it resolves base paths reliably).
+    if (historyClient && typeof historyClient.fetchReportHistory === 'function') {
+      return historyClient.fetchReportHistory();
+    }
 
     const params = new URLSearchParams({ empresa: String(empresaId) });
     const response = await fetch(`${HISTORY_API_URL}?${params.toString()}`, { method: 'GET' });
@@ -127,6 +137,11 @@
   async function uploadFileToServer(file, metadata = {}) {
     if (!(file instanceof Blob)) {
       throw new Error('El archivo proporcionado no es válido.');
+    }
+
+    // Prefer the optional client API when available which accepts a Blob directly.
+    if (historyClient && typeof historyClient.uploadFile === 'function') {
+      return historyClient.uploadFile(file, metadata);
     }
 
     const empresaId = getActiveEmpresaId();
@@ -159,6 +174,10 @@
   function downloadReportFromServer(reportId) {
     if (!reportId) {
       return;
+    }
+    // Prefer client API if present (it handles URL resolution and empresaId lookup).
+    if (historyClient && typeof historyClient.downloadReport === 'function') {
+      return historyClient.downloadReport(reportId);
     }
 
     const empresaId = getActiveEmpresaId();
@@ -439,8 +458,10 @@
     }
     hideAlert();
 
+    // If an optional history client is not present we still support the built-in fetch
+    // fallback. Do not throw here — prefer graceful degradation.
     if (!historyClient) {
-      throw new Error('El historial de reportes no está disponible en esta instalación.');
+      console.warn('Report history client not detected; using direct fetch fallback.');
     }
 
     try {
