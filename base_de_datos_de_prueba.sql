@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 03-10-2025 a las 00:05:36
+-- Tiempo de generación: 07-10-2025 a las 22:56:30
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -46,14 +46,39 @@ CREATE TABLE `areas` (
 --
 
 INSERT INTO `areas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `volumen`, `capacidad_utilizada`, `porcentaje_ocupacion`, `productos_registrados`, `id_empresa`) VALUES
-(21, 'area', 'mi area', 7.00, 2.50, 6.00, 105.00, 1.30, 1.24, 2, 21),
+(21, 'area', 'la area', 7.00, 2.50, 6.00, 105.00, 1.30, 1.24, 2, 21),
 (22, 'Area 1', 'Es el area 1', 5.00, 2.00, 2.00, 20.00, 0.00, 0.00, 0, 24),
 (23, 'Papeleria', 'ES una papeleria', 5.00, 2.00, 5.00, 50.00, 0.00, 0.00, 0, 23),
 (24, 'El patolicismo', 'Una religion de patos', 99999999.99, 99999999.99, 99999999.99, 9999999999999.99, 0.00, 0.00, 0, 28),
 (25, 'Papeleria', 'Descripcion', 8.00, 2.00, 5.00, 80.00, 0.00, 0.00, 0, 24),
-(26, 'otra area', 'area dos', 20.00, 4.00, 14.00, 1120.00, 0.02, 0.00, 1, 21),
+(26, 'otra area', 'area dos', 20.00, 4.00, 14.00, 1120.00, 0.04, 0.00, 2, 21),
 (28, 'Area1', 'area1', 20.00, 3.00, 30.00, 1800.00, 0.00, 0.00, 0, 30),
-(30, 'Papeleria Ely', 'es una papeleria', 5.00, 2.00, 4.00, 40.00, 0.05, 0.13, 1, 24);
+(30, 'Papeleria Ely', 'es una papeleria', 5.00, 2.00, 4.00, 40.00, 0.05, 0.13, 1, 24),
+(31, 'nueva area', 'otra area', 10.00, 3.00, 10.00, 300.00, 0.00, 0.00, 0, 21);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `busquedas_recientes_empresa`
+--
+
+CREATE TABLE `busquedas_recientes_empresa` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `termino` varchar(255) NOT NULL,
+  `ultima_busqueda` datetime NOT NULL DEFAULT current_timestamp(),
+  `total_coincidencias` int(10) UNSIGNED NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `busquedas_recientes_empresa`
+--
+
+INSERT INTO `busquedas_recientes_empresa` (`id`, `id_empresa`, `termino`, `ultima_busqueda`, `total_coincidencias`) VALUES
+(1, 21, 'Usuarios', '2025-10-07 22:08:26', 5),
+(2, 21, 'Ver todo', '2025-10-07 22:21:26', 4),
+(3, 21, 'Áreas', '2025-10-07 22:08:30', 3),
+(5, 21, 'Movimientos', '2025-10-07 22:21:29', 4);
 
 -- --------------------------------------------------------
 
@@ -101,7 +126,7 @@ CREATE TABLE `configuracion_empresa` (
 --
 
 INSERT INTO `configuracion_empresa` (`id_empresa`, `color_sidebar`, `color_topbar`, `orden_sidebar`, `fecha_actualizacion`) VALUES
-(21, '#454b52', '#454b52', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-10-01 15:59:29'),
+(21, '#454b52', '#454b52', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-10-07 16:08:09'),
 (22, '#ff6b6b', '#2b7a78', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"account_suscrip\\/account_suscrip.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\"]', '2025-08-30 02:10:16'),
 (23, '#8e44ad', '#2980b9', '[\"inicio\",\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-08-04 13:47:24'),
 (24, '#454b52', '#454b52', '[\"area_almac_v2\\/gestion_areas_zonas.html\",\"gest_inve\\/inventario_basico.html\",\"inicio\",\"admin_usuar\\/administracion_usuarios.html\",\"reports\\/reportes.html\",\"control_log\\/log.html\",\"account_suscrip\\/account_suscrip.html\"]', '2025-10-02 19:24:35'),
@@ -157,7 +182,29 @@ CREATE TABLE `historial_busquedas` (
   `id_usuario` int(11) NOT NULL,
   `termino` varchar(255) NOT NULL,
   `fecha_busqueda` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `historial_busquedas`
+--
+
+INSERT INTO `historial_busquedas` (`id`, `id_empresa`, `id_usuario`, `termino`, `fecha_busqueda`) VALUES
+(1, 21, 57, 'Usuarios', '2025-10-07 22:08:09'),
+(2, 21, 57, 'Ver todo', '2025-10-07 22:08:10'),
+(3, 21, 57, 'Áreas', '2025-10-07 22:08:12'),
+(4, 21, 57, 'Usuarios', '2025-10-07 22:08:20'),
+(5, 21, 57, 'Movimientos', '2025-10-07 22:08:21'),
+(6, 21, 57, 'Usuarios', '2025-10-07 22:08:22'),
+(7, 21, 57, 'Usuarios', '2025-10-07 22:08:25'),
+(8, 21, 57, 'Usuarios', '2025-10-07 22:08:26'),
+(9, 21, 57, 'Movimientos', '2025-10-07 22:08:27'),
+(10, 21, 57, 'Áreas', '2025-10-07 22:08:28'),
+(11, 21, 57, 'Ver todo', '2025-10-07 22:08:28'),
+(12, 21, 57, 'Ver todo', '2025-10-07 22:08:29'),
+(13, 21, 57, 'Áreas', '2025-10-07 22:08:30'),
+(14, 21, 57, 'Movimientos', '2025-10-07 22:21:25'),
+(15, 21, 57, 'Ver todo', '2025-10-07 22:21:26'),
+(16, 21, 57, 'Movimientos', '2025-10-07 22:21:29');
 
 -- --------------------------------------------------------
 
@@ -287,7 +334,43 @@ INSERT INTO `log_control` (`id`, `id_usuario`, `modulo`, `accion`, `fecha`, `hor
 (106, 117, 'Usuarios', 'Registro de usuario: mario.garciadelacruz@forvia.com', '2025-10-02', '19:46:55'),
 (107, 117, 'Usuarios', 'Reenvío de código de verificación de cuenta', '2025-10-02', '19:47:52'),
 (108, 57, 'Productos', 'Creación de producto: carro (ID 52)', '2025-10-02', '23:47:30'),
-(109, 57, 'Productos', 'Actualización de producto ID: 52', '2025-10-02', '23:49:02');
+(109, 57, 'Productos', 'Actualización de producto ID: 52', '2025-10-02', '23:49:02'),
+(110, 57, 'Productos', 'Actualización de producto ID: 52', '2025-10-03', '00:18:16'),
+(111, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-03', '00:39:22'),
+(112, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-03', '00:41:18'),
+(113, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-03', '18:20:33'),
+(114, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-10-03', '22:28:24'),
+(115, 57, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-10-03', '22:28:34'),
+(116, 57, 'Inventario', 'Ingreso de 9 unidad(es) del producto 52', '2025-10-03', '23:36:45'),
+(117, 57, 'Productos', 'Eliminación de producto ID: 52 y 1 movimiento(s) asociados', '2025-10-03', '23:37:12'),
+(118, 57, 'Inventario', 'Egreso de 2 unidad(es) del producto 41', '2025-10-03', '23:37:55'),
+(119, 57, 'Inventario', 'Ingreso de 2 unidad(es) del producto 41', '2025-10-04', '00:13:24'),
+(120, 57, 'Productos', 'Actualización de producto ID: 46', '2025-10-04', '00:33:25'),
+(121, 57, 'Usuarios', 'Registro de usuario empresa: supervisor@gmail.com', '2025-10-04', '19:42:00'),
+(122, 119, 'Inventario', 'Ingreso de 1 unidad(es) del producto 41', '2025-10-04', '19:43:10'),
+(123, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-04', '20:44:22'),
+(124, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-04', '20:44:31'),
+(125, 57, 'Inventario', 'Egreso de 20 unidad(es) del producto 45', '2025-10-05', '00:44:52'),
+(126, 57, 'Inventario', 'Ingreso de 30 unidad(es) del producto 50', '2025-10-05', '00:45:11'),
+(127, 57, 'Inventario', 'Egreso de 60 unidad(es) del producto 50', '2025-10-05', '00:45:28'),
+(128, 57, 'Productos', 'Actualización de producto ID: 41', '2025-10-05', '00:46:32'),
+(129, 57, 'Áreas', 'Actualización de área ID: 21', '2025-10-05', '00:46:55'),
+(130, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-05', '00:57:13'),
+(131, 57, 'Configuración', 'Actualización de configuración para empresa 21', '2025-10-07', '16:08:09'),
+(132, 57, 'Reportes', 'Eliminó reporte: usuarios_empresa.pdf', '2025-10-07', '18:01:35'),
+(133, 57, 'Reportes', 'Eliminó reporte: logs.pdf', '2025-10-07', '18:01:40'),
+(134, 57, 'Reportes', 'Eliminó reporte: usuarios_empresa.pdf', '2025-10-07', '18:01:46'),
+(135, 57, 'Reportes', 'Eliminó reporte: usuarios_empresa.pdf', '2025-10-07', '18:01:50'),
+(136, 57, 'Reportes', 'Eliminó reporte: usuarios_empresa.xlsx', '2025-10-07', '18:01:54'),
+(137, 57, 'Reportes', 'Eliminó reporte: inventario_productos.pdf', '2025-10-07', '18:01:59'),
+(138, 57, 'Reportes', 'Eliminó reporte: usuarios_empresa.pdf', '2025-10-07', '18:02:03'),
+(139, 57, 'Reportes', 'Eliminó reporte: inventario_productos.xlsx', '2025-10-07', '18:02:08'),
+(140, 57, 'Reportes', 'Eliminó reporte: usuarios_empresa.pdf', '2025-10-07', '18:06:13'),
+(141, 57, 'Áreas', 'Creación de área: nueva area', '2025-10-07', '21:03:02'),
+(142, 57, 'Inventario', 'Ingreso de 5 unidad(es) del producto 50', '2025-10-07', '22:14:24'),
+(143, 57, 'Inventario', 'Egreso de 4 unidad(es) del producto 45', '2025-10-07', '22:14:30'),
+(144, 57, 'Inventario', 'Egreso de 10 unidad(es) del producto 46', '2025-10-07', '22:14:35'),
+(145, 57, 'Inventario', 'Ingreso de 2 unidad(es) del producto 46', '2025-10-07', '22:14:40');
 
 -- --------------------------------------------------------
 
@@ -336,7 +419,19 @@ INSERT INTO `movimientos` (`id`, `empresa_id`, `producto_id`, `tipo`, `cantidad`
 (25, 21, 50, 'ingreso', 1, 57, '2025-10-02 00:38:54'),
 (26, 21, 50, 'ingreso', 1, 57, '2025-10-02 00:53:24'),
 (27, 21, 50, 'egreso', 30, 57, '2025-10-02 17:04:16'),
-(28, 21, 50, 'ingreso', 30, 57, '2025-10-02 17:43:53');
+(28, 21, 50, 'ingreso', 30, 57, '2025-10-02 17:43:53'),
+(29, 21, 41, 'ingreso', 1, 57, '2025-10-03 22:28:24'),
+(30, 21, 41, 'ingreso', 1, 57, '2025-10-03 22:28:34'),
+(32, 21, 41, 'egreso', 2, 57, '2025-10-03 23:37:55'),
+(33, 21, 41, 'ingreso', 2, 57, '2025-10-04 00:13:24'),
+(34, 21, 41, 'ingreso', 1, 119, '2025-10-04 19:43:10'),
+(35, 21, 45, 'egreso', 20, 57, '2025-10-05 00:44:52'),
+(36, 21, 50, 'ingreso', 30, 57, '2025-10-05 00:45:11'),
+(37, 21, 50, 'egreso', 60, 57, '2025-10-05 00:45:28'),
+(38, 21, 50, 'ingreso', 5, 57, '2025-10-07 22:14:24'),
+(39, 21, 45, 'egreso', 4, 57, '2025-10-07 22:14:30'),
+(40, 21, 46, 'egreso', 10, 57, '2025-10-07 22:14:35'),
+(41, 21, 46, 'ingreso', 2, 57, '2025-10-07 22:14:40');
 
 -- --------------------------------------------------------
 
@@ -417,15 +512,14 @@ CREATE TABLE `productos` (
 INSERT INTO `productos` (`id`, `nombre`, `descripcion`, `categoria_id`, `subcategoria_id`, `stock`, `precio_compra`, `dim_x`, `dim_y`, `dim_z`, `codigo_qr`, `empresa_id`, `zona_id`, `last_movimiento`, `last_tipo`) VALUES
 (36, 'Lapiz Sharpie', 'SI', 27, 27, 10, 10.00, 2, 2, 1, NULL, 23, 18, '2025-08-04 13:46:16', NULL),
 (37, 'Una piedra', '', 28, NULL, 19, 1.30, 0, 0, 0, NULL, 28, 19, '2025-08-04 17:13:27', NULL),
-(41, 'plato unicel', '', 31, NULL, 9, 50.00, 30, 30, 2, 'images/qr/41.png', 21, 22, '2025-10-02 00:34:53', NULL),
+(41, 'plato unicel', '', 31, 38, 12, 50.00, 30, 2, 30, 'images/qr/41.png', 21, 22, '2025-10-05 00:46:32', NULL),
 (43, 'papel a4 marca J', 'Es papel de la marca J de tamaño a4', 34, 36, 990, 400.00, 4, 4, 4, 'images/qr/43.png', 24, 17, '2025-09-03 19:09:02', NULL),
 (44, 'si', 'si', 34, NULL, 0, 100.00, 0, 0, 0, 'images/qr/44.png', 24, 17, '2025-09-10 16:01:47', NULL),
-(45, 'Conos de papel', '', 32, 37, 35, 2.00, 8, 11, 8, 'images/qr/45.png', 21, 16, '2025-10-02 00:34:03', NULL),
-(46, 'platos unicel royal prestige', '', 31, 38, 20, 50.00, 0, 0, 0, 'images/qr/46.png', 21, 20, '2025-09-28 23:43:00', NULL),
+(45, 'Conos de papel', '', 32, 37, 11, 2.00, 8, 11, 8, 'images/qr/45.png', 21, 16, '2025-10-07 22:14:30', NULL),
+(46, 'platos unicel royal prestige', 'plato de royal prestige para los chalanes', 31, 38, 12, 50.00, 20, 20, 3, 'images/qr/46.png', 21, 20, '2025-10-07 22:14:40', NULL),
 (48, 'Objeto de prueba', 'Sisisis', 33, 34, 3, 12.00, 2, 2, 2, 'images/qr/48.png', 24, 17, '2025-10-01 16:13:46', NULL),
-(50, 'Perfil Ventana M4 roble', '', 25, NULL, 36, 300.00, 20, 20, 400, 'images/qr/50.png', 21, 16, '2025-10-02 17:43:53', NULL),
-(51, 'cyuaderno norma', 'cuerno norma tama;o x', 33, 34, 10, 150.00, 30, 30, 5, 'images/qr/51.png', 24, 25, '2025-10-02 19:36:18', NULL),
-(52, 'carro', '', 25, NULL, 2, 300.00, 0, 0, 0, 'images/qr/52.png', 21, NULL, '2025-10-02 23:49:02', NULL);
+(50, 'Perfil Ventana M4 roble', '', 25, NULL, 11, 300.00, 20, 20, 400, 'images/qr/50.png', 21, 16, '2025-10-07 22:14:24', NULL),
+(51, 'cyuaderno norma', 'cuerno norma tama;o x', 33, 34, 10, 150.00, 30, 30, 5, 'images/qr/51.png', 24, 25, '2025-10-02 19:36:18', NULL);
 
 -- --------------------------------------------------------
 
@@ -860,7 +954,166 @@ INSERT INTO `registro_accesos` (`id`, `id_usuario`, `accion`, `fecha`) VALUES
 (420, 60, 'Inicio', '2025-10-02 19:23:42'),
 (421, 116, 'Inicio', '2025-10-02 19:43:43'),
 (422, 57, 'Inicio', '2025-10-02 23:02:03'),
-(423, 57, 'Inicio', '2025-10-02 23:24:09');
+(423, 57, 'Inicio', '2025-10-02 23:24:09'),
+(424, 57, 'Inicio', '2025-10-03 00:16:57'),
+(425, 57, 'Inicio', '2025-10-03 00:39:08'),
+(426, 60, 'Intento', '2025-10-03 04:44:14'),
+(427, 60, 'Intento', '2025-10-03 04:44:22'),
+(428, 60, 'Intento', '2025-10-03 04:44:26'),
+(429, 60, 'Intento', '2025-10-03 04:44:32'),
+(430, 60, 'Inicio', '2025-10-03 04:46:33'),
+(431, 60, 'Inicio', '2025-10-03 04:47:52'),
+(432, 57, 'Inicio', '2025-10-03 18:20:20'),
+(433, 57, 'Inicio', '2025-10-03 22:27:52'),
+(434, 57, 'Inicio', '2025-10-03 22:43:11'),
+(435, 57, 'Inicio', '2025-10-03 22:57:11'),
+(436, 57, 'Inicio', '2025-10-03 23:09:36'),
+(437, 57, 'Inicio', '2025-10-03 23:26:09'),
+(438, 57, 'Inicio', '2025-10-03 23:33:45'),
+(439, 57, 'Inicio', '2025-10-03 23:34:27'),
+(440, 57, 'Inicio', '2025-10-03 23:35:43'),
+(441, 57, 'Inicio', '2025-10-03 23:53:22'),
+(442, 57, 'Inicio', '2025-10-03 23:59:12'),
+(443, 57, 'Inicio', '2025-10-03 23:59:12'),
+(444, 57, 'Inicio', '2025-10-03 23:59:12'),
+(445, 57, 'Inicio', '2025-10-03 23:59:38'),
+(446, 57, 'Inicio', '2025-10-04 00:12:55'),
+(447, 57, 'Cierre', '2025-10-04 00:13:35'),
+(448, 57, 'Inicio', '2025-10-04 00:13:38'),
+(449, 57, 'Inicio', '2025-10-04 00:30:33'),
+(450, 57, 'Inicio', '2025-10-04 01:04:56'),
+(451, 57, 'Inicio', '2025-10-04 01:19:53'),
+(452, 57, 'Inicio', '2025-10-04 18:41:22'),
+(453, 57, 'Inicio', '2025-10-04 19:03:19'),
+(454, 57, 'Inicio', '2025-10-04 19:25:29'),
+(455, 57, 'Inicio', '2025-10-04 19:41:16'),
+(456, 57, 'Cierre', '2025-10-04 19:42:16'),
+(457, 119, 'Inicio', '2025-10-04 19:42:25'),
+(458, 119, 'Cierre', '2025-10-04 19:44:15'),
+(459, 57, 'Inicio', '2025-10-04 19:45:30'),
+(460, 57, 'Inicio', '2025-10-04 20:05:59'),
+(461, 57, 'Inicio', '2025-10-04 20:12:59'),
+(462, 57, 'Inicio', '2025-10-04 20:22:49'),
+(463, 57, 'Inicio', '2025-10-04 20:42:02'),
+(464, 57, 'Inicio', '2025-10-04 20:57:31'),
+(465, 57, 'Inicio', '2025-10-04 20:58:43'),
+(466, 57, 'Inicio', '2025-10-04 21:00:49'),
+(467, 57, 'Inicio', '2025-10-04 21:06:13'),
+(468, 57, 'Inicio', '2025-10-04 21:23:50'),
+(469, 57, 'Inicio', '2025-10-04 22:41:30'),
+(470, 57, 'Inicio', '2025-10-04 22:56:26'),
+(471, 57, 'Inicio', '2025-10-04 23:12:23'),
+(472, 57, 'Inicio', '2025-10-04 23:40:00'),
+(473, 57, 'Inicio', '2025-10-04 23:47:51'),
+(474, 57, 'Inicio', '2025-10-05 00:07:18'),
+(475, 57, 'Inicio', '2025-10-05 00:18:51'),
+(476, 119, 'Inicio', '2025-10-05 00:30:56'),
+(477, 119, 'Inicio', '2025-10-05 00:30:56'),
+(478, 119, 'Inicio', '2025-10-05 00:30:56'),
+(479, 57, 'Inicio', '2025-10-05 00:44:06'),
+(480, 57, 'Inicio', '2025-10-05 00:56:44'),
+(481, 57, 'Cierre', '2025-10-05 00:57:24'),
+(482, 119, 'Inicio', '2025-10-05 00:57:34'),
+(483, 119, 'Cierre', '2025-10-05 00:57:46'),
+(484, 57, 'Inicio', '2025-10-05 00:57:48'),
+(485, 57, 'Cierre', '2025-10-05 00:58:18'),
+(486, 111, 'Inicio', '2025-10-05 00:58:26'),
+(487, 57, 'Inicio', '2025-10-06 19:39:31'),
+(488, 57, 'Inicio', '2025-10-06 19:43:25'),
+(489, 57, 'Inicio', '2025-10-06 22:54:29'),
+(490, 57, 'Inicio', '2025-10-06 23:22:00'),
+(491, 57, 'Inicio', '2025-10-06 23:34:52'),
+(492, 57, 'Inicio', '2025-10-06 23:54:45'),
+(493, 57, 'Inicio', '2025-10-07 00:12:39'),
+(494, 57, 'Inicio', '2025-10-07 00:21:54'),
+(495, 57, 'Inicio', '2025-10-07 00:23:08'),
+(496, 57, 'Inicio', '2025-10-07 00:29:36'),
+(497, 57, 'Inicio', '2025-10-07 00:49:55'),
+(498, 57, 'Inicio', '2025-10-07 00:53:22'),
+(499, 57, 'Inicio', '2025-10-07 01:11:11'),
+(500, 57, 'Inicio', '2025-10-07 01:41:16'),
+(501, 57, 'Inicio', '2025-10-07 01:50:32'),
+(502, 57, 'Inicio', '2025-10-07 02:21:11'),
+(503, 57, 'Inicio', '2025-10-07 16:06:28'),
+(504, 57, 'Inicio', '2025-10-07 16:12:05'),
+(505, 57, 'Inicio', '2025-10-07 16:56:21'),
+(506, 57, 'Inicio', '2025-10-07 17:13:08'),
+(507, 57, 'Inicio', '2025-10-07 17:22:17'),
+(508, 57, 'Inicio', '2025-10-07 17:36:57'),
+(509, 57, 'Inicio', '2025-10-07 17:43:13'),
+(510, 57, 'Inicio', '2025-10-07 17:54:01'),
+(511, 57, 'Inicio', '2025-10-07 18:01:24'),
+(512, 57, 'Inicio', '2025-10-07 18:05:26'),
+(513, 57, 'Inicio', '2025-10-07 18:42:02'),
+(514, 57, 'Inicio', '2025-10-07 18:56:51'),
+(515, 57, 'Inicio', '2025-10-07 20:51:56'),
+(516, 57, 'Inicio', '2025-10-07 21:37:27'),
+(517, 57, 'Inicio', '2025-10-07 21:41:14'),
+(518, 57, 'Inicio', '2025-10-07 21:42:41'),
+(519, 57, 'Inicio', '2025-10-07 22:07:40'),
+(520, 57, 'Inicio', '2025-10-07 22:08:04'),
+(521, 57, 'Inicio', '2025-10-07 22:11:12'),
+(522, 57, 'Inicio', '2025-10-07 22:18:51'),
+(523, 57, 'Inicio', '2025-10-07 22:21:09'),
+(524, 57, 'Inicio', '2025-10-07 22:21:45'),
+(525, 57, 'Inicio', '2025-10-07 22:23:41'),
+(526, 57, 'Inicio', '2025-10-07 22:53:52');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `reportes_automatizaciones`
+--
+
+CREATE TABLE `reportes_automatizaciones` (
+  `id` int(11) NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `modulo` varchar(120) DEFAULT NULL,
+  `formato` enum('pdf','excel') NOT NULL DEFAULT 'pdf',
+  `frecuencia` enum('daily','weekly','biweekly','monthly') NOT NULL DEFAULT 'daily',
+  `hora` time NOT NULL DEFAULT '08:00:00',
+  `dia_semana` tinyint(4) DEFAULT NULL,
+  `dia_mes` tinyint(4) DEFAULT NULL,
+  `notas` text DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `proxima_ejecucion` datetime DEFAULT NULL,
+  `ultima_ejecucion` datetime DEFAULT NULL,
+  `creado_en` datetime NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `reportes_historial`
+--
+
+CREATE TABLE `reportes_historial` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `uuid` char(32) NOT NULL,
+  `id_empresa` int(10) UNSIGNED NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `storage_name` varchar(255) NOT NULL,
+  `mime_type` varchar(120) NOT NULL,
+  `file_size` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `source` varchar(120) NOT NULL DEFAULT '',
+  `notes` varchar(240) NOT NULL DEFAULT '',
+  `created_on` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_on` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `reportes_historial`
+--
+
+INSERT INTO `reportes_historial` (`id`, `uuid`, `id_empresa`, `original_name`, `storage_name`, `mime_type`, `file_size`, `created_at`, `expires_at`, `source`, `notes`, `created_on`, `updated_on`) VALUES
+(9, '633b4104617f44ddb2c6359a3bafe500', 21, 'inventario_productos.pdf', '1759859760-69bef8b8cef716c869b8b14e74c8fe9b.pdf', 'application/pdf', 15550, '2025-10-07 17:56:00', '2025-12-06 17:56:00', 'Gestión de inventario', 'Exportación de Productos del inventario a PDF', '2025-10-07 17:56:00', NULL),
+(11, '0749048db7d8fb56f839dcae703f6692', 21, 'usuarios_empresa.pdf', '1759863479-31c43006ff0c58b44a87609c9ce57275.pdf', 'application/pdf', 10388, '2025-10-07 18:57:59', '2025-12-06 18:57:59', 'Administración de usuarios', 'Exportación de usuarios a PDF', '2025-10-07 18:57:59', NULL),
+(12, 'a6257a6052e6a57fd5424b0b7d10c9b3', 21, 'inventario_productos.pdf', '1759863491-122a73b69a4dbb9ba564107fd44bc06b.pdf', 'application/pdf', 15550, '2025-10-07 18:58:11', '2025-12-06 18:58:11', 'Gestión de inventario', 'Exportación de Productos del inventario a PDF', '2025-10-07 18:58:11', NULL),
+(13, '130ba052c1db94f3419e446e64219d9f', 21, 'logs.pdf', '1759864181-f895f0f43c721e9c59119f1c5462f3cb.pdf', 'application/pdf', 19551, '2025-10-07 19:09:41', '2025-12-06 19:09:41', 'Control de registros', 'Exportación del registro a PDF', '2025-10-07 19:09:41', NULL);
 
 -- --------------------------------------------------------
 
@@ -927,7 +1180,7 @@ INSERT INTO `usuario` (`id_usuario`, `nombre`, `apellido`, `fecha_nacimiento`, `
 (57, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'a21100316@ceti.mx', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-17 02:28:49', 1, 0, 0, NULL, 'images/profiles/perfil_57_1755646866.jpeg', 1, 1),
 (58, 'Emiliano', 'Sanchez Flores', '2005-03-30', '6731350698', 'tareasdeemi@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Administrador', '2025-04-18 05:39:32', 1, 0, 0, NULL, 'images/profiles/perfil_58_1756914842.jpg', 1, 1),
 (59, 'Esteban Israel', 'Caballero Velázquez', '2006-08-03', '3323859470', 'a21300617@ceti.mx', '851f50aaf59b40156423094ad134cbd4272f399a', 'Administrador', '2025-05-21 12:53:38', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
-(60, 'Ivan Eduardo ', 'Garcia Verduzco', '2005-06-15', '3315634573', 'ie.garcia.ve@gmail.com', 'ba46035ced600481626596823e153ceb433fd886', 'Administrador', '2025-06-23 02:23:08', 1, 0, 4, '2025-10-02 19:22:43', 'images/profiles/perfil_60_1755183384.jpg', 1, 1),
+(60, 'Ivan Eduardo ', 'Garcia Verduzco', '2005-06-15', '3315634573', 'ie.garcia.ve@gmail.com', 'ba46035ced600481626596823e153ceb433fd886', 'Administrador', '2025-06-23 02:23:08', 1, 0, 5, '2025-10-03 04:44:14', 'images/profiles/perfil_60_1755183384.jpg', 1, 1),
 (61, 'kini', 'a', '2000-03-12', '331342411', '1234567U@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Administrador', '2025-06-24 14:02:28', 0, 0, 0, NULL, 'images/profile.jpg', 1, 0),
 (62, 'kini', 'a', '2000-03-12', '331342411', 'grasomister642@gmail.com', 'fede6a5f0852a4d0d1f56ee296b85a9c227b13bd', 'Administrador', '2025-06-24 14:03:43', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
 (75, 'el pepe', 'Ete sech', '2004-04-12', '1234567890', 'elpepeetesech@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Etiquetador', '2025-07-01 01:32:25', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
@@ -953,7 +1206,8 @@ INSERT INTO `usuario` (`id_usuario`, `nombre`, `apellido`, `fecha_nacimiento`, `
 (114, 'OSAMA', 'HOSNI TOUIL TOUIL', '1975-05-26', '679121427', 'osamahosni1975@gmail.com', '135731ba3cd4a9cbe32b530e7c192c69965ba448', 'Administrador', '2025-09-16 17:12:04', 1, 0, 0, NULL, 'images/profile.jpg', 1, 0),
 (115, 'rocha', 'alejandro', '2000-05-05', '99999999999999', 'rochamagico.90@gmail.com', '3414039fe8ebbb0bc6db4ff54d0ca57016732635', 'Almacenista', '2025-10-01 02:47:58', 1, 0, 0, NULL, 'images/almacenista.jpg', 1, 1),
 (116, 'Mariana Yatzil ', 'García Verduzco ', '2008-05-11', '33-11006257', 'mariyatgar@gmail.com', '1d732453f23aae921d779a393c1bbfa34facbeb4', 'Administrador', '2025-10-02 19:43:43', 1, 0, 0, NULL, 'images/profile.jpg', 1, 1),
-(117, 'Mario', 'Garcia', '2025-01-01', '3329658948', 'mario.garciadelacruz@forvia.com', '151bb728245d7f2877ea67505dabb1df033fd54c', 'Administrador', '2025-10-02 19:46:54', 0, 0, 0, NULL, 'images/profile.jpg', 1, 0);
+(117, 'Mario', 'Garcia', '2025-01-01', '3329658948', 'mario.garciadelacruz@forvia.com', '151bb728245d7f2877ea67505dabb1df033fd54c', 'Administrador', '2025-10-02 19:46:54', 0, 0, 0, NULL, 'images/profile.jpg', 1, 0),
+(119, 'Super', 'Visor', '2001-01-01', '123456789', 'supervisor@gmail.com', '7247638c49b86e6b7fdab59a696f7e90a0363bbc', 'Supervisor', '2025-10-04 19:42:00', 1, 0, 0, NULL, 'images/supervisor.jpg', 1, 1);
 
 -- --------------------------------------------------------
 
@@ -967,6 +1221,15 @@ CREATE TABLE `usuario_area_zona` (
   `id_zona` int(11) DEFAULT NULL,
   `fecha_asignacion` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `usuario_area_zona`
+--
+
+INSERT INTO `usuario_area_zona` (`id_usuario`, `id_area`, `id_zona`, `fecha_asignacion`) VALUES
+(119, 26, NULL, '2025-10-04 19:42:13'),
+(111, 21, NULL, '2025-10-05 00:58:15'),
+(111, 31, NULL, '2025-10-07 21:03:20');
 
 -- --------------------------------------------------------
 
@@ -986,6 +1249,7 @@ CREATE TABLE `usuario_empresa` (
 INSERT INTO `usuario_empresa` (`id_usuario`, `id_empresa`) VALUES
 (110, 21),
 (111, 21),
+(119, 21),
 (75, 22),
 (92, 23),
 (112, 24),
@@ -1029,9 +1293,9 @@ INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `v
 (17, 'Zona 1', 'es la zona 1', 2.00, 2.00, 2.00, 8.00, 0.00, 0.00, 0, 'gabinete', '[]', 22, 24),
 (18, 'Mostrador', 'SI', 2.00, 1.00, 2.00, 4.00, 0.00, 0.00, 0, 'vitrina', '[]', 23, 23),
 (19, 'Iglesia Patólica', 'Una iglesia a nuestro señor y salvador emplumado', 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0, 'jaula', '[]', 24, 28),
-(20, 'rack A', 'rack para cosas pesadas', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
+(20, 'rack A', 'rack para cosas pesadas', 1.50, 3.00, 5.00, 22.50, 0.02, 0.11, 1, 'rack', '[]', 26, 21),
 (21, 'rack B', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.00, 0.00, 0, 'rack', '[]', 26, 21),
-(22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.02, 0.07, 1, 'rack', '[]', 26, 21),
+(22, 'rack C', 'otro rack', 1.50, 3.00, 5.00, 22.50, 0.02, 0.10, 1, 'rack', '[]', 26, 21),
 (23, 'Zona1', 'zona1', 2.00, 1.00, 2.00, 4.00, 0.00, 0.00, 0, 'cajón', '[]', 28, 30),
 (24, 'zona nueva', 'zona que no quiero con area', 10.00, 2.00, 10.00, 200.00, 0.00, 0.00, 0, 'jaula', '[]', NULL, 21),
 (25, 'vitrina', 'vitrina central', 1.00, 1.00, 1.50, 1.50, 0.05, 3.00, 1, 'vitrina', '[]', 30, 24);
@@ -1045,6 +1309,13 @@ INSERT INTO `zonas` (`id`, `nombre`, `descripcion`, `ancho`, `alto`, `largo`, `v
 --
 ALTER TABLE `areas`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `busquedas_recientes_empresa`
+--
+ALTER TABLE `busquedas_recientes_empresa`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_empresa_termino` (`id_empresa`,`termino`);
 
 --
 -- Indices de la tabla `categorias`
@@ -1071,8 +1342,8 @@ ALTER TABLE `empresa`
 --
 ALTER TABLE `historial_busquedas`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_historial_empresa_fecha` (`id_empresa`,`fecha_busqueda`),
-  ADD KEY `fk_historial_busquedas_usuario` (`id_usuario`);
+  ADD KEY `idx_empresa_fecha` (`id_empresa`,`fecha_busqueda`),
+  ADD KEY `fk_historial_usuario` (`id_usuario`);
 
 --
 -- Indices de la tabla `log_control`
@@ -1124,6 +1395,22 @@ ALTER TABLE `registro_accesos`
   ADD KEY `id_usuario` (`id_usuario`);
 
 --
+-- Indices de la tabla `reportes_automatizaciones`
+--
+ALTER TABLE `reportes_automatizaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_reportes_auto_empresa` (`id_empresa`),
+  ADD KEY `idx_reportes_auto_proxima` (`proxima_ejecucion`);
+
+--
+-- Indices de la tabla `reportes_historial`
+--
+ALTER TABLE `reportes_historial`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_reportes_historial_uuid` (`uuid`),
+  ADD KEY `idx_reportes_historial_empresa_fecha` (`id_empresa`,`created_at`);
+
+--
 -- Indices de la tabla `subcategorias`
 --
 ALTER TABLE `subcategorias`
@@ -1168,7 +1455,13 @@ ALTER TABLE `zonas`
 -- AUTO_INCREMENT de la tabla `areas`
 --
 ALTER TABLE `areas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+
+--
+-- AUTO_INCREMENT de la tabla `busquedas_recientes_empresa`
+--
+ALTER TABLE `busquedas_recientes_empresa`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT de la tabla `categorias`
@@ -1186,19 +1479,19 @@ ALTER TABLE `empresa`
 -- AUTO_INCREMENT de la tabla `historial_busquedas`
 --
 ALTER TABLE `historial_busquedas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT de la tabla `log_control`
 --
 ALTER TABLE `log_control`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=146;
 
 --
 -- AUTO_INCREMENT de la tabla `movimientos`
 --
 ALTER TABLE `movimientos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT de la tabla `notificaciones`
@@ -1222,7 +1515,19 @@ ALTER TABLE `productos`
 -- AUTO_INCREMENT de la tabla `registro_accesos`
 --
 ALTER TABLE `registro_accesos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=424;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=527;
+
+--
+-- AUTO_INCREMENT de la tabla `reportes_automatizaciones`
+--
+ALTER TABLE `reportes_automatizaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `reportes_historial`
+--
+ALTER TABLE `reportes_historial`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT de la tabla `subcategorias`
@@ -1234,7 +1539,7 @@ ALTER TABLE `subcategorias`
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
 
 --
 -- AUTO_INCREMENT de la tabla `zonas`
@@ -1245,6 +1550,12 @@ ALTER TABLE `zonas`
 --
 -- Restricciones para tablas volcadas
 --
+
+--
+-- Filtros para la tabla `busquedas_recientes_empresa`
+--
+ALTER TABLE `busquedas_recientes_empresa`
+  ADD CONSTRAINT `fk_busquedas_recientes_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `configuracion_empresa`
@@ -1262,8 +1573,8 @@ ALTER TABLE `empresa`
 -- Filtros para la tabla `historial_busquedas`
 --
 ALTER TABLE `historial_busquedas`
-  ADD CONSTRAINT `fk_historial_busquedas_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_historial_busquedas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_historial_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_historial_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `log_control`
@@ -1298,6 +1609,12 @@ ALTER TABLE `productos`
 --
 ALTER TABLE `registro_accesos`
   ADD CONSTRAINT `registro_accesos_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `reportes_automatizaciones`
+--
+ALTER TABLE `reportes_automatizaciones`
+  ADD CONSTRAINT `fk_reportes_auto_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `subcategorias`
