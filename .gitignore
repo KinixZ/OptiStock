@@ -1,3 +1,5 @@
 images/profiles/
 images/logos/
 images/qr/
+# Report history stored files
+/docs/report-history/files/
