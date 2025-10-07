@@ -4,7 +4,296 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reportes · OptiStock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-IvM3gXkZzm3UfFcGJE0E7E5Wdl66iRS0LlwM651c01qmPvvrLpzjAU6YewsGmmKzBSSMSmc5QdDFi1C5nUqXkg=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <link rel="stylesheet" href="../../styles/reports/reportes.css" />
 </head>
 <body>
+  <main class="report-layout">
+    <section class="report-hero">
+      <div class="report-hero__content">
+        <span class="report-hero__badge">Centro de reportes</span>
+        <h1 class="report-hero__title">Reportes inteligentes de OptiStock</h1>
+        <p class="report-hero__subtitle">
+          Genera, programa y resguarda todos los documentos PDF de tu operación. Personaliza periodos, zonas y módulos sin salir de la plataforma.
+        </p>
+        <div class="metrics-grid" id="metricas">
+          <p class="metrics-empty">Configura los filtros para ver el resumen de actividad.</p>
+        </div>
+      </div>
+      <img src="../../images/optistockLogo.png" alt="Logotipo de la empresa" class="report-hero__brand" id="heroBrand" />
+    </section>
+
+    <section class="report-panels">
+      <aside class="filter-panel" aria-labelledby="filtrosTitulo">
+        <div class="panel-heading">
+          <h2 id="filtrosTitulo">Filtros de consulta</h2>
+          <p>Define el alcance de tus reportes por módulo, fechas y responsables.</p>
+        </div>
+
+        <form class="filters-form" id="formFiltros">
+          <fieldset class="filters-form__group">
+            <legend>Módulos del sistema</legend>
+            <label class="chip">
+              <input type="checkbox" value="inventarios" class="modulo" checked /> Inventarios
+            </label>
+            <label class="chip">
+              <input type="checkbox" value="areas" class="modulo" checked /> Áreas
+            </label>
+            <label class="chip">
+              <input type="checkbox" value="zonas" class="modulo" checked /> Zonas
+            </label>
+            <label class="chip">
+              <input type="checkbox" value="usuarios" class="modulo" checked /> Usuarios
+            </label>
+          </fieldset>
+
+          <div class="filters-grid">
+            <label class="field">
+              <span>Fecha inicial</span>
+              <input type="date" id="fInicio" />
+            </label>
+            <label class="field">
+              <span>Fecha final</span>
+              <input type="date" id="fFin" />
+            </label>
+            <label class="field">
+              <span>Categoría</span>
+              <input type="text" id="fCategoria" placeholder="Refacciones, auditorías…" />
+            </label>
+            <label class="field">
+              <span>Zona o área</span>
+              <input type="text" id="fZona" placeholder="Norte, refrigerado…" />
+            </label>
+            <label class="field">
+              <span>Rol responsable</span>
+              <select id="fRol">
+                <option value="">Todos</option>
+                <option value="almacenista">Almacenista</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="administrador">Administrador</option>
+                <option value="mantenimiento">Mantenimiento</option>
+              </select>
+            </label>
+          </div>
+
+          <fieldset class="filters-form__group">
+            <legend>Marca corporativa en reportes</legend>
+            <div class="brand-options">
+              <label class="chip">
+                <input type="radio" name="brandMode" value="marca" checked /> Marca de agua
+              </label>
+              <label class="chip">
+                <input type="radio" name="brandMode" value="pie-izq" /> Pie izquierdo
+              </label>
+              <label class="chip">
+                <input type="radio" name="brandMode" value="pie-der" /> Pie derecho
+              </label>
+              <label class="chip">
+                <input type="radio" name="brandMode" value="marca-pie" /> Marca + pie
+              </label>
+            </div>
+            <div class="brand-controls">
+              <label class="field brand-field">
+                <span>Logotipo personalizado</span>
+                <input type="file" id="logoPersonalizado" accept="image/png, image/jpeg" />
+              </label>
+              <label class="field brand-field">
+                <span>Opacidad de marca de agua</span>
+                <div class="brand-slider">
+                  <input type="range" id="brandOpacity" min="0.02" max="0.5" step="0.01" value="0.08" />
+                  <span id="brandOpacityValue">8%</span>
+                </div>
+              </label>
+              <div class="brand-preview" id="brandPreview" aria-live="polite">Sin logotipo personalizado</div>
+              <button type="button" class="btn btn--ghost" id="brandReset">Usar logotipo predeterminado</button>
+            </div>
+          </fieldset>
+
+          <div class="filters-actions">
+            <button type="button" class="btn btn--primary" id="generarPdf">
+              <i class="fas fa-file-pdf"></i> Generar PDF
+            </button>
+            <button type="button" class="btn" id="generarExcel">
+              <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button type="button" class="btn" id="programarBtn">
+              <i class="fas fa-clock"></i> Programar reporte
+            </button>
+          </div>
+
+          <p class="program-status" id="estadoProgramacion">Sin programación automática activa.</p>
+        </form>
+      </aside>
+
+      <div class="insight-columns">
+        <section class="chart-panel" aria-labelledby="tendenciasTitulo">
+          <div class="panel-heading">
+            <h2 id="tendenciasTitulo">Tendencias de movimientos</h2>
+            <p>Consulta cómo evolucionan los movimientos de inventario por periodo.</p>
+          </div>
+          <canvas id="graficaTendencias" height="220" role="img" aria-label="Gráfica de tendencias"></canvas>
+        </section>
+
+        <section class="report-results" aria-labelledby="resultadosTitulo">
+          <div class="panel-heading">
+            <h2 id="resultadosTitulo">Resultados detallados</h2>
+            <p id="estadoResultados">Selecciona filtros para ver los registros.</p>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="tablaResultados">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Módulo</th>
+                  <th>Fecha</th>
+                  <th>Categoría</th>
+                  <th>Zona</th>
+                  <th>Rol</th>
+                  <th>Descripción</th>
+                  <th class="text-end">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="empty-message" id="sinDatos">No hay registros para los filtros seleccionados.</p>
+        </section>
+
+        <section class="upload-panel" aria-labelledby="repositorioTitulo">
+          <div class="panel-heading">
+            <h2 id="repositorioTitulo">Repositorio central de reportes</h2>
+            <p>Sube y organiza todos los PDFs generados en cualquier módulo.</p>
+          </div>
+          <form class="upload-form" id="formSubida">
+            <div class="form-grid">
+              <label class="field">
+                <span>Título del documento</span>
+                <input type="text" id="tituloReporte" required placeholder="Reporte mensual de inventario" />
+              </label>
+              <label class="field">
+                <span>Módulo origen</span>
+                <select id="moduloReporte" required>
+                  <option value="inventarios">Inventarios</option>
+                  <option value="areas">Áreas</option>
+                  <option value="zonas">Zonas</option>
+                  <option value="usuarios">Usuarios</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Área / Departamento</span>
+                <input type="text" id="areaReporte" placeholder="Almacén frío" />
+              </label>
+              <label class="field">
+                <span>Zona</span>
+                <input type="text" id="zonaReporte" placeholder="Zona norte" />
+              </label>
+              <label class="field">
+                <span>Responsable</span>
+                <input type="text" id="responsableReporte" placeholder="Nombre del responsable" />
+              </label>
+              <label class="field field--file">
+                <span>Archivo PDF</span>
+                <input type="file" id="archivoReporte" accept="application/pdf" required />
+              </label>
+              <label class="field field--full">
+                <span>Notas</span>
+                <textarea id="notasReporte" rows="2" placeholder="Observaciones opcionales"></textarea>
+              </label>
+            </div>
+            <div class="filters-actions">
+              <button type="submit" class="btn btn--primary">
+                <i class="fas fa-upload"></i> Guardar en repositorio
+              </button>
+              <button type="button" class="btn btn--ghost" id="limpiarFormulario">
+                <i class="fas fa-eraser"></i> Limpiar
+              </button>
+            </div>
+          </form>
+          <div class="table-wrapper">
+            <table class="data-table" id="tablaDocumentos">
+              <thead>
+                <tr>
+                  <th>Documento</th>
+                  <th>Origen</th>
+                  <th>Subido por</th>
+                  <th>Fecha</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="empty-message" id="repositorioVacio">Aún no hay documentos guardados.</p>
+        </section>
+
+        <section class="report-history" aria-labelledby="historialTitulo">
+          <div class="panel-heading">
+            <h2 id="historialTitulo">Historial de exportaciones</h2>
+            <p>Control de reportes generados y programados recientemente.</p>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="tablaHistorial">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Generado</th>
+                  <th>Resumen</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modalProgramar" aria-hidden="true" role="dialog" aria-labelledby="modalProgramarTitulo">
+    <div class="modal__backdrop" data-close="modal"></div>
+    <div class="modal__content" tabindex="-1">
+      <div class="modal__header">
+        <h3 id="modalProgramarTitulo">Programar reportes automáticos</h3>
+        <p>Elige cada cuánto se generará un PDF con los filtros actuales.</p>
+      </div>
+      <label class="field">
+        <span>Frecuencia</span>
+        <select id="intervalo">
+          <option value="">Manual (sin programación)</option>
+          <option value="diario">Diario</option>
+          <option value="semanal">Semanal</option>
+          <option value="quincenal">Quincenal</option>
+          <option value="mensual">Mensual</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+      </label>
+      <div class="field" id="grupoPersonalizado" hidden>
+        <span>Cada cuántos días</span>
+        <input type="number" id="intervaloDias" min="1" max="180" placeholder="Ejemplo: 10" />
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="cancelarProgramacion">Cerrar</button>
+        <button type="button" class="btn btn--primary" id="guardarProgramacion">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-8qgpnqC2Fvdl7GgToYtL6vhfVqlhK/SXxPxq8np5xpoE2mR7BncpsbR9f7DmqDvewW48UUfGzSy0RKZ77N8x7g==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha512-5BHQYaWV7zX+13buJj3zCThJujOa3sZVFgmfaLw7fU0v1HVSdBNmsSSMOk5jaW9McP/12D/nBICmAIymFcpnGQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha512-6ELXFFitvolSF/GpNZgbf+5Q5e0siJmq9hw3rroWAt4EvsC0BpvyEukgqS0bkkCm1cW0XkyR3O6jwxKF1u9IiA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="../../scripts/reports/reportes.js" defer></script>
 </body>
 </html>
