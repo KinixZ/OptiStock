@@ -478,57 +478,8 @@
 
         if (!exito) {
             agregarBusquedaPendiente(termino);
+            window.setTimeout(() => sincronizarBusquedasPendientes(empresaId), 5000);
         }
-    }
-
-    function procesarBusquedasPendientes() {
-        if (processingPendingSearches) {
-            return;
-        }
-
-        const empresaIdNumero = Number(empresaIdCache);
-        if (!empresaIdNumero || !pendingSearchTerms.length) {
-            return;
-        }
-
-        processingPendingSearches = true;
-        let procesamientoCompleto = true;
-
-        (async () => {
-            while (pendingSearchTerms.length && Number(empresaIdCache) === empresaIdNumero) {
-                const terminoPendiente = pendingSearchTerms[0];
-                const exito = await guardarBusquedaRemota(terminoPendiente, empresaIdNumero);
-                if (!exito) {
-                    procesamientoCompleto = false;
-                    break;
-                }
-                pendingSearchTerms.shift();
-            }
-        })()
-        .catch(error => {
-            procesamientoCompleto = false;
-            console.warn('No se pudo procesar las búsquedas pendientes:', error);
-        })
-        .finally(() => {
-            processingPendingSearches = false;
-
-            if (!Number(empresaIdCache) || !pendingSearchTerms.length) {
-                return;
-            }
-
-            const delay = procesamientoCompleto ? 0 : 5000;
-            window.setTimeout(procesarBusquedasPendientes, delay);
-        });
-    }
-
-    async function registrarBusqueda(consulta) {
-        const termino = (consulta || '').trim();
-        if (!termino) {
-            return;
-        }
-
-        pendingSearchTerms.push(termino);
-        procesarBusquedasPendientes();
     }
 
     function normalizarTexto(texto) {
