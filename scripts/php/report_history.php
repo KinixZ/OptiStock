@@ -1,6 +1,7 @@
 <?php
 // scripts/php/report_history.php
-// Gestiona el historial de reportes utilizando almacenamiento local en el servidor.
+// Gestiona el historial de reportes utilizando almacenamiento local en el servidor
+// y sincroniza los metadatos con la base de datos.
 
 declare(strict_types=1);
 
@@ -10,7 +11,6 @@ const REPORT_RETENTION_DAYS = 60; // Se eliminan automáticamente después de ~2
 const REPORT_RETENTION_SECONDS = REPORT_RETENTION_DAYS * 24 * 60 * 60;
 const REPORTS_ROOT = __DIR__ . '/../../docs/report-history';
 const REPORT_FILES_DIR = REPORTS_ROOT . '/files';
-const REPORT_INDEX_FILE = REPORTS_ROOT . '/index.json';
 
 const DB_SERVER = 'localhost';
 const DB_USER = 'u296155119_Admin';
@@ -40,27 +40,6 @@ function ensure_storage(): void
     if (!is_dir(REPORT_FILES_DIR)) {
         mkdir(REPORT_FILES_DIR, 0775, true);
     }
-    if (!file_exists(REPORT_INDEX_FILE)) {
-        file_put_contents(REPORT_INDEX_FILE, "[]\n", LOCK_EX);
-    }
-}
-
-function read_index(): array
-{
-    ensure_storage();
-    $raw = @file_get_contents(REPORT_INDEX_FILE);
-    if ($raw === false) {
-        return [];
-    }
-
-    $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : [];
-}
-
-function write_index(array $index): void
-{
-    ensure_storage();
-    file_put_contents(REPORT_INDEX_FILE, json_encode($index, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
 }
 
 function db_connect(): mysqli
@@ -175,44 +154,11 @@ function remove_report_file(?string $storageName): void
     }
 }
 
-function cleanup_old_reports(?array $existing = null): array
-{
-    $reports = $existing ?? read_index();
-    $now = time();
-    $changed = false;
-    $validReports = [];
-
-    foreach ($reports as $report) {
-        $createdAt = isset($report['createdAt']) ? strtotime((string) $report['createdAt']) : false;
-        if ($createdAt === false) {
-            $changed = true;
-            remove_report_file($report['storageName'] ?? null);
-            delete_report_reference($report['id'] ?? null);
-            continue;
-        }
-
-        if (($now - $createdAt) >= REPORT_RETENTION_SECONDS) {
-            $changed = true;
-            remove_report_file($report['storageName'] ?? null);
-            delete_report_reference($report['id'] ?? null);
-            continue;
-        }
-
-        $validReports[] = $report;
-    }
-
-    if ($changed) {
-        write_index($validReports);
-    }
-
-    return $validReports;
-}
-
 function random_id(): string
 {
     try {
         return bin2hex(random_bytes(16));
-    } catch (\Exception $exception) {
+    } catch (Exception $exception) {
         $fallback = openssl_random_pseudo_bytes(16);
         if ($fallback !== false) {
             return bin2hex($fallback);
@@ -252,23 +198,135 @@ function str_limit(string $text, int $limit): string
     return substr($text, 0, $limit);
 }
 
+function format_datetime_for_response(?string $value): string
+{
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        return '';
+    }
+
+    return gmdate('c', $timestamp);
+}
+
+function map_database_row(array $row): array
+{
+    $storageName = (string) ($row['storage_name'] ?? '');
+    $filePath = $storageName !== '' ? REPORT_FILES_DIR . '/' . basename($storageName) : '';
+
+    $size = isset($row['file_size']) ? (int) $row['file_size'] : 0;
+    if ($size <= 0 && $filePath !== '' && is_file($filePath)) {
+        $filesize = filesize($filePath);
+        if ($filesize !== false) {
+            $size = (int) $filesize;
+        }
+    }
+
+    return [
+        'id' => (string) ($row['uuid'] ?? ''),
+        'empresaId' => (int) ($row['id_empresa'] ?? 0),
+        'originalName' => (string) ($row['original_name'] ?? ''),
+        'storageName' => $storageName,
+        'mimeType' => (string) ($row['mime_type'] ?? ''),
+        'size' => $size,
+        'createdAt' => format_datetime_for_response($row['created_at'] ?? null),
+        'expiresAt' => format_datetime_for_response($row['expires_at'] ?? null),
+        'source' => (string) ($row['source'] ?? ''),
+        'notes' => (string) ($row['notes'] ?? ''),
+    ];
+}
+
+function fetch_reports_from_database(?int $empresaId = null): array
+{
+    $conn = db_connect();
+
+    try {
+        $query = 'SELECT uuid, id_empresa, original_name, storage_name, mime_type, file_size, created_at, expires_at, source, notes FROM reportes_historial';
+        $types = '';
+        $params = [];
+
+        if ($empresaId !== null && $empresaId > 0) {
+            $query .= ' WHERE id_empresa = ?';
+            $types = 'i';
+            $params[] = $empresaId;
+        }
+
+        $query .= ' ORDER BY created_at DESC';
+
+        $stmt = $conn->prepare($query);
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $reports = [];
+        while ($row = $result->fetch_assoc()) {
+            $storageName = $row['storage_name'] ?? '';
+            if ($storageName !== '') {
+                $filePath = REPORT_FILES_DIR . '/' . basename($storageName);
+                if (!is_file($filePath)) {
+                    delete_report_reference($row['uuid'] ?? '');
+                    continue;
+                }
+            }
+
+            $reports[] = map_database_row($row);
+        }
+
+        $stmt->close();
+        return $reports;
+    } finally {
+        $conn->close();
+    }
+}
+
+function purge_expired_reports_from_database(): void
+{
+    try {
+        $conn = db_connect();
+    } catch (mysqli_sql_exception $exception) {
+        error_log('No se pudo conectar a la base de datos para depurar el historial: ' . $exception->getMessage());
+        return;
+    }
+
+    try {
+        $stmt = $conn->prepare("SELECT uuid, storage_name FROM reportes_historial WHERE expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= NOW()");
+        $stmt->execute();
+        $stmt->bind_result($uuid, $storageName);
+
+        while ($stmt->fetch()) {
+            remove_report_file($storageName);
+        }
+
+        $stmt->close();
+
+        $conn->query("DELETE FROM reportes_historial WHERE expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= NOW()");
+    } catch (mysqli_sql_exception $exception) {
+        error_log('No se pudo limpiar el historial de reportes expirados: ' . $exception->getMessage());
+    } finally {
+        $conn->close();
+    }
+}
+
 function list_reports(): void
 {
     $empresaId = isset($_GET['empresa']) ? (int) $_GET['empresa'] : 0;
-    $reports = cleanup_old_reports();
 
-    if ($empresaId > 0) {
-        $reports = array_values(array_filter(
-            $reports,
-            static fn ($report) => (int) ($report['empresaId'] ?? 0) === $empresaId
-        ));
+    purge_expired_reports_from_database();
+
+    try {
+        $reports = fetch_reports_from_database($empresaId > 0 ? $empresaId : null);
+    } catch (mysqli_sql_exception $exception) {
+        respond_json(500, [
+            'success' => false,
+            'message' => 'No se pudo consultar el historial en la base de datos.',
+        ]);
     }
-
-    usort($reports, static function (array $a, array $b): int {
-        $timeA = strtotime((string) ($a['createdAt'] ?? '')) ?: 0;
-        $timeB = strtotime((string) ($b['createdAt'] ?? '')) ?: 0;
-        return $timeB <=> $timeA;
-    });
 
     respond_json(200, [
         'success' => true,
@@ -323,6 +381,7 @@ function save_report(): void
     }
 
     ensure_storage();
+    purge_expired_reports_from_database();
 
     $safeName = sanitize_file_name($fileName);
     $finalName = ensure_extension($safeName, $mimeType);
@@ -344,7 +403,6 @@ function save_report(): void
     $nowIso = gmdate('c');
     $expiresIso = gmdate('c', time() + REPORT_RETENTION_SECONDS);
 
-    $reports = cleanup_old_reports();
     $entry = [
         'id' => random_id(),
         'originalName' => $finalName,
@@ -355,7 +413,6 @@ function save_report(): void
         'expiresAt' => $expiresIso,
         'source' => str_limit($source, 120),
         'notes' => str_limit($notes, 240),
-        'empresaId' => $empresaId,
     ];
 
     try {
@@ -368,14 +425,50 @@ function save_report(): void
         ]);
     }
 
-    $reports[] = $entry;
-    write_index($reports);
-
     respond_json(201, [
         'success' => true,
-        'report' => $entry,
+        'report' => [
+            'id' => $entry['id'],
+            'empresaId' => $empresaId,
+            'originalName' => $entry['originalName'],
+            'storageName' => $entry['storageName'],
+            'mimeType' => $entry['mimeType'],
+            'size' => $entry['size'],
+            'createdAt' => $entry['createdAt'],
+            'expiresAt' => $entry['expiresAt'],
+            'source' => $entry['source'],
+            'notes' => $entry['notes'],
+        ],
         'retentionDays' => REPORT_RETENTION_DAYS,
     ]);
+}
+
+function find_report_for_download(string $uuid, int $empresaId = 0): ?array
+{
+    $conn = db_connect();
+
+    try {
+        $query = 'SELECT uuid, id_empresa, original_name, storage_name, mime_type FROM reportes_historial WHERE uuid = ?';
+        $types = 's';
+        $params = [$uuid];
+
+        if ($empresaId > 0) {
+            $query .= ' AND id_empresa = ?';
+            $types .= 'i';
+            $params[] = $empresaId;
+        }
+
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc() ?: null;
+        $stmt->close();
+
+        return $row;
+    } finally {
+        $conn->close();
+    }
 }
 
 function download_report(): void
@@ -389,42 +482,42 @@ function download_report(): void
         ]);
     }
 
-    $reports = cleanup_old_reports();
-    foreach ($reports as $report) {
-        if (($report['id'] ?? '') !== $id) {
-            continue;
-        }
+    purge_expired_reports_from_database();
 
-        if ($empresaId > 0 && (int) ($report['empresaId'] ?? 0) !== $empresaId) {
-            continue;
-        }
-
-        $storageName = $report['storageName'] ?? '';
-        $filePath = REPORT_FILES_DIR . '/' . basename($storageName);
-        if (!is_file($filePath)) {
-            // Si el archivo ya no existe, limpiamos el índice.
-            $remaining = array_filter($reports, static fn ($item) => ($item['id'] ?? '') !== $id);
-            write_index(array_values($remaining));
-            delete_report_reference($id);
-            respond_json(410, [
-                'success' => false,
-                'message' => 'El archivo ya no está disponible.',
-            ]);
-        }
-
-        $fileName = basename($report['originalName'] ?? ('reporte-' . $id));
-        $fileName = str_replace(chr(34), '', $fileName);
-        header('Content-Type: ' . ($report['mimeType'] ?? 'application/octet-stream'));
-        header('Content-Length: ' . filesize($filePath));
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        readfile($filePath);
-        exit;
+    $report = find_report_for_download($id, $empresaId);
+    if ($report === null) {
+        respond_json(404, [
+            'success' => false,
+            'message' => 'Reporte no encontrado o expirado.',
+        ]);
     }
 
-    respond_json(404, [
-        'success' => false,
-        'message' => 'Reporte no encontrado o expirado.',
-    ]);
+    $storageName = $report['storage_name'] ?? '';
+    if ($storageName === '') {
+        delete_report_reference($id);
+        respond_json(410, [
+            'success' => false,
+            'message' => 'El archivo ya no está disponible.',
+        ]);
+    }
+
+    $filePath = REPORT_FILES_DIR . '/' . basename($storageName);
+    if (!is_file($filePath)) {
+        delete_report_reference($id);
+        respond_json(410, [
+            'success' => false,
+            'message' => 'El archivo ya no está disponible.',
+        ]);
+    }
+
+    $fileName = basename($report['original_name'] ?? ('reporte-' . $id));
+    $fileName = str_replace(chr(34), '', $fileName);
+
+    header('Content-Type: ' . ($report['mime_type'] ?? 'application/octet-stream'));
+    header('Content-Length: ' . filesize($filePath));
+    header('Content-Disposition: attachment; filename="' . $fileName . '"');
+    readfile($filePath);
+    exit;
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
