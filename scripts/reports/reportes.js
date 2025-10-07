@@ -23,18 +23,177 @@ document.addEventListener('DOMContentLoaded', () => {
   const estadoResultados = document.getElementById('estadoResultados');
   const mensajeSinDatos = document.getElementById('sinDatos');
   const historialBody = document.querySelector('#tablaHistorial tbody');
+  const tablaDocumentosBody = document.querySelector('#tablaDocumentos tbody');
+  const repositorioVacio = document.getElementById('repositorioVacio');
+  const formSubida = document.getElementById('formSubida');
+  const limpiarFormularioBtn = document.getElementById('limpiarFormulario');
+  const tituloReporteInput = document.getElementById('tituloReporte');
+  const moduloReporteSelect = document.getElementById('moduloReporte');
+  const areaReporteInput = document.getElementById('areaReporte');
+  const zonaReporteInput = document.getElementById('zonaReporte');
+  const responsableReporteInput = document.getElementById('responsableReporte');
+  const notasReporteInput = document.getElementById('notasReporte');
+  const archivoReporteInput = document.getElementById('archivoReporte');
   const modal = document.getElementById('modalProgramar');
   const programarBtn = document.getElementById('programarBtn');
   const guardarProgramacionBtn = document.getElementById('guardarProgramacion');
   const cancelarProgramacionBtn = document.getElementById('cancelarProgramacion');
   const intervaloSelect = document.getElementById('intervalo');
+  const intervaloDiasInput = document.getElementById('intervaloDias');
+  const grupoPersonalizado = document.getElementById('grupoPersonalizado');
+  const estadoProgramacion = document.getElementById('estadoProgramacion');
   const modalBackdrop = modal?.querySelector('[data-close="modal"]');
   const modalContent = modal?.querySelector('.modal__content');
   const graficaCanvas = document.getElementById('graficaTendencias');
   const ctxGrafica = graficaCanvas ? graficaCanvas.getContext('2d') : null;
+  const heroBrand = document.getElementById('heroBrand');
+  const brandRadios = document.querySelectorAll('input[name="brandMode"]');
+  const brandOpacity = document.getElementById('brandOpacity');
+  const brandOpacityValue = document.getElementById('brandOpacityValue');
+  const brandPreview = document.getElementById('brandPreview');
+  const brandReset = document.getElementById('brandReset');
+  const logoPersonalizado = document.getElementById('logoPersonalizado');
 
-  if (!metricasDiv || !tablaResultadosBody || !estadoResultados || !mensajeSinDatos || !historialBody || !intervaloSelect) {
+  if (!metricasDiv || !tablaResultadosBody || !estadoResultados || !mensajeSinDatos || !historialBody) {
     return;
+  }
+
+  function actualizarEstadoProgramacion(texto) {
+    if (estadoProgramacion) {
+      estadoProgramacion.textContent = texto;
+    }
+  }
+
+  function actualizarControlesMarca() {
+    const porcentaje = Math.round((logoConfig.opacity || 0.08) * 100);
+    if (brandOpacity) {
+      brandOpacity.value = (logoConfig.opacity || 0.08).toFixed(2);
+    }
+    if (brandOpacityValue) {
+      brandOpacityValue.textContent = `${porcentaje}%`;
+    }
+
+    brandRadios.forEach(radio => {
+      radio.checked = radio.value === (logoConfig.mode || 'marca');
+    });
+
+    if (brandPreview) {
+      if (logoConfig.image) {
+        brandPreview.style.backgroundImage = `url(${logoConfig.image})`;
+        brandPreview.textContent = logoConfig.name || 'Logotipo personalizado listo.';
+      } else {
+        brandPreview.style.backgroundImage = 'none';
+        brandPreview.textContent = 'Sin logotipo personalizado';
+      }
+    }
+
+    if (heroBrand) {
+      if (!heroBrand.dataset.defaultSrc) {
+        heroBrand.dataset.defaultSrc = heroBrand.getAttribute('src') || '';
+      }
+      const ruta = logoConfig.image || heroBrand.dataset.defaultSrc || '../../images/optistockLogo.png';
+      heroBrand.setAttribute('src', ruta);
+    }
+  }
+
+  function renderRepositorio() {
+    if (!tablaDocumentosBody || !repositorioVacio) {
+      return;
+    }
+
+    const documentos = obtenerRepositorio();
+    tablaDocumentosBody.innerHTML = '';
+
+    if (!documentos.length) {
+      repositorioVacio.style.display = 'block';
+      return;
+    }
+
+    repositorioVacio.style.display = 'none';
+
+    documentos.forEach(documento => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="document-meta">
+            <span>${escaparHtml(documento.titulo)}</span>
+            <span>${escaparHtml(documento.notas || 'Sin notas adicionales')}</span>
+          </div>
+        </td>
+        <td>
+          <div class="document-tags">
+            <span class="tag">${escaparHtml(capitalizar(documento.modulo || ''))}</span>
+            ${documento.area ? `<span class="tag">${escaparHtml(documento.area)}</span>` : ''}
+            ${documento.zona ? `<span class="tag">${escaparHtml(documento.zona)}</span>` : ''}
+          </div>
+        </td>
+        <td>${escaparHtml(documento.responsable || 'Sin responsable')}</td>
+        <td>${formatearFechaHora(documento.fecha)}</td>
+        <td class="text-end">
+          <div class="document-actions">
+            <button class="btn-action btn--small" type="button" data-download="${documento.id}">Descargar</button>
+            <button class="btn-action btn-action--danger btn--small" type="button" data-delete="${documento.id}">Eliminar</button>
+          </div>
+        </td>
+      `;
+      tablaDocumentosBody.appendChild(tr);
+    });
+  }
+
+  function obtenerRepositorio() {
+    try {
+      const datos = JSON.parse(localStorage.getItem(KEY_REPO) || '[]');
+      return Array.isArray(datos) ? datos : [];
+    } catch (error) {
+      console.warn('No se pudo leer el repositorio local.', error);
+      return [];
+    }
+  }
+
+  function guardarRepositorio(lista) {
+    const copia = Array.isArray(lista) ? [...lista].slice(0, 60) : [];
+    localStorage.setItem(KEY_REPO, JSON.stringify(copia));
+  }
+
+  function escaparHtml(texto) {
+    return (texto || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  async function obtenerLogo() {
+    if (logoConfig.image) {
+      return logoConfig.image;
+    }
+
+    const ruta = heroBrand?.dataset.defaultSrc || heroBrand?.getAttribute('src') || '../../images/optistockLogo.png';
+    if (!ruta) {
+      return null;
+    }
+
+    if (ruta.startsWith('data:image')) {
+      return ruta;
+    }
+
+    try {
+      return await cargarImagenBase64(ruta);
+    } catch (error) {
+      console.warn('No se pudo cargar el logotipo predeterminado.', error);
+      return null;
+    }
+  }
+
+  function obtenerFormatoImagen(dataUrl) {
+    if (!dataUrl) {
+      return 'PNG';
+    }
+    if (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')) {
+      return 'JPEG';
+    }
+    return 'PNG';
   }
 
   const estilos = getComputedStyle(document.documentElement);
@@ -44,9 +203,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const superficiePrimaria = estilos.getPropertyValue('--primary-surface-strong').trim() || 'rgba(255, 111, 145, 0.18)';
   const colorTenue = estilos.getPropertyValue('--muted-color').trim() || '#6b7280';
 
+  const KEY_REPO = 'reportRepository';
+  const KEY_BRAND_MODE = 'reportBrandMode';
+  const KEY_BRAND_OPACITY = 'reportBrandOpacity';
+  const KEY_BRAND_IMAGE = 'reportBrandImage';
+  const KEY_BRAND_NAME = 'reportBrandName';
+  const KEY_INTERVAL = 'reportInterval';
+  const KEY_INTERVAL_DAYS = 'reportIntervalCustomDays';
+
   let grafica = null;
   let programacion = null;
   let datosFiltrados = [];
+  let logoConfig = {
+    mode: localStorage.getItem(KEY_BRAND_MODE) || 'marca',
+    opacity: parseFloat(localStorage.getItem(KEY_BRAND_OPACITY) || '0.08'),
+    image: localStorage.getItem(KEY_BRAND_IMAGE) || null,
+    name: localStorage.getItem(KEY_BRAND_NAME) || ''
+  };
+
+  if (logoConfig.image === 'null') {
+    logoConfig.image = null;
+  }
+  if (Number.isNaN(logoConfig.opacity)) {
+    logoConfig.opacity = 0.08;
+  }
+  logoConfig.opacity = Math.min(Math.max(logoConfig.opacity, 0.02), 0.5);
 
   document.getElementById('generarPdf')?.addEventListener('click', () => exportar('pdf'));
   document.getElementById('generarExcel')?.addEventListener('click', () => exportar('excel'));
@@ -69,6 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  intervaloSelect?.addEventListener('change', () => {
+    if (grupoPersonalizado) {
+      grupoPersonalizado.hidden = intervaloSelect.value !== 'personalizado';
+    }
+  });
+
   modulos.forEach(modulo => modulo.addEventListener('change', actualizarVista));
   [fInicio, fFin, fCategoria, fZona].forEach(input => {
     input.addEventListener('input', actualizarVista);
@@ -76,12 +263,144 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   fRol.addEventListener('change', actualizarVista);
 
+  brandRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) {
+        return;
+      }
+      logoConfig.mode = radio.value;
+      localStorage.setItem(KEY_BRAND_MODE, logoConfig.mode);
+      actualizarControlesMarca();
+    });
+  });
+
+  brandOpacity?.addEventListener('input', () => {
+    const valor = parseFloat(brandOpacity.value);
+    if (!Number.isNaN(valor)) {
+      logoConfig.opacity = Math.min(Math.max(valor, 0.02), 0.5);
+      localStorage.setItem(KEY_BRAND_OPACITY, String(logoConfig.opacity));
+      actualizarControlesMarca();
+    }
+  });
+
+  logoPersonalizado?.addEventListener('change', async event => {
+    const archivo = event.target.files?.[0];
+    if (!archivo) {
+      return;
+    }
+
+    try {
+      const base64 = await leerArchivo(archivo);
+      logoConfig.image = base64;
+      logoConfig.name = archivo.name;
+      localStorage.setItem(KEY_BRAND_IMAGE, base64);
+      localStorage.setItem(KEY_BRAND_NAME, logoConfig.name);
+      actualizarControlesMarca();
+    } catch (error) {
+      console.error('No se pudo cargar el logotipo seleccionado.', error);
+    }
+  });
+
+  brandReset?.addEventListener('click', () => {
+    logoConfig.image = null;
+    logoConfig.name = '';
+    localStorage.removeItem(KEY_BRAND_IMAGE);
+    localStorage.removeItem(KEY_BRAND_NAME);
+    if (logoPersonalizado) {
+      logoPersonalizado.value = '';
+    }
+    actualizarControlesMarca();
+  });
+
+  formSubida?.addEventListener('submit', async event => {
+    event.preventDefault();
+
+    const archivo = archivoReporteInput?.files?.[0];
+    if (!archivo) {
+      alert('Selecciona un archivo PDF para continuar.');
+      return;
+    }
+
+    if (archivo.type !== 'application/pdf') {
+      alert('Solo se aceptan archivos en formato PDF.');
+      return;
+    }
+
+    if (archivo.size > 8 * 1024 * 1024) {
+      alert('El archivo supera el límite de 8 MB. Reduce su tamaño antes de subirlo.');
+      return;
+    }
+
+    try {
+      const repositorio = obtenerRepositorio();
+      const documento = {
+        id: 'DOC-' + Date.now(),
+        titulo: tituloReporteInput?.value.trim() || 'Reporte sin título',
+        modulo: moduloReporteSelect?.value || 'inventarios',
+        area: areaReporteInput?.value.trim() || '',
+        zona: zonaReporteInput?.value.trim() || '',
+        responsable: responsableReporteInput?.value.trim() || '',
+        notas: notasReporteInput?.value.trim() || '',
+        nombreArchivo: archivo.name,
+        archivo: await leerArchivo(archivo),
+        fecha: new Date().toISOString()
+      };
+
+      repositorio.unshift(documento);
+      guardarRepositorio(repositorio);
+      renderRepositorio();
+      formSubida.reset();
+      alert('Documento guardado en el repositorio local.');
+    } catch (error) {
+      console.error('No se pudo guardar el documento.', error);
+      alert('Ocurrió un problema al guardar el PDF. Inténtalo de nuevo.');
+    }
+  });
+
+  limpiarFormularioBtn?.addEventListener('click', () => {
+    formSubida?.reset();
+  });
+
+  tablaDocumentosBody?.addEventListener('click', event => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    if (target.dataset.download) {
+      const repositorio = obtenerRepositorio();
+      const documento = repositorio.find(item => item.id === target.dataset.download);
+      if (!documento) {
+        alert('No se encontró el archivo solicitado.');
+        return;
+      }
+      const enlace = document.createElement('a');
+      enlace.href = documento.archivo;
+      enlace.download = documento.nombreArchivo || 'reporte.pdf';
+      document.body.appendChild(enlace);
+      enlace.click();
+      document.body.removeChild(enlace);
+    }
+
+    if (target.dataset.delete) {
+      const confirmar = confirm('¿Deseas eliminar este documento del repositorio?');
+      if (!confirmar) {
+        return;
+      }
+      const repositorio = obtenerRepositorio().filter(item => item.id !== target.dataset.delete);
+      guardarRepositorio(repositorio);
+      renderRepositorio();
+    }
+  });
+
   init();
 
   function init() {
     actualizarVista();
     actualizarHistorial();
     cargarProgramacion();
+    actualizarControlesMarca();
+    renderRepositorio();
   }
 
   function actualizarVista() {
@@ -160,7 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (datos.length === 0) {
       metricasDiv.innerHTML = '<p class="metrics-empty">Ajusta los filtros para ver información resumida.</p>';
-      metricasDiv.innerHTML = '<p class="mensaje-vacio">Ajusta los filtros para ver información resumida.</p>';
       return;
     }
 
@@ -287,22 +605,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const paginaAncho = doc.internal.pageSize.getWidth();
     const paginaAlto = doc.internal.pageSize.getHeight();
 
-    let logoDataUrl = null;
-    try {
-      logoDataUrl = await cargarImagenBase64('images/optistockLogo.png');
-    } catch (error) {
-      console.warn('No se pudo cargar el logotipo para el PDF.', error);
-    }
+    const logoDataUrl = await obtenerLogo();
+    const formatoLogo = obtenerFormatoImagen(logoDataUrl);
+    const modoMarca = logoConfig.mode || 'marca';
+    const opacidadMarca = logoConfig.opacity || 0.08;
+    const usarMarcaAgua = modoMarca === 'marca' || modoMarca === 'marca-pie';
+    const usarPie = modoMarca === 'pie-izq' || modoMarca === 'pie-der' || modoMarca === 'marca-pie';
 
-    if (logoDataUrl) {
-      const marcaAguaEstado = doc.GState ? new doc.GState({ opacity: 0.06 }) : null;
+    if (logoDataUrl && usarMarcaAgua) {
+      const marcaAguaEstado = doc.GState ? new doc.GState({ opacity: opacidadMarca }) : null;
       if (marcaAguaEstado) {
         doc.setGState(marcaAguaEstado);
       }
       const marcaAguaTam = paginaAncho * 0.65;
       const marcaAguaX = (paginaAncho - marcaAguaTam) / 2;
       const marcaAguaY = (paginaAlto - marcaAguaTam) / 2;
-      doc.addImage(logoDataUrl, 'PNG', marcaAguaX, marcaAguaY, marcaAguaTam, marcaAguaTam, undefined, 'SLOW');
+      doc.addImage(logoDataUrl, formatoLogo, marcaAguaX, marcaAguaY, marcaAguaTam, marcaAguaTam, undefined, 'SLOW');
       if (marcaAguaEstado) {
         const gStateNormal = new doc.GState({ opacity: 1 });
         doc.setGState(gStateNormal);
@@ -315,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoDataUrl) {
       const logoAncho = 28;
       const logoAlto = 28;
-      doc.addImage(logoDataUrl, 'PNG', margenLateral, 12, logoAncho, logoAlto, undefined, 'FAST');
+      doc.addImage(logoDataUrl, formatoLogo, margenLateral, 12, logoAncho, logoAlto, undefined, 'FAST');
       doc.setFontSize(18);
       doc.setTextColor(31, 41, 55);
       doc.text('OptiStock', margenLateral + logoAncho + 6, 20);
@@ -326,6 +644,17 @@ document.addEventListener('DOMContentLoaded', () => {
       doc.setFontSize(18);
       doc.setTextColor(31, 41, 55);
       doc.text('OptiStock - Reporte de actividades', margenLateral, 20);
+    }
+
+    if (logoDataUrl && usarPie) {
+      const posiciones = modoMarca === 'marca-pie' ? ['pie-izq', 'pie-der'] : [modoMarca];
+      const logoAnchoPie = 26;
+      const logoAltoPie = 26;
+      posiciones.forEach(posicion => {
+        const x = posicion === 'pie-der' ? paginaAncho - margenLateral - logoAnchoPie : margenLateral;
+        const y = paginaAlto - logoAltoPie - 12;
+        doc.addImage(logoDataUrl, formatoLogo, x, y, logoAnchoPie, logoAltoPie, undefined, 'FAST');
+      });
     }
 
     doc.setTextColor(100, 116, 139);
@@ -470,18 +799,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function guardarProgramacion() {
+    if (!intervaloSelect) {
+      toggleModal(false);
+      return;
+    }
+
     const val = intervaloSelect.value;
-    localStorage.setItem('reportInterval', val);
+
+    if (val === 'personalizado') {
+      const dias = parseInt(intervaloDiasInput?.value || '', 10);
+      if (!dias || dias < 1) {
+        alert('Ingresa la cantidad de días para la programación personalizada.');
+        return;
+      }
+      localStorage.setItem(KEY_INTERVAL_DAYS, String(dias));
+    } else {
+      localStorage.removeItem(KEY_INTERVAL_DAYS);
+    }
+
+    localStorage.setItem(KEY_INTERVAL, val);
     configurarProgramacion();
     toggleModal(false);
   }
 
   function cargarProgramacion() {
-    const val = localStorage.getItem('reportInterval');
-    if (val) {
-      intervaloSelect.value = val;
-      configurarProgramacion();
+    if (!intervaloSelect) {
+      return;
     }
+
+    const val = localStorage.getItem(KEY_INTERVAL) || '';
+    intervaloSelect.value = val;
+
+    if (val === 'personalizado' && intervaloDiasInput) {
+      const diasGuardados = parseInt(localStorage.getItem(KEY_INTERVAL_DAYS) || '', 10);
+      if (diasGuardados) {
+        intervaloDiasInput.value = String(diasGuardados);
+      }
+    }
+
+    if (grupoPersonalizado) {
+      grupoPersonalizado.hidden = val !== 'personalizado';
+    }
+
+    configurarProgramacion();
   }
 
   function configurarProgramacion() {
@@ -490,12 +850,59 @@ document.addEventListener('DOMContentLoaded', () => {
       programacion = null;
     }
 
-    const val = intervaloSelect.value;
-    if (!val) {
+    if (!intervaloSelect) {
+      actualizarEstadoProgramacion('Sin programación automática activa.');
       return;
     }
 
-    const intervalMs = val === 'diario' ? 86_400_000 : val === 'semanal' ? 604_800_000 : 2_592_000_000;
+    const val = intervaloSelect.value;
+
+    if (grupoPersonalizado) {
+      grupoPersonalizado.hidden = val !== 'personalizado';
+    }
+
+    if (!val) {
+      actualizarEstadoProgramacion('Sin programación automática activa.');
+      return;
+    }
+
+    let intervalMs = null;
+    let descripcion = '';
+
+    switch (val) {
+      case 'diario':
+        intervalMs = 86_400_000;
+        descripcion = 'Programación activa: cada día.';
+        break;
+      case 'semanal':
+        intervalMs = 604_800_000;
+        descripcion = 'Programación activa: cada semana.';
+        break;
+      case 'quincenal':
+        intervalMs = 1_296_000_000;
+        descripcion = 'Programación activa: cada 15 días.';
+        break;
+      case 'mensual':
+        intervalMs = 2_592_000_000;
+        descripcion = 'Programación activa: cada 30 días.';
+        break;
+      case 'personalizado': {
+        const dias = parseInt(intervaloDiasInput?.value || '', 10);
+        if (!dias || dias < 1) {
+          actualizarEstadoProgramacion('Define los días para activar el reporte automático.');
+          return;
+        }
+        intervalMs = dias * 86_400_000;
+        descripcion = `Programación activa: cada ${dias} día${dias === 1 ? '' : 's'}.`;
+        localStorage.setItem(KEY_INTERVAL_DAYS, String(dias));
+        break;
+      }
+      default:
+        actualizarEstadoProgramacion('Sin programación automática activa.');
+        return;
+    }
+
+    actualizarEstadoProgramacion(descripcion);
 
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
@@ -529,6 +936,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
   }
 
+  function leerArchivo(archivo) {
+    return new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onload = () => resolve(typeof lector.result === 'string' ? lector.result : '');
+      lector.onerror = () => reject(new Error('No se pudo leer el archivo proporcionado.'));
+      lector.readAsDataURL(archivo);
+    });
+  }
+
   function cargarImagenBase64(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -542,11 +958,20 @@ document.addEventListener('DOMContentLoaded', () => {
         resolve(canvas.toDataURL('image/png'));
       };
       img.onerror = () => reject(new Error('No se pudo cargar la imagen: ' + src));
-      img.src = src;
+      img.src = src.startsWith('data:') ? src : normalizarRuta(src);
       if (img.complete && img.naturalWidth) {
         img.onload();
       }
     });
+  }
+
+  function normalizarRuta(ruta) {
+    try {
+      return new URL(ruta, window.location.href).toString();
+    } catch (error) {
+      console.warn('Ruta no válida para el recurso:', ruta, error);
+      return ruta;
+    }
   }
 
   function toggleModal(mostrar) {
