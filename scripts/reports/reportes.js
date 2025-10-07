@@ -1,5 +1,5 @@
 (function () {
-  const reportHistory = window.ReportHistory;
+  let historyClient = null;
   const elements = {
     summaryTotal: document.getElementById('summaryTotal'),
     summaryMonth: document.getElementById('summaryMonth'),
@@ -25,17 +25,112 @@
   const state = {
     reports: [],
     filteredReports: [],
-    retentionDays: (reportHistory && reportHistory.RETENTION_DAYS_FALLBACK) || 60,
+    retentionDays: 60,
     loading: false,
     alertTimerId: null
   };
 
-  if (!reportHistory) {
-    if (elements.historyAlert) {
-      elements.historyAlert.textContent = 'El módulo de historial de reportes no está disponible en esta instalación.';
-      elements.historyAlert.classList.remove('d-none');
+  function resolveReportHistoryModuleUrl() {
+    if (typeof document === 'undefined') {
+      return '/scripts/reports/report-history-client.js';
     }
-    return;
+
+    const currentScript =
+      document.currentScript ||
+      (function () {
+        const scripts = document.getElementsByTagName('script');
+        return scripts[scripts.length - 1] || null;
+      })();
+
+    if (currentScript && currentScript.src) {
+      try {
+        const scriptUrl = new URL(currentScript.src, window.location.href);
+        const moduleUrl = new URL('report-history-client.js', scriptUrl);
+        return moduleUrl.href;
+      } catch (error) {
+        console.warn('No se pudo resolver la ruta del módulo de historial:', error);
+      }
+    }
+
+    return '/scripts/reports/report-history-client.js';
+  }
+
+  function attachReportHistoryModule() {
+    return new Promise((resolve, reject) => {
+      if (window.ReportHistory) {
+        resolve(window.ReportHistory);
+        return;
+      }
+
+      const existing = document.querySelector('script[data-report-history-module="client"]');
+      if (existing) {
+        existing.addEventListener(
+          'load',
+          () => {
+            if (window.ReportHistory) {
+              resolve(window.ReportHistory);
+            } else {
+              reject(new Error('El módulo de historial no se inicializó correctamente.'));
+            }
+          },
+          { once: true }
+        );
+        existing.addEventListener(
+          'error',
+          () => {
+            reject(new Error('No se pudo cargar el módulo de historial de reportes.'));
+          },
+          { once: true }
+        );
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = resolveReportHistoryModuleUrl();
+      script.async = false;
+      script.dataset.reportHistoryModule = 'client';
+      script.onload = () => {
+        if (window.ReportHistory) {
+          resolve(window.ReportHistory);
+        } else {
+          reject(new Error('El módulo de historial no se inicializó correctamente.'));
+        }
+      };
+      script.onerror = () => {
+        reject(new Error('No se pudo cargar el módulo de historial de reportes.'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  async function ensureReportHistoryModule() {
+    if (window.ReportHistory) {
+      return window.ReportHistory;
+    }
+    return attachReportHistoryModule();
+  }
+
+  function setModuleUnavailableState(message) {
+    if (elements.historyLoading) {
+      elements.historyLoading.classList.add('d-none');
+    }
+    if (elements.historyTableWrapper) {
+      elements.historyTableWrapper.classList.add('d-none');
+    }
+    if (elements.historyEmpty) {
+      elements.historyEmpty.classList.remove('d-none');
+      elements.historyEmpty.innerHTML = `<p class="mb-1 fw-semibold">No se pudo conectar con el historial.</p><p class="mb-0">${escapeHtml(
+        message
+      )}</p>`;
+    }
+    if (elements.historyCaption) {
+      elements.historyCaption.textContent = 'El historial no está disponible.';
+    }
+    if (elements.historyAlert) {
+      elements.historyAlert.textContent = message;
+      elements.historyAlert.classList.remove('d-none', 'alert-danger', 'alert-success', 'alert-warning', 'alert-info');
+      elements.historyAlert.classList.add('alert-danger');
+    }
   }
 
   const BYTES_UNITS = ['B', 'KB', 'MB', 'GB'];
@@ -313,8 +408,12 @@
     }
     hideAlert();
 
+    if (!historyClient) {
+      throw new Error('El historial de reportes no está disponible en esta instalación.');
+    }
+
     try {
-      const response = await reportHistory.fetchReportHistory();
+      const response = await historyClient.fetchReportHistory();
       state.reports = Array.isArray(response.reports) ? response.reports : [];
       state.retentionDays = typeof response.retentionDays === 'number' ? response.retentionDays : state.retentionDays;
       updateSummary();
@@ -348,7 +447,11 @@
     elements.uploadSubmitBtn.textContent = 'Guardando...';
 
     try {
-      await reportHistory.uploadFile(file, {
+      if (!historyClient) {
+        throw new Error('El historial de reportes no está disponible en esta instalación.');
+      }
+
+      await historyClient.uploadFile(file, {
         source: elements.uploadSourceInput ? elements.uploadSourceInput.value : '',
         notes: elements.uploadNotesInput ? elements.uploadNotesInput.value : ''
       });
@@ -376,12 +479,23 @@
       return;
     }
     const reportId = button.getAttribute('data-download-id');
-    if (reportId) {
-      reportHistory.downloadReport(reportId);
+    if (reportId && historyClient && typeof historyClient.downloadReport === 'function') {
+      historyClient.downloadReport(reportId);
     }
   }
 
-  function init() {
+  async function bootstrap() {
+    try {
+      historyClient = await ensureReportHistoryModule();
+      if (historyClient && typeof historyClient.RETENTION_DAYS_FALLBACK === 'number') {
+        state.retentionDays = historyClient.RETENTION_DAYS_FALLBACK;
+      }
+    } catch (error) {
+      console.error('No se pudo cargar el módulo del historial de reportes:', error);
+      setModuleUnavailableState(error.message || 'El módulo de historial de reportes no está disponible.');
+      return;
+    }
+
     if (elements.searchInput) {
       elements.searchInput.addEventListener('input', () => applyFilters());
     }
@@ -401,5 +515,5 @@
     loadHistory();
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', bootstrap);
 })();
