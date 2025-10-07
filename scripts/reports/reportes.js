@@ -95,6 +95,23 @@
   const MAX_AUTOMATION_CATCHUP = 4;
   const LOCAL_AUTOMATION_HISTORY_LIMIT = 30;
 
+  function ensureModuleOption(value) {
+    if (!value || !elements.automationModuleInput || elements.automationModuleInput.tagName !== 'SELECT') {
+      return;
+    }
+
+    const options = Array.from(elements.automationModuleInput.options || []);
+    const hasOption = options.some((option) => option.value === value);
+
+    if (!hasOption) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      option.dataset.dynamic = 'true';
+      elements.automationModuleInput.append(option);
+    }
+  }
+
   function escapeHtml(text) {
     if (text === null || text === undefined) {
       return '';
@@ -1041,6 +1058,7 @@
         elements.automationNameInput.value = automation.name || '';
       }
       if (elements.automationModuleInput) {
+        ensureModuleOption(automation.module);
         elements.automationModuleInput.value = automation.module || '';
       }
       if (elements.automationFormatSelect) {

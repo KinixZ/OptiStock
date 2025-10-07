@@ -144,8 +144,15 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label" for="automationModule">Módulo origen</label>
-                <input id="automationModule" class="form-control" type="text" maxlength="80"
-                  placeholder="Ej. Gestión de inventario" />
+                <select id="automationModule" class="form-select">
+                  <option value="">Selecciona un módulo</option>
+                  <option value="Gestión de inventario">Gestión de inventario</option>
+                  <option value="Gestión de usuarios">Gestión de usuarios</option>
+                  <option value="Reportes y análisis">Reportes y análisis</option>
+                  <option value="Recepción y almacenamiento">Recepción y almacenamiento</option>
+                  <option value="Despacho y distribución">Despacho y distribución</option>
+                  <option value="Alertas y monitoreo">Alertas y monitoreo</option>
+                </select>
               </div>
               <div class="col-md-6">
                 <label class="form-label" for="automationFormat">Formato del archivo</label>
