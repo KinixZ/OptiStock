@@ -1177,6 +1177,9 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const resumenCategoriasEl = document.getElementById('resumenCategorias');
   const resumenCriticosEl = document.getElementById('resumenCriticos');
   const tablaDescripcionEl = document.getElementById('tablaResumenDescripcion');
+  const exportResumenPdfBtn = document.getElementById('exportResumenPdf');
+  const exportResumenExcelBtn = document.getElementById('exportResumenExcel');
+
 
 async function fetchAPI(url, method = 'GET', data) {
   const options = { method };
@@ -1253,6 +1256,156 @@ async function fetchAPI(url, method = 'GET', data) {
     }
   }
 
+  function obtenerMetaExportacion() {
+    if (vistaActual === 'categoria') {
+      return {
+        title: 'Categorías del inventario',
+        fileNameBase: 'inventario_categorias',
+        sheetName: 'Categorias',
+        historyLabel: 'Categorías del inventario',
+        countLabel: total => (total === 1 ? '1 categoría registrada' : `${total} categorías registradas`),
+        viewLabel: 'Vista: Categorías',
+        orientation: 'landscape'
+      };
+    }
+    if (vistaActual === 'subcategoria') {
+      return {
+        title: 'Subcategorías del inventario',
+        fileNameBase: 'inventario_subcategorias',
+        sheetName: 'Subcategorias',
+        historyLabel: 'Subcategorías del inventario',
+        countLabel: total => (total === 1 ? '1 subcategoría registrada' : `${total} subcategorías registradas`),
+        viewLabel: 'Vista: Subcategorías',
+        orientation: 'landscape'
+      };
+    }
+    return {
+      title: 'Catálogo de productos',
+      fileNameBase: 'inventario_productos',
+      sheetName: 'Productos',
+      historyLabel: 'Productos del inventario',
+      countLabel: total => (total === 1 ? '1 producto registrado' : `${total} productos registrados`),
+      viewLabel: 'Vista: Productos',
+      orientation: 'landscape'
+    };
+  }
+
+  function construirSubtituloResumen(dataset, meta = {}) {
+    const exporter = window.ReportExporter;
+    const empresaNombre = exporter?.getEmpresaNombre
+      ? exporter.getEmpresaNombre()
+      : getEmpresaNombre();
+    const timestamp = exporter?.formatTimestamp
+      ? exporter.formatTimestamp()
+      : new Date().toLocaleString();
+    const conteo = typeof meta.countLabel === 'function'
+      ? meta.countLabel(dataset.rowCount)
+      : exporter?.pluralize
+        ? exporter.pluralize(dataset.rowCount, 'registro')
+        : `${dataset.rowCount} registros`;
+
+    const partes = [
+      `Empresa: ${empresaNombre}`,
+      conteo
+    ];
+
+    if (meta.viewLabel) {
+      partes.push(meta.viewLabel);
+    }
+
+    partes.push(`Generado: ${timestamp}`);
+    return partes.filter(Boolean).join(' · ');
+  }
+
+  async function guardarReporteInventario(blob, fileName, notes) {
+    if (!(blob instanceof Blob)) {
+      return;
+    }
+    if (!window.ReportHistory || typeof window.ReportHistory.saveGeneratedFile !== 'function') {
+      return;
+    }
+
+    try {
+      await window.ReportHistory.saveGeneratedFile({
+        blob,
+        fileName,
+        source: 'Gestión de inventario',
+        notes
+      });
+    } catch (error) {
+      console.warn('No se pudo guardar el reporte del inventario en el historial:', error);
+    }
+  }
+
+  async function generarExportacionResumen(formato) {
+    const exporter = window.ReportExporter;
+    if (!exporter) {
+      showToast('No se pudo cargar el módulo de exportación. Recarga la página e inténtalo nuevamente.', 'error');
+      return;
+    }
+    if (!(tablaResumenElemento instanceof HTMLTableElement)) {
+      showToast('No se encontró la tabla del resumen.', 'error');
+      return;
+    }
+
+    const dataset = exporter.extractTableData(tablaResumenElemento);
+    if (!dataset || !dataset.rowCount) {
+      showToast('No hay registros disponibles para exportar.', 'error');
+      return;
+    }
+
+    const meta = obtenerMetaExportacion();
+    const subtitle = construirSubtituloResumen(dataset, meta);
+    const historyLabel = meta.historyLabel || meta.title || 'reporte';
+    const notes = {
+      pdf: meta.notes?.pdf || `Exportación de ${historyLabel} a PDF`,
+      excel: meta.notes?.excel || `Exportación de ${historyLabel} a Excel`
+    };
+
+    try {
+      if (formato === 'pdf') {
+        const result = exporter.exportTableToPdf({
+          table: tablaResumenElemento,
+          data: dataset,
+          title: meta.title || 'Reporte',
+          subtitle,
+          fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
+          orientation: meta.orientation || 'landscape'
+        });
+        if (result?.blob) {
+          await guardarReporteInventario(result.blob, result.fileName, notes.pdf);
+        }
+        showToast('Reporte PDF generado correctamente.', 'success');
+        return;
+      }
+
+      if (formato === 'excel') {
+        const result = exporter.exportTableToExcel({
+          table: tablaResumenElemento,
+          data: dataset,
+          fileName: `${meta.fileNameBase || 'reporte'}.xlsx`,
+          sheetName: meta.sheetName || 'Datos'
+        });
+        if (result?.blob) {
+          await guardarReporteInventario(result.blob, result.fileName, notes.excel);
+        }
+        showToast('Reporte Excel generado correctamente.', 'success');
+        return;
+      }
+    } catch (error) {
+      console.error('Error al exportar el resumen del inventario:', error);
+      if (error && error.message === 'PDF_LIBRARY_MISSING') {
+        showToast('La librería para generar PDF no está disponible. Actualiza la página.', 'error');
+        return;
+      }
+      if (error && error.message === 'EXCEL_LIBRARY_MISSING') {
+        showToast('La librería para generar Excel no está disponible. Actualiza la página.', 'error');
+        return;
+      }
+      showToast('No se pudo generar el reporte. Inténtalo nuevamente.', 'error');
+    }
+  }
+
   function mostrar(seccion) {
     Object.values(tabContainers).forEach(container => {
       if (container) {
@@ -1286,6 +1439,9 @@ async function fetchAPI(url, method = 'GET', data) {
   btnCategorias?.addEventListener('click', () => mostrar('categoria'));
   btnSubcategorias?.addEventListener('click', () => mostrar('subcategoria'));
 
+  exportResumenPdfBtn?.addEventListener('click', () => generarExportacionResumen('pdf'));
+  exportResumenExcelBtn?.addEventListener('click', () => generarExportacionResumen('excel'));
+
   const prodForm = document.getElementById('productoForm');
   const catForm = document.getElementById('categoriaForm');
   const subcatForm = document.getElementById('subcategoriaForm');
@@ -1305,6 +1461,7 @@ prodCategoria?.addEventListener('change', () => {
     actualizarSelectZonas(prodArea?.value || null);
   });
   const subcatCategoria = document.getElementById('subcatCategoria');
+  const tablaResumenElemento = document.getElementById('tablaResumen');
   const tablaResumen = document.querySelector('#tablaResumen tbody');
 
   function closeAllActionMenus(exceptMenu = null) {
@@ -2167,7 +2324,7 @@ if (vistaActual === 'producto') {
       <th>Volumen (cm³)</th>
       <th>Stock</th>
       <th>Precio compra</th>
-      <th>Acciones</th>
+      <th data-export="skip">Acciones</th>
     </tr>`;
 
   productos.forEach(p => {
@@ -2175,9 +2332,10 @@ const cat = p.categoria_nombre   || '';
 const sub = p.subcategoria_nombre || '';
     const zona= p.zona_nombre || '';
     const area= p.area_nombre || '';
+    const nombreAlt = (p.nombre || '').replace(/"/g, '&quot;');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail">` : ''}</td>
+      <td data-export-value="${p.imagenBase64 ? 'Disponible' : '—'}">${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail" alt="Vista del producto ${nombreAlt}">` : ''}</td>
       <td>${p.nombre}</td>
       <td>${area}</td>
       <td>${zona}</td>
@@ -2187,7 +2345,7 @@ const sub = p.subcategoria_nombre || '';
       <td>${p.volumen}</td>
       <td>${p.stock}</td>
       <td>${p.precio_compra}</td>
-      <td>
+      <td data-export="skip">
         <div class="table-action-menu">
           <button
             type="button"
@@ -2235,7 +2393,7 @@ const sub = p.subcategoria_nombre || '';
           <th>Nombre</th>
           <th>Descripción</th>
           <th>Subcategorías</th>
-          <th>Acciones</th>
+          <th data-export="skip">Acciones</th>
         </tr>`;
       categorias.forEach(c => {
         const subcats = subcategorias
@@ -2247,7 +2405,7 @@ const sub = p.subcategoria_nombre || '';
           <td>${c.nombre}</td>
           <td>${c.descripcion}</td>
           <td>${subcats}</td>
-          <td>
+          <td data-export="skip">
             <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="categoria" data-id="${c.id}">Editar</button>
             <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="categoria" data-id="${c.id}">Eliminar</button>
           </td>`;
@@ -2259,7 +2417,7 @@ const sub = p.subcategoria_nombre || '';
           <th>Nombre</th>
           <th>Categoría</th>
           <th>Descripción</th>
-          <th>Acciones</th>
+          <th data-export="skip">Acciones</th>
         </tr>`;
       subcategorias.forEach(sc => {
         const cat = categorias.find(c => c.id === sc.categoria_id)?.nombre || '';
@@ -2268,7 +2426,7 @@ const sub = p.subcategoria_nombre || '';
           <td>${sc.nombre}</td>
           <td>${cat}</td>
           <td>${sc.descripcion}</td>
-          <td>
+          <td data-export="skip">
             <button class="btn btn-sm btn-primary me-1" data-accion="edit" data-tipo="subcategoria" data-id="${sc.id}">Editar</button>
             <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="subcategoria" data-id="${sc.id}">Eliminar</button>
           </td>`;

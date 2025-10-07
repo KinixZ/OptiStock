@@ -710,6 +710,71 @@ img {
   justify-content: flex-end;
 }
 
+.summary-actions__exports {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.table-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-export {
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(23, 31, 52, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-color);
+  padding: 0.45rem 0.95rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn-export:hover {
+  color: var(--primary-color);
+  background: var(--primary-surface);
+  box-shadow: 0 12px 28px -24px rgba(23, 31, 52, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-export:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.btn-export--pdf {
+  color: var(--sidebar-color);
+  background: rgba(23, 31, 52, 0.06);
+}
+
+.btn-export--pdf:hover {
+  color: var(--sidebar-color);
+  background: rgba(23, 31, 52, 0.12);
+}
+
+.btn-export--excel {
+  border-color: rgba(22, 101, 52, 0.25);
+  color: #166534;
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.btn-export--excel:hover {
+  color: #14532d;
+  background: rgba(22, 163, 74, 0.2);
+  box-shadow: 0 12px 26px -22px rgba(22, 163, 74, 0.55);
+}
+
 .btn-icon {
   display: inline-flex;
   align-items: center;
