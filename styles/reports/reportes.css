@@ -556,6 +556,144 @@ body {
   color: #dc2626;
 }
 
+/* ---------------------------- */
+/* Automatizaciones - Modal UI  */
+/* ---------------------------- */
+
+#automationModal .modal-content {
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 26px 60px -35px rgba(23, 31, 52, 0.55);
+  background: var(--card-bg);
+}
+
+#automationModal .modal-header,
+#automationModal .modal-footer {
+  border-color: rgba(23, 31, 52, 0.08);
+  padding: 1.25rem 1.5rem;
+}
+
+#automationModal .modal-body {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.85));
+}
+
+#automationModal .modal-title {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--text-color);
+}
+
+#automationModal .btn-close {
+  background-size: 10px;
+  filter: invert(22%) sepia(16%) saturate(640%) hue-rotate(176deg) brightness(90%) contrast(86%);
+}
+
+#automationModal label.form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted-color);
+}
+
+#automationModal .form-control,
+#automationModal .form-select,
+#automationModal textarea {
+  border-radius: 14px;
+  border: 1px solid rgba(23, 31, 52, 0.08);
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(23, 31, 52, 0.04);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+#automationModal .form-control:focus,
+#automationModal .form-select:focus,
+#automationModal textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+#automationModal .form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='%23212845' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 18px;
+  padding-right: 2.5rem;
+}
+
+#automationModal .form-text {
+  color: var(--muted-color);
+  font-size: 0.8rem;
+}
+
+#automationModal .form-check-input {
+  width: 46px;
+  height: 24px;
+  border-radius: 18px;
+  border: 1px solid rgba(23, 31, 52, 0.12);
+  background-color: rgba(23, 31, 52, 0.12);
+  cursor: pointer;
+  transition: background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+#automationModal .form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+#automationModal .form-check-input:focus {
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+#automationModal .form-check-label {
+  font-weight: 500;
+  color: var(--text-color);
+  margin-left: 0.5rem;
+}
+
+#automationModal .btn {
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 0.55rem 1.2rem;
+}
+
+#automationModal .btn.btn-primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 10px 25px -12px rgba(255, 111, 145, 0.7);
+}
+
+#automationModal .btn.btn-primary:hover,
+#automationModal .btn.btn-primary:focus {
+  background: #ff567e;
+  border-color: #ff567e;
+}
+
+#automationModal .btn.btn-outline-secondary {
+  border-color: rgba(23, 31, 52, 0.16);
+  color: var(--text-color);
+}
+
+#automationModal .btn.btn-outline-secondary:hover,
+#automationModal .btn.btn-outline-secondary:focus {
+  background: rgba(23, 31, 52, 0.06);
+}
+
+#automationModal #automationDeleteBtn {
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #b91c1c;
+}
+
+#automationModal #automationDeleteBtn:hover,
+#automationModal #automationDeleteBtn:focus {
+  background: rgba(220, 38, 38, 0.12);
+}
+
 .history-actions {
   display: flex;
   gap: 0.5rem;
