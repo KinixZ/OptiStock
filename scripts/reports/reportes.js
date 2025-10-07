@@ -439,6 +439,10 @@
     }
     hideAlert();
 
+    if (!historyClient) {
+      throw new Error('El historial de reportes no está disponible en esta instalación.');
+    }
+
     try {
       const response = await fetchHistoryFromServer();
       state.reports = Array.isArray(response.reports) ? response.reports : [];
