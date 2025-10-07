@@ -105,53 +105,107 @@
             <span class="automatic-card__eyebrow">Automatización</span>
             <h3 class="automatic-card__title" id="automaticReportsTitle">Reportes automáticos</h3>
             <p class="automatic-card__subtitle">
-              Consulta los reportes programados que OptiStock genera de forma recurrente y verifica su próxima ejecución.
+              Configura reportes programados y OptiStock se encargará de generarlos automáticamente siguiendo la frecuencia que
+              definas.
             </p>
           </div>
-          <button class="automatic-card__action" type="button">Configurar automatizaciones</button>
+          <button id="automationConfigBtn" class="automatic-card__action" type="button">Configurar automatizaciones</button>
         </div>
 
-        <ul class="automatic-list" aria-label="Lista de reportes automáticos">
-          <li class="automatic-item">
-            <div class="automatic-item__main">
-              <span class="automatic-item__name">Resumen semanal de inventario</span>
-              <span class="automatic-item__module">Gestión de inventario</span>
-            </div>
-            <div class="automatic-item__meta">
-              <span class="automatic-item__badge">PDF</span>
-              <span class="automatic-item__frequency">Semanal · Cada lunes 08:00 a. m.</span>
-              <span class="automatic-item__next">Próxima ejecución: 14 oct 2025</span>
-            </div>
-            <button class="automatic-item__action" type="button">Ver historial</button>
-          </li>
-          <li class="automatic-item">
-            <div class="automatic-item__main">
-              <span class="automatic-item__name">Alertas de ruptura de stock</span>
-              <span class="automatic-item__module">Control de registros</span>
-            </div>
-            <div class="automatic-item__meta">
-              <span class="automatic-item__badge">PDF</span>
-              <span class="automatic-item__frequency">Diario · 07:30 a. m.</span>
-              <span class="automatic-item__next">Próxima ejecución: 8 oct 2025</span>
-            </div>
-            <button class="automatic-item__action" type="button">Ver historial</button>
-          </li>
-          <li class="automatic-item">
-            <div class="automatic-item__main">
-              <span class="automatic-item__name">Rotación mensual de productos</span>
-              <span class="automatic-item__module">Análisis de ventas</span>
-            </div>
-            <div class="automatic-item__meta">
-              <span class="automatic-item__badge">Excel</span>
-              <span class="automatic-item__frequency">Mensual · Día 1 a las 09:00 a. m.</span>
-              <span class="automatic-item__next">Próxima ejecución: 1 nov 2025</span>
-            </div>
-            <button class="automatic-item__action" type="button">Ver historial</button>
-          </li>
-        </ul>
+        <div id="automaticEmpty" class="automatic-empty d-none">
+          <p class="automatic-empty__title">Aún no has programado automatizaciones.</p>
+          <p class="automatic-empty__subtitle">
+            Crea tu primer reporte automático para recibir exportaciones recurrentes sin intervención manual.
+          </p>
+        </div>
+
+        <ul id="automaticList" class="automatic-list" aria-label="Lista de reportes automáticos"></ul>
       </section>
 
     </section>
+  </div>
+
+  <div class="modal fade" id="automationModal" tabindex="-1" aria-labelledby="automationModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <form id="automationForm" novalidate>
+          <div class="modal-header">
+            <h5 class="modal-title" id="automationModalTitle">Nueva automatización</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <input id="automationId" type="hidden" />
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="automationName">Nombre del reporte</label>
+                <input id="automationName" class="form-control" type="text" required maxlength="80"
+                  placeholder="Ej. Resumen semanal de inventario" />
+                <div class="invalid-feedback">Escribe un nombre para identificar el reporte.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="automationModule">Módulo origen</label>
+                <input id="automationModule" class="form-control" type="text" maxlength="80"
+                  placeholder="Ej. Gestión de inventario" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="automationFormat">Formato del archivo</label>
+                <select id="automationFormat" class="form-select" required>
+                  <option value="pdf">PDF</option>
+                  <option value="excel">Excel (CSV)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="automationFrequency">Frecuencia</label>
+                <select id="automationFrequency" class="form-select" required>
+                  <option value="daily">Diario</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensual</option>
+                </select>
+              </div>
+              <div id="automationWeekdayWrapper" class="col-md-6 d-none">
+                <label class="form-label" for="automationWeekday">Día de la semana</label>
+                <select id="automationWeekday" class="form-select">
+                  <option value="1">Lunes</option>
+                  <option value="2">Martes</option>
+                  <option value="3">Miércoles</option>
+                  <option value="4">Jueves</option>
+                  <option value="5">Viernes</option>
+                  <option value="6">Sábado</option>
+                  <option value="0">Domingo</option>
+                </select>
+              </div>
+              <div id="automationMonthdayWrapper" class="col-md-6 d-none">
+                <label class="form-label" for="automationMonthday">Día del mes</label>
+                <input id="automationMonthday" class="form-control" type="number" min="1" max="31" value="1" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="automationTime">Hora de ejecución</label>
+                <input id="automationTime" class="form-control" type="time" required value="08:00" />
+                <div class="form-text">La generación se ejecutará en hora local.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="automationNotes">Notas internas</label>
+                <textarea id="automationNotes" class="form-control" rows="2" maxlength="160"
+                  placeholder="Describe qué información debe contener el reporte o filtros aplicados."></textarea>
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input id="automationActive" class="form-check-input" type="checkbox" checked />
+                  <label class="form-check-label" for="automationActive">Activar generación automática al guardar</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer justify-content-between">
+            <button id="automationDeleteBtn" type="button" class="btn btn-outline-danger d-none">Eliminar automatización</button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button id="automationSubmitBtn" type="submit" class="btn btn-primary">Guardar automatización</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
