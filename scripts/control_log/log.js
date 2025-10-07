@@ -21,6 +21,41 @@
     const topUsersCanvas = document.getElementById('topUsersChart');
     const trendRangeButtons = Array.from(document.querySelectorAll('[data-trend-range]'));
 
+    const REPORT_SOURCE = 'Control de registros';
+
+    function descargarArchivo(blob, fileName) {
+        if (!(blob instanceof Blob)) {
+            return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    async function guardarReporteHistorial(blob, fileName, notes) {
+        if (!(blob instanceof Blob)) {
+            return;
+        }
+        if (!window.ReportHistory || typeof window.ReportHistory.saveGeneratedFile !== 'function') {
+            return;
+        }
+        try {
+            await window.ReportHistory.saveGeneratedFile({
+                blob,
+                fileName,
+                source: REPORT_SOURCE,
+                notes
+            });
+        } catch (error) {
+            console.warn('No se pudo registrar el reporte en el historial de descargas:', error);
+        }
+    }
+
     let trendRange = 'all';
 
     let navegadorTimeZone = null;
@@ -951,7 +986,7 @@
     cargarRegistros();
 
     if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', () => {
+        exportPdfBtn.addEventListener('click', async () => {
             if (!jsPDF || !window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
                 console.warn('Librería jsPDF no disponible.');
                 return;
@@ -960,18 +995,42 @@
             if (doc.autoTable) {
                 doc.autoTable({ html: '#logTable' });
             }
-            doc.save('logs.pdf');
+            let blob = null;
+            if (typeof doc.output === 'function') {
+                try {
+                    blob = doc.output('blob');
+                } catch (error) {
+                    console.warn('No se pudo obtener el PDF como Blob:', error);
+                }
+            }
+            const fileName = 'logs.pdf';
+            doc.save(fileName);
+            if (blob) {
+                await guardarReporteHistorial(blob, fileName, 'Exportación del registro a PDF');
+            }
         });
     }
 
-    if (exportExcelBtn && window.XLSX && XLSX.utils && XLSX.writeFile) {
-        exportExcelBtn.addEventListener('click', () => {
+    if (exportExcelBtn && window.XLSX && XLSX.utils && typeof XLSX.write === 'function') {
+        exportExcelBtn.addEventListener('click', async () => {
             const table = document.getElementById('logTable');
             if (!table) {
                 return;
             }
             const wb = XLSX.utils.table_to_book(table);
-            XLSX.writeFile(wb, 'logs.xlsx');
+            let wbArrayBuffer;
+            try {
+                wbArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            } catch (error) {
+                console.error('No se pudo generar el archivo de Excel del registro:', error);
+                return;
+            }
+            const fileName = 'logs.xlsx';
+            const blob = new Blob([wbArrayBuffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            descargarArchivo(blob, fileName);
+            await guardarReporteHistorial(blob, fileName, 'Exportación del registro a Excel');
         });
     }
 })();
