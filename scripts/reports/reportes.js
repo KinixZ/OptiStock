@@ -155,6 +155,69 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(KEY_REPO, JSON.stringify(copia));
   }
 
+  function leerStorageSeguro(clave) {
+    try {
+      const datos = JSON.parse(localStorage.getItem(clave) || '[]');
+      return Array.isArray(datos) ? datos : [];
+    } catch (error) {
+      console.warn(`No se pudo leer la clave ${clave} del almacenamiento local.`, error);
+      return [];
+    }
+  }
+
+  function depurarPorFecha(lista) {
+    const ahora = Date.now();
+    const depurada = (lista || []).filter(item => {
+      const fecha = item?.fecha;
+      const marcaTiempo = fecha ? new Date(fecha).getTime() : NaN;
+      if (Number.isNaN(marcaTiempo)) {
+        return false;
+      }
+      return ahora - marcaTiempo <= RETENCION_MS;
+    });
+    return { lista: depurada, cambio: depurada.length !== (lista || []).length };
+  }
+
+  function guardarArchivosGenerados(lista) {
+    const arreglo = Array.isArray(lista) ? [...lista] : [];
+    localStorage.setItem(KEY_GENERATED_FILES, JSON.stringify(arreglo.slice(0, MAX_GENERATED_FILES)));
+  }
+
+  function obtenerArchivosGenerados() {
+    const almacenados = leerStorageSeguro(KEY_GENERATED_FILES);
+    const { lista, cambio } = depurarPorFecha(almacenados);
+    if (cambio) {
+      guardarArchivosGenerados(lista);
+    }
+    return lista;
+  }
+
+  function guardarArchivoGenerado({ id, tipo, nombre, fecha, dataUrl }) {
+    if (!id || !fecha || !dataUrl) {
+      return;
+    }
+    const archivos = obtenerArchivosGenerados();
+    const actualizado = [
+      { id, tipo, nombre, fecha, dataUrl },
+      ...archivos.filter(item => item.id !== id)
+    ];
+    guardarArchivosGenerados(actualizado);
+  }
+
+  function guardarHistorialLista(lista) {
+    const arreglo = Array.isArray(lista) ? [...lista] : [];
+    localStorage.setItem(KEY_HISTORY, JSON.stringify(arreglo.slice(0, MAX_HISTORY)));
+  }
+
+  function obtenerHistorial() {
+    const almacenados = leerStorageSeguro(KEY_HISTORY);
+    const { lista, cambio } = depurarPorFecha(almacenados);
+    if (cambio) {
+      guardarHistorialLista(lista);
+    }
+    return lista;
+  }
+
   function escaparHtml(texto) {
     return (texto || '')
       .replace(/&/g, '&amp;')
@@ -210,6 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const KEY_BRAND_NAME = 'reportBrandName';
   const KEY_INTERVAL = 'reportInterval';
   const KEY_INTERVAL_DAYS = 'reportIntervalCustomDays';
+  const KEY_GENERATED_FILES = 'reportGeneratedFiles';
+  const KEY_HISTORY = 'reportHistory';
+  const RETENCION_MS = 60 * 24 * 60 * 60 * 1000;
+  const MAX_GENERATED_FILES = 40;
+  const MAX_HISTORY = 40;
 
   let grafica = null;
   let programacion = null;
@@ -390,6 +458,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const repositorio = obtenerRepositorio().filter(item => item.id !== target.dataset.delete);
       guardarRepositorio(repositorio);
       renderRepositorio();
+    }
+  });
+
+  historialBody?.addEventListener('click', event => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    if (target.dataset.downloadHistorial) {
+      descargarDesdeHistorial(target.dataset.downloadHistorial);
+      return;
+    }
+
+    if (target.dataset.share) {
+      compartir(target.dataset.share);
     }
   });
 
@@ -590,12 +674,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const id = 'REP-' + Date.now();
+    const fecha = new Date().toISOString();
+    const nombreArchivo = tipo === 'pdf' ? `${id}.pdf` : `${id}.xlsx`;
+
+    let dataUrl = '';
     if (tipo === 'pdf') {
-      await exportarPDF(id, filtros, datosFiltrados);
+      dataUrl = await exportarPDF(id, filtros, datosFiltrados);
     } else {
-      exportarExcel(id, filtros, datosFiltrados);
+      dataUrl = exportarExcel(id, filtros, datosFiltrados);
     }
-    guardarHistorial(id, filtros, datosFiltrados.length);
+
+    if (dataUrl) {
+      descargarArchivo(dataUrl, nombreArchivo);
+      guardarArchivoGenerado({ id, tipo, nombre: nombreArchivo, fecha, dataUrl });
+    } else {
+      console.warn('No se pudo generar el archivo para descarga.');
+    }
+
+    guardarHistorial({ id, fecha, filtros, totalRegistros: datosFiltrados.length, tipo, nombre: nombreArchivo });
   }
 
   async function exportarPDF(id, filtros, datos) {
@@ -723,7 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
       doc.text('https://optistock.local', paginaAncho - margenLateral, paginaAlto - 12, { align: 'right' });
     }
 
-    doc.save(id + '.pdf');
+    return doc.output('datauristring');
   }
 
   function exportarExcel(id, filtros, datos) {
@@ -749,38 +845,84 @@ document.addEventListener('DOMContentLoaded', () => {
     })));
     XLSX.utils.book_append_sheet(wb, hojaDatos, 'Datos');
 
-    XLSX.writeFile(wb, id + '.xlsx');
+    const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    return `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
   }
 
-  function guardarHistorial(id, filtros, totalRegistros) {
-    const historial = JSON.parse(localStorage.getItem('reportHistory') || '[]');
-    historial.unshift({
+  function guardarHistorial({ id, fecha, filtros, totalRegistros, tipo, nombre }) {
+    const historial = obtenerHistorial();
+    const nuevoRegistro = {
       id,
-      fecha: new Date().toISOString(),
+      fecha,
       modulos: filtros.modulos.length ? filtros.modulos.join(', ') : 'Todos',
-      registros: totalRegistros
-    });
-    localStorage.setItem('reportHistory', JSON.stringify(historial.slice(0, 20)));
+      registros: totalRegistros,
+      tipo,
+      nombre
+    };
+    const actualizados = [nuevoRegistro, ...historial.filter(item => item.id !== id)];
+    guardarHistorialLista(actualizados);
     actualizarHistorial();
   }
 
   function actualizarHistorial() {
-    const historial = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+    if (!historialBody) {
+      return;
+    }
+
+    const historial = obtenerHistorial();
+    const archivos = obtenerArchivosGenerados();
+    const mapaArchivos = new Map(archivos.map(item => [item.id, item]));
+    const vigentes = [];
+
     historialBody.innerHTML = '';
     historial.forEach(registro => {
+      if (!mapaArchivos.has(registro.id)) {
+        return;
+      }
+      vigentes.push(registro);
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${registro.id}</td>
         <td>${formatearFechaHora(registro.fecha)}</td>
         <td>${registro.modulos} · ${registro.registros} registro${registro.registros === 1 ? '' : 's'}</td>
-        <td><button class="btn-share" data-id="${registro.id}" type="button">Compartir</button></td>
+        <td>${registro.tipo === 'excel' ? 'Excel (.xlsx)' : 'PDF (.pdf)'}</td>
+        <td class="text-end">
+          <div class="document-actions">
+            <button class="btn-action btn--small" type="button" data-download-historial="${registro.id}">Descargar</button>
+            <button class="btn-action btn--small btn-share" type="button" data-share="${registro.id}">Compartir</button>
+          </div>
+        </td>
       `;
       historialBody.appendChild(tr);
     });
 
-    historialBody.querySelectorAll('.btn-share').forEach(btn => {
-      btn.addEventListener('click', () => compartir(btn.dataset.id));
-    });
+    if (vigentes.length !== historial.length) {
+      guardarHistorialLista(vigentes);
+    }
+  }
+
+  function descargarArchivo(dataUrl, nombre) {
+    const enlace = document.createElement('a');
+    enlace.href = dataUrl;
+    enlace.download = nombre || 'reporte';
+    enlace.rel = 'noopener';
+    enlace.style.display = 'none';
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+  }
+
+  function descargarDesdeHistorial(id) {
+    const archivos = obtenerArchivosGenerados();
+    const archivo = archivos.find(item => item.id === id);
+    if (!archivo) {
+      alert('El archivo ya no está disponible para descarga.');
+      actualizarHistorial();
+      return;
+    }
+    const extension = archivo.tipo === 'excel' ? '.xlsx' : '.pdf';
+    const nombre = archivo.nombre || `${archivo.id}${extension}`;
+    descargarArchivo(archivo.dataUrl, nombre);
   }
 
   function compartir(id) {
