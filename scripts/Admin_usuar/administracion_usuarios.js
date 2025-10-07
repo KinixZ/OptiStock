@@ -844,45 +844,50 @@
   }
 
   async function exportarPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    if (typeof doc.autoTable !== 'function') {
-      console.error('❌ AutoTable no está disponible en jsPDF.');
-      alert('❌ Error: jsPDF-AutoTable no está disponible.');
-      return;
-    }
-
     const tabla = document.getElementById('tablaUsuariosEmpresa');
-    if (!tabla) {
+    if (!(tabla instanceof HTMLTableElement)) {
       alert('❌ No se encontró la tabla de usuarios.');
       return;
     }
 
-    const rows = [...tabla.rows].map(row => [...row.cells].map(cell => cell.innerText));
-    const [header, ...body] = rows;
-
-    doc.text('Usuarios de la Empresa', 14, 16);
-    doc.autoTable({
-      head: [header],
-      body,
-      startY: 22,
-      styles: { fontSize: 10 }
-    });
-
-    const fileName = 'usuarios_empresa.pdf';
-    let blob = null;
-    if (typeof doc.output === 'function') {
-      try {
-        blob = doc.output('blob');
-      } catch (error) {
-        console.warn('No se pudo obtener el Blob del PDF generado:', error);
-      }
+    const exporter = window.ReportExporter;
+    if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
+      alert('❌ No se pudo cargar el módulo para exportar reportes. Recarga la página e inténtalo nuevamente.');
+      return;
     }
 
-    doc.save(fileName);
-    if (blob) {
-      await guardarReporteUsuarios(blob, fileName, 'Exportación de usuarios a PDF');
+    const dataset = exporter.extractTableData(tabla);
+    if (!dataset || !dataset.rowCount) {
+      alert('❌ No hay usuarios disponibles para generar el reporte.');
+      return;
+    }
+
+    const empresa = exporter.getEmpresaNombre();
+    const subtitleParts = [];
+    if (empresa) {
+      subtitleParts.push(empresa);
+    }
+    subtitleParts.push(exporter.pluralize(dataset.rowCount, 'usuario'));
+
+    try {
+      const result = exporter.exportTableToPdf({
+        table: tabla,
+        data: dataset,
+        title: 'Usuarios de la Empresa',
+        subtitle: subtitleParts.join(' • '),
+        fileName: 'usuarios_empresa.pdf'
+      });
+
+      if (result?.blob) {
+        await guardarReporteUsuarios(result.blob, result.fileName, 'Exportación de usuarios a PDF');
+      }
+    } catch (error) {
+      console.error('No se pudo generar el PDF de usuarios:', error);
+      if (error && error.message === 'PDF_LIBRARY_MISSING') {
+        alert('❌ La librería para generar PDF no está disponible. Actualiza la página e inténtalo nuevamente.');
+        return;
+      }
+      alert('❌ Ocurrió un problema al generar el PDF de usuarios.');
     }
   }
 

@@ -120,8 +120,6 @@
         return;
     }
 
-    const { jsPDF } = (window.jspdf || {});
-
     const ID_EMPRESA = localStorage.getItem('id_empresa') || '';
     const LOGS_STORAGE_KEY = ID_EMPRESA ? `logsEmpresa_${ID_EMPRESA}` : 'logsEmpresa';
     const FILTERS_STORAGE_KEY = ID_EMPRESA ? `logsFiltros_${ID_EMPRESA}` : 'logsFiltros';
@@ -150,6 +148,20 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function obtenerTextoSeleccionado(selectElement) {
+        if (!(selectElement instanceof HTMLSelectElement)) {
+            return '';
+        }
+
+        const option = selectElement.options?.[selectElement.selectedIndex];
+        if (!option) {
+            return '';
+        }
+
+        const label = option.textContent || option.innerText || option.value || '';
+        return label.trim();
     }
 
     function limpiarIdentificadores(texto = '') {
@@ -987,26 +999,68 @@
 
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
-            if (!jsPDF || !window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
-                console.warn('Librería jsPDF no disponible.');
+            const exporter = window.ReportExporter;
+            if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
+                console.warn('El módulo para exportar reportes no está disponible.');
                 return;
             }
-            const doc = new jsPDF();
-            if (doc.autoTable) {
-                doc.autoTable({ html: '#logTable' });
+
+            const table = document.getElementById('logTable');
+            if (!(table instanceof HTMLTableElement)) {
+                console.warn('No se encontró la tabla del historial de actividades.');
+                return;
             }
-            let blob = null;
-            if (typeof doc.output === 'function') {
-                try {
-                    blob = doc.output('blob');
-                } catch (error) {
-                    console.warn('No se pudo obtener el PDF como Blob:', error);
+
+            const dataset = exporter.extractTableData(table);
+            if (!dataset || !dataset.rowCount) {
+                console.warn('No hay registros disponibles para exportar.');
+                return;
+            }
+
+            const subtitleParts = [];
+            const empresa = exporter.getEmpresaNombre();
+            if (empresa) {
+                subtitleParts.push(empresa);
+            }
+
+            subtitleParts.push(exporter.pluralize(dataset.rowCount, 'registro'));
+
+            const moduloLabel = obtenerTextoSeleccionado(filtroModulo);
+            const rolLabel = obtenerTextoSeleccionado(filtroRol);
+            const usuarioLabel = obtenerTextoSeleccionado(filtroUsuario);
+
+            const filtrosAplicados = [
+                moduloLabel && moduloLabel.toLowerCase() !== 'todos' ? `Módulo: ${moduloLabel}` : '',
+                rolLabel && rolLabel.toLowerCase() !== 'todos' ? `Rol: ${rolLabel}` : '',
+                usuarioLabel && usuarioLabel.toLowerCase() !== 'todos' ? `Usuario: ${usuarioLabel}` : ''
+            ].filter(Boolean);
+
+            if (terminoBusqueda) {
+                filtrosAplicados.push(`Búsqueda: "${terminoBusqueda.trim()}"`);
+            }
+
+            if (filtrosAplicados.length) {
+                subtitleParts.push(filtrosAplicados.join(' • '));
+            }
+
+            try {
+                const result = exporter.exportTableToPdf({
+                    table,
+                    data: dataset,
+                    title: 'Historial de actividades',
+                    subtitle: subtitleParts.join(' • '),
+                    fileName: 'logs.pdf'
+                });
+
+                if (result?.blob) {
+                    await guardarReporteHistorial(result.blob, result.fileName, 'Exportación del registro a PDF');
                 }
-            }
-            const fileName = 'logs.pdf';
-            doc.save(fileName);
-            if (blob) {
-                await guardarReporteHistorial(blob, fileName, 'Exportación del registro a PDF');
+            } catch (error) {
+                console.error('No se pudo generar el PDF del historial de actividades:', error);
+                if (error && error.message === 'PDF_LIBRARY_MISSING') {
+                    console.warn('La librería para generar PDF no está disponible.');
+                    return;
+                }
             }
         });
     }
