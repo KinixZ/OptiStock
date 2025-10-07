@@ -132,6 +132,7 @@ img {
 .filter-panel,
 .chart-panel,
 .report-results,
+.upload-panel,
 .report-history {
   background: var(--card-bg, #ffffff);
   border-radius: 20px;
@@ -187,6 +188,56 @@ img {
   color: var(--text-color, #1f2937);
 }
 
+.brand-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.brand-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.brand-field input[type="file"] {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-color, #e7e9f5);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.brand-slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-slider input[type="range"] {
+  flex: 1;
+}
+
+.brand-preview {
+  border: 1px dashed var(--primary-border-strong, rgba(255, 111, 145, 0.22));
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 0.9rem;
+  color: var(--muted-color, #6b7280);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-size: contain;
+  background-position: left center;
+  background-repeat: no-repeat;
+}
+
+.brand-preview img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -228,13 +279,28 @@ img {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border-color, #e7e9f5);
   background: #ffffff;
   font: inherit;
   color: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.field--file input[type="file"] {
+  border-style: dashed;
+  cursor: pointer;
 }
 
 .filters-actions {
@@ -255,6 +321,10 @@ img {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.btn--ghost {
+  background: transparent;
+}
+
 .btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 20px -15px rgba(17, 25, 40, 0.35);
@@ -264,6 +334,37 @@ img {
   background: var(--primary-color, #ff6f91);
   border-color: transparent;
   color: #ffffff;
+}
+
+.btn--small {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.btn-action {
+  border: 1px solid var(--border-color, #e7e9f5);
+  background: var(--primary-surface, rgba(255, 111, 145, 0.12));
+  color: var(--primary-color, #ff6f91);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-action:hover {
+  background: var(--primary-surface-strong, rgba(255, 111, 145, 0.18));
+}
+
+.btn-action--danger {
+  color: var(--danger-color, #ff6b6b);
+  background: rgba(255, 107, 107, 0.12);
+  border-color: rgba(255, 107, 107, 0.32);
+}
+
+.btn-action--danger:hover {
+  background: rgba(255, 107, 107, 0.2);
 }
 
 .btn--ghost {
@@ -307,6 +408,72 @@ img {
   background: rgba(17, 25, 40, 0.05);
   color: var(--muted-color, #6b7280);
   display: none;
+}
+
+.program-status {
+  margin: 0;
+  color: var(--muted-color, #6b7280);
+  font-size: 0.9rem;
+}
+
+.insight-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.document-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.document-meta span:first-child {
+  font-weight: 600;
+  color: var(--text-color, #1f2937);
+}
+
+.document-meta span:last-child {
+  font-size: 0.85rem;
+  color: var(--muted-color, #6b7280);
+}
+
+.document-tags {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary-surface, rgba(255, 111, 145, 0.12));
+  color: var(--primary-color, #ff6f91);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.document-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .results-summary {
@@ -401,5 +568,9 @@ img {
   .btn {
     width: 100%;
     text-align: center;
+  }
+
+  .brand-options {
+    flex-direction: column;
   }
 }
