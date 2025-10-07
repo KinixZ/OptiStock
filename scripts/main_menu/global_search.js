@@ -8,6 +8,11 @@
     let quickLinks;
     let summaryDescription;
 
+    const DUPLICATE_SAVE_INTERVAL_MS = 60000;
+    let autoSaveTimeoutId = null;
+    let lastSavedSearchComparable = '';
+    let lastSavedTimestamp = 0;
+
     let empresaIdCache = null;
     let layoutListenersBound = false;
 
@@ -40,22 +45,27 @@
         const button = event.target.closest('button[data-query]');
         if (!button) return;
         const query = button.getAttribute('data-query') || '';
+        cancelarAutoGuardado();
         if (searchInput) {
             searchInput.value = query;
         }
         renderResultados(query);
-        registrarBusqueda(query);
+        registrarBusqueda(query, { force: true });
     };
 
     const searchInputListener = event => {
-        renderResultados(event.target.value);
+        const value = event.target.value;
+        renderResultados(value);
+        programarAutoGuardado(value);
     };
 
     const searchInputKeyListener = event => {
         if (event.key === 'Enter') {
             event.preventDefault();
-            renderResultados(event.target.value);
-            registrarBusqueda(event.target.value);
+            const value = event.target.value;
+            cancelarAutoGuardado();
+            renderResultados(value);
+            registrarBusqueda(value, { force: true });
         }
     };
 
@@ -159,6 +169,41 @@
             searchResultsContainer.addEventListener('click', searchResultsNavigationListener);
             searchResultsContainer.dataset.navigationBound = 'true';
         }
+    }
+
+    function cancelarAutoGuardado() {
+        if (autoSaveTimeoutId) {
+            window.clearTimeout(autoSaveTimeoutId);
+            autoSaveTimeoutId = null;
+        }
+    }
+
+    function programarAutoGuardado(valor) {
+        const termino = (valor || '').trim();
+
+        if (termino.length < 2) {
+            cancelarAutoGuardado();
+            return;
+        }
+
+        const terminoNormalizado = normalizarTexto(termino);
+
+        if (
+            terminoNormalizado &&
+            terminoNormalizado === lastSavedSearchComparable &&
+            Date.now() - lastSavedTimestamp < DUPLICATE_SAVE_INTERVAL_MS
+        ) {
+            cancelarAutoGuardado();
+            return;
+        }
+
+        cancelarAutoGuardado();
+        autoSaveTimeoutId = window.setTimeout(() => {
+            autoSaveTimeoutId = null;
+            registrarBusqueda(termino).catch(error => {
+                console.warn('No se pudo registrar la búsqueda automáticamente:', error);
+            });
+        }, 800);
     }
 
     function normalizeHex(hexColor) {
@@ -415,6 +460,11 @@
                     persistirBusquedasPendientes();
                     break;
                 }
+                const terminoComparable = normalizarTexto(terminoPendiente);
+                if (terminoComparable) {
+                    lastSavedSearchComparable = terminoComparable;
+                    lastSavedTimestamp = Date.now();
+                }
             }
         } finally {
             syncingPendingSearches = false;
@@ -459,17 +509,34 @@
         }
     }
 
-    async function registrarBusqueda(consulta) {
+    async function registrarBusqueda(consulta, opciones = {}) {
         const termino = (consulta || '').trim();
         if (!termino) {
-            return;
+            return false;
+        }
+
+        const terminoComparable = normalizarTexto(termino);
+        const forzarRegistro = opciones && opciones.force === true;
+        const ahora = Date.now();
+
+        if (
+            !forzarRegistro &&
+            terminoComparable &&
+            terminoComparable === lastSavedSearchComparable &&
+            (ahora - lastSavedTimestamp) < DUPLICATE_SAVE_INTERVAL_MS
+        ) {
+            return false;
         }
 
         const empresaId = obtenerEmpresaIdActual();
 
         if (!empresaId) {
             agregarBusquedaPendiente(termino);
-            return;
+            if (forzarRegistro) {
+                lastSavedSearchComparable = terminoComparable;
+                lastSavedTimestamp = ahora;
+            }
+            return false;
         }
 
         await sincronizarBusquedasPendientes(empresaId);
@@ -478,57 +545,13 @@
 
         if (!exito) {
             agregarBusquedaPendiente(termino);
-        }
-    }
-
-    function procesarBusquedasPendientes() {
-        if (processingPendingSearches) {
-            return;
+            window.setTimeout(() => sincronizarBusquedasPendientes(empresaId), 5000);
+            return false;
         }
 
-        const empresaIdNumero = Number(empresaIdCache);
-        if (!empresaIdNumero || !pendingSearchTerms.length) {
-            return;
-        }
-
-        processingPendingSearches = true;
-        let procesamientoCompleto = true;
-
-        (async () => {
-            while (pendingSearchTerms.length && Number(empresaIdCache) === empresaIdNumero) {
-                const terminoPendiente = pendingSearchTerms[0];
-                const exito = await guardarBusquedaRemota(terminoPendiente, empresaIdNumero);
-                if (!exito) {
-                    procesamientoCompleto = false;
-                    break;
-                }
-                pendingSearchTerms.shift();
-            }
-        })()
-        .catch(error => {
-            procesamientoCompleto = false;
-            console.warn('No se pudo procesar las búsquedas pendientes:', error);
-        })
-        .finally(() => {
-            processingPendingSearches = false;
-
-            if (!Number(empresaIdCache) || !pendingSearchTerms.length) {
-                return;
-            }
-
-            const delay = procesamientoCompleto ? 0 : 5000;
-            window.setTimeout(procesarBusquedasPendientes, delay);
-        });
-    }
-
-    async function registrarBusqueda(consulta) {
-        const termino = (consulta || '').trim();
-        if (!termino) {
-            return;
-        }
-
-        pendingSearchTerms.push(termino);
-        procesarBusquedasPendientes();
+        lastSavedSearchComparable = terminoComparable;
+        lastSavedTimestamp = ahora;
+        return true;
     }
 
     function normalizarTexto(texto) {
