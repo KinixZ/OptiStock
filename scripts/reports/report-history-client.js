@@ -1,5 +1,30 @@
 (function () {
-  const API_BASE = '/scripts/php/report_history.php';
+  function resolveApiBase() {
+    if (typeof window !== 'undefined' && typeof window.REPORT_HISTORY_API_BASE === 'string') {
+      return window.REPORT_HISTORY_API_BASE;
+    }
+
+    if (typeof document !== 'undefined') {
+      const currentScript = document.currentScript || (function () {
+        const scripts = document.getElementsByTagName('script');
+        return scripts[scripts.length - 1] || null;
+      })();
+
+      if (currentScript && currentScript.src) {
+        try {
+          const scriptUrl = new URL(currentScript.src, window.location.origin);
+          const apiUrl = new URL('../php/report_history.php', scriptUrl);
+          return apiUrl.pathname;
+        } catch (error) {
+          console.warn('No se pudo resolver la ruta del historial de reportes:', error);
+        }
+      }
+    }
+
+    return '/scripts/php/report_history.php';
+  }
+
+  const API_BASE = resolveApiBase();
   const RETENTION_DAYS_FALLBACK = 60;
 
   function normalizeEmpresaId(value) {
