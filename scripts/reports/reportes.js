@@ -64,7 +64,10 @@
     automationTimerId: null,
     automationModalInstance: null,
     automationSyncTimerId: null,
-    automationsLoadedFromServer: false
+    automationsLoadedFromServer: false,
+    automationRunInProgress: false,
+    automationRunQueued: false,
+    automationRunQueuedCatchUp: false
   };
 
   function setHistoryUnavailableState(message) {
@@ -97,6 +100,66 @@
   const AUTOMATION_REPORTS_PREFIX = 'optistock:automationReports:';
   const MAX_AUTOMATION_CATCHUP = 4;
   const LOCAL_AUTOMATION_HISTORY_LIMIT = 30;
+
+  function buildAutomationKey(automation) {
+    if (!automation) {
+      return '';
+    }
+    const module = automation.module || '';
+    const frequency = automation.frequency || '';
+    const time = automation.time || '';
+    const format = automation.format || '';
+    const weekday = Number.isFinite(Number(automation.weekday)) ? String(parseInt(automation.weekday, 10)) : '';
+    const monthday = Number.isFinite(Number(automation.monthday)) ? String(parseInt(automation.monthday, 10)) : '';
+    return `${module}::${frequency}::${time}::${format}::${weekday}::${monthday}`;
+  }
+
+  function isTemporaryAutomationId(id) {
+    return typeof id === 'string' && id.startsWith('auto-');
+  }
+
+  function deduplicateAutomations(list) {
+    if (!Array.isArray(list) || list.length === 0) {
+      return [];
+    }
+
+    const map = new Map();
+
+    list.forEach((automation) => {
+      const key = buildAutomationKey(automation);
+      if (!key) {
+        const fallbackKey = automation && automation.id ? `id:${automation.id}` : `rand:${Math.random()}`;
+        map.set(fallbackKey, automation);
+        return;
+      }
+
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, automation);
+        return;
+      }
+
+      const existingUpdated = existing && existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      const candidateUpdated = automation && automation.updatedAt ? new Date(automation.updatedAt).getTime() : 0;
+      const existingIsTemp = isTemporaryAutomationId(existing.id);
+      const candidateIsTemp = isTemporaryAutomationId(automation.id);
+
+      if (existingIsTemp && !candidateIsTemp) {
+        map.set(key, { ...existing, ...automation });
+        return;
+      }
+
+      if (!existingIsTemp && candidateIsTemp) {
+        return;
+      }
+
+      if (candidateUpdated > existingUpdated) {
+        map.set(key, { ...existing, ...automation });
+      }
+    });
+
+    return Array.from(map.values());
+  }
 
   function ensureModuleOption(value) {
     if (!value || !elements.automationModuleInput || elements.automationModuleInput.tagName !== 'SELECT') {
@@ -450,7 +513,7 @@
       return;
     }
     try {
-      const payload = JSON.stringify(state.automations);
+      const payload = JSON.stringify(deduplicateAutomations(state.automations));
       window.localStorage.setItem(getAutomationStorageKey(empresaId), payload);
     } catch (error) {
       console.warn('No se pudieron guardar las automatizaciones en caché:', error);
@@ -525,7 +588,9 @@
     }
 
     if (Array.isArray(data.automations)) {
-      state.automations = data.automations.map((item) => normalizeAutomation(item));
+      state.automations = deduplicateAutomations(
+        data.automations.map((item) => normalizeAutomation(item))
+      );
       cacheAutomationsLocally();
       renderAutomations();
     }
@@ -552,7 +617,9 @@
     }
     try {
       const automations = await fetchAutomationsFromServer();
-      state.automations = automations.map((item) => normalizeAutomation(item));
+      state.automations = deduplicateAutomations(
+        automations.map((item) => normalizeAutomation(item))
+      );
       cacheAutomationsLocally();
       state.automationsLoadedFromServer = true;
       renderAutomations();
@@ -1315,13 +1382,8 @@
       }
     }
 
-    // Compose a stable key to detect duplicates: module + frequency + time + format + weekday/monthday
-    function automationKey(a) {
-      return `${a.module || ''}::${a.frequency || ''}::${a.time || ''}::${a.format || ''}::${a.weekday || ''}::${a.monthday || ''}`;
-    }
-
-    const newKey = automationKey(automationData);
-    const duplicateIndex = state.automations.findIndex((item) => automationKey(item) === newKey);
+    const newKey = buildAutomationKey(automationData);
+    const duplicateIndex = state.automations.findIndex((item) => buildAutomationKey(item) === newKey);
 
     if (duplicateIndex >= 0) {
       // Update existing duplicate instead of adding a new one.
@@ -1330,6 +1392,7 @@
       // Insert as new automation
       state.automations.push({ ...automationData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     }
+    state.automations = deduplicateAutomations(state.automations);
     saveAutomationsToStorage();
     renderAutomations();
   }
@@ -1574,58 +1637,97 @@
   }
 
   async function runPendingAutomations({ catchUp = false } = {}) {
+    const wantsCatchUp = Boolean(catchUp);
+    if (state.automationRunInProgress) {
+      state.automationRunQueued = true;
+      if (wantsCatchUp) {
+        state.automationRunQueuedCatchUp = true;
+      }
+      return;
+    }
+
+    state.automationRunInProgress = true;
+    state.automationRunQueued = false;
+    state.automationRunQueuedCatchUp = false;
+
     if (!state.automations.length) {
+      state.automationRunInProgress = false;
       return;
     }
 
     const now = new Date();
     let changed = false;
 
-    for (const automation of state.automations) {
-      if (!automation.nextRunAt) {
-        automation.nextRunAt = computeNextRunAt(automation, now);
-        changed = true;
-      }
-
-      if (!automation.active) {
-        continue;
-      }
-
-      let iterations = 0;
-      while (automation.nextRunAt) {
-        const nextRun = new Date(automation.nextRunAt);
-        if (!Number.isFinite(nextRun.getTime())) {
+    try {
+      for (const automation of state.automations) {
+        if (!automation.nextRunAt) {
           automation.nextRunAt = computeNextRunAt(automation, now);
           changed = true;
-          break;
         }
 
-        // Only execute automations whose scheduled time is in the past or now.
-        // The `catchUp` flag permits running multiple past-due executions (up to
-        // MAX_AUTOMATION_CATCHUP), but must NOT run future scheduled instances.
-        if (nextRun > now) {
-          break;
+        if (!automation.active) {
+          continue;
         }
 
-        registerAutomationReport(automation, nextRun);
-        // Show immediate alerts only for real-time runs; suppress during catch-up
-        // batches to avoid spamming the user.
-        if (!catchUp) {
-          showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
-        }
+        let iterations = 0;
+        while (automation.nextRunAt) {
+          const nextRun = new Date(automation.nextRunAt);
+          if (!Number.isFinite(nextRun.getTime())) {
+            automation.nextRunAt = computeNextRunAt(automation, now);
+            changed = true;
+            break;
+          }
 
-        automation.nextRunAt = computeNextRunAt(automation, new Date(nextRun.getTime() + 60 * 1000));
-        changed = true;
-        iterations += 1;
-        if (!catchUp || iterations >= MAX_AUTOMATION_CATCHUP) {
-          break;
+          // Only execute automations whose scheduled time is in the past or now.
+          // The `catchUp` flag permits running multiple past-due executions (up to
+          // MAX_AUTOMATION_CATCHUP), but must NOT run future scheduled instances.
+          if (nextRun > now) {
+            break;
+          }
+
+          try {
+            await registerAutomationReport(automation, nextRun);
+            automation.lastRunAt = nextRun.toISOString();
+          } catch (error) {
+            console.error('No se pudo generar el reporte automático programado:', error);
+            automation.nextRunAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+            changed = true;
+            if (!catchUp) {
+              showAlert('No se pudo generar un reporte automático. Se reintentará más tarde.', 'danger', true);
+            }
+            break;
+          }
+
+          // Show immediate alerts only for real-time runs; suppress during catch-up
+          // batches to avoid spamming the user.
+          if (!catchUp) {
+            showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+          }
+
+          automation.nextRunAt = computeNextRunAt(automation, new Date(nextRun.getTime() + 60 * 1000));
+          changed = true;
+          iterations += 1;
+          if (!catchUp || iterations >= MAX_AUTOMATION_CATCHUP) {
+            break;
+          }
         }
       }
-    }
 
-    if (changed) {
-      saveAutomationsToStorage();
-      renderAutomations();
+      if (changed) {
+        state.automations = deduplicateAutomations(state.automations);
+        saveAutomationsToStorage();
+        renderAutomations();
+      }
+    } finally {
+      state.automationRunInProgress = false;
+      if (state.automationRunQueued) {
+        const shouldCatchUp = state.automationRunQueuedCatchUp;
+        state.automationRunQueued = false;
+        state.automationRunQueuedCatchUp = false;
+        runPendingAutomations({ catchUp: shouldCatchUp }).catch((error) => {
+          console.error('No se pudieron ejecutar las automatizaciones pendientes en cola:', error);
+        });
+      }
     }
   }
 
@@ -1711,7 +1813,9 @@
   }
 
   function initializeAutomations() {
-    state.automations = loadAutomationsFromStorage().map((item) => normalizeAutomation(item));
+    state.automations = deduplicateAutomations(
+      loadAutomationsFromStorage().map((item) => normalizeAutomation(item))
+    );
 
     const now = new Date();
     let needsSave = false;
