@@ -2,6 +2,7 @@
   const HISTORY_API_URL = '../../scripts/php/report_history.php';
   const AUTOMATION_API_URL = '../../scripts/php/report_automations.php';
   const RETENTION_DAYS_FALLBACK = 60;
+  const HISTORY_PAGE_SIZE = 10;
 
   // Provide a local alias for the optional external history client.
   // Some installations include `scripts/reports/report-history-client.js` which
@@ -20,6 +21,12 @@
     historyLoading: document.getElementById('historyLoading'),
     historyEmpty: document.getElementById('historyEmpty'),
     historyAlert: document.getElementById('historyAlert'),
+    historyFooter: document.getElementById('historyFooter'),
+    historyPaginationInfo: document.getElementById('historyPaginationInfo'),
+    historyPagination: document.getElementById('historyPagination'),
+    historyPaginationPrev: document.getElementById('historyPaginationPrev'),
+    historyPaginationNext: document.getElementById('historyPaginationNext'),
+    historyPaginationPages: document.getElementById('historyPaginationPages'),
     searchInput: document.getElementById('historySearch'),
     typeFilter: document.getElementById('historyTypeFilter'),
     refreshButton: document.getElementById('refreshHistoryBtn'),
@@ -56,6 +63,7 @@
     serverReports: [],
     localAutomationReports: [],
     filteredReports: [],
+    historyPage: 1,
     retentionDays: RETENTION_DAYS_FALLBACK,
     loading: false,
     alertTimerId: null,
@@ -778,7 +786,7 @@
     });
     state.reports = combined;
     updateSummary();
-    applyFilters();
+    applyFilters({ resetPage: true });
   }
 
   function setLoading(isLoading) {
@@ -791,6 +799,9 @@
     }
     if (elements.historyEmpty) {
       elements.historyEmpty.classList.toggle('d-none', true);
+    }
+    if (elements.historyFooter) {
+      elements.historyFooter.classList.toggle('d-none', isLoading);
     }
   }
 
@@ -837,6 +848,83 @@
     }
   }
 
+  function updateHistoryFooter({ filteredCount, start = 0, end = 0, totalPages = 1 }) {
+    if (elements.historyPaginationInfo) {
+      elements.historyPaginationInfo.textContent = filteredCount === 0
+        ? 'Sin reportes para mostrar'
+        : `Mostrando ${start}-${end} de ${filteredCount} ${filteredCount === 1 ? 'reporte' : 'reportes'}`;
+    }
+
+    if (!elements.historyPagination) {
+      return;
+    }
+
+    if (filteredCount === 0) {
+      elements.historyPagination.classList.add('d-none');
+      if (elements.historyPaginationPages) {
+        elements.historyPaginationPages.innerHTML = '';
+      }
+      if (elements.historyPaginationPrev) {
+        elements.historyPaginationPrev.disabled = true;
+      }
+      if (elements.historyPaginationNext) {
+        elements.historyPaginationNext.disabled = true;
+      }
+      return;
+    }
+
+    const total = Math.max(1, totalPages);
+    if (total <= 1) {
+      elements.historyPagination.classList.add('d-none');
+      if (elements.historyPaginationPrev) {
+        elements.historyPaginationPrev.disabled = true;
+      }
+      if (elements.historyPaginationNext) {
+        elements.historyPaginationNext.disabled = true;
+      }
+      if (elements.historyPaginationPages) {
+        elements.historyPaginationPages.innerHTML = '';
+      }
+      return;
+    }
+
+    elements.historyPagination.classList.remove('d-none');
+    if (elements.historyPaginationPrev) {
+      elements.historyPaginationPrev.disabled = state.historyPage <= 1;
+    }
+    if (elements.historyPaginationNext) {
+      elements.historyPaginationNext.disabled = state.historyPage >= total;
+    }
+
+    if (!elements.historyPaginationPages) {
+      return;
+    }
+
+    elements.historyPaginationPages.innerHTML = '';
+    const maxButtons = 5;
+    let startPage = Math.max(1, state.historyPage - Math.floor(maxButtons / 2));
+    let endPage = startPage + maxButtons - 1;
+
+    if (endPage > total) {
+      endPage = total;
+      startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    for (let page = startPage; page <= endPage; page += 1) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `history-page-number${page === state.historyPage ? ' is-active' : ''}`;
+      button.textContent = page;
+      button.addEventListener('click', () => {
+        if (page !== state.historyPage) {
+          state.historyPage = page;
+          renderHistory(state.filteredReports);
+        }
+      });
+      elements.historyPaginationPages.appendChild(button);
+    }
+  }
+
   function renderHistory(list) {
     if (!elements.historyTableBody || !elements.historyTableWrapper) {
       return;
@@ -845,6 +933,10 @@
     const totalReports = state.reports.length;
     const filteredCount = list.length;
     const hasFilters = Boolean((elements.searchInput && elements.searchInput.value.trim()) || (elements.typeFilter && elements.typeFilter.value !== 'all'));
+
+    if (elements.historyFooter) {
+      elements.historyFooter.classList.remove('d-none');
+    }
 
     if (filteredCount === 0) {
       elements.historyTableBody.innerHTML = '';
@@ -859,14 +951,32 @@
           elements.historyEmpty.innerHTML = '<p class="mb-1 fw-semibold">No hay reportes disponibles.</p><p class="mb-0">Vuelve a intentarlo más tarde.</p>';
         }
       }
-    } else {
-      const rowsHtml = list
-        .map((report) => {
-          const typeMeta = getTypeMeta(report.mimeType);
-          const source = report.source ? escapeHtml(report.source) : '<span class="text-muted">Sin origen</span>';
-          const notes = report.notes ? `<div class="text-muted small mt-1">${escapeHtml(report.notes)}</div>` : '';
-          const expiresTooltip = report.expiresAt ? formatRelative(report.expiresAt) : '';
-          return `
+
+      updateHistoryFooter({ filteredCount: 0 });
+
+      if (elements.historyCaption) {
+        elements.historyCaption.textContent = totalReports === 0
+          ? 'Aún no hay reportes guardados.'
+          : hasFilters
+            ? 'No se encontraron reportes con los filtros seleccionados.'
+            : 'No hay reportes disponibles por el momento.';
+      }
+      return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filteredCount / HISTORY_PAGE_SIZE));
+    state.historyPage = Math.min(Math.max(state.historyPage, 1), totalPages);
+    const startIndex = (state.historyPage - 1) * HISTORY_PAGE_SIZE;
+    const endIndex = Math.min(startIndex + HISTORY_PAGE_SIZE, filteredCount);
+    const pageItems = list.slice(startIndex, endIndex);
+
+    const rowsHtml = pageItems
+      .map((report) => {
+        const typeMeta = getTypeMeta(report.mimeType);
+        const source = report.source ? escapeHtml(report.source) : '<span class="text-muted">Sin origen</span>';
+        const notes = report.notes ? `<div class="text-muted small mt-1">${escapeHtml(report.notes)}</div>` : '';
+        const expiresTooltip = report.expiresAt ? formatRelative(report.expiresAt) : '';
+        return `
             <tr>
               <td data-label="Nombre">
                 <span class="history-table__name">${escapeHtml(report.originalName)}</span>
@@ -891,32 +1001,34 @@
               </td>
             </tr>
           `;
-        })
-        .join('');
+      })
+      .join('');
 
-      elements.historyTableBody.innerHTML = rowsHtml;
-      elements.historyTableWrapper.classList.remove('d-none');
-      if (elements.historyEmpty) {
-        elements.historyEmpty.classList.add('d-none');
-      }
+    elements.historyTableBody.innerHTML = rowsHtml;
+    elements.historyTableWrapper.classList.remove('d-none');
+    if (elements.historyEmpty) {
+      elements.historyEmpty.classList.add('d-none');
     }
 
+    updateHistoryFooter({
+      filteredCount,
+      start: startIndex + 1,
+      end: endIndex,
+      totalPages
+    });
+
     if (elements.historyCaption) {
-      if (filteredCount === 0) {
-        elements.historyCaption.textContent = totalReports === 0
-          ? 'Aún no hay reportes guardados.'
-          : hasFilters
-            ? 'No se encontraron reportes con los filtros seleccionados.'
-            : 'No hay reportes disponibles por el momento.';
-      } else {
-        elements.historyCaption.textContent = `${filteredCount} ${filteredCount === 1 ? 'reporte disponible' : 'reportes disponibles'}`;
-      }
+      elements.historyCaption.textContent = `Mostrando ${startIndex + 1}-${endIndex} de ${filteredCount} ${filteredCount === 1 ? 'reporte disponible' : 'reportes disponibles'}`;
     }
   }
 
-  function applyFilters() {
+  function applyFilters({ resetPage = true } = {}) {
     const searchTerm = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
     const typeFilter = elements.typeFilter ? elements.typeFilter.value : 'all';
+
+    if (resetPage) {
+      state.historyPage = 1;
+    }
 
     state.filteredReports = state.reports.filter((report) => {
       const normalizedName = `${report.originalName || ''} ${report.source || ''} ${report.notes || ''}`.toLowerCase();
@@ -1898,10 +2010,28 @@
     state.activeEmpresaId = empresaId || 'local';
 
     if (elements.searchInput) {
-      elements.searchInput.addEventListener('input', () => applyFilters());
+      elements.searchInput.addEventListener('input', () => applyFilters({ resetPage: true }));
     }
     if (elements.typeFilter) {
-      elements.typeFilter.addEventListener('change', () => applyFilters());
+      elements.typeFilter.addEventListener('change', () => applyFilters({ resetPage: true }));
+    }
+    if (elements.historyPaginationPrev) {
+      elements.historyPaginationPrev.addEventListener('click', () => {
+        if (state.historyPage > 1) {
+          state.historyPage -= 1;
+          renderHistory(state.filteredReports);
+        }
+      });
+    }
+    if (elements.historyPaginationNext) {
+      elements.historyPaginationNext.addEventListener('click', () => {
+        const filteredCount = state.filteredReports.length;
+        const totalPages = Math.max(1, Math.ceil(filteredCount / HISTORY_PAGE_SIZE));
+        if (state.historyPage < totalPages) {
+          state.historyPage += 1;
+          renderHistory(state.filteredReports);
+        }
+      });
     }
     if (elements.refreshButton) {
       elements.refreshButton.addEventListener('click', () => loadHistory());
