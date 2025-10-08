@@ -66,8 +66,7 @@
     automationSyncTimerId: null,
     automationsLoadedFromServer: false,
     automationRunInProgress: false,
-    automationRunQueued: false,
-    automationRunQueuedCatchUp: false
+    automationRunQueued: false
   };
 
   function setHistoryUnavailableState(message) {
@@ -98,7 +97,6 @@
   const EXPIRING_THRESHOLD_MS = 10 * 24 * 60 * 60 * 1000;
   const AUTOMATION_STORAGE_PREFIX = 'optistock:automations:';
   const AUTOMATION_REPORTS_PREFIX = 'optistock:automationReports:';
-  const MAX_AUTOMATION_CATCHUP = 4;
   const LOCAL_AUTOMATION_HISTORY_LIMIT = 30;
 
   function buildAutomationKey(automation) {
@@ -623,7 +621,7 @@
       cacheAutomationsLocally();
       state.automationsLoadedFromServer = true;
       renderAutomations();
-      runPendingAutomations({ catchUp: true }).catch((error) => {
+      runPendingAutomations().catch((error) => {
         console.error('No se pudieron ejecutar las automatizaciones pendientes:', error);
       });
     } catch (error) {
@@ -1454,7 +1452,7 @@
     showAlert(`Automatización "${name}" guardada correctamente.`, 'success');
 
     if (active) {
-      runPendingAutomations({ catchUp: true }).catch((error) => {
+      runPendingAutomations().catch((error) => {
         console.error('No se pudieron evaluar las automatizaciones al guardar:', error);
       });
     } else {
@@ -1636,19 +1634,14 @@
     rebuildReportCollection();
   }
 
-  async function runPendingAutomations({ catchUp = false } = {}) {
-    const wantsCatchUp = Boolean(catchUp);
+  async function runPendingAutomations() {
     if (state.automationRunInProgress) {
       state.automationRunQueued = true;
-      if (wantsCatchUp) {
-        state.automationRunQueuedCatchUp = true;
-      }
       return;
     }
 
     state.automationRunInProgress = true;
     state.automationRunQueued = false;
-    state.automationRunQueuedCatchUp = false;
 
     if (!state.automations.length) {
       state.automationRunInProgress = false;
@@ -1669,48 +1662,35 @@
           continue;
         }
 
-        let iterations = 0;
-        while (automation.nextRunAt) {
-          const nextRun = new Date(automation.nextRunAt);
-          if (!Number.isFinite(nextRun.getTime())) {
-            automation.nextRunAt = computeNextRunAt(automation, now);
-            changed = true;
-            break;
-          }
-
-          // Only execute automations whose scheduled time is in the past or now.
-          // The `catchUp` flag permits running multiple past-due executions (up to
-          // MAX_AUTOMATION_CATCHUP), but must NOT run future scheduled instances.
-          if (nextRun > now) {
-            break;
-          }
-
-          try {
-            await registerAutomationReport(automation, nextRun);
-            automation.lastRunAt = nextRun.toISOString();
-          } catch (error) {
-            console.error('No se pudo generar el reporte automático programado:', error);
-            automation.nextRunAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-            changed = true;
-            if (!catchUp) {
-              showAlert('No se pudo generar un reporte automático. Se reintentará más tarde.', 'danger', true);
-            }
-            break;
-          }
-
-          // Show immediate alerts only for real-time runs; suppress during catch-up
-          // batches to avoid spamming the user.
-          if (!catchUp) {
-            showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
-          }
-
-          automation.nextRunAt = computeNextRunAt(automation, new Date(nextRun.getTime() + 60 * 1000));
-          changed = true;
-          iterations += 1;
-          if (!catchUp || iterations >= MAX_AUTOMATION_CATCHUP) {
-            break;
-          }
+        if (!automation.nextRunAt) {
+          continue;
         }
+
+        const nextRun = new Date(automation.nextRunAt);
+        if (!Number.isFinite(nextRun.getTime())) {
+          automation.nextRunAt = computeNextRunAt(automation, now);
+          changed = true;
+          continue;
+        }
+
+        if (nextRun > now) {
+          continue;
+        }
+
+        try {
+          await registerAutomationReport(automation, nextRun);
+          automation.lastRunAt = nextRun.toISOString();
+          showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+        } catch (error) {
+          console.error('No se pudo generar el reporte automático programado:', error);
+          automation.nextRunAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+          changed = true;
+          showAlert('No se pudo generar un reporte automático. Se reintentará más tarde.', 'danger', true);
+          continue;
+        }
+
+        automation.nextRunAt = computeNextRunAt(automation, new Date(nextRun.getTime() + 60 * 1000));
+        changed = true;
       }
 
       if (changed) {
@@ -1721,10 +1701,8 @@
     } finally {
       state.automationRunInProgress = false;
       if (state.automationRunQueued) {
-        const shouldCatchUp = state.automationRunQueuedCatchUp;
         state.automationRunQueued = false;
-        state.automationRunQueuedCatchUp = false;
-        runPendingAutomations({ catchUp: shouldCatchUp }).catch((error) => {
+        runPendingAutomations().catch((error) => {
           console.error('No se pudieron ejecutar las automatizaciones pendientes en cola:', error);
         });
       }
@@ -1777,7 +1755,7 @@
     if (state.automationTimerId) {
       window.clearInterval(state.automationTimerId);
     }
-    runPendingAutomations({ catchUp: true }).catch((error) => {
+    runPendingAutomations().catch((error) => {
       console.error('No se pudieron ejecutar las automatizaciones programadas:', error);
     });
     state.automationTimerId = window.setInterval(() => {
@@ -1806,7 +1784,7 @@
     saveAutomationsToStorage();
     renderAutomations();
     if (automation.active) {
-      runPendingAutomations({ catchUp: true }).catch((error) => {
+      runPendingAutomations().catch((error) => {
         console.error('No se pudieron evaluar las automatizaciones al activar:', error);
       });
     }
