@@ -3,3 +3,6 @@ images/logos/
 images/qr/
 # Report history stored files
 /docs/report-history/files/
+
+# Node dependencies
+node_modules/
