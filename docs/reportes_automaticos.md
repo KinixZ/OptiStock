@@ -74,3 +74,28 @@ Este documento detalla la organización y las funciones sugeridas para la págin
 - Revisar logs para asegurar que el planificador se ejecuta correctamente y solucionar posibles fallos.
 
 Esta propuesta permite consolidar los reportes creados manualmente o de forma automática, manteniendo el uso de herramientas básicas y almacenamiento en el servidor local.
+
+## 9. Despliegue en Hostinger (instrucciones concretas)
+
+- Dependiendo de tu plan en Hostinger usa la opción PHP (compartido):
+  1. Instala las dependencias PHP necesarias. Recomiendo usar Composer para Dompdf: `composer require dompdf/dompdf` en tu proyecto (puedes subir el `vendor/` al servidor si no tienes acceso SSH).
+  2. Sube los archivos nuevos: `scripts/php/automations.php`, `scripts/php/scheduler.php`, `scripts/php/automation_template.php` y el SQL `docs/report-history/create_table_automatizaciones.sql`.
+  3. Crea la tabla `automatizaciones` en tu base de datos (ejecuta el SQL con phpMyAdmin).
+  4. Configura una tarea cron desde el panel de Hostinger que ejecute cada 5 minutos: `wget -q -O - "https://tu-dominio.com/scripts/php/scheduler.php" >/dev/null 2>&1` o `curl -s "https://tu-dominio.com/scripts/php/scheduler.php" >/dev/null 2>&1`.
+  5. Verifica que `Dompdf` esté disponible. Si no puedes instalar Dompdf, alternativa: instalar wkhtmltopdf en el servidor (si el plan lo permite) y modificar `scheduler.php` para invocar `wkhtmltopdf` y capturar el PDF.
+
+- Notas prácticas:
+  - Guarda las credenciales de base de datos fuera del repositorio (usa un archivo `config.php` no versionado).
+  - Prueba el endpoint `automations.php` con `empresa` param para ver la lista y con `POST` para crear/upsert.
+  - Revisa `error_log` del hosting para depurar el `scheduler.php` si no genera PDFs.
+
+## 10. Causa raíz y next steps
+
+- Causa raíz: el scheduler del cliente ejecutaba programaciones futuras por un bug lógico y además el cliente guardaba automatizaciones localmente por lo que, al combinar duplicados y la ejecución incorrecta, se creaban muchos reportes.
+- Fix aplicado: evita ejecutar instancias futuras y deduplica automatizaciones en el cliente. Además añadimos endpoints y un `scheduler.php` en PHP para que la generación sea centralizada.
+- Next steps recomendados:
+  1. Migrar las automatizaciones a la base de datos (ya implementado con `automatizaciones`), y usar el scheduler server-side.
+  2. Ajustar `automation_template.php` para extraer datos reales del módulo (consultas SQL) y renderizar tablas con `report_export`-like estilo.
+  3. Habilitar Dompdf o wkhtmltopdf en el servidor para obtener PDFs con la misma apariencia exacta; wkhtmltopdf suele dar mejor CSS pero requiere binario.
+  4. Añadir pruebas y monitorización del cron para evitar generación masiva accidental.
+

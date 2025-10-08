@@ -1091,10 +1091,30 @@
   }
 
   function upsertAutomation(automationData) {
-    const existingIndex = state.automations.findIndex((item) => item.id === automationData.id);
-    if (existingIndex >= 0) {
-      state.automations[existingIndex] = { ...state.automations[existingIndex], ...automationData, updatedAt: new Date().toISOString() };
+    // If an id exists, update the matching automation.
+    if (automationData.id) {
+      const existingIndex = state.automations.findIndex((item) => item.id === automationData.id);
+      if (existingIndex >= 0) {
+        state.automations[existingIndex] = { ...state.automations[existingIndex], ...automationData, updatedAt: new Date().toISOString() };
+        saveAutomationsToStorage();
+        renderAutomations();
+        return;
+      }
+    }
+
+    // Compose a stable key to detect duplicates: module + frequency + time + format + weekday/monthday
+    function automationKey(a) {
+      return `${a.module || ''}::${a.frequency || ''}::${a.time || ''}::${a.format || ''}::${a.weekday || ''}::${a.monthday || ''}`;
+    }
+
+    const newKey = automationKey(automationData);
+    const duplicateIndex = state.automations.findIndex((item) => automationKey(item) === newKey);
+
+    if (duplicateIndex >= 0) {
+      // Update existing duplicate instead of adding a new one.
+      state.automations[duplicateIndex] = { ...state.automations[duplicateIndex], ...automationData, updatedAt: new Date().toISOString() };
     } else {
+      // Insert as new automation
       state.automations.push({ ...automationData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     }
     saveAutomationsToStorage();
@@ -1324,11 +1344,16 @@
           break;
         }
 
-        if (nextRun > now && !catchUp) {
+        // Only execute automations whose scheduled time is in the past or now.
+        // The `catchUp` flag permits running multiple past-due executions (up to
+        // MAX_AUTOMATION_CATCHUP), but must NOT run future scheduled instances.
+        if (nextRun > now) {
           break;
         }
 
         registerAutomationReport(automation, nextRun);
+        // Show immediate alerts only for real-time runs; suppress during catch-up
+        // batches to avoid spamming the user.
         if (!catchUp) {
           showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
         }
