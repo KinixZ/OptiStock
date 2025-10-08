@@ -92,6 +92,18 @@
             <tbody id="historyTableBody"></tbody>
           </table>
         </div>
+        <div class="history-footer" id="historyFooter">
+          <div class="history-footer__info" id="historyPaginationInfo" aria-live="polite">Sin reportes para mostrar</div>
+          <div class="history-pagination d-none" id="historyPagination" aria-label="Paginación de reportes">
+            <button class="history-page-btn" type="button" id="historyPaginationPrev" aria-label="Página anterior" disabled>
+              <span aria-hidden="true">&larr;</span>
+            </button>
+            <div class="history-page-numbers" id="historyPaginationPages"></div>
+            <button class="history-page-btn" type="button" id="historyPaginationNext" aria-label="Página siguiente" disabled>
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
+        </div>
         <div class="history-loading" id="historyLoading">Cargando historial...</div>
         <div class="history-empty d-none" id="historyEmpty">
           <p class="mb-1 fw-semibold">Aún no hay reportes guardados.</p>

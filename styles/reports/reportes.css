@@ -530,6 +530,68 @@ body {
   border-bottom: none;
 }
 
+.history-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem 0;
+}
+
+.history-footer__info {
+  font-size: 0.85rem;
+  color: var(--muted-color);
+}
+
+.history-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.history-page-btn,
+.history-page-number {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed);
+}
+
+.history-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.history-page-btn:not(:disabled):hover,
+.history-page-btn:not(:disabled):focus,
+.history-page-number:hover,
+.history-page-number:focus {
+  background: var(--primary-surface);
+  border-color: var(--primary-border-soft);
+  color: var(--primary-color);
+}
+
+.history-page-number.is-active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+
+.history-page-numbers {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .history-table__name {
   font-weight: 600;
 }
