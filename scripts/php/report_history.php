@@ -11,6 +11,7 @@ const REPORT_RETENTION_DAYS = 60; // Se eliminan automáticamente después de ~2
 const REPORT_RETENTION_SECONDS = REPORT_RETENTION_DAYS * 24 * 60 * 60;
 const REPORTS_ROOT = __DIR__ . '/../../docs/report-history';
 const REPORT_FILES_DIR = REPORTS_ROOT . '/files';
+const AUTOMATION_RUN_TOLERANCE_SECONDS = 120; // Margen para comparar ejecuciones duplicadas.
 
 const DB_SERVER = 'localhost';
 const DB_USER = 'u296155119_Admin';
@@ -59,7 +60,7 @@ function to_mysql_datetime(string $iso): string
     return date('Y-m-d H:i:s', $timestamp);
 }
 
-function insert_report_reference(array $entry, int $empresaId): void
+function insert_report_reference(array $entry, int $empresaId, ?mysqli $externalConn = null): void
 {
     $uuid = (string) ($entry['id'] ?? '');
     $originalName = (string) ($entry['originalName'] ?? '');
@@ -75,7 +76,13 @@ function insert_report_reference(array $entry, int $empresaId): void
         throw new RuntimeException('Faltan datos obligatorios para registrar el reporte.');
     }
 
-    $conn = db_connect();
+    $shouldClose = false;
+    if ($externalConn instanceof mysqli) {
+        $conn = $externalConn;
+    } else {
+        $conn = db_connect();
+        $shouldClose = true;
+    }
 
     try {
         $stmt = $conn->prepare(
@@ -113,8 +120,163 @@ function insert_report_reference(array $entry, int $empresaId): void
         $stmt->execute();
         $stmt->close();
     } finally {
-        $conn->close();
+        if ($shouldClose) {
+            $conn->close();
+        }
     }
+}
+
+function ensure_automation_run_table(mysqli $conn): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $conn->query(
+        'CREATE TABLE IF NOT EXISTS reportes_automatizados_runs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            automation_uuid VARCHAR(64) NOT NULL,
+            empresa_id INT NOT NULL,
+            run_at DATETIME NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_automation_run (automation_uuid, empresa_id, run_at),
+            KEY idx_empresa_run (empresa_id, run_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+
+    $ensured = true;
+}
+
+function parse_time_parts(string $time): array
+{
+    $matches = [];
+    if (preg_match('/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/', $time, $matches)) {
+        $hours = max(0, min(23, (int) $matches[1]));
+        $minutes = max(0, min(59, (int) $matches[2]));
+        return [$hours, $minutes];
+    }
+
+    return [8, 0];
+}
+
+function compute_month_date(DateTimeImmutable $reference, int $day, int $hours, int $minutes): DateTimeImmutable
+{
+    $year = (int) $reference->format('Y');
+    $month = (int) $reference->format('n');
+    $lastDay = (int) (new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month)))->modify('last day of this month')->format('j');
+    $safeDay = max(1, min($day, $lastDay));
+
+    return $reference
+        ->setDate($year, $month, $safeDay)
+        ->setTime($hours, $minutes, 0, 0);
+}
+
+function compute_next_run_for_automation(array $automation, DateTimeImmutable $reference): ?DateTimeImmutable
+{
+    $frequency = (string) ($automation['frecuencia'] ?? 'daily');
+    [$hours, $minutes] = parse_time_parts((string) ($automation['hora_ejecucion'] ?? '08:00:00'));
+    $base = $reference->setTime($hours, $minutes, 0, 0);
+
+    switch ($frequency) {
+        case 'weekly':
+            $desiredDay = max(0, min(6, (int) ($automation['dia_semana'] ?? 1)));
+            $currentDay = (int) $base->format('w');
+            $diff = $desiredDay - $currentDay;
+            if ($diff < 0 || ($diff === 0 && $base <= $reference)) {
+                $diff += 7;
+            }
+            return $base->modify("+{$diff} days");
+
+        case 'biweekly':
+            $day = max(1, min(31, (int) ($automation['dia_mes'] ?? 1)));
+            $lastRunRaw = $automation['ultimo_ejecutado'] ?? null;
+            if ($lastRunRaw) {
+                try {
+                    $candidate = (new DateTimeImmutable($lastRunRaw))->setTime($hours, $minutes, 0, 0);
+                    while ($candidate <= $reference) {
+                        $candidate = $candidate->modify('+14 days');
+                    }
+                    return $candidate;
+                } catch (Exception $exception) {
+                    // fall through to base computation
+                }
+            }
+            $candidateBase = compute_month_date($reference, $day, $hours, $minutes);
+            if ($candidateBase <= $reference) {
+                return $candidateBase->modify('+14 days');
+            }
+            return $candidateBase;
+
+        case 'monthly':
+            $day = max(1, min(31, (int) ($automation['dia_mes'] ?? 1)));
+            $candidateBase = compute_month_date($reference, $day, $hours, $minutes);
+            if ($candidateBase <= $reference) {
+                $nextMonth = $candidateBase->modify('first day of next month');
+                $lastDayNextMonth = (int) $nextMonth->modify('last day of this month')->format('j');
+                $safeDay = max(1, min($day, $lastDayNextMonth));
+                return $nextMonth->setDate(
+                    (int) $nextMonth->format('Y'),
+                    (int) $nextMonth->format('n'),
+                    $safeDay
+                )->setTime($hours, $minutes, 0, 0);
+            }
+            return $candidateBase;
+
+        default:
+            if ($base <= $reference) {
+                return $base->modify('+1 day');
+            }
+            return $base;
+    }
+}
+
+function format_datetime_iso(?DateTimeInterface $dateTime): ?string
+{
+    if (!$dateTime) {
+        return null;
+    }
+
+    return $dateTime->setTimezone(new DateTimeZone('UTC'))->format(DateTimeInterface::ATOM);
+}
+
+function mysql_datetime_to_iso(?string $value): ?string
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    try {
+        return (new DateTimeImmutable($value))->setTimezone(new DateTimeZone('UTC'))->format(DateTimeInterface::ATOM);
+    } catch (Exception $exception) {
+        return null;
+    }
+}
+
+function resolve_run_datetime(?string $requestedRunAt, ?string $scheduledRaw): DateTimeImmutable
+{
+    if ($requestedRunAt) {
+        try {
+            return new DateTimeImmutable($requestedRunAt);
+        } catch (Exception $exception) {
+            // continue with scheduled/now fallback
+        }
+    }
+
+    if ($scheduledRaw) {
+        try {
+            return new DateTimeImmutable($scheduledRaw);
+        } catch (Exception $exception) {
+            // continue with now fallback
+        }
+    }
+
+    return new DateTimeImmutable('now');
+}
+
+function seconds_between(DateTimeImmutable $a, DateTimeImmutable $b): int
+{
+    return (int) abs($a->getTimestamp() - $b->getTimestamp());
 }
 
 function delete_report_reference(?string $uuid): void
@@ -351,6 +513,8 @@ function save_report(): void
     $source = isset($input['source']) ? (string) $input['source'] : '';
     $notes = isset($input['notes']) ? (string) $input['notes'] : '';
     $empresaId = isset($input['empresaId']) ? (int) $input['empresaId'] : 0;
+    $automationId = isset($input['automationId']) ? trim((string) $input['automationId']) : '';
+    $automationRunAtRaw = isset($input['automationRunAt']) ? (string) $input['automationRunAt'] : '';
 
     if ($fileName === '' || $mimeType === '' || $fileContent === '') {
         respond_json(400, [
@@ -392,8 +556,169 @@ function save_report(): void
     }
     $filePath = REPORT_FILES_DIR . '/' . $storageName;
 
+    $conn = null;
+    $transactionStarted = false;
+    $automationRunAt = null;
+    $automationNextRun = null;
+    $automationResponse = null;
+
+    if ($automationId !== '') {
+        try {
+            $conn = db_connect();
+        } catch (Throwable $exception) {
+            respond_json(500, [
+                'success' => false,
+                'message' => 'No se pudo conectar a la base de datos para validar la automatización.',
+            ]);
+        }
+
+        try {
+            ensure_automation_run_table($conn);
+            $conn->begin_transaction();
+            $transactionStarted = true;
+
+            $stmt = $conn->prepare('SELECT uuid, id_empresa, activo, proxima_ejecucion, ultimo_ejecutado, frecuencia, hora_ejecucion, dia_semana, dia_mes FROM reportes_automatizados WHERE uuid = ? AND id_empresa = ? FOR UPDATE');
+            $stmt->bind_param('si', $automationId, $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $automationRow = $result->fetch_assoc() ?: null;
+            $stmt->close();
+
+            if ($automationRow === null) {
+                $conn->rollback();
+                $conn->close();
+                respond_json(404, [
+                    'success' => false,
+                    'code' => 'not_found',
+                    'message' => 'La automatización indicada no existe.',
+                ]);
+            }
+
+            if (empty($automationRow['activo'])) {
+                $automationPayload = [
+                    'id' => $automationId,
+                    'active' => false,
+                    'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
+                    'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
+                ];
+                $conn->rollback();
+                $conn->close();
+                respond_json(409, [
+                    'success' => false,
+                    'code' => 'inactive',
+                    'message' => 'La automatización está desactivada.',
+                    'automation' => $automationPayload,
+                ]);
+            }
+
+            $automationRunAt = resolve_run_datetime($automationRunAtRaw, $automationRow['proxima_ejecucion'] ?? null);
+
+            $lastRunRaw = $automationRow['ultimo_ejecutado'] ?? null;
+            if ($lastRunRaw) {
+                try {
+                    $lastRun = new DateTimeImmutable($lastRunRaw);
+                    if (seconds_between($lastRun, $automationRunAt) <= AUTOMATION_RUN_TOLERANCE_SECONDS) {
+                $automationPayload = [
+                    'id' => $automationId,
+                    'active' => !empty($automationRow['activo']),
+                    'lastRunAt' => format_datetime_iso($lastRun),
+                    'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
+                ];
+                        $conn->rollback();
+                        $conn->close();
+                        respond_json(409, [
+                            'success' => false,
+                            'code' => 'duplicate',
+                            'message' => 'El reporte automático ya fue generado para este horario.',
+                            'automation' => $automationPayload,
+                        ]);
+                    }
+                } catch (Exception $exception) {
+                    // Ignorar formato inválido y continuar.
+                }
+            }
+
+            $scheduledRaw = $automationRow['proxima_ejecucion'] ?? null;
+            if ($scheduledRaw) {
+                try {
+                    $scheduledAt = new DateTimeImmutable($scheduledRaw);
+                    if ($automationRunAt < $scheduledAt && seconds_between($automationRunAt, $scheduledAt) > AUTOMATION_RUN_TOLERANCE_SECONDS) {
+                        $automationPayload = [
+                            'id' => $automationId,
+                            'active' => !empty($automationRow['activo']),
+                            'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
+                            'nextRunAt' => format_datetime_iso($scheduledAt),
+                        ];
+                        $conn->rollback();
+                        $conn->close();
+                        respond_json(409, [
+                            'success' => false,
+                            'code' => 'not_due',
+                            'message' => 'Aún no es momento de ejecutar esta automatización.',
+                            'automation' => $automationPayload,
+                        ]);
+                    }
+                } catch (Exception $exception) {
+                    // Continuar si la fecha almacenada es inválida.
+                }
+            }
+
+            $runAtSql = $automationRunAt->format('Y-m-d H:i:s');
+            $runStmt = $conn->prepare('INSERT INTO reportes_automatizados_runs (automation_uuid, empresa_id, run_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE run_at = run_at');
+            $runStmt->bind_param('sis', $automationId, $empresaId, $runAtSql);
+            $runStmt->execute();
+            if ($runStmt->affected_rows === 0) {
+                $runStmt->close();
+                $conn->rollback();
+                $conn->close();
+                $automationPayload = [
+                    'id' => $automationId,
+                    'active' => !empty($automationRow['activo']),
+                    'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
+                    'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
+                ];
+                respond_json(409, [
+                    'success' => false,
+                    'code' => 'duplicate',
+                    'message' => 'El reporte automático ya fue generado para este horario.',
+                    'automation' => $automationPayload,
+                ]);
+            }
+            $runStmt->close();
+
+            $automationRow['ultimo_ejecutado'] = $runAtSql;
+            $automationNextRun = compute_next_run_for_automation($automationRow, $automationRunAt->modify('+1 minute'));
+
+            $automationResponse = [
+                'id' => $automationId,
+                'lastRunAt' => format_datetime_iso($automationRunAt),
+                'nextRunAt' => format_datetime_iso($automationNextRun),
+                'active' => true,
+            ];
+        } catch (Throwable $exception) {
+            if ($transactionStarted) {
+                $conn->rollback();
+            }
+            if ($conn instanceof mysqli) {
+                $conn->close();
+            }
+            respond_json(500, [
+                'success' => false,
+                'message' => 'No se pudo validar la automatización antes de guardar el reporte.',
+            ]);
+        }
+    }
+
+    if (!($conn instanceof mysqli)) {
+        $conn = db_connect();
+    }
+
     $written = file_put_contents($filePath, $binary, LOCK_EX);
     if ($written === false) {
+        if ($transactionStarted && $conn instanceof mysqli) {
+            $conn->rollback();
+            $conn->close();
+        }
         respond_json(500, [
             'success' => false,
             'message' => 'No se pudo guardar el archivo en el historial.',
@@ -416,13 +741,41 @@ function save_report(): void
     ];
 
     try {
-        insert_report_reference($entry, $empresaId);
+        insert_report_reference($entry, $empresaId, $conn);
+
+        if ($automationId !== '') {
+            $lastRunSql = $automationRunAt->format('Y-m-d H:i:s');
+            if ($automationNextRun instanceof DateTimeImmutable) {
+                $nextRunSql = $automationNextRun->format('Y-m-d H:i:s');
+                $updateStmt = $conn->prepare('UPDATE reportes_automatizados SET ultimo_ejecutado = ?, proxima_ejecucion = ? WHERE uuid = ? AND id_empresa = ?');
+                $updateStmt->bind_param('sssi', $lastRunSql, $nextRunSql, $automationId, $empresaId);
+            } else {
+                $updateStmt = $conn->prepare('UPDATE reportes_automatizados SET ultimo_ejecutado = ?, proxima_ejecucion = NULL WHERE uuid = ? AND id_empresa = ?');
+                $updateStmt->bind_param('ssi', $lastRunSql, $automationId, $empresaId);
+            }
+            $updateStmt->execute();
+            $updateStmt->close();
+        }
+
+        if ($transactionStarted) {
+            $conn->commit();
+        }
     } catch (Throwable $exception) {
+        if ($transactionStarted) {
+            $conn->rollback();
+        }
         remove_report_file($storageName);
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
         respond_json(500, [
             'success' => false,
             'message' => 'No se pudo registrar el reporte en la base de datos.',
         ]);
+    }
+
+    if ($conn instanceof mysqli) {
+        $conn->close();
     }
 
     respond_json(201, [
@@ -440,6 +793,7 @@ function save_report(): void
             'notes' => $entry['notes'],
         ],
         'retentionDays' => REPORT_RETENTION_DAYS,
+        'automation' => $automationResponse,
     ]);
 }
 
