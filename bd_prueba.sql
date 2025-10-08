@@ -1095,6 +1095,30 @@ INSERT INTO `reportes_historial` (`id`, `uuid`, `id_empresa`, `original_name`, `
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `reportes_automatizados`
+--
+
+CREATE TABLE `reportes_automatizados` (
+  `uuid` varchar(64) NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `modulo` varchar(120) DEFAULT NULL,
+  `formato` enum('pdf','excel') NOT NULL DEFAULT 'pdf',
+  `frecuencia` enum('daily','weekly','biweekly','monthly') NOT NULL DEFAULT 'daily',
+  `hora_ejecucion` time NOT NULL DEFAULT '08:00:00',
+  `dia_semana` tinyint(1) DEFAULT NULL,
+  `dia_mes` tinyint(2) DEFAULT NULL,
+  `notas` varchar(240) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `ultimo_ejecutado` datetime DEFAULT NULL,
+  `proxima_ejecucion` datetime DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `subcategorias`
 --
 
@@ -1380,6 +1404,14 @@ ALTER TABLE `reportes_historial`
   ADD KEY `idx_reportes_historial_empresa_fecha` (`id_empresa`,`created_at`);
 
 --
+-- Indices de la tabla `reportes_automatizados`
+--
+ALTER TABLE `reportes_automatizados`
+  ADD PRIMARY KEY (`uuid`),
+  ADD KEY `idx_reportes_auto_empresa` (`id_empresa`),
+  ADD KEY `idx_reportes_auto_programacion` (`id_empresa`,`activo`,`proxima_ejecucion`);
+
+--
 -- Indices de la tabla `subcategorias`
 --
 ALTER TABLE `subcategorias`
@@ -1566,6 +1598,12 @@ ALTER TABLE `productos`
   ADD CONSTRAINT `fk_producto_zona` FOREIGN KEY (`zona_id`) REFERENCES `zonas` (`id`),
   ADD CONSTRAINT `productos_ibfk_1` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`subcategoria_id`) REFERENCES `subcategorias` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `reportes_automatizados`
+--
+ALTER TABLE `reportes_automatizados`
+  ADD CONSTRAINT `fk_reportes_automatizados_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `registro_accesos`
