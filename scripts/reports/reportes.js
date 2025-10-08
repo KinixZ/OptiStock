@@ -1,5 +1,6 @@
 (function () {
   const HISTORY_API_URL = '../../scripts/php/report_history.php';
+  const AUTOMATION_API_URL = '../../scripts/php/report_automations.php';
   const RETENTION_DAYS_FALLBACK = 60;
 
   // Provide a local alias for the optional external history client.
@@ -61,7 +62,9 @@
     activeEmpresaId: null,
     automations: [],
     automationTimerId: null,
-    automationModalInstance: null
+    automationModalInstance: null,
+    automationSyncTimerId: null,
+    automationsLoadedFromServer: false
   };
 
   function setHistoryUnavailableState(message) {
@@ -266,6 +269,8 @@
       const message = (data && data.message) || 'No se pudo guardar el reporte en el historial.';
       throw new Error(message);
     }
+
+    return data;
   }
 
   function downloadReport(reportId) {
@@ -439,7 +444,7 @@
     }
   }
 
-  function saveAutomationsToStorage() {
+  function cacheAutomationsLocally() {
     const empresaId = state.activeEmpresaId;
     if (!empresaId || !window.localStorage) {
       return;
@@ -448,13 +453,198 @@
       const payload = JSON.stringify(state.automations);
       window.localStorage.setItem(getAutomationStorageKey(empresaId), payload);
     } catch (error) {
-      console.warn('No se pudieron guardar las automatizaciones:', error);
+      console.warn('No se pudieron guardar las automatizaciones en caché:', error);
     }
+  }
+
+  function saveAutomationsToStorage(options = {}) {
+    cacheAutomationsLocally();
+    const skipServerSync = options && options.skipServerSync;
+    if (skipServerSync) {
+      return;
+    }
+    scheduleAutomationSync();
+  }
+
+  function scheduleAutomationSync() {
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      return;
+    }
+    if (state.automationSyncTimerId) {
+      window.clearTimeout(state.automationSyncTimerId);
+    }
+    state.automationSyncTimerId = window.setTimeout(() => {
+      state.automationSyncTimerId = null;
+      persistAutomationsToServer().catch((error) => {
+        console.error('No se pudo sincronizar las automatizaciones:', error);
+        showAlert(error.message || 'No se pudo sincronizar las automatizaciones.', 'danger', true);
+      });
+    }, 500);
+  }
+
+  function serializeAutomationForSync(automation) {
+    return {
+      id: automation.id,
+      name: automation.name,
+      module: automation.module,
+      format: automation.format,
+      frequency: automation.frequency,
+      time: automation.time,
+      weekday: automation.weekday,
+      monthday: automation.monthday,
+      notes: automation.notes,
+      active: Boolean(automation.active),
+      nextRunAt: automation.nextRunAt || null,
+      lastRunAt: automation.lastRunAt || null,
+      createdAt: automation.createdAt || null,
+      updatedAt: automation.updatedAt || null
+    };
+  }
+
+  async function persistAutomationsToServer() {
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      return;
+    }
+
+    const payload = {
+      action: 'sync',
+      empresaId: state.activeEmpresaId,
+      automations: state.automations.map((automation) => serializeAutomationForSync(automation))
+    };
+
+    const response = await fetch(AUTOMATION_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({ success: false }));
+    if (!response.ok || !data.success) {
+      const message = (data && data.message) || 'No se pudo sincronizar las automatizaciones.';
+      throw new Error(message);
+    }
+
+    if (Array.isArray(data.automations)) {
+      state.automations = data.automations.map((item) => normalizeAutomation(item));
+      cacheAutomationsLocally();
+      renderAutomations();
+    }
+    state.automationsLoadedFromServer = true;
+  }
+
+  async function fetchAutomationsFromServer() {
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      return [];
+    }
+    const params = new URLSearchParams({ empresa: String(state.activeEmpresaId) });
+    const response = await fetch(`${AUTOMATION_API_URL}?${params.toString()}`, { method: 'GET' });
+    const data = await response.json().catch(() => ({ success: false }));
+    if (!response.ok || !data.success) {
+      const message = (data && data.message) || 'No se pudieron consultar las automatizaciones.';
+      throw new Error(message);
+    }
+    return Array.isArray(data.automations) ? data.automations : [];
+  }
+
+  async function refreshAutomationsFromServer() {
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      return;
+    }
+    try {
+      const automations = await fetchAutomationsFromServer();
+      state.automations = automations.map((item) => normalizeAutomation(item));
+      cacheAutomationsLocally();
+      state.automationsLoadedFromServer = true;
+      renderAutomations();
+      runPendingAutomations({ catchUp: true }).catch((error) => {
+        console.error('No se pudieron ejecutar las automatizaciones pendientes:', error);
+      });
+    } catch (error) {
+      console.error('No se pudieron cargar las automatizaciones desde el servidor:', error);
+      showAlert(error.message || 'No se pudieron cargar las automatizaciones.', 'danger', true);
+    }
+  }
+
+  function toIsoString(value) {
+    if (!value) {
+      return null;
+    }
+    try {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) {
+        return null;
+      }
+      return date.toISOString();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function normalizeAutomation(raw) {
+    const validFrequencies = ['daily', 'weekly', 'biweekly', 'monthly'];
+    const rawId = raw && typeof raw.id === 'string' && raw.id
+      ? raw.id
+      : raw && typeof raw.uuid === 'string' && raw.uuid
+        ? raw.uuid
+        : '';
+    const id = rawId || `auto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const rawName = (raw && (raw.name || raw.nombre)) || 'Reporte automatizado';
+    const name = String(rawName || '').trim() || 'Reporte automatizado';
+    const rawModule = (raw && (raw.module || raw.modulo)) || '';
+    const module = String(rawModule || '').trim();
+    const rawFormat = raw && (raw.format || raw.formato);
+    const format = rawFormat === 'excel' ? 'excel' : 'pdf';
+    const rawFrequency = raw && (raw.frequency || raw.frecuencia);
+    const frequency = validFrequencies.includes(String(rawFrequency)) ? String(rawFrequency) : 'daily';
+    let timeInput = raw && typeof raw.time === 'string' && raw.time ? raw.time : '';
+    if (!timeInput && raw && typeof raw.hora === 'string' && raw.hora) {
+      timeInput = raw.hora;
+    }
+    if (!timeInput && raw && typeof raw.hora_ejecucion === 'string' && raw.hora_ejecucion) {
+      timeInput = raw.hora_ejecucion;
+    }
+    const { hours, minutes } = getTimeParts(timeInput || '08:00');
+    const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const weekdayRaw = raw && typeof raw.weekday !== 'undefined' ? raw.weekday : raw && typeof raw.dia_semana !== 'undefined' ? raw.dia_semana : null;
+    const weekday = Number.isFinite(Number(weekdayRaw)) ? Math.min(Math.max(parseInt(weekdayRaw, 10), 0), 6) : 1;
+    const monthdayRaw = raw && typeof raw.monthday !== 'undefined' ? raw.monthday : raw && typeof raw.dia_mes !== 'undefined' ? raw.dia_mes : null;
+    const monthday = Number.isFinite(Number(monthdayRaw)) ? Math.min(Math.max(parseInt(monthdayRaw, 10), 1), 31) : 1;
+    const notesValue = (raw && (raw.notes || raw.notas)) || '';
+    const notes = String(notesValue || '').trim();
+    const activeValue = raw && typeof raw.active !== 'undefined' ? raw.active : raw && typeof raw.activo !== 'undefined' ? raw.activo : true;
+    const active = !(activeValue === false || activeValue === 'false' || activeValue === 0 || activeValue === '0');
+    const lastRunAt = toIsoString((raw && raw.lastRunAt) || (raw && raw.ultimo_ejecutado));
+    let nextRunAt = toIsoString((raw && raw.nextRunAt) || (raw && raw.proxima_ejecucion));
+    const createdAt = toIsoString((raw && raw.createdAt) || (raw && raw.creado_en)) || new Date().toISOString();
+    const updatedAt = toIsoString((raw && raw.updatedAt) || (raw && raw.actualizado_en)) || createdAt;
+
+    const automation = {
+      id,
+      name,
+      module,
+      format,
+      frequency,
+      time,
+      weekday,
+      monthday,
+      notes,
+      active,
+      lastRunAt,
+      nextRunAt,
+      createdAt,
+      updatedAt
+    };
+
+    if (!automation.nextRunAt && automation.active) {
+      automation.nextRunAt = computeNextRunAt(automation, new Date());
+    }
+
+    return automation;
   }
 
   function loadLocalAutomationReports() {
     const empresaId = state.activeEmpresaId;
-    if (!empresaId || !window.localStorage) {
+    if (!window.localStorage || empresaId !== 'local') {
       state.localAutomationReports = [];
       return;
     }
@@ -493,7 +683,7 @@
 
   function saveLocalAutomationReports() {
     const empresaId = state.activeEmpresaId;
-    if (!empresaId || !window.localStorage) {
+    if (!window.localStorage || empresaId !== 'local') {
       return;
     }
     try {
@@ -858,6 +1048,25 @@
       return base.toISOString();
     }
 
+    if (automation.frequency === 'biweekly') {
+      const desiredDay = Number.isFinite(Number(automation.monthday)) ? parseInt(automation.monthday, 10) : 1;
+      const lastRun = automation.lastRunAt ? new Date(automation.lastRunAt) : null;
+      if (lastRun && Number.isFinite(lastRun.getTime())) {
+        const candidate = new Date(lastRun.getTime());
+        candidate.setHours(hours, minutes, 0, 0);
+        while (candidate <= now) {
+          candidate.setDate(candidate.getDate() + 14);
+        }
+        return candidate.toISOString();
+      }
+      const base = computeMonthDate(now.getFullYear(), now.getMonth(), desiredDay, hours, minutes);
+      if (base <= now) {
+        const next = new Date(base.getTime() + 14 * 24 * 60 * 60 * 1000);
+        return next.toISOString();
+      }
+      return base.toISOString();
+    }
+
     if (automation.frequency === 'monthly') {
       const desiredDay = Number.isFinite(Number(automation.monthday)) ? parseInt(automation.monthday, 10) : 1;
       const base = computeMonthDate(now.getFullYear(), now.getMonth(), desiredDay, hours, minutes);
@@ -881,6 +1090,10 @@
     if (automation.frequency === 'weekly') {
       const dayName = getWeekdayName(Number.isFinite(Number(automation.weekday)) ? parseInt(automation.weekday, 10) : 1);
       return `Semanal · ${dayName} · ${timeLabel}`;
+    }
+    if (automation.frequency === 'biweekly') {
+      const day = Number.isFinite(Number(automation.monthday)) ? parseInt(automation.monthday, 10) : 1;
+      return `Quincenal · Día ${day} · ${timeLabel}`;
     }
     if (automation.frequency === 'monthly') {
       const day = Number.isFinite(Number(automation.monthday)) ? parseInt(automation.monthday, 10) : 1;
@@ -1022,7 +1235,7 @@
       elements.automationWeekdayWrapper.classList.toggle('d-none', value !== 'weekly');
     }
     if (elements.automationMonthdayWrapper) {
-      elements.automationMonthdayWrapper.classList.toggle('d-none', value !== 'monthly');
+      elements.automationMonthdayWrapper.classList.toggle('d-none', value !== 'monthly' && value !== 'biweekly');
     }
   }
 
@@ -1091,11 +1304,18 @@
   }
 
   function upsertAutomation(automationData) {
-    const existingIndex = state.automations.findIndex((item) => item.id === automationData.id);
+    const normalized = normalizeAutomation(automationData);
+    const existingIndex = state.automations.findIndex((item) => item.id === normalized.id);
     if (existingIndex >= 0) {
-      state.automations[existingIndex] = { ...state.automations[existingIndex], ...automationData, updatedAt: new Date().toISOString() };
+      const current = state.automations[existingIndex];
+      normalized.createdAt = current.createdAt || normalized.createdAt || new Date().toISOString();
+      normalized.updatedAt = new Date().toISOString();
+      state.automations[existingIndex] = { ...current, ...normalized };
     } else {
-      state.automations.push({ ...automationData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      const nowIso = new Date().toISOString();
+      normalized.createdAt = normalized.createdAt || nowIso;
+      normalized.updatedAt = normalized.updatedAt || nowIso;
+      state.automations.push(normalized);
     }
     saveAutomationsToStorage();
     renderAutomations();
@@ -1158,7 +1378,9 @@
     showAlert(`Automatización "${name}" guardada correctamente.`, 'success');
 
     if (active) {
-      runPendingAutomations({ catchUp: true });
+      runPendingAutomations({ catchUp: true }).catch((error) => {
+        console.error('No se pudieron evaluar las automatizaciones al guardar:', error);
+      });
     } else {
       renderAutomations();
     }
@@ -1263,7 +1485,7 @@
     return generateAutomationPdf(automation, executedAt);
   }
 
-  function registerAutomationReport(automation, executedAt) {
+  async function registerAutomationReport(automation, executedAt) {
     const file = createAutomationFile(automation, executedAt);
     const fileNameDate = new Date(executedAt);
     const safeDate = Number.isFinite(fileNameDate.getTime()) ? fileNameDate : new Date();
@@ -1274,6 +1496,47 @@
     const extension = file.extension || (automation.format === 'excel' ? 'csv' : 'pdf');
     const originalName = `${automation.name} - ${formattedDate}.${extension}`;
     const base64Content = encodeBase64(file.bytes);
+
+    if (state.activeEmpresaId && state.activeEmpresaId !== 'local') {
+      const metadata = {
+        source: automation.module ? `Automatización · ${automation.module}` : 'Automatización',
+        notes: automation.notes
+          ? `Generado automáticamente · ${automation.notes}`
+          : 'Generado automáticamente por OptiStock'
+      };
+
+      let uploadFileObject = null;
+      if (typeof window !== 'undefined' && typeof File === 'function') {
+        try {
+          uploadFileObject = new File([file.bytes], originalName, { type: file.mimeType });
+        } catch (error) {
+          uploadFileObject = null;
+        }
+      }
+
+      if (!uploadFileObject) {
+        uploadFileObject = new Blob([file.bytes], { type: file.mimeType });
+        try {
+          Object.defineProperty(uploadFileObject, 'name', { value: originalName });
+        } catch (error) {
+          uploadFileObject.name = originalName;
+        }
+      }
+
+      try {
+        const uploadResponse = await uploadFileToServer(uploadFileObject, metadata);
+        if (uploadResponse && uploadResponse.report) {
+          state.serverReports.unshift(uploadResponse.report);
+        } else {
+          await loadHistory({ showSpinner: false });
+        }
+        rebuildReportCollection();
+        return;
+      } catch (error) {
+        console.error('No se pudo guardar el reporte automático en el servidor:', error);
+        throw error;
+      }
+    }
 
     const reportRecord = {
       id: `local-auto:${automation.id}:${safeDate.getTime()}`,
@@ -1297,7 +1560,7 @@
     rebuildReportCollection();
   }
 
-  function runPendingAutomations({ catchUp = false } = {}) {
+  async function runPendingAutomations({ catchUp = false } = {}) {
     if (!state.automations.length) {
       return;
     }
@@ -1305,14 +1568,14 @@
     const now = new Date();
     let changed = false;
 
-    state.automations.forEach((automation) => {
+    for (const automation of state.automations) {
       if (!automation.nextRunAt) {
         automation.nextRunAt = computeNextRunAt(automation, now);
         changed = true;
       }
 
       if (!automation.active) {
-        return;
+        continue;
       }
 
       let iterations = 0;
@@ -1328,11 +1591,20 @@
           break;
         }
 
-        registerAutomationReport(automation, nextRun);
-        if (!catchUp) {
-          showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+        try {
+          await registerAutomationReport(automation, nextRun);
+          if (!catchUp) {
+            showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+          }
+          automation.lastRunAt = nextRun.toISOString();
+        } catch (error) {
+          const message = error && error.message ? error.message : 'No se pudo generar el reporte automático.';
+          showAlert(message, 'danger', true);
+          automation.nextRunAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+          changed = true;
+          break;
         }
-        automation.lastRunAt = nextRun.toISOString();
+
         automation.nextRunAt = computeNextRunAt(automation, new Date(nextRun.getTime() + 60 * 1000));
         changed = true;
         iterations += 1;
@@ -1340,7 +1612,7 @@
           break;
         }
       }
-    });
+    }
 
     if (changed) {
       saveAutomationsToStorage();
@@ -1348,7 +1620,7 @@
     }
   }
 
-  function handleAutomationListClick(event) {
+  async function handleAutomationListClick(event) {
     const target = event.target instanceof HTMLElement ? event.target : null;
     if (!target) {
       return;
@@ -1362,12 +1634,19 @@
         return;
       }
       const executedAt = new Date();
-      registerAutomationReport(automation, executedAt);
-      automation.lastRunAt = executedAt.toISOString();
-      automation.nextRunAt = computeNextRunAt(automation, new Date(executedAt.getTime() + 60 * 1000));
-      saveAutomationsToStorage();
-      renderAutomations();
-      showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+      try {
+        await registerAutomationReport(automation, executedAt);
+        automation.lastRunAt = executedAt.toISOString();
+        automation.nextRunAt = computeNextRunAt(automation, new Date(executedAt.getTime() + 60 * 1000));
+        saveAutomationsToStorage();
+        renderAutomations();
+        showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
+      } catch (error) {
+        console.error('No se pudo generar el reporte automático desde la lista:', error);
+        automation.nextRunAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        saveAutomationsToStorage();
+        showAlert((error && error.message) || 'No se pudo generar el reporte automático.', 'danger', true);
+      }
       return;
     }
 
@@ -1387,9 +1666,13 @@
     if (state.automationTimerId) {
       window.clearInterval(state.automationTimerId);
     }
-    runPendingAutomations({ catchUp: true });
+    runPendingAutomations({ catchUp: true }).catch((error) => {
+      console.error('No se pudieron ejecutar las automatizaciones programadas:', error);
+    });
     state.automationTimerId = window.setInterval(() => {
-      runPendingAutomations();
+      runPendingAutomations().catch((error) => {
+        console.error('No se pudieron ejecutar las automatizaciones programadas:', error);
+      });
     }, 60 * 1000);
   }
 
@@ -1412,49 +1695,36 @@
     saveAutomationsToStorage();
     renderAutomations();
     if (automation.active) {
-      runPendingAutomations({ catchUp: true });
+      runPendingAutomations({ catchUp: true }).catch((error) => {
+        console.error('No se pudieron evaluar las automatizaciones al activar:', error);
+      });
     }
   }
 
   function initializeAutomations() {
-    state.automations = loadAutomationsFromStorage().map((item) => {
-      const storedWeekday = Number.isFinite(Number(item.weekday)) ? parseInt(item.weekday, 10) : 1;
-      const storedMonthday = Number.isFinite(Number(item.monthday)) ? parseInt(item.monthday, 10) : 1;
-      return {
-        id: item.id,
-        name: item.name || 'Reporte automatizado',
-        module: item.module || '',
-        format: item.format === 'excel' ? 'excel' : 'pdf',
-        frequency: item.frequency === 'weekly' || item.frequency === 'monthly' ? item.frequency : 'daily',
-        time: item.time || '08:00',
-        weekday: Math.min(Math.max(storedWeekday, 0), 6),
-        monthday: Math.min(Math.max(storedMonthday, 1), 31),
-        notes: item.notes || '',
-        active: !(item.active === false || item.active === 'false'),
-        nextRunAt: item.nextRunAt || null,
-        lastRunAt: item.lastRunAt || null,
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || new Date().toISOString()
-      };
-    });
+    state.automations = loadAutomationsFromStorage().map((item) => normalizeAutomation(item));
 
     const now = new Date();
     let needsSave = false;
     state.automations.forEach((automation) => {
-      if (!automation.nextRunAt) {
+      if (automation.active && !automation.nextRunAt) {
         automation.nextRunAt = computeNextRunAt(automation, now);
         needsSave = true;
       }
     });
 
     if (needsSave) {
-      saveAutomationsToStorage();
+      saveAutomationsToStorage({ skipServerSync: true });
     }
 
     renderAutomations();
     loadLocalAutomationReports();
     rebuildReportCollection();
     startAutomationScheduler();
+
+    if (state.activeEmpresaId && state.activeEmpresaId !== 'local') {
+      refreshAutomationsFromServer();
+    }
   }
 
   function bootstrap() {
