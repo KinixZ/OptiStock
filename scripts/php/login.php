@@ -159,28 +159,7 @@ if ($user) {
         registrarAcceso($conn, $user['id_usuario'], 'Intento');
 
         if ($failedAttempts >= 4) {
-            $asuntoBloqueo = "Cuenta bloqueada";
-            $nombreUsuario = isset($user['nombre']) ? $user['nombre'] : '';
-            $saludoHtml = $nombreUsuario !== ''
-                ? 'Hola <strong>' . htmlspecialchars($nombreUsuario, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</strong>,'
-                : 'Hola,';
-            $saludoPlano = $nombreUsuario !== '' ? "Hola $nombreUsuario," : "Hola,";
-            $contenidoHtml = '<p style="margin:0 0 16px;">' . $saludoHtml . '</p>'
-                . '<p style="margin:0 0 16px;">Por seguridad hemos bloqueado temporalmente tu cuenta de OptiStock tras múltiples intentos fallidos de inicio de sesión.</p>'
-                . '<p style="margin:0 0 16px;">Podrás volver a intentarlo en <strong>5 minutos</strong>. Si no reconoces esta actividad, te recomendamos cambiar tu contraseña cuando recuperes el acceso.</p>'
-                . '<p style="margin:0; color:#6b7280;">Si necesitas ayuda adicional, responde a este correo.</p>';
-            $mensajeHtml = generarCorreoPlantilla(
-                'Tu cuenta ha sido bloqueada temporalmente',
-                $contenidoHtml,
-                [
-                    'footer_text' => 'Mantén tu cuenta segura utilizando contraseñas únicas y actualizadas.'
-                ]
-            );
-            $mensajePlano = $saludoPlano . "\n\nPor seguridad hemos bloqueado temporalmente tu cuenta de OptiStock tras múltiples intentos fallidos de inicio de sesión."
-                . "\n\nPodrás volver a intentarlo en 5 minutos. Si no reconoces esta actividad, cambia tu contraseña cuando recuperes el acceso."
-                . "\n\nSi necesitas ayuda adicional, responde a este correo.";
-
-            if (!enviarCorreo($correo, $asuntoBloqueo, $mensajeHtml, ['is_html' => true, 'plain_text' => $mensajePlano])) {
+            if (!enviarCorreo($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.")) {
                 error_log('No se pudo notificar por correo el bloqueo de la cuenta de ' . $correo);
             }
             echo json_encode(["success"=>false,"message"=>"Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."]);
