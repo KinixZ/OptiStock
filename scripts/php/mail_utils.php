@@ -41,7 +41,10 @@ if (!function_exists('enviarCorreo')) {
         }
 
         if ($fromEmail) {
-            ini_set('sendmail_from', $fromEmail);
+            // Establecer sendmail_from sólo si la directiva existe (evita warnings en algunos entornos)
+            if (ini_get('sendmail_from') !== false) {
+                ini_set('sendmail_from', $fromEmail);
+            }
         }
 
         $envelopeFrom = isset($opciones['envelope_from']) && $opciones['envelope_from']
@@ -56,15 +59,17 @@ if (!function_exists('enviarCorreo')) {
         $detalleError = '';
         $usoFallback = false;
 
-        // Intentar con la bandera -f únicamente si se proporcionó un remitente válido.
-        if ($envelopeFrom) {
+        // Intentar con la bandera -f únicamente si se proporcionó un remitente válido y NO estamos en Windows.
+        $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+        if ($envelopeFrom && !$isWindows) {
             $resultado = @mail($destinatario, $asunto, $mensaje, $headerString, '-f' . $envelopeFrom);
             if (!$resultado) {
                 $detalleError = obtenerDetalleErrorCorreo();
             }
         }
 
-        // Como respaldo, intentar sin parámetros adicionales (en algunos hostings la bandera -f es rechazada).
+        // Como respaldo, intentar sin parámetros adicionales (en algunos hostings la bandera -f es rechazada o no aplicable en Windows).
         if (!$resultado) {
             $usoFallback = (bool) $envelopeFrom;
             $resultado = @mail($destinatario, $asunto, $mensaje, $headerString);
@@ -77,6 +82,17 @@ if (!function_exists('enviarCorreo')) {
             if (!$detalleError) {
                 $detalleError = 'mail() devolvió false sin mensaje adicional.';
             }
+
+            // Agregar información adicional para diagnóstico: headers, ini mail settings y sistema operativo
+            $diagnostico = [];
+            $diagnostico['headers'] = $headers;
+            $diagnostico['ini_sendmail_from'] = ini_get('sendmail_from');
+            $diagnostico['ini_mail_params'] = ini_get('mail.force_extra_parameters');
+            $diagnostico['os'] = PHP_OS;
+            $diagnostico['php_version'] = phpversion();
+
+            $detalleError .= ' | Diagnostico: ' . json_encode($diagnostico);
+
             registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
