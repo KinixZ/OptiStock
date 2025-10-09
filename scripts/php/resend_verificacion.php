@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""];
 
@@ -45,9 +46,7 @@ try {
 
     $mail_subject = "OPTISTOCK - Reenvío de Código de Verificación";
     $mail_message = "Hola de nuevo. tu código de verificación es: $codigo_verificacion";
-    $mail_headers = "From: no-reply@optistock.site";
-
-    if (!mail($email, $mail_subject, $mail_message, $mail_headers)) {
+    if (!enviarCorreo($email, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
