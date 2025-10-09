@@ -279,6 +279,596 @@ function seconds_between(DateTimeImmutable $a, DateTimeImmutable $b): int
     return (int) abs($a->getTimestamp() - $b->getTimestamp());
 }
 
+function sanitize_automation_id(?string $value): string
+{
+    $clean = preg_replace('/[^A-Za-z0-9:_-]/', '', (string) $value);
+    if ($clean === null) {
+        $clean = '';
+    }
+
+    return substr($clean, 0, 64);
+}
+
+function format_number_short($value, int $decimals = 0): string
+{
+    if (!is_numeric($value)) {
+        return '0';
+    }
+
+    $number = (float) $value;
+
+    if ($decimals <= 0) {
+        return number_format((int) round($number), 0, '.', ',');
+    }
+
+    return number_format($number, $decimals, '.', ',');
+}
+
+function format_percentage_value($value, int $decimals = 1): string
+{
+    if (!is_numeric($value)) {
+        return '0%';
+    }
+
+    return number_format((float) $value, $decimals, '.', ',') . '%';
+}
+
+function format_datetime_label(?string $value): string
+{
+    if ($value === null || $value === '') {
+        return 'Sin datos';
+    }
+
+    try {
+        $dateTime = new DateTimeImmutable($value);
+        return $dateTime->format('Y-m-d H:i');
+    } catch (Throwable $exception) {
+        return (string) $value;
+    }
+}
+
+function create_metric(string $label, string $value, string $description = ''): array
+{
+    return [
+        'label' => $label,
+        'value' => $value,
+        'description' => $description,
+    ];
+}
+
+function create_table(string $title, array $headers, array $rows): array
+{
+    return [
+        'title' => $title,
+        'headers' => $headers,
+        'rows' => $rows,
+    ];
+}
+
+function fetch_company_profile(mysqli $conn, int $empresaId): array
+{
+    try {
+        $stmt = $conn->prepare('SELECT nombre_empresa, sector_empresa, fecha_registro, capacidad_maxima_m3, umbral_alerta_capacidad FROM empresa WHERE id_empresa = ? LIMIT 1');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc() ?: [];
+        $stmt->close();
+
+        return [
+            'name' => (string) ($row['nombre_empresa'] ?? ''),
+            'sector' => (string) ($row['sector_empresa'] ?? ''),
+            'registeredAt' => mysql_datetime_to_iso($row['fecha_registro'] ?? null),
+            'capacityMax' => isset($row['capacidad_maxima_m3']) ? (float) $row['capacidad_maxima_m3'] : null,
+            'capacityAlert' => isset($row['umbral_alerta_capacidad']) ? (float) $row['umbral_alerta_capacidad'] : null,
+        ];
+    } catch (Throwable $exception) {
+        error_log('fetch_company_profile: ' . $exception->getMessage());
+        return [
+            'name' => '',
+            'sector' => '',
+            'registeredAt' => null,
+            'capacityMax' => null,
+            'capacityAlert' => null,
+        ];
+    }
+}
+
+function fetch_inventory_insights(mysqli $conn, int $empresaId): array
+{
+    $metrics = [];
+    $tables = [];
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS total_products, SUM(stock) AS total_stock, AVG(stock) AS avg_stock, MAX(last_movimiento) AS last_update FROM productos WHERE empresa_id = ?');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        $totalProducts = (int) ($row['total_products'] ?? 0);
+        $totalStock = (float) ($row['total_stock'] ?? 0);
+        $avgStock = (float) ($row['avg_stock'] ?? 0);
+        $lastUpdate = $row['last_update'] ?? null;
+
+        $metrics[] = create_metric('Productos registrados', format_number_short($totalProducts), 'SKU asociados a la empresa.');
+        $metrics[] = create_metric('Unidades en inventario', format_number_short($totalStock), 'Suma de existencias actuales.');
+        $metrics[] = create_metric('Stock promedio por producto', format_number_short($avgStock, 2), 'Promedio de unidades disponibles.');
+        if ($lastUpdate) {
+            $metrics[] = create_metric('Última actualización de inventario', format_datetime_label($lastUpdate));
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_inventory_insights(summary): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT nombre, stock, last_movimiento FROM productos WHERE empresa_id = ? ORDER BY stock ASC, nombre ASC LIMIT 5');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = [
+                (string) ($row['nombre'] ?? ''),
+                format_number_short($row['stock'] ?? 0),
+                format_datetime_label($row['last_movimiento'] ?? null),
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Productos con menor stock', ['Producto', 'Stock', 'Último movimiento'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_inventory_insights(low stock): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare("SELECT tipo, SUM(cantidad) AS total FROM movimientos WHERE empresa_id = ? AND fecha_movimiento >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY tipo");
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $ingresos = 0;
+        $egresos = 0;
+        while ($row = $result->fetch_assoc()) {
+            if (($row['tipo'] ?? '') === 'ingreso') {
+                $ingresos = (float) ($row['total'] ?? 0);
+            }
+            if (($row['tipo'] ?? '') === 'egreso') {
+                $egresos = (float) ($row['total'] ?? 0);
+            }
+        }
+        $stmt->close();
+
+        if ($ingresos > 0 || $egresos > 0) {
+            $metrics[] = create_metric('Ingresos últimos 30 días', format_number_short($ingresos), 'Unidades recibidas recientemente.');
+            $metrics[] = create_metric('Egresos últimos 30 días', format_number_short($egresos), 'Unidades despachadas en 30 días.');
+            $neto = $ingresos - $egresos;
+            $metrics[] = create_metric('Movimiento neto 30 días', format_number_short($neto, 0), 'Resultado de ingresos menos egresos.');
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_inventory_insights(movements summary): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT m.fecha_movimiento, p.nombre AS producto, m.tipo, m.cantidad, u.nombre, u.apellido FROM movimientos m INNER JOIN productos p ON p.id = m.producto_id INNER JOIN usuario u ON u.id_usuario = m.id_usuario WHERE m.empresa_id = ? ORDER BY m.fecha_movimiento DESC LIMIT 10');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $responsable = trim(($row['nombre'] ?? '') . ' ' . ($row['apellido'] ?? ''));
+            $rows[] = [
+                format_datetime_label($row['fecha_movimiento'] ?? null),
+                (string) ($row['producto'] ?? ''),
+                (string) ($row['tipo'] ?? ''),
+                format_number_short($row['cantidad'] ?? 0),
+                $responsable !== '' ? $responsable : 'Desconocido',
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Movimientos recientes', ['Fecha', 'Producto', 'Tipo', 'Cantidad', 'Responsable'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_inventory_insights(recent movements): ' . $exception->getMessage());
+    }
+
+    return [
+        'metrics' => $metrics,
+        'tables' => $tables,
+    ];
+}
+
+function fetch_user_insights(mysqli $conn, int $empresaId): array
+{
+    $metrics = [];
+    $tables = [];
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS total FROM usuario_empresa WHERE id_empresa = ?');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $total = (int) ($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $stmt->close();
+
+        $metrics[] = create_metric('Usuarios vinculados', format_number_short($total), 'Colaboradores registrados para la empresa.');
+    } catch (Throwable $exception) {
+        error_log('fetch_user_insights(total): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS activos FROM usuario_empresa ue INNER JOIN usuario u ON u.id_usuario = ue.id_usuario WHERE ue.id_empresa = ? AND u.activo = 1');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $activos = (int) ($stmt->get_result()->fetch_assoc()['activos'] ?? 0);
+        $stmt->close();
+
+        $metrics[] = create_metric('Usuarios activos', format_number_short($activos), 'Cuentas habilitadas para iniciar sesión.');
+    } catch (Throwable $exception) {
+        error_log('fetch_user_insights(active): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS tutorial FROM usuario_empresa ue INNER JOIN usuario u ON u.id_usuario = ue.id_usuario WHERE ue.id_empresa = ? AND u.tutorial_visto = 1');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $tutorial = (int) ($stmt->get_result()->fetch_assoc()['tutorial'] ?? 0);
+        $stmt->close();
+
+        if ($tutorial > 0) {
+            $metrics[] = create_metric('Usuarios con tutorial completado', format_number_short($tutorial), 'Colaboradores que finalizaron el tutorial.');
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_user_insights(tutorial): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT u.rol, COUNT(*) AS total FROM usuario_empresa ue INNER JOIN usuario u ON u.id_usuario = ue.id_usuario WHERE ue.id_empresa = ? GROUP BY u.rol ORDER BY total DESC');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = [
+                (string) ($row['rol'] ?? 'Sin rol'),
+                format_number_short($row['total'] ?? 0),
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Distribución por rol', ['Rol', 'Usuarios'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_user_insights(roles): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT ra.fecha, u.nombre, u.apellido, ra.accion FROM registro_accesos ra INNER JOIN usuario u ON u.id_usuario = ra.id_usuario INNER JOIN usuario_empresa ue ON ue.id_usuario = ra.id_usuario WHERE ue.id_empresa = ? ORDER BY ra.fecha DESC LIMIT 10');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $usuario = trim(($row['nombre'] ?? '') . ' ' . ($row['apellido'] ?? ''));
+            $rows[] = [
+                format_datetime_label($row['fecha'] ?? null),
+                $usuario !== '' ? $usuario : 'Desconocido',
+                (string) ($row['accion'] ?? ''),
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Historial de accesos', ['Fecha', 'Usuario', 'Acción'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_user_insights(access log): ' . $exception->getMessage());
+    }
+
+    return [
+        'metrics' => $metrics,
+        'tables' => $tables,
+    ];
+}
+
+function fetch_area_insights(mysqli $conn, int $empresaId): array
+{
+    $metrics = [];
+    $tables = [];
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS total, AVG(porcentaje_ocupacion) AS ocupacion_promedio, SUM(productos_registrados) AS productos FROM areas WHERE id_empresa = ?');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        $metrics[] = create_metric('Áreas registradas', format_number_short($row['total'] ?? 0));
+        if (isset($row['ocupacion_promedio'])) {
+            $metrics[] = create_metric('Ocupación promedio de áreas', format_percentage_value($row['ocupacion_promedio'] ?? 0), 'Promedio de ocupación calculado a partir de las áreas.');
+        }
+        if (isset($row['productos'])) {
+            $metrics[] = create_metric('Productos ubicados en áreas', format_number_short($row['productos'] ?? 0));
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_area_insights(areas summary): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS total_zonas, AVG(porcentaje_ocupacion) AS ocupacion_promedio FROM zonas WHERE id_empresa = ?');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        $metrics[] = create_metric('Zonas registradas', format_number_short($row['total_zonas'] ?? 0));
+        if (isset($row['ocupacion_promedio'])) {
+            $metrics[] = create_metric('Ocupación promedio de zonas', format_percentage_value($row['ocupacion_promedio'] ?? 0));
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_area_insights(zones summary): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT nombre, porcentaje_ocupacion, productos_registrados FROM areas WHERE id_empresa = ? ORDER BY porcentaje_ocupacion DESC LIMIT 5');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = [
+                (string) ($row['nombre'] ?? ''),
+                format_percentage_value($row['porcentaje_ocupacion'] ?? 0),
+                format_number_short($row['productos_registrados'] ?? 0),
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Áreas con mayor ocupación', ['Área', 'Ocupación', 'Productos'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_area_insights(top areas): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT nombre, productos_registrados, porcentaje_ocupacion FROM zonas WHERE id_empresa = ? ORDER BY productos_registrados DESC, porcentaje_ocupacion DESC LIMIT 5');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = [
+                (string) ($row['nombre'] ?? ''),
+                format_number_short($row['productos_registrados'] ?? 0),
+                format_percentage_value($row['porcentaje_ocupacion'] ?? 0),
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Zonas con más productos', ['Zona', 'Productos', 'Ocupación'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_area_insights(top zones): ' . $exception->getMessage());
+    }
+
+    return [
+        'metrics' => $metrics,
+        'tables' => $tables,
+    ];
+}
+
+function fetch_notification_insights(mysqli $conn, int $empresaId): array
+{
+    $metrics = [];
+    $tables = [];
+
+    try {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS total, SUM(estado = "Pendiente") AS pendientes, SUM(prioridad = "Alta") AS altas FROM notificaciones WHERE id_empresa = ?');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        if (($row['total'] ?? 0) > 0) {
+            $metrics[] = create_metric('Alertas registradas', format_number_short($row['total'] ?? 0));
+            $metrics[] = create_metric('Alertas pendientes', format_number_short($row['pendientes'] ?? 0));
+            $metrics[] = create_metric('Alertas de prioridad alta', format_number_short($row['altas'] ?? 0));
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_notification_insights(summary): ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT titulo, tipo_destinatario, estado, prioridad, creado_en FROM notificaciones WHERE id_empresa = ? ORDER BY creado_en DESC LIMIT 8');
+        $stmt->bind_param('i', $empresaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = [
+                (string) ($row['titulo'] ?? ''),
+                (string) ($row['tipo_destinatario'] ?? ''),
+                (string) ($row['estado'] ?? ''),
+                (string) ($row['prioridad'] ?? ''),
+                format_datetime_label($row['creado_en'] ?? null),
+            ];
+        }
+        $stmt->close();
+
+        if ($rows) {
+            $tables[] = create_table('Alertas y notificaciones recientes', ['Título', 'Destinatario', 'Estado', 'Prioridad', 'Creada'], $rows);
+        }
+    } catch (Throwable $exception) {
+        error_log('fetch_notification_insights(list): ' . $exception->getMessage());
+    }
+
+    return [
+        'metrics' => $metrics,
+        'tables' => $tables,
+    ];
+}
+
+function fetch_activity_log_entries(mysqli $conn, int $empresaId, int $limit = 8): array
+{
+    try {
+        $stmt = $conn->prepare('SELECT lc.fecha, lc.hora, lc.modulo, lc.accion, u.nombre, u.apellido FROM log_control lc INNER JOIN usuario u ON u.id_usuario = lc.id_usuario INNER JOIN usuario_empresa ue ON ue.id_usuario = lc.id_usuario WHERE ue.id_empresa = ? ORDER BY CONCAT(lc.fecha, " ", lc.hora) DESC LIMIT ?');
+        $stmt->bind_param('ii', $empresaId, $limit);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $fecha = trim((string) ($row['fecha'] ?? ''));
+            $hora = trim((string) ($row['hora'] ?? ''));
+            $datetime = trim($fecha . ' ' . $hora);
+            $responsable = trim(($row['nombre'] ?? '') . ' ' . ($row['apellido'] ?? ''));
+            $rows[] = [
+                format_datetime_label($datetime !== '' ? $datetime : null),
+                (string) ($row['modulo'] ?? ''),
+                (string) ($row['accion'] ?? ''),
+                $responsable !== '' ? $responsable : 'Desconocido',
+            ];
+        }
+        $stmt->close();
+
+        if (!$rows) {
+            return [];
+        }
+
+        return create_table('Últimas actividades registradas', ['Fecha', 'Módulo', 'Acción', 'Responsable'], $rows);
+    } catch (Throwable $exception) {
+        error_log('fetch_activity_log_entries: ' . $exception->getMessage());
+        return [];
+    }
+}
+
+function build_automation_report_data(mysqli $conn, array $automationRow): array
+{
+    $empresaId = (int) ($automationRow['id_empresa'] ?? 0);
+    if ($empresaId <= 0) {
+        return [];
+    }
+
+    $moduleName = trim((string) ($automationRow['modulo'] ?? ''));
+    $moduleKey = strtolower($moduleName);
+
+    $company = fetch_company_profile($conn, $empresaId);
+    $inventory = fetch_inventory_insights($conn, $empresaId);
+    $users = fetch_user_insights($conn, $empresaId);
+    $areas = fetch_area_insights($conn, $empresaId);
+    $notifications = fetch_notification_insights($conn, $empresaId);
+    $activityTable = fetch_activity_log_entries($conn, $empresaId);
+
+    $metrics = [];
+    $tables = [];
+
+    $moduleHandled = false;
+    if ($moduleKey !== '') {
+        if (strpos($moduleKey, 'usuario') !== false) {
+            $metrics = array_merge($metrics, $users['metrics']);
+            $tables = array_merge($tables, $users['tables']);
+            if ($activityTable) {
+                $tables[] = $activityTable;
+            }
+            $moduleHandled = true;
+        } elseif (strpos($moduleKey, 'inventario') !== false || strpos($moduleKey, 'recepción') !== false || strpos($moduleKey, 'almacenamiento') !== false || strpos($moduleKey, 'despacho') !== false || strpos($moduleKey, 'distribución') !== false) {
+            $metrics = array_merge($metrics, $inventory['metrics'], $areas['metrics']);
+            $tables = array_merge($tables, $inventory['tables'], $areas['tables']);
+            $moduleHandled = true;
+        } elseif (strpos($moduleKey, 'alerta') !== false || strpos($moduleKey, 'monitoreo') !== false) {
+            $metrics = array_merge($metrics, $notifications['metrics']);
+            if ($users['metrics']) {
+                $metrics[] = $users['metrics'][0];
+            }
+            $tables = array_merge($tables, $notifications['tables']);
+            if ($activityTable) {
+                $tables[] = $activityTable;
+            }
+            $moduleHandled = true;
+        }
+    }
+
+    if (!$moduleHandled) {
+        $metrics = array_merge($metrics, $inventory['metrics'], $users['metrics'], $areas['metrics'], $notifications['metrics']);
+        $tables = array_merge($tables, $inventory['tables'], $users['tables'], $areas['tables'], $notifications['tables']);
+        if ($activityTable) {
+            $tables[] = $activityTable;
+        }
+    }
+
+    $seenLabels = [];
+    $normalizedMetrics = [];
+    foreach ($metrics as $metric) {
+        $label = isset($metric['label']) ? (string) $metric['label'] : '';
+        if ($label === '') {
+            continue;
+        }
+        if (isset($seenLabels[$label])) {
+            continue;
+        }
+        $seenLabels[$label] = true;
+        $normalizedMetrics[] = [
+            'label' => $label,
+            'value' => isset($metric['value']) ? (string) $metric['value'] : '',
+            'description' => isset($metric['description']) ? (string) $metric['description'] : '',
+        ];
+    }
+
+    if (count($normalizedMetrics) > 12) {
+        $normalizedMetrics = array_slice($normalizedMetrics, 0, 12);
+    }
+
+    $dedupTables = [];
+    foreach ($tables as $table) {
+        $title = isset($table['title']) ? (string) $table['title'] : '';
+        if ($title === '') {
+            continue;
+        }
+        if (isset($dedupTables[$title])) {
+            continue;
+        }
+        $headers = isset($table['headers']) && is_array($table['headers']) ? array_values($table['headers']) : [];
+        $rows = [];
+        if (isset($table['rows']) && is_array($table['rows'])) {
+            foreach ($table['rows'] as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $rows[] = array_map(static function ($value) {
+                    return (string) $value;
+                }, array_values($row));
+            }
+        }
+        if (!$headers || !$rows) {
+            continue;
+        }
+        if (count($rows) > 15) {
+            $rows = array_slice($rows, 0, 15);
+        }
+        $dedupTables[$title] = [
+            'title' => $title,
+            'headers' => $headers,
+            'rows' => $rows,
+        ];
+    }
+
+    $generatedAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format(DateTimeInterface::ATOM);
+
+    return [
+        'module' => [
+            'name' => $moduleName !== '' ? $moduleName : 'Reporte automatizado',
+        ],
+        'company' => $company,
+        'metrics' => $normalizedMetrics,
+        'tables' => array_values($dedupTables),
+        'generatedAt' => $generatedAt,
+    ];
+}
+
 function delete_report_reference(?string $uuid): void
 {
     $id = trim((string) $uuid);
@@ -494,6 +1084,64 @@ function list_reports(): void
         'success' => true,
         'reports' => $reports,
         'retentionDays' => REPORT_RETENTION_DAYS,
+    ]);
+}
+
+function automation_data(): void
+{
+    $empresaId = isset($_GET['empresa']) ? (int) $_GET['empresa'] : 0;
+    if ($empresaId <= 0) {
+        respond_json(400, [
+            'success' => false,
+            'message' => 'Debes indicar una empresa válida.',
+        ]);
+    }
+
+    $automationId = isset($_GET['automation']) ? sanitize_automation_id((string) $_GET['automation']) : '';
+    $module = isset($_GET['module']) ? (string) $_GET['module'] : '';
+
+    try {
+        $conn = db_connect();
+    } catch (Throwable $exception) {
+        respond_json(500, [
+            'success' => false,
+            'message' => 'No se pudo conectar a la base de datos.',
+        ]);
+    }
+
+    try {
+        $automationRow = [
+            'id_empresa' => $empresaId,
+            'modulo' => $module,
+        ];
+
+        if ($automationId !== '') {
+            $stmt = $conn->prepare('SELECT uuid, id_empresa, nombre, modulo, frecuencia, hora_ejecucion, dia_semana, dia_mes, notas, activo, ultimo_ejecutado, proxima_ejecucion FROM reportes_automatizados WHERE uuid = ? AND id_empresa = ?');
+            $stmt->bind_param('si', $automationId, $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc() ?: null;
+            $stmt->close();
+
+            if ($row !== null) {
+                $automationRow = $row;
+            }
+        }
+
+        $data = build_automation_report_data($conn, $automationRow);
+    } catch (Throwable $exception) {
+        $conn->close();
+        respond_json(500, [
+            'success' => false,
+            'message' => 'No se pudieron obtener los datos del reporte automatizado.',
+        ]);
+    }
+
+    $conn->close();
+
+    respond_json(200, [
+        'success' => true,
+        'data' => $data,
     ]);
 }
 
@@ -959,6 +1607,10 @@ $action = $_GET['action'] ?? '';
 if ($method === 'OPTIONS') {
     header('Allow: GET, POST, OPTIONS');
     exit;
+}
+
+if ($method === 'GET' && $action === 'automation-data') {
+    automation_data();
 }
 
 if ($method === 'GET' && $action === 'download') {

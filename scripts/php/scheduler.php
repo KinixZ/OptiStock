@@ -159,6 +159,13 @@ foreach ($tasks as $task) {
             'monthday' => $automationRow['dia_mes'] ?? null,
         ];
 
+        try {
+            $reportData = build_automation_report_data($conn, $automationRow);
+        } catch (Throwable $exception) {
+            $reportData = [];
+            log_msg('No se pudo obtener datos para el reporte ' . $automationId . ': ' . $exception->getMessage());
+        }
+
         ob_start();
         include __DIR__ . '/automation_template.php';
         $html = ob_get_clean();
