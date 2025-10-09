@@ -47,20 +47,44 @@ if (!function_exists('enviarCorreo')) {
         $envelopeFrom = isset($opciones['envelope_from']) && $opciones['envelope_from']
             ? $opciones['envelope_from']
             : $fromEmail;
-        $parametrosAdicionales = '';
-        if ($envelopeFrom) {
-            $parametrosAdicionales = '-f' . escapeshellarg($envelopeFrom);
+
+        if ($envelopeFrom && !filter_var($envelopeFrom, FILTER_VALIDATE_EMAIL)) {
+            $envelopeFrom = '';
         }
 
-        $resultado = @mail($destinatario, $asunto, $mensaje, $headerString, $parametrosAdicionales);
+        $resultado = false;
+        $detalleError = '';
+        $usoFallback = false;
+
+        // Intentar con la bandera -f únicamente si se proporcionó un remitente válido.
+        if ($envelopeFrom) {
+            $resultado = @mail($destinatario, $asunto, $mensaje, $headerString, '-f' . $envelopeFrom);
+            if (!$resultado) {
+                $detalleError = obtenerDetalleErrorCorreo();
+            }
+        }
+
+        // Como respaldo, intentar sin parámetros adicionales (en algunos hostings la bandera -f es rechazada).
+        if (!$resultado) {
+            $usoFallback = (bool) $envelopeFrom;
+            $resultado = @mail($destinatario, $asunto, $mensaje, $headerString);
+            if (!$resultado && !$detalleError) {
+                $detalleError = obtenerDetalleErrorCorreo();
+            }
+        }
 
         if (!$resultado) {
-            $detalleError = obtenerDetalleErrorCorreo();
+            if (!$detalleError) {
+                $detalleError = 'mail() devolvió false sin mensaje adicional.';
+            }
             registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
 
-        registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
+        $detalleExito = $usoFallback
+            ? 'mail() aceptó el envío usando el modo sin parámetro -f.'
+            : 'mail() aceptó el envío.';
+        registrarEnvioCorreo(true, $destinatario, $asunto, $detalleExito);
         return true;
     }
 
