@@ -15,6 +15,32 @@ if (!function_exists('enviarCorreo')) {
         $replyToEmail = trim((string)($opciones['reply_to'] ?? $config['default_reply_to_email'] ?? $fromEmail));
         $replyToName = trim((string)($opciones['reply_to_name'] ?? $config['default_reply_to_name'] ?? $fromName));
 
+        $transport = strtolower((string)($opciones['transport'] ?? $config['transport'] ?? 'sendmail'));
+
+        if ($transport === 'sendmail') {
+            $resultadoSendmail = enviarCorreoSendmail(
+                $destinatario,
+                $asunto,
+                $mensaje,
+                $opciones,
+                $config,
+                $fromEmail,
+                $fromName,
+                $replyToEmail,
+                $replyToName
+            );
+
+            if ($resultadoSendmail === true) {
+                return true;
+            }
+
+            if ($resultadoSendmail === null) {
+                // Si sendmail no está disponible continuamos con mail()
+            } else {
+                // Hubo un error usando sendmail; intentaremos mail() como respaldo
+            }
+        }
+
         return enviarCorreoMail(
             $destinatario,
             $asunto,
@@ -25,6 +51,83 @@ if (!function_exists('enviarCorreo')) {
             $replyToEmail,
             $replyToName
         );
+    }
+
+    function enviarCorreoSendmail($destinatario, $asunto, $mensaje, array $opciones, array $config, $fromEmail, $fromName, $replyToEmail, $replyToName)
+    {
+        $rutaSendmail = trim((string)($opciones['sendmail_path']
+            ?? ($config['sendmail']['path'] ?? ini_get('sendmail_path') ?? '')));
+
+        if ($rutaSendmail === '') {
+            return null;
+        }
+
+        $headers = [
+            'From' => formatearDireccionCorreo($fromName, $fromEmail),
+            'Reply-To' => formatearDireccionCorreo($replyToName, $replyToEmail),
+            'MIME-Version' => '1.0',
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding' => '8bit',
+            'X-Mailer' => 'OptiStock Sendmail PHP/' . phpversion(),
+            'Date' => date(DATE_RFC2822),
+            'Message-ID' => sprintf('<%s@%s>', uniqid('optistock-', true), obtenerDominioMensaje($fromEmail)),
+        ];
+
+        if (isset($opciones['headers']) && is_array($opciones['headers'])) {
+            foreach ($opciones['headers'] as $clave => $valor) {
+                $headers[$clave] = $valor;
+            }
+        }
+
+        $cuerpo = prepararCuerpoCorreo($mensaje, $headers, $opciones);
+
+        $lineasCabecera = [
+            'To: ' . formatearDireccionCorreo('', $destinatario),
+            'Subject: ' . sanearCabeceraCorreo($asunto),
+        ];
+
+        foreach ($headers as $clave => $valor) {
+            $lineasCabecera[] = $clave . ': ' . $valor;
+        }
+
+        $mensajeCompleto = implode("\r\n", $lineasCabecera) . "\r\n\r\n" . $cuerpo;
+
+        $descriptorSpec = [
+            0 => ['pipe', 'w'],
+            1 => ['pipe', 'r'],
+            2 => ['pipe', 'r'],
+        ];
+
+        $proceso = @proc_open($rutaSendmail, $descriptorSpec, $pipes);
+
+        if (!is_resource($proceso)) {
+            registrarEnvioCorreo(false, $destinatario, $asunto, 'No se pudo iniciar sendmail.');
+            return false;
+        }
+
+        fwrite($pipes[0], $mensajeCompleto);
+        fclose($pipes[0]);
+
+        $stdout = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+
+        $codigoSalida = proc_close($proceso);
+
+        if ($codigoSalida !== 0) {
+            $detalle = trim($stderr !== '' ? $stderr : $stdout);
+            $mensajeError = 'sendmail salió con código ' . $codigoSalida;
+            if ($detalle !== '') {
+                $mensajeError .= ': ' . $detalle;
+            }
+            registrarEnvioCorreo(false, $destinatario, $asunto, $mensajeError);
+            return false;
+        }
+
+        registrarEnvioCorreo(true, $destinatario, $asunto, 'sendmail aceptó el envío.');
+        return true;
     }
 
     function enviarCorreoMail($destinatario, $asunto, $mensaje, array $opciones, $fromEmail, $fromName, $replyToEmail, $replyToName)
@@ -73,6 +176,16 @@ if (!function_exists('enviarCorreo')) {
 
         registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
         return true;
+    }
+
+    function obtenerDominioMensaje($correo)
+    {
+        $correo = (string) $correo;
+        if (strpos($correo, '@') !== false) {
+            return substr(strrchr($correo, '@'), 1);
+        }
+
+        return 'optistock.site';
     }
 
     function formatearDireccionCorreo($nombre, $correo)
@@ -183,6 +296,12 @@ if (!function_exists('enviarCorreo')) {
         }
 
         return $cuerpo;
+    }
+
+    function sanearCabeceraCorreo($valor)
+    {
+        $valor = trim((string) $valor);
+        return preg_replace('/[\r\n]+/', ' ', $valor);
     }
 
     function normalizarSaltosLinea($texto)
@@ -390,6 +509,10 @@ HTML;
         }
 
         $config = [
+            'transport' => 'sendmail',
+            'sendmail' => [
+                'path' => ini_get('sendmail_path') ?: '/usr/sbin/sendmail -t -i',
+            ],
             'default_from_email' => 'no-reply@optistock.site',
             'default_from_name' => 'OptiStock',
             'default_reply_to_email' => 'soporte@optistock.site',
@@ -416,6 +539,8 @@ HTML;
             'default_from_name' => 'MAIL_FROM_NAME',
             'default_reply_to_email' => 'MAIL_REPLY_TO_EMAIL',
             'default_reply_to_name' => 'MAIL_REPLY_TO_NAME',
+            'transport' => 'MAIL_TRANSPORT',
+            'sendmail.path' => 'MAIL_SENDMAIL_PATH',
         ];
 
         foreach ($mapa as $ruta => $variable) {
