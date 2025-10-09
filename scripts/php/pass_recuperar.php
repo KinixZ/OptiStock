@@ -46,8 +46,24 @@ try {
 
     // Enviar el correo
     $asunto = "OPTISTOCK - Código de recuperación";
-    $mensaje = "Tu código para recuperar tu contraseña es: $codigo. Es válido por 10 minutos.";
-    if (!enviarCorreo($email, $asunto, $mensaje)) {
+    $contenidoHtml = '<p style="margin:0 0 16px;">Hola,</p>'
+        . '<p style="margin:0 0 16px;">Hemos recibido una solicitud para recuperar la contraseña de tu cuenta de OptiStock.</p>'
+        . '<p style="margin:0 0 16px;">Utiliza el siguiente código de verificación en los próximos <strong>10 minutos</strong> para continuar con el proceso.</p>'
+        . '<p style="margin:0; color:#6b7280;">Si no solicitaste este código, puedes ignorar este mensaje.</p>';
+    $mensajeHtml = generarCorreoPlantilla(
+        'Código de recuperación',
+        $contenidoHtml,
+        [
+            'codigo' => $codigo,
+            'footer_text' => '¿Necesitas ayuda? Responde a este correo y nuestro equipo te apoyará.'
+        ]
+    );
+    $mensajePlano = "Hola,\n\nHemos recibido una solicitud para recuperar la contraseña de tu cuenta de OptiStock.\n\n"
+        . "Código de verificación: $codigo\n"
+        . "Este código es válido por 10 minutos.\n\n"
+        . "Si no solicitaste este código, ignora este mensaje.";
+
+    if (!enviarCorreo($email, $asunto, $mensajeHtml, ['is_html' => true, 'plain_text' => $mensajePlano])) {
         throw new Exception("Error al enviar el correo de recuperación.");
     }
 

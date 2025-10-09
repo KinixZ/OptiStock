@@ -58,10 +58,23 @@ try {
     $_SESSION['correo_verificacion'] = $correo;
 
     // 8. Enviar el correo
-    $mail_subject = "OPTISTOCK - Codigo de Verificación";
-    $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
+    $mail_subject = "OPTISTOCK - Código de verificación";
+    $nombreSeguro = htmlspecialchars($nombre, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $contenidoHtml = '<p style="margin:0 0 16px;">¡Hola <strong>' . $nombreSeguro . '</strong>!</p>'
+        . '<p style="margin:0 0 16px;">Gracias por registrarte en OptiStock. Estamos felices de acompañarte en la gestión de tu inventario.</p>'
+        . '<p style="margin:0 0 16px;">Confirma tu cuenta ingresando el siguiente código en la aplicación.</p>';
+    $mail_message = generarCorreoPlantilla(
+        'Verifica tu cuenta',
+        $contenidoHtml,
+        [
+            'codigo' => $codigo_verificacion,
+            'footer_text' => 'Si no creaste esta cuenta, ignora este mensaje o contáctanos.'
+        ]
+    );
+    $mensajePlano = "Hola $nombre,\n\nGracias por registrarte en OptiStock. Tu código de verificación es: $codigo_verificacion."
+        . "\n\nSi no creaste esta cuenta, ignora este mensaje.";
 
-    if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
+    if (!enviarCorreo($correo, $mail_subject, $mail_message, ['is_html' => true, 'plain_text' => $mensajePlano])) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
