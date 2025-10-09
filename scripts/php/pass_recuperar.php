@@ -25,7 +25,7 @@ try {
     }
 
     // Verificar que el correo existe
-    $stmt = $conn->prepare("SELECT id_usuario FROM usuario WHERE correo = ?");
+    $stmt = $conn->prepare("SELECT id_usuario, nombre FROM usuario WHERE correo = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -36,6 +36,7 @@ try {
 
     $usuario = $result->fetch_assoc();
     $userId = (int) $usuario['id_usuario'];
+    $nombreUsuario = $usuario['nombre'] ?? null;
 
     // Generar código de 6 dígitos
     $codigo = mt_rand(100000, 999999);
@@ -45,8 +46,14 @@ try {
     $_SESSION['correo_recuperacion'] = $email;
 
     // Enviar el correo
-    $asunto = "OPTISTOCK - Código de recuperación";
-    $mensaje = "Tu código para recuperar tu contraseña es: $codigo. Es válido por 10 minutos.";
+    $asunto = "OptiStock • Código de recuperación";
+    $mensaje = crearCorreoCodigoOptiStock(
+        'Restablece tu contraseña',
+        'Recibimos una solicitud para recuperar tu acceso a OptiStock. Ingresa este código para continuar con el proceso de restablecimiento.',
+        $codigo,
+        'El código es válido por 10 minutos. Si no solicitaste este cambio, puedes ignorar este mensaje.',
+        $nombreUsuario
+    );
     if (!enviarCorreo($email, $asunto, $mensaje)) {
         throw new Exception("Error al enviar el correo de recuperación.");
     }

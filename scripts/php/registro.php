@@ -58,8 +58,14 @@ try {
     $_SESSION['correo_verificacion'] = $correo;
 
     // 8. Enviar el correo
-    $mail_subject = "OPTISTOCK - Codigo de Verificación";
-    $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
+    $mail_subject = "OptiStock • Código de verificación";
+    $mail_message = crearCorreoCodigoOptiStock(
+        'Confirma tu correo',
+        'Gracias por registrarte en OptiStock. Usa el siguiente código para validar tu cuenta.',
+        $codigo_verificacion,
+        'El código expira en 10 minutos.',
+        $nombre
+    );
 
     if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");

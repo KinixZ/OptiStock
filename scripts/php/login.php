@@ -159,7 +159,16 @@ if ($user) {
         registrarAcceso($conn, $user['id_usuario'], 'Intento');
 
         if ($failedAttempts >= 4) {
-            if (!enviarCorreo($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.")) {
+            $correoBloqueo = crearCorreoInformativoOptiStock(
+                'Intentos fallidos detectados',
+                [
+                    'Hemos bloqueado temporalmente tu cuenta por múltiples intentos fallidos de inicio de sesión.',
+                    'Podrás intentar nuevamente en 5 minutos. Si no reconoces este movimiento, cambia tu contraseña cuando recuperes el acceso.'
+                ],
+                $user['nombre'] ?? null
+            );
+
+            if (!enviarCorreo($correo, "OptiStock • Cuenta bloqueada temporalmente", $correoBloqueo)) {
                 error_log('No se pudo notificar por correo el bloqueo de la cuenta de ' . $correo);
             }
             echo json_encode(["success"=>false,"message"=>"Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."]);

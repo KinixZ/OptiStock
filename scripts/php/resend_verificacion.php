@@ -26,7 +26,7 @@ try {
         throw new Exception('Error de conexión a la base de datos.');
     }
 
-    $stmt = $conn->prepare("SELECT id_usuario FROM usuario WHERE correo = ?");
+    $stmt = $conn->prepare("SELECT id_usuario, nombre FROM usuario WHERE correo = ?");
     $stmt->bind_param('s', $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -35,6 +35,7 @@ try {
     }
     $usuario = $result->fetch_assoc();
     $userId = (int) $usuario['id_usuario'];
+    $nombreUsuario = $usuario['nombre'] ?? null;
 
     $codigo_verificacion = mt_rand(100000, 999999);
 
@@ -44,8 +45,14 @@ try {
     $_SESSION['codigo_verificacion'] = $codigo_verificacion;
     $_SESSION['correo_verificacion'] = $email;
 
-    $mail_subject = "OPTISTOCK - Reenvío de Código de Verificación";
-    $mail_message = "Hola de nuevo. tu código de verificación es: $codigo_verificacion";
+    $mail_subject = "OptiStock • Nuevo código de verificación";
+    $mail_message = crearCorreoCodigoOptiStock(
+        'Nuevo código de verificación',
+        'Sabemos que necesitas confirmar tu correo. Aquí tienes un nuevo código para completar la verificación de tu cuenta.',
+        $codigo_verificacion,
+        'Recuerda que el código expira en 10 minutos.',
+        $nombreUsuario
+    );
     if (!enviarCorreo($email, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
