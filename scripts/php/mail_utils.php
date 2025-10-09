@@ -1,8 +1,5 @@
 <?php
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception as PHPMailerException;
-
 if (!function_exists('enviarCorreo')) {
     function enviarCorreo($destinatario, $asunto, $mensaje, array $opciones = [])
     {
@@ -17,22 +14,6 @@ if (!function_exists('enviarCorreo')) {
         $fromName = trim((string)($opciones['from_name'] ?? $config['default_from_name'] ?? 'OptiStock'));
         $replyToEmail = trim((string)($opciones['reply_to'] ?? $config['default_reply_to_email'] ?? $fromEmail));
         $replyToName = trim((string)($opciones['reply_to_name'] ?? $config['default_reply_to_name'] ?? $fromName));
-
-        $transport = strtolower((string)($config['transport'] ?? 'mail'));
-
-        if ($transport === 'smtp') {
-            return enviarCorreoSMTP(
-                $destinatario,
-                $asunto,
-                $mensaje,
-                $opciones,
-                $config,
-                $fromEmail,
-                $fromName,
-                $replyToEmail,
-                $replyToName
-            );
-        }
 
         return enviarCorreoMail(
             $destinatario,
@@ -92,71 +73,6 @@ if (!function_exists('enviarCorreo')) {
 
         registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
         return true;
-    }
-
-    function enviarCorreoSMTP($destinatario, $asunto, $mensaje, array $opciones, array $config, $fromEmail, $fromName, $replyToEmail, $replyToName)
-    {
-        $smtpConfig = $config['smtp'] ?? [];
-
-        $contenido = prepararContenidoCorreoSMTP($mensaje, $opciones);
-
-        try {
-            if (!class_exists(PHPMailer::class)) {
-                require_once __DIR__ . '/lib/PHPMailer/src/Exception.php';
-                require_once __DIR__ . '/lib/PHPMailer/src/PHPMailer.php';
-                require_once __DIR__ . '/lib/PHPMailer/src/SMTP.php';
-            }
-
-            $mailer = new PHPMailer(true);
-            $mailer->CharSet = 'UTF-8';
-            $mailer->Timeout = isset($smtpConfig['timeout']) ? (int) $smtpConfig['timeout'] : 15;
-            $mailer->isSMTP();
-            $mailer->Host = $smtpConfig['host'] ?? 'localhost';
-            $mailer->Port = isset($smtpConfig['port']) ? (int) $smtpConfig['port'] : 587;
-            $mailer->SMTPAuth = isset($smtpConfig['auth']) ? (bool) $smtpConfig['auth'] : true;
-
-            if (!empty($smtpConfig['username'])) {
-                $mailer->Username = $smtpConfig['username'];
-            }
-
-            if (!empty($smtpConfig['password'])) {
-                $mailer->Password = $smtpConfig['password'];
-            }
-
-            $encryption = strtolower((string) ($smtpConfig['encryption'] ?? ''));
-            if ($encryption === 'ssl') {
-                $mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } elseif ($encryption === 'tls') {
-                $mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            } else {
-                $mailer->SMTPSecure = false;
-            }
-
-            if (!empty($smtpConfig['debug']) && $smtpConfig['debug']) {
-                $mailer->SMTPDebug = (int) $smtpConfig['debug'];
-            }
-
-            $mailer->setFrom($fromEmail ?: $smtpConfig['username'] ?? 'no-reply@example.com', $fromName ?: 'OptiStock');
-            $mailer->addReplyTo($replyToEmail ?: $fromEmail, $replyToName ?: $fromName);
-            $mailer->addAddress($destinatario);
-            $mailer->Subject = $asunto;
-
-            if ($contenido['is_html']) {
-                $mailer->isHTML(true);
-                $mailer->Body = $contenido['html'];
-                $mailer->AltBody = $contenido['text'];
-            } else {
-                $mailer->isHTML(false);
-                $mailer->Body = $contenido['text'];
-            }
-
-            $mailer->send();
-            registrarEnvioCorreo(true, $destinatario, $asunto, 'SMTP aceptó el envío.');
-            return true;
-        } catch (PHPMailerException $e) {
-            registrarEnvioCorreo(false, $destinatario, $asunto, 'SMTP error: ' . $e->getMessage());
-            return false;
-        }
     }
 
     function formatearDireccionCorreo($nombre, $correo)
@@ -465,47 +381,6 @@ HTML;
         ];
     }
 
-    function prepararContenidoCorreoSMTP($mensaje, array $opciones = [])
-    {
-        $contenido = [
-            'html' => '',
-            'text' => '',
-            'is_html' => false,
-        ];
-
-        if (is_array($mensaje)) {
-            $contenido['html'] = isset($mensaje['html']) ? normalizarSaltosLinea((string) $mensaje['html']) : '';
-            $contenido['text'] = isset($mensaje['text']) ? normalizarSaltosLinea((string) $mensaje['text']) : '';
-
-            if ($contenido['html'] !== '' && $contenido['text'] === '') {
-                $contenido['text'] = normalizarSaltosLinea(strip_tags($contenido['html']));
-            }
-
-            $contenido['is_html'] = $contenido['html'] !== '';
-        } else {
-            $texto = normalizarSaltosLinea((string) $mensaje);
-            $esHtml = !empty($opciones['is_html']) || (isset($opciones['content_type']) && stripos($opciones['content_type'], 'html') !== false);
-
-            if ($esHtml) {
-                $contenido['html'] = $texto;
-                $contenido['text'] = normalizarSaltosLinea(strip_tags($texto));
-                $contenido['is_html'] = true;
-            } else {
-                $contenido['text'] = $texto;
-            }
-        }
-
-        if ($contenido['text'] === '' && $contenido['html'] !== '') {
-            $contenido['text'] = normalizarSaltosLinea(strip_tags($contenido['html']));
-        }
-
-        if ($contenido['text'] === '') {
-            $contenido['text'] = 'Contenido del mensaje no disponible.';
-        }
-
-        return $contenido;
-    }
-
     function obtenerConfiguracionCorreo()
     {
         static $config = null;
@@ -515,16 +390,6 @@ HTML;
         }
 
         $config = [
-            'transport' => 'mail',
-            'smtp' => [
-                'host' => 'smtp.hostinger.com',
-                'port' => 587,
-                'encryption' => 'tls',
-                'username' => '',
-                'password' => '',
-                'auth' => true,
-                'timeout' => 15,
-            ],
             'default_from_email' => 'no-reply@optistock.site',
             'default_from_name' => 'OptiStock',
             'default_reply_to_email' => 'soporte@optistock.site',
@@ -541,28 +406,12 @@ HTML;
 
         $config = aplicarVariablesEntornoCorreo($config);
 
-        if (($config['transport'] ?? 'mail') !== 'smtp' && !empty($config['smtp']['username']) && !empty($config['smtp']['password'])) {
-            $config['transport'] = 'smtp';
-        }
-
         return $config;
     }
 
     function aplicarVariablesEntornoCorreo(array $config)
     {
-        $envTransport = getenv('MAIL_TRANSPORT');
-        if ($envTransport) {
-            $config['transport'] = strtolower($envTransport);
-        }
-
         $mapa = [
-            'smtp.host' => 'MAIL_SMTP_HOST',
-            'smtp.port' => 'MAIL_SMTP_PORT',
-            'smtp.username' => 'MAIL_SMTP_USERNAME',
-            'smtp.password' => 'MAIL_SMTP_PASSWORD',
-            'smtp.encryption' => 'MAIL_SMTP_ENCRYPTION',
-            'smtp.auth' => 'MAIL_SMTP_AUTH',
-            'smtp.timeout' => 'MAIL_SMTP_TIMEOUT',
             'default_from_email' => 'MAIL_FROM_EMAIL',
             'default_from_name' => 'MAIL_FROM_NAME',
             'default_reply_to_email' => 'MAIL_REPLY_TO_EMAIL',
