@@ -52,7 +52,12 @@ try {
         'Recibimos una solicitud para recuperar tu acceso a OptiStock. Ingresa este código para continuar con el proceso de restablecimiento.',
         $codigo,
         'El código es válido por 10 minutos. Si no solicitaste este cambio, puedes ignorar este mensaje.',
-        $nombreUsuario
+        $nombreUsuario,
+        [
+            'Ve a la página de OptiStock y elige la opción "¿Olvidaste tu contraseña?".',
+            'Escribe el código de seis dígitos exactamente como aparece en este correo.',
+            'Crea una nueva contraseña segura y confirma el cambio.'
+        ]
     );
     if (!enviarCorreo($email, $asunto, $mensaje)) {
         throw new Exception("Error al enviar el correo de recuperación.");
