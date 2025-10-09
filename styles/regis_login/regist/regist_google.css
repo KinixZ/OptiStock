@@ -11,16 +11,30 @@ body {
     padding: 0;
 }
 
-.container {
-    max-width: 500px;
+.nav-links {
+    position: absolute;
+    top: 20px;
+    right: 50px;
+}
+
+.nav-links a {
+    margin: 0 15px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.login-container {
+    max-width: 420px;
+    width: 90%;
     background-color: rgba(255, 183, 77, 0.95);
-    margin: 100px auto;
     padding: 30px;
     border-radius: 20px;
     color: #1a1a1a;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
 }
 
-.container h3 {
+.login-container h3 {
     font-weight: 700;
     margin-bottom: 20px;
 }
@@ -36,20 +50,19 @@ input[type="password"] {
     border: 1px solid #ccc;
 }
 
-button {
-    width: 100%;
-    background-color: #2e3c76;
-    color: white;
-    padding: 12px;
+.btn-dark {
+    background-color: #1a1a1a;
     border: none;
-    border-radius: 10px;
-    font-weight: bold;
+    padding: 12px;
+    font-weight: 600;
     font-size: 16px;
-    cursor: pointer;
+    border-radius: 10px;
+    transition: background 0.3s ease;
 }
 
-button:hover {
-    background-color: #1a254d;
+.btn-dark:hover,
+.btn-dark:focus {
+    background-color: #333;
 }
 
 @media (max-width: 768px) {
@@ -58,10 +71,13 @@ button:hover {
         min-height: 100vh;
     }
 
-    .container {
-        margin: 60px auto;
-        padding: 24px;
-        width: 100%;
+    .nav-links {
+        top: 16px;
+        right: 20px;
+    }
+
+    .login-container {
+        padding: 26px;
     }
 }
 
@@ -70,17 +86,21 @@ button:hover {
         padding: 30px 12px;
     }
 
-    .container {
-        margin: 30px auto;
-        padding: 20px;
+    .nav-links {
+        position: static;
+        text-align: center;
+        margin-bottom: 20px;
     }
 
-    .container h3 {
-        font-size: 1.25rem;
+    .nav-links a {
+        margin: 0 8px;
     }
 
-    button {
-        font-size: 15px;
-        padding: 10px;
+    .login-container {
+        padding: 22px 18px;
+    }
+
+    .login-container h3 {
+        font-size: 1.3rem;
     }
 }
