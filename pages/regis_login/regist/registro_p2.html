@@ -4,30 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../../styles/regis_login/regist/registro_p1.css">
 </head>
 
-<body>
-    <div class="container">
-        <div class="register-section">
-            <h2 class="text-center">REGISTRO</h2>
+<body class="d-flex justify-content-center align-items-center vh-100">
+    <div class="nav-links">
+        <a href="../../../index.html">Inicio</a>
+        <a href="../login/login.html">Iniciar sesión</a>
+        <a href="registro_p1.html">Volver</a>
+    </div>
+
+    <div class="d-flex flex-column align-items-center">
+        <div class="login-container text-start">
+            <h3 class="mb-4 text-center">DATOS DE LA EMPRESA</h3>
             <form>
-                <div class="form-group">
-                    <label for="NomreEmpresa">Nombre de la empresa u organización</label>
-                    <input type="text" class="form-control" id="NomreEmpresa" placeholder="Ingresa el nombre de la empresa">
+                <div class="mb-3">
+                    <label for="NomreEmpresa" class="form-label">Nombre de la empresa u organización</label>
+                    <input type="text" class="form-control" id="NomreEmpresa" placeholder="Ingresa el nombre de la empresa" required>
                 </div>
-                <div class="form-group">
-                    <label for="logo">Logotipo empresarial (opcional)</label>
-                    <input type="file" class="form-control" id="logo" accept="image/png">
+                <div class="mb-3">
+                    <label for="logo" class="form-label">Logotipo empresarial (opcional)</label>
+                    <input type="file" class="form-control" id="logo" accept="image/png, image/jpeg">
                 </div>
-                <div class="form-group">
-                    <label for="sector">Sector de actividad económica</label>
-                    <input type="text" class="form-control" id="sector" placeholder="Ingresa el sector de actividad económica">
+                <div class="mb-4">
+                    <label for="sector" class="form-label">Sector de actividad económica</label>
+                    <input type="text" class="form-control" id="sector" placeholder="Ingresa el sector de actividad económica" required>
                 </div>
-                <div style="text-align: center;">
-                    <button type="submit" class="btn btn-primary">Completar Registro</button>
-                </div>
+                <button type="submit" class="btn btn-dark w-100">Completar Registro</button>
             </form>
         </div>
     </div>
