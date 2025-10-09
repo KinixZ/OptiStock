@@ -348,25 +348,54 @@ HTML;
         return $html;
     }
 
-    function crearCorreoCodigoOptiStock($titulo, $mensajePrincipal, $codigo, $nota = '', $nombre = null)
+    function crearCorreoCodigoOptiStock($titulo, $mensajePrincipal, $codigo, $nota = '', $nombre = null, array $instrucciones = [])
     {
         $saludoPlano = $nombre ? 'Hola ' . trim((string) $nombre) . ',' : 'Hola,';
         $saludo = escaparTextoCorreo($saludoPlano);
         $mensajePlano = (string) $mensajePrincipal;
         $codigoPlano = (string) $codigo;
         $notaPlano = (string) $nota;
+        $instrucciones = array_filter(array_map('trim', $instrucciones), function ($valor) {
+            return $valor !== '';
+        });
 
         $mensajePrincipalHtml = escaparTextoCorreo($mensajePlano);
         $codigoHtml = escaparTextoCorreo($codigoPlano);
         $notaHtml = $notaPlano !== '' ? '<p style="margin:0 0 16px;font-size:14px;line-height:22px;color:#1f2937;">' . escaparTextoCorreo($notaPlano) . '</p>' : '';
 
-        $contenidoHtml = '
-            <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#1f2937;">' . $saludo . '</p>
-            <p style="margin:0 0 20px;font-size:15px;line-height:24px;color:#1f2937;">' . $mensajePrincipalHtml . '</p>
-            <div style="margin:0 0 20px;display:inline-block;padding:16px 28px;font-size:26px;font-weight:700;letter-spacing:6px;background-color:rgba(255,111,145,0.12);color:#ff6f91;border-radius:18px;border:1px solid rgba(255,111,145,0.32);">' . $codigoHtml . '</div>
-            ' . $notaHtml . '
-            <p style="margin:0;font-size:14px;line-height:22px;color:#1f2937;">Si tienes alguna duda, responde a este correo o escríbenos a <a href="mailto:soporte@optistock.site" style="color:#0fb4d4;text-decoration:none;font-weight:600;">soporte@optistock.site</a>.</p>
-        ';
+        $listaHtml = '';
+        $listaTexto = [];
+
+        if (!empty($instrucciones)) {
+            $itemsHtml = [];
+            foreach ($instrucciones as $paso) {
+                $pasoEscapado = escaparTextoCorreo($paso);
+                $itemsHtml[] = '<li style="margin:0 0 8px;font-size:14px;line-height:22px;color:#1f2937;">' . $pasoEscapado . '</li>';
+                $listaTexto[] = $paso;
+            }
+
+            if (!empty($itemsHtml)) {
+                $listaHtml = '<ol style="margin:0 0 20px;padding-left:20px;">' . implode('', $itemsHtml) . '</ol>';
+            }
+        }
+
+        $contenidoPartes = [];
+        $contenidoPartes[] = '<p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#1f2937;">' . $saludo . '</p>';
+        $contenidoPartes[] = '<p style="margin:0 0 20px;font-size:15px;line-height:24px;color:#1f2937;">' . $mensajePrincipalHtml . '</p>';
+        $contenidoPartes[] = '<div style="margin:0 0 20px;display:inline-block;padding:16px 28px;font-size:26px;font-weight:700;letter-spacing:6px;background-color:rgba(255,111,145,0.12);color:#ff6f91;border-radius:18px;border:1px solid rgba(255,111,145,0.32);">' . $codigoHtml . '</div>';
+
+        if ($listaHtml !== '') {
+            $contenidoPartes[] = '<p style="margin:0 0 12px;font-size:14px;line-height:22px;color:#1f2937;font-weight:600;">Sigue estos pasos:</p>';
+            $contenidoPartes[] = $listaHtml;
+        }
+
+        if ($notaHtml !== '') {
+            $contenidoPartes[] = $notaHtml;
+        }
+
+        $contenidoPartes[] = '<p style="margin:0;font-size:14px;line-height:22px;color:#1f2937;">Si tienes alguna duda, responde a este correo o escríbenos a <a href="mailto:soporte@optistock.site" style="color:#0fb4d4;text-decoration:none;font-weight:600;">soporte@optistock.site</a>.</p>';
+
+        $contenidoHtml = implode("\n", $contenidoPartes);
 
         $footer = '<p style="margin:0;color:#6b7280;font-size:12px;line-height:18px;">Recibiste este mensaje porque registraste esta dirección de correo en OptiStock.</p>';
 
@@ -380,6 +409,13 @@ HTML;
             $mensajePlano,
             'Código: ' . $codigoPlano,
         ];
+
+        if (!empty($listaTexto)) {
+            $partesTexto[] = 'Sigue estos pasos:';
+            foreach ($listaTexto as $pasoTexto) {
+                $partesTexto[] = '- ' . $pasoTexto;
+            }
+        }
 
         if ($notaPlano !== '') {
             $partesTexto[] = $notaPlano;

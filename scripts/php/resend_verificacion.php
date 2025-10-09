@@ -48,10 +48,15 @@ try {
     $mail_subject = "OptiStock • Nuevo código de verificación";
     $mail_message = crearCorreoCodigoOptiStock(
         'Nuevo código de verificación',
-        'Sabemos que necesitas confirmar tu correo. Aquí tienes un nuevo código para completar la verificación de tu cuenta.',
+        'Sabemos que necesitas confirmar tu correo. Ingresa este nuevo código para completar la verificación de tu cuenta.',
         $codigo_verificacion,
-        'Recuerda que el código expira en 10 minutos.',
-        $nombreUsuario
+        'El código expira en 10 minutos. Si no solicitaste la verificación puedes ignorar este mensaje.',
+        $nombreUsuario,
+        [
+            'Abre la ventana de verificación de OptiStock.',
+            'Escribe el código de seis dígitos exactamente como aparece en este correo.',
+            'Haz clic en "Confirmar correo" para finalizar el proceso.'
+        ]
     );
     if (!enviarCorreo($email, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");

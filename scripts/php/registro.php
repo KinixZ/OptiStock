@@ -61,10 +61,15 @@ try {
     $mail_subject = "OptiStock • Código de verificación";
     $mail_message = crearCorreoCodigoOptiStock(
         'Confirma tu correo',
-        'Gracias por registrarte en OptiStock. Usa el siguiente código para validar tu cuenta.',
+        '¡Bienvenido a OptiStock! Para activar tu cuenta ingresa el siguiente código en la ventana de verificación.',
         $codigo_verificacion,
-        'El código expira en 10 minutos.',
-        $nombre
+        'El código expira en 10 minutos. Si no solicitaste esta cuenta puedes ignorar este mensaje.',
+        $nombre,
+        [
+            'Abre la ventana de verificación que apareció después de registrarte.',
+            'Escribe el código de seis dígitos tal como lo ves aquí.',
+            'Haz clic en "Confirmar correo" para empezar a usar OptiStock.'
+        ]
     );
 
     if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
