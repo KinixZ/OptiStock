@@ -9,6 +9,19 @@ body {
     background-repeat: no-repeat;
 }
 
+.nav-links {
+    position: absolute;
+    top: 20px;
+    right: 50px;
+}
+
+.nav-links a {
+    margin: 0 15px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}
+
 .login-container {
     background: rgba(255, 183, 77, 0.9);
     padding: 20px;
@@ -19,6 +32,11 @@ body {
 .login-container h3 {
     font-family: 'Poppins', sans-serif;
     font-weight: 700;
+    color: #1a1a1a;
+}
+
+.form-label {
+    font-weight: 600;
     color: #1a1a1a;
 }
 
@@ -40,6 +58,11 @@ body {
         min-height: 100vh;
     }
 
+    .nav-links {
+        top: 16px;
+        right: 20px;
+    }
+
     .login-container {
         width: min(92vw, 360px);
         padding: 18px;
@@ -49,6 +72,16 @@ body {
 @media (max-width: 480px) {
     body {
         padding: 30px 12px;
+    }
+
+    .nav-links {
+        position: static;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .nav-links a {
+        margin: 0 8px;
     }
 
     .login-container {

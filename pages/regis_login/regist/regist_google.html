@@ -8,11 +8,14 @@
     <link rel="stylesheet" href="../../../styles/regis_login/regist/regist_google.css">
 </head>
 <body class="d-flex justify-content-center align-items-center vh-100">
+    <div class="nav-links">
+        <a href="../../../index.html">Inicio</a>
+        <a href="../login/login.html">Iniciar sesión</a>
+    </div>
 
-    <div class="container">
+    <div class="login-container">
         <h3 class="text-center mb-4">Completa tu registro</h3>
-        <form method="POST" action="../../../scripts/php/regist_google.php" class="w-50 mx-auto">
-
+        <form method="POST" action="../../../scripts/php/regist_google.php" class="text-start">
             <!-- Oculto: se llena desde el script -->
             <input type="hidden" name="correo" id="correo">
 
@@ -31,12 +34,12 @@
                 <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" required>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
                 <label for="telefono" class="form-label">Teléfono</label>
                 <input type="text" class="form-control" id="telefono" name="telefono" required>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">Guardar datos</button>
+            <button type="submit" class="btn btn-dark w-100">Guardar datos</button>
         </form>
     </div>
 
