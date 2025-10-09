@@ -44,22 +44,9 @@ try {
     $_SESSION['codigo_verificacion'] = $codigo_verificacion;
     $_SESSION['correo_verificacion'] = $email;
 
-    $mail_subject = "OPTISTOCK - Reenvío de código de verificación";
-    $contenidoHtml = '<p style="margin:0 0 16px;">Hola de nuevo,</p>'
-        . '<p style="margin:0 0 16px;">Tal como solicitaste, estamos reenviando tu código de verificación para que puedas activar tu cuenta.</p>'
-        . '<p style="margin:0 0 16px;">Ingresa el siguiente código en la aplicación y continúa con tu registro.</p>';
-    $mail_message = generarCorreoPlantilla(
-        'Tu código de verificación',
-        $contenidoHtml,
-        [
-            'codigo' => $codigo_verificacion,
-            'footer_text' => 'Si no solicitaste este correo, por favor ignóralo.'
-        ]
-    );
-    $mensajePlano = "Hola,\n\nAquí tienes nuevamente tu código de verificación de OptiStock: $codigo_verificacion."
-        . "\n\nSi no solicitaste este correo, ignóralo.";
-
-    if (!enviarCorreo($email, $mail_subject, $mail_message, ['is_html' => true, 'plain_text' => $mensajePlano])) {
+    $mail_subject = "OPTISTOCK - Reenvío de Código de Verificación";
+    $mail_message = "Hola de nuevo. tu código de verificación es: $codigo_verificacion";
+    if (!enviarCorreo($email, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
