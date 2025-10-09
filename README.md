@@ -58,3 +58,7 @@ OptiStock/
 
 Cada carpeta dentro de `pages/`, `scripts/` y `styles/` agrupa los recursos
 correspondientes para las distintas secciones de la aplicación.
+
+## Documentación adicional
+
+- [Programar el scheduler en Hostinger](docs/hostinger-cron-setup.md)
