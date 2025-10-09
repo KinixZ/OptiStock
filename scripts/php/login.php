@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/mail_utils.php';
 // Obtener los datos del formulario
 $correo      = $_POST['correo']      ?? null;
 $contrasena  = $_POST['contrasena']  ?? null;
@@ -158,7 +159,18 @@ if ($user) {
         registrarAcceso($conn, $user['id_usuario'], 'Intento');
 
         if ($failedAttempts >= 4) {
-            sendEmail($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.");
+            $correoBloqueo = crearCorreoInformativoOptiStock(
+                'Intentos fallidos detectados',
+                [
+                    'Hemos bloqueado temporalmente tu cuenta por múltiples intentos fallidos de inicio de sesión.',
+                    'Podrás intentar nuevamente en 5 minutos. Si no reconoces este movimiento, cambia tu contraseña cuando recuperes el acceso.'
+                ],
+                $user['nombre'] ?? null
+            );
+
+            if (!enviarCorreo($correo, "OptiStock • Cuenta bloqueada temporalmente", $correoBloqueo)) {
+                error_log('No se pudo notificar por correo el bloqueo de la cuenta de ' . $correo);
+            }
             echo json_encode(["success"=>false,"message"=>"Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."]);
         } else {
             echo json_encode(["success"=>false,"message"=>"Contraseña incorrecta. Intentos fallidos: $failedAttempts."]);
@@ -172,12 +184,4 @@ if ($user) {
 
 mysqli_close($conn);
 
-/*──────────────────────────────
-  Función para enviar correos
-───────────────────────────────*/
-function sendEmail($to, $subject, $body) {
-    $headers  = "From: no-reply@optistock.site\r\n";
-    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-    mail($to, $subject, $body, $headers);
-}
 ?>

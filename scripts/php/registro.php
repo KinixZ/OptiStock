@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""]; // Respuesta inicial
 
@@ -57,11 +58,16 @@ try {
     $_SESSION['correo_verificacion'] = $correo;
 
     // 8. Enviar el correo
-    $mail_subject = "OPTISTOCK - Codigo de Verificación";
-    $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
-    $mail_headers = "From: no-reply@optistock.site";
+    $mail_subject = "OptiStock • Código de verificación";
+    $mail_message = crearCorreoCodigoOptiStock(
+        'Confirma tu correo',
+        'Gracias por registrarte en OptiStock. Usa el siguiente código para validar tu cuenta.',
+        $codigo_verificacion,
+        'El código expira en 10 minutos.',
+        $nombre
+    );
 
-    if (!mail($correo, $mail_subject, $mail_message, $mail_headers)) {
+    if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
