@@ -246,6 +246,96 @@
     return buffer;
   }
 
+  async function fetchAutomationDataset(automation) {
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      action: 'automation-data',
+      empresa: String(state.activeEmpresaId)
+    });
+
+    if (automation && automation.id) {
+      params.set('automation', automation.id);
+    }
+    if (automation && automation.module) {
+      params.set('module', automation.module);
+    }
+
+    try {
+      const response = await fetch(`${HISTORY_API_URL}?${params.toString()}`, { method: 'GET' });
+      const data = await response.json().catch(() => ({ success: false }));
+      if (!response.ok || !data.success) {
+        const message = (data && data.message) || 'No se pudieron obtener datos reales para el reporte.';
+        throw new Error(message);
+      }
+      return data.data || null;
+    } catch (error) {
+      console.warn('No se pudieron obtener datos reales para la automatización:', error);
+      return null;
+    }
+  }
+
+  function buildAutomationSummaryLines(automation, executedAt, dataset) {
+    const executedDate = new Date(executedAt);
+    let generatedAt;
+    try {
+      generatedAt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short' }).format(executedDate);
+    } catch (error) {
+      generatedAt = executedDate.toLocaleString();
+    }
+
+    const lines = [
+      automation.name,
+      '',
+      `Generado automáticamente el ${generatedAt}`,
+      automation.module ? `Módulo origen: ${automation.module}` : null,
+      `Frecuencia: ${formatAutomationFrequency(automation)}`,
+      automation.notes ? `Notas: ${automation.notes}` : null
+    ].filter(Boolean);
+
+    if (dataset && dataset.company) {
+      const companyName = dataset.company.name ? `Empresa: ${dataset.company.name}` : null;
+      const companySector = dataset.company.sector ? `Sector: ${dataset.company.sector}` : null;
+      if (companyName) {
+        lines.push(companyName);
+      }
+      if (companySector) {
+        lines.push(companySector);
+      }
+    }
+
+    if (dataset && Array.isArray(dataset.metrics) && dataset.metrics.length) {
+      lines.push('', 'Indicadores principales:');
+      dataset.metrics.slice(0, 10).forEach((metric) => {
+        const label = metric && metric.label ? String(metric.label) : 'Indicador';
+        const value = metric && metric.value ? String(metric.value) : 'Sin datos';
+        const description = metric && metric.description ? ` · ${metric.description}` : '';
+        lines.push(`• ${label}: ${value}${description}`);
+      });
+    }
+
+    if (dataset && Array.isArray(dataset.tables) && dataset.tables.length) {
+      dataset.tables.slice(0, 3).forEach((table) => {
+        const title = table && table.title ? String(table.title) : 'Tabla';
+        const headers = Array.isArray(table && table.headers) ? table.headers : [];
+        const rows = Array.isArray(table && table.rows) ? table.rows : [];
+        lines.push('', `${title}:`);
+        if (headers.length) {
+          lines.push(`  ${headers.map((header) => String(header)).join(' | ')}`);
+        }
+        rows.slice(0, 5).forEach((row) => {
+          if (Array.isArray(row)) {
+            lines.push(`  ${row.map((cell) => String(cell)).join(' | ')}`);
+          }
+        });
+      });
+    }
+
+    return lines;
+  }
+
   function getActiveEmpresaId() {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -559,6 +649,16 @@
         showAlert(error.message || 'No se pudo sincronizar las automatizaciones.', 'danger', true);
       });
     }, 500);
+  }
+
+  function syncAutomationsImmediately() {
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      return;
+    }
+    persistAutomationsToServer().catch((error) => {
+      console.error('No se pudo sincronizar las automatizaciones inmediatamente:', error);
+      showAlert(error.message || 'No se pudo sincronizar los cambios en las automatizaciones.', 'danger', true);
+    });
   }
 
   function serializeAutomationForSync(automation) {
@@ -1588,12 +1688,62 @@
       return;
     }
     state.automations.splice(index, 1);
-    saveAutomationsToStorage();
+    saveAutomationsToStorage({ skipServerSync: true });
     renderAutomations();
     showAlert('Automatización eliminada correctamente.', 'success');
+    syncAutomationsImmediately();
   }
 
-  function generateAutomationCsv(automation, executedAt) {
+  function buildCsvRowsFromDataset(rows, dataset) {
+    if (!dataset) {
+      return rows;
+    }
+
+    if (dataset.company) {
+      const companyName = dataset.company.name ? String(dataset.company.name) : '';
+      const companySector = dataset.company.sector ? String(dataset.company.sector) : '';
+      if (companyName) {
+        rows.push(['Empresa', companyName]);
+      }
+      if (companySector) {
+        rows.push(['Sector', companySector]);
+      }
+    }
+
+    if (Array.isArray(dataset.metrics) && dataset.metrics.length) {
+      rows.push([]);
+      rows.push(['Indicador', 'Valor', 'Descripción']);
+      dataset.metrics.slice(0, 12).forEach((metric) => {
+        const label = metric && metric.label ? String(metric.label) : 'Indicador';
+        const value = metric && metric.value ? String(metric.value) : 'Sin datos';
+        const description = metric && metric.description ? String(metric.description) : '';
+        rows.push([label, value, description]);
+      });
+    }
+
+    if (Array.isArray(dataset.tables) && dataset.tables.length) {
+      dataset.tables.forEach((table) => {
+        const title = table && table.title ? String(table.title) : '';
+        const headers = Array.isArray(table && table.headers) ? table.headers : [];
+        const tableRows = Array.isArray(table && table.rows) ? table.rows : [];
+        if (!title || !headers.length || !tableRows.length) {
+          return;
+        }
+        rows.push([]);
+        rows.push([title]);
+        rows.push(headers.map((header) => String(header)));
+        tableRows.slice(0, 15).forEach((row) => {
+          if (Array.isArray(row)) {
+            rows.push(row.map((cell) => String(cell)));
+          }
+        });
+      });
+    }
+
+    return rows;
+  }
+
+  function generateAutomationCsv(automation, executedAt, dataset) {
     const executedDate = new Date(executedAt);
     let generatedAt;
     try {
@@ -1601,13 +1751,25 @@
     } catch (error) {
       generatedAt = executedDate.toLocaleString();
     }
-    const rows = [
+    let rows = [
       ['Nombre del reporte', automation.name],
-      ['Módulo', automation.module || 'No especificado'],
-      ['Generado automáticamente', generatedAt],
+      ['', ''],
+      [`Generado automáticamente el ${generatedAt}`, ''],
+      automation.module ? ['Módulo origen', automation.module] : null,
       ['Frecuencia', formatAutomationFrequency(automation)],
-      ['Notas', automation.notes || '']
-    ];
+      automation.notes ? ['Notas', automation.notes] : null
+    ].filter(Boolean);
+
+    rows = buildCsvRowsFromDataset(rows, dataset);
+
+    if (!dataset || ((!Array.isArray(dataset.metrics) || !dataset.metrics.length) && (!Array.isArray(dataset.tables) || !dataset.tables.length))) {
+      rows.push([]);
+      rows.push(['Resumen']);
+      buildAutomationSummaryLines(automation, executedAt, dataset).forEach((line) => {
+        rows.push([String(line)]);
+      });
+    }
+
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
       .join('\r\n');
@@ -1615,22 +1777,8 @@
     return { bytes, mimeType: 'text/csv', extension: 'csv' };
   }
 
-  function generateAutomationPdf(automation, executedAt) {
-    const executedDate = new Date(executedAt);
-    let generatedAt;
-    try {
-      generatedAt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short' }).format(executedDate);
-    } catch (error) {
-      generatedAt = executedDate.toLocaleString();
-    }
-    const lines = [
-      automation.name,
-      '',
-      `Generado automáticamente el ${generatedAt}`,
-      automation.module ? `Módulo origen: ${automation.module}` : null,
-      `Frecuencia: ${formatAutomationFrequency(automation)}`,
-      automation.notes ? `Notas: ${automation.notes}` : null
-    ].filter(Boolean);
+  function generateAutomationPdf(automation, executedAt, dataset) {
+    const lines = buildAutomationSummaryLines(automation, executedAt, dataset);
 
     const sanitizedLines = lines.map((line) =>
       String(line)
@@ -1674,15 +1822,16 @@
     return { bytes, mimeType: 'application/pdf', extension: 'pdf' };
   }
 
-  function createAutomationFile(automation, executedAt) {
+  async function createAutomationFile(automation, executedAt) {
+    const dataset = await fetchAutomationDataset(automation);
     if (automation.format === 'excel') {
-      return generateAutomationCsv(automation, executedAt);
+      return generateAutomationCsv(automation, executedAt, dataset);
     }
-    return generateAutomationPdf(automation, executedAt);
+    return generateAutomationPdf(automation, executedAt, dataset);
   }
 
   async function registerAutomationReport(automation, executedAt) {
-    const file = createAutomationFile(automation, executedAt);
+    const file = await createAutomationFile(automation, executedAt);
     const fileNameDate = new Date(executedAt);
     const safeDate = Number.isFinite(fileNameDate.getTime()) ? fileNameDate : new Date();
     const iso = safeDate.toISOString();
@@ -1968,8 +2117,9 @@
     } else if (!automation.active) {
       automation.nextRunAt = null;
     }
-    saveAutomationsToStorage();
+    saveAutomationsToStorage({ skipServerSync: true });
     renderAutomations();
+    syncAutomationsImmediately();
     if (automation.active) {
       runPendingAutomations().catch((error) => {
         console.error('No se pudieron evaluar las automatizaciones al activar:', error);
