@@ -6,3 +6,4 @@ images/qr/
 
 # Node dependencies
 node_modules/
+config/mail_settings.php
