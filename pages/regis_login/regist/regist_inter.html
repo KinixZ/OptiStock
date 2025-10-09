@@ -14,10 +14,15 @@
     </div>
 
     <div class="login-container text-center">
-        <h3>Registro completado</h3>
-        <p>El registro para <strong id="email"></strong> se realizó correctamente.</p>
-        <p id="verificationInfo">La verificación por correo electrónico está deshabilitada en este sitio, por lo que tu cuenta ya está activa.</p>
-        <a class="btn btn-dark w-100 mt-4" href="../login/login.html">Ir al inicio de sesión</a>
+        <h3>Verificación de Correo</h3>
+        <p>Un correo de verificación ha sido enviado a <strong id="email"></strong>.</p>
+        <p>Por favor, ingresa el código de verificación que hemos enviado a tu correo.</p>
+        <form id="verificationForm" class="text-start">
+            <label for="verificationCode" class="form-label">Código de verificación</label>
+            <input type="text" id="verificationCode" class="form-control" placeholder="Código de 6 dígitos" required>
+            <button type="submit" class="btn btn-dark w-100 mt-3">Verificar</button>
+        </form>
+        <p class="mt-3">¿No has recibido el código? <a href="#" onclick="resendVerificationEmail(sessionStorage.getItem('email'))">Reenviar código de verificación</a>.</p>
     </div>
 
     <script src="../../../scripts/regis_login/regist/registro_inter.js"></script>

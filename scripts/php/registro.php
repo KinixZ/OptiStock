@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""]; // Respuesta inicial
 
@@ -50,19 +51,36 @@ try {
 
     $id_usuario = mysqli_insert_id($conn);
 
-    // 7. Marcar la cuenta como verificada automáticamente
-    $updateVerificacion = $conn->prepare("UPDATE usuario SET verificacion_cuenta = 1 WHERE id_usuario = ?");
-    if ($updateVerificacion) {
-        $updateVerificacion->bind_param('i', $id_usuario);
-        $updateVerificacion->execute();
-        $updateVerificacion->close();
+    // 7. Generar código de verificación
+    $codigo_verificacion = mt_rand(100000, 999999);
+    session_start();
+    $_SESSION['codigo_verificacion'] = $codigo_verificacion;
+    $_SESSION['correo_verificacion'] = $correo;
+
+    // 8. Enviar el correo
+    $mail_subject = "OptiStock • Código de verificación";
+    $mail_message = crearCorreoCodigoOptiStock(
+        'Confirma tu correo',
+        '¡Bienvenido a OptiStock! Para activar tu cuenta ingresa el siguiente código en la ventana de verificación.',
+        $codigo_verificacion,
+        'El código expira en 10 minutos. Si no solicitaste esta cuenta puedes ignorar este mensaje.',
+        $nombre,
+        [
+            'Abre la ventana de verificación que apareció después de registrarte.',
+            'Escribe el código de seis dígitos tal como lo ves aquí.',
+            'Haz clic en "Confirmar correo" para empezar a usar OptiStock.'
+        ]
+    );
+
+    if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
+        throw new Exception("Error al enviar el correo de verificación.");
     }
 
     registrarLog($conn, $id_usuario, 'Usuarios', "Registro de usuario: $correo");
 
     // Respuesta de éxito
     $response["success"] = true;
-    $response["message"] = "Usuario registrado correctamente. Ahora puedes iniciar sesión con tu cuenta.";
+    $response["message"] = "Usuario registrado correctamente. Se ha enviado un código de verificación a tu correo.";
 
 } catch (Exception $e) {
     // Capturar errores y enviar respuesta

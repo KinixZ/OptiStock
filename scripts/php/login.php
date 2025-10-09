@@ -67,19 +67,6 @@ if ($user) {
         mysqli_stmt_execute($resetSt);
 
         /*─────────────────────────────────────────────
-          Marcar cuenta como verificada si es necesario
-        ─────────────────────────────────────────────*/
-        if ((int) ($user['verificacion_cuenta'] ?? 0) === 0) {
-            $verificacionStmt = mysqli_prepare($conn, "UPDATE usuario SET verificacion_cuenta = 1 WHERE id_usuario = ?");
-            if ($verificacionStmt) {
-                mysqli_stmt_bind_param($verificacionStmt, "i", $user['id_usuario']);
-                mysqli_stmt_execute($verificacionStmt);
-                mysqli_stmt_close($verificacionStmt);
-                $user['verificacion_cuenta'] = 1;
-            }
-        }
-
-        /*─────────────────────────────────────────────
           GUARDAR DATOS EN SESIÓN
         ─────────────────────────────────────────────*/
         $_SESSION['usuario_id']          = $user['id_usuario'];
@@ -150,7 +137,11 @@ if ($user) {
             "tutorial_visto" => isset($user['tutorial_visto']) ? (int) $user['tutorial_visto'] : 0
         ];
 
-        $payload["redirect"] = "../../main_menu/main_menu.html";
+        if ($user['verificacion_cuenta'] == 0) {
+            $payload["redirect"] = "../regist/regist_inter.html?email=" . urlencode($correo);
+        } else {
+            $payload["redirect"] = "../../main_menu/main_menu.html";
+        }
 
         echo json_encode($payload);
         exit;

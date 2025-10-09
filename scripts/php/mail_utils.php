@@ -65,14 +65,13 @@ if (!function_exists('enviarCorreo')) {
 
         $resultado = @mail($destinatario, $asunto, $cuerpo, $headerString, $parametrosAdicionales);
 
-        if ($resultado) {
-            registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
-            return true;
+        if (!$resultado) {
+            $detalleError = obtenerDetalleErrorCorreo();
+            registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
+            return false;
         }
 
-        $detalleError = obtenerDetalleErrorCorreo();
-        guardarCorreoSimulado($destinatario, $asunto, $cuerpo, $headerString, $detalleError);
-        registrarEnvioCorreo(true, $destinatario, $asunto, 'Envío simulado (sin servicio de correo). Detalle original: ' . $detalleError);
+        registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
         return true;
     }
 
@@ -120,28 +119,6 @@ if (!function_exists('enviarCorreo')) {
         if (!$exito) {
             error_log('enviarCorreo: ' . $linea);
         }
-    }
-
-    function guardarCorreoSimulado($destinatario, $asunto, $cuerpo, $headers, $detalleError)
-    {
-        $logDir = dirname(__DIR__, 2) . '/logs';
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0775, true);
-        }
-
-        $archivo = $logDir . '/offline_mail.log';
-        $contenido = [
-            'Fecha: ' . date('Y-m-d H:i:s'),
-            'Destinatario: ' . $destinatario,
-            'Asunto: ' . $asunto,
-            'Detalle original: ' . $detalleError,
-            'Encabezados: ' . $headers,
-            'Cuerpo:',
-            $cuerpo,
-            str_repeat('=', 60),
-        ];
-
-        @file_put_contents($archivo, implode(PHP_EOL, $contenido) . PHP_EOL, FILE_APPEND);
     }
 
     function obtenerDetalleErrorCorreo()
