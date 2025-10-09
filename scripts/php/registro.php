@@ -1,9 +1,16 @@
 <?php
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+
 header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/libs/PHPMailer/src/Exception.php';
+require_once __DIR__ . '/libs/PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/libs/PHPMailer/src/SMTP.php';
 
 $response = ["success" => false, "message" => ""]; // Respuesta inicial
 
@@ -57,12 +64,22 @@ try {
     $_SESSION['correo_verificacion'] = $correo;
 
     // 8. Enviar el correo
-    $mail_subject = "OPTISTOCK - Codigo de Verificación";
-    $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
-    $mail_headers = "From: no-reply@optistock.site";
+    $mail_subject = "OptiStock • Código de verificación";
+    $mensajePlano = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion. " .
+        "Este código expira en 10 minutos.";
 
-    if (!mail($correo, $mail_subject, $mail_message, $mail_headers)) {
-        throw new Exception("Error al enviar el correo de verificación.");
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isMail();
+        $mail->CharSet = 'UTF-8';
+        $mail->setFrom('no-reply@optistock.site', 'OptiStock');
+        $mail->addAddress($correo, $nombre);
+        $mail->Subject = $mail_subject;
+        $mail->Body = $mensajePlano;
+        $mail->AltBody = $mensajePlano;
+        $mail->send();
+    } catch (PHPMailerException $mailError) {
+        throw new Exception('Error al enviar el correo de verificación: ' . $mail->ErrorInfo);
     }
 
     registrarLog($conn, $id_usuario, 'Usuarios', "Registro de usuario: $correo");

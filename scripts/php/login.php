@@ -1,5 +1,12 @@
 <?php
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+
 session_start();
+require_once __DIR__ . '/libs/PHPMailer/src/Exception.php';
+require_once __DIR__ . '/libs/PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/libs/PHPMailer/src/SMTP.php';
 // Obtener los datos del formulario
 $correo      = $_POST['correo']      ?? null;
 $contrasena  = $_POST['contrasena']  ?? null;
@@ -158,7 +165,23 @@ if ($user) {
         registrarAcceso($conn, $user['id_usuario'], 'Intento');
 
         if ($failedAttempts >= 4) {
-            sendEmail($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.");
+            $mensajeBloqueo = "Hola" . (!empty($user['nombre']) ? ", {$user['nombre']}" : '') .
+                ". Hemos bloqueado temporalmente tu cuenta por múltiples intentos fallidos de inicio de sesión. " .
+                "Podrás intentar nuevamente en 5 minutos. Si no reconoces este movimiento, cambia tu contraseña cuando recuperes el acceso.";
+
+            $mail = new PHPMailer(true);
+            try {
+                $mail->isMail();
+                $mail->CharSet = 'UTF-8';
+                $mail->setFrom('no-reply@optistock.site', 'OptiStock');
+                $mail->addAddress($correo, $user['nombre'] ?? '');
+                $mail->Subject = 'OptiStock • Cuenta bloqueada temporalmente';
+                $mail->Body = $mensajeBloqueo;
+                $mail->AltBody = $mensajeBloqueo;
+                $mail->send();
+            } catch (PHPMailerException $mailError) {
+                error_log('No se pudo notificar por correo el bloqueo de la cuenta de ' . $correo . ': ' . $mail->ErrorInfo);
+            }
             echo json_encode(["success"=>false,"message"=>"Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."]);
         } else {
             echo json_encode(["success"=>false,"message"=>"Contraseña incorrecta. Intentos fallidos: $failedAttempts."]);
@@ -172,12 +195,4 @@ if ($user) {
 
 mysqli_close($conn);
 
-/*──────────────────────────────
-  Función para enviar correos
-───────────────────────────────*/
-function sendEmail($to, $subject, $body) {
-    $headers  = "From: no-reply@optistock.site\r\n";
-    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-    mail($to, $subject, $body, $headers);
-}
 ?>

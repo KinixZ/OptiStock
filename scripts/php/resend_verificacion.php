@@ -1,9 +1,16 @@
 <?php
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+
 header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/libs/PHPMailer/src/Exception.php';
+require_once __DIR__ . '/libs/PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/libs/PHPMailer/src/SMTP.php';
 
 $response = ["success" => false, "message" => ""];
 
@@ -25,7 +32,7 @@ try {
         throw new Exception('Error de conexión a la base de datos.');
     }
 
-    $stmt = $conn->prepare("SELECT id_usuario FROM usuario WHERE correo = ?");
+    $stmt = $conn->prepare("SELECT id_usuario, nombre FROM usuario WHERE correo = ?");
     $stmt->bind_param('s', $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -34,6 +41,7 @@ try {
     }
     $usuario = $result->fetch_assoc();
     $userId = (int) $usuario['id_usuario'];
+    $nombreUsuario = $usuario['nombre'] ?? null;
 
     $codigo_verificacion = mt_rand(100000, 999999);
 
@@ -43,12 +51,22 @@ try {
     $_SESSION['codigo_verificacion'] = $codigo_verificacion;
     $_SESSION['correo_verificacion'] = $email;
 
-    $mail_subject = "OPTISTOCK - Reenvío de Código de Verificación";
-    $mail_message = "Hola de nuevo. tu código de verificación es: $codigo_verificacion";
-    $mail_headers = "From: no-reply@optistock.site";
+    $mail_subject = "OptiStock • Nuevo código de verificación";
+    $mensajePlano = "Hola" . ($nombreUsuario ? ", $nombreUsuario" : '') .
+        ". Tu nuevo código de verificación es: $codigo_verificacion. Recuerda que expira en 10 minutos.";
 
-    if (!mail($email, $mail_subject, $mail_message, $mail_headers)) {
-        throw new Exception("Error al enviar el correo de verificación.");
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isMail();
+        $mail->CharSet = 'UTF-8';
+        $mail->setFrom('no-reply@optistock.site', 'OptiStock');
+        $mail->addAddress($email, $nombreUsuario ?? '');
+        $mail->Subject = $mail_subject;
+        $mail->Body = $mensajePlano;
+        $mail->AltBody = $mensajePlano;
+        $mail->send();
+    } catch (PHPMailerException $mailError) {
+        throw new Exception('Error al reenviar el correo de verificación: ' . $mail->ErrorInfo);
     }
 
     registrarLog($conn, $userId, 'Usuarios', 'Reenvío de código de verificación de cuenta');
