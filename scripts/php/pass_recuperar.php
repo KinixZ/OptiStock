@@ -5,7 +5,6 @@ error_reporting(E_ALL);
 session_start(); // Muy importante para usar $_SESSION
 
 require_once __DIR__ . '/log_utils.php';
-require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""];
 
@@ -45,28 +44,11 @@ try {
     $_SESSION['codigo_recuperacion'] = $codigo;
     $_SESSION['correo_recuperacion'] = $email;
 
-    // Enviar el correo
-    $asunto = "OptiStock • Código de recuperación";
-    $mensaje = crearCorreoCodigoOptiStock(
-        'Restablece tu contraseña',
-        'Recibimos una solicitud para recuperar tu acceso a OptiStock. Ingresa este código para continuar con el proceso de restablecimiento.',
-        $codigo,
-        'El código es válido por 10 minutos. Si no solicitaste este cambio, puedes ignorar este mensaje.',
-        $nombreUsuario,
-        [
-            'Ve a la página de OptiStock y elige la opción "¿Olvidaste tu contraseña?".',
-            'Escribe el código de seis dígitos exactamente como aparece en este correo.',
-            'Crea una nueva contraseña segura y confirma el cambio.'
-        ]
-    );
-    if (!enviarCorreo($email, $asunto, $mensaje)) {
-        throw new Exception("Error al enviar el correo de recuperación.");
-    }
-
     registrarLog($conn, $userId, 'Usuarios', 'Solicitud de código de recuperación de contraseña');
 
     $response["success"] = true;
-    $response["message"] = "El código de recuperación ha sido enviado a tu correo.";
+    $response["message"] = "Tu código de recuperación es: $codigo. Ingrésalo para continuar con el cambio de contraseña.";
+    $response["code"] = (string) $codigo;
 
 } catch (Exception $e) {
     $response["success"] = false;

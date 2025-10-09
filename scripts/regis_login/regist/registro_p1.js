@@ -69,7 +69,8 @@ document.getElementById('registerForm').addEventListener('submit', function(even
     .then(data => {
         if (data.success) {
             console.log("Usuario registrado correctamente.");
-            window.location.href = `regist_inter.html?email=${encodeURIComponent(correo)}`;
+            alert(data.message || "Usuario registrado correctamente. Ahora puedes iniciar sesión.");
+            window.location.href = "../login/login.html";
         } else {
             alert("Error en el registro: " + (data.message || "Vuelva a intentarlo."));
         }

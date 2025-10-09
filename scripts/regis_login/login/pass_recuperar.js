@@ -14,7 +14,11 @@ emailForm.addEventListener("submit", function (event) {
     })
     .then(response => response.json())
     .then(data => {
-        msg.textContent = data.message;
+        if (data.success && data.code) {
+            msg.innerHTML = `Tu código de recuperación es: <strong>${data.code}</strong>. Ingrésalo para continuar.`;
+        } else {
+            msg.textContent = data.message;
+        }
         msg.style.color = data.success ? "green" : "red";
 
         if (data.success) {

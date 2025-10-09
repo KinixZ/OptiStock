@@ -4,7 +4,6 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
-require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""];
 
@@ -37,35 +36,17 @@ try {
     $userId = (int) $usuario['id_usuario'];
     $nombreUsuario = $usuario['nombre'] ?? null;
 
-    $codigo_verificacion = mt_rand(100000, 999999);
-
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $_SESSION['codigo_verificacion'] = $codigo_verificacion;
-    $_SESSION['correo_verificacion'] = $email;
-
-    $mail_subject = "OptiStock • Nuevo código de verificación";
-    $mail_message = crearCorreoCodigoOptiStock(
-        'Nuevo código de verificación',
-        'Sabemos que necesitas confirmar tu correo. Ingresa este nuevo código para completar la verificación de tu cuenta.',
-        $codigo_verificacion,
-        'El código expira en 10 minutos. Si no solicitaste la verificación puedes ignorar este mensaje.',
-        $nombreUsuario,
-        [
-            'Abre la ventana de verificación de OptiStock.',
-            'Escribe el código de seis dígitos exactamente como aparece en este correo.',
-            'Haz clic en "Confirmar correo" para finalizar el proceso.'
-        ]
-    );
-    if (!enviarCorreo($email, $mail_subject, $mail_message)) {
-        throw new Exception("Error al enviar el correo de verificación.");
+    $updateVerificacion = $conn->prepare("UPDATE usuario SET verificacion_cuenta = 1 WHERE id_usuario = ?");
+    if ($updateVerificacion) {
+        $updateVerificacion->bind_param('i', $userId);
+        $updateVerificacion->execute();
+        $updateVerificacion->close();
     }
 
-    registrarLog($conn, $userId, 'Usuarios', 'Reenvío de código de verificación de cuenta');
+    registrarLog($conn, $userId, 'Usuarios', 'Verificación marcada manualmente (sin envío de correo)');
 
     $response["success"] = true;
-    $response["message"] = "El código de verificación ha sido reenviado.";
+    $response["message"] = "La verificación por correo está deshabilitada. Tu cuenta se marcó como verificada automáticamente.";
 } catch (Exception $e) {
     $response["success"] = false;
     $response["message"] = $e->getMessage();
