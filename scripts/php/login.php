@@ -1,41 +1,13 @@
 <?php
 session_start();
 require_once __DIR__ . '/mail_utils.php';
-
-function enviarRespuesta(array $payload, int $statusCode = 200)
-{
-    if (!headers_sent()) {
-        http_response_code($statusCode);
-        header('Content-Type: application/json; charset=UTF-8');
-    }
-
-    echo json_encode($payload);
-    exit;
-}
-
-function prepararConsulta(mysqli $conn, string $sql, string $contexto)
-{
-    $stmt = mysqli_prepare($conn, $sql);
-    if (!$stmt) {
-        error_log(sprintf('login.php [%s]: %s', $contexto, mysqli_error($conn)));
-        enviarRespuesta([
-            "success" => false,
-            "message" => "Error interno del servidor. Inténtalo nuevamente más tarde."
-        ], 500);
-    }
-
-    return $stmt;
-}
-
 // Obtener los datos del formulario
 $correo      = $_POST['correo']      ?? null;
 $contrasena  = $_POST['contrasena']  ?? null;
 
 if (empty($correo) || empty($contrasena)) {
-    enviarRespuesta([
-        "success" => false,
-        "message" => "Por favor, completa todos los campos."
-    ], 400);
+    echo json_encode(["success" => false, "message" => "Por favor, completa todos los campos."]);
+    exit;
 }
 
 // Conexión a la base de datos
@@ -46,11 +18,8 @@ $database   = "u296155119_OptiStock";
 
 $conn = mysqli_connect($servername, $db_user, $db_pass, $database);
 if (!$conn) {
-    error_log('login.php [conexion]: ' . mysqli_connect_error());
-    enviarRespuesta([
-        "success" => false,
-        "message" => "No fue posible conectarse a la base de datos."
-    ], 500);
+    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
+    exit;
 }
 
 function registrarAcceso($conn, $idUsuario, $accion) {
@@ -64,7 +33,7 @@ function registrarAcceso($conn, $idUsuario, $accion) {
 
 // Consulta SQL para verificar el correo
 $sql  = "SELECT * FROM usuario WHERE correo = ?";
-$stmt = prepararConsulta($conn, $sql, 'select usuario');
+$stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "s", $correo);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -77,18 +46,14 @@ if ($user) {
 
     if (isset($user['activo']) && intval($user['activo']) === 0) {
         registrarAcceso($conn, $user['id_usuario'], 'Intento');
-        enviarRespuesta([
-            "success" => false,
-            "message" => "Tu cuenta ha sido desactivada. Contacta al administrador de tu empresa."
-        ]);
+        echo json_encode(["success" => false, "message" => "Tu cuenta ha sido desactivada. Contacta al administrador de tu empresa."]);
+        exit;
     }
 
     if ($failedAttempts >= 4 && ($currentTime - $lastFailedAttempt) < 300) {
-        registrarAcceso($conn, $user['id_usuario'], 'Intento');
-        enviarRespuesta([
-            "success" => false,
-            "message" => "Tu cuenta está bloqueada. Intenta nuevamente en 5 minutos."
-        ]);
+    registrarAcceso($conn, $user['id_usuario'], 'Intento');
+        echo json_encode(["success"=>false,"message"=>"Tu cuenta está bloqueada. Intenta nuevamente en 5 minutos."]);
+        exit;
     }
 
     if (sha1($contrasena) == $user['contrasena']) {
@@ -97,7 +62,7 @@ if ($user) {
           RESET de intentos fallidos
         ─────────────────────────────────────────────*/
         $resetSql = "UPDATE usuario SET intentos_fallidos = 0, ultimo_intento = NULL WHERE correo = ?";
-        $resetSt  = prepararConsulta($conn, $resetSql, 'reset intentos fallidos');
+        $resetSt  = mysqli_prepare($conn, $resetSql);
         mysqli_stmt_bind_param($resetSt, "s", $correo);
         mysqli_stmt_execute($resetSt);
 
@@ -126,7 +91,7 @@ if ($user) {
                      FROM empresa
                      WHERE usuario_creador = ?
                      LIMIT 1";
-            $sAdm = prepararConsulta($conn, $qAdm, 'empresa administrador');
+            $sAdm = mysqli_prepare($conn, $qAdm);
             mysqli_stmt_bind_param($sAdm, "i", $id_usuario);
             mysqli_stmt_execute($sAdm);
             $rAdm = mysqli_stmt_get_result($sAdm);
@@ -143,7 +108,7 @@ if ($user) {
                     INNER JOIN empresa e ON ue.id_empresa = e.id_empresa
                     WHERE ue.id_usuario = ?
                     LIMIT 1";
-            $sAf = prepararConsulta($conn, $qAf, 'empresa afiliado');
+            $sAf = mysqli_prepare($conn, $qAf);
             mysqli_stmt_bind_param($sAf, "i", $id_usuario);
             mysqli_stmt_execute($sAf);
             $rAf = mysqli_stmt_get_result($sAf);
@@ -178,7 +143,8 @@ if ($user) {
             $payload["redirect"] = "../../main_menu/main_menu.html";
         }
 
-        enviarRespuesta($payload);
+        echo json_encode($payload);
+        exit;
 
     } else {
         /*─────────────────────────────────────────────
@@ -186,7 +152,7 @@ if ($user) {
         ──────────────────────────────────────────────*/
         $failedAttempts++;
         $upSql = "UPDATE usuario SET intentos_fallidos = ?, ultimo_intento = NOW() WHERE correo = ?";
-        $upSt  = prepararConsulta($conn, $upSql, 'sumar intento fallido');
+        $upSt  = mysqli_prepare($conn, $upSql);
         mysqli_stmt_bind_param($upSt, "is", $failedAttempts, $correo);
         mysqli_stmt_execute($upSt);
 
@@ -196,22 +162,15 @@ if ($user) {
             if (!enviarCorreo($correo, "Cuenta bloqueada", "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Intenta nuevamente en 5 minutos.")) {
                 error_log('No se pudo notificar por correo el bloqueo de la cuenta de ' . $correo);
             }
-            enviarRespuesta([
-                "success" => false,
-                "message" => "Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."
-            ]);
+            echo json_encode(["success"=>false,"message"=>"Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo."]);
         } else {
-            enviarRespuesta([
-                "success" => false,
-                "message" => "Contraseña incorrecta. Intentos fallidos: $failedAttempts."
-            ]);
+            echo json_encode(["success"=>false,"message"=>"Contraseña incorrecta. Intentos fallidos: $failedAttempts."]);
         }
+        exit;
     }
 } else {
-    enviarRespuesta([
-        "success" => false,
-        "message" => "El usuario no existe."
-    ]);
+    echo json_encode(["success" => false, "message" => "El usuario no existe."]);
+    exit;
 }
 
 mysqli_close($conn);
