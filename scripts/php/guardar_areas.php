@@ -24,6 +24,7 @@ try {
 require_once __DIR__ . '/log_utils.php';
 require_once __DIR__ . '/accesos_utils.php';
 require_once __DIR__ . '/infraestructura_utils.php';
+require_once __DIR__ . '/solicitudes_utils.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -180,16 +181,26 @@ if ($method === 'POST') {
         echo json_encode(['error' => 'El volumen del área supera la capacidad máxima registrada para el almacén.']);
         exit;
     }
-    $stmt = $conn->prepare('INSERT INTO areas (nombre, descripcion, ancho, alto, largo, volumen, id_empresa) VALUES (?,?,?,?,?,?,?)');
-    $stmt->bind_param('ssddddi', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $empresa_id);
-    $stmt->execute();
 
-    registrarLog($conn, $usuarioId, 'Áreas', "Creación de área: {$nombre}");
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresa_id,
+        'id_solicitante' => $usuarioId,
+        'modulo' => 'Áreas',
+        'tipo_accion' => 'area_crear',
+        'resumen' => 'Creación de área: ' . $nombre,
+        'descripcion' => 'Solicitud de creación de área en el almacén.',
+        'payload' => [
+            'empresa_id' => $empresa_id,
+            'nombre' => $nombre,
+            'descripcion' => $descripcion,
+            'ancho' => $ancho,
+            'alto' => $alto,
+            'largo' => $largo,
+            'volumen' => $volumen
+        ]
+    ]);
 
-    actualizarOcupacionArea($conn, $stmt->insert_id);
-
-    echo json_encode(['id' => $stmt->insert_id]);
-    exit;
+    opti_responder_solicitud_creada($resultadoSolicitud);
 }
 
 if ($method === 'PUT') {
@@ -224,23 +235,41 @@ if ($method === 'PUT') {
             exit;
         }
     }
-    if ($empresaId) {
-        $stmt = $conn->prepare('UPDATE areas SET nombre=?, descripcion=?, ancho=?, alto=?, largo=?, volumen=? WHERE id=? AND id_empresa=?');
-        $stmt->bind_param('ssddddii', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $id, $empresaId);
-    } else {
-        $stmt = $conn->prepare('UPDATE areas SET nombre=?, descripcion=?, ancho=?, alto=?, largo=?, volumen=? WHERE id=?');
-        $stmt->bind_param('ssddddi', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $id);
+    $empresaDestino = $empresaId;
+    if ($empresaDestino <= 0) {
+        $stmtArea = $conn->prepare('SELECT id_empresa FROM areas WHERE id = ?');
+        $stmtArea->bind_param('i', $id);
+        $stmtArea->execute();
+        $resArea = $stmtArea->get_result()->fetch_assoc();
+        $stmtArea->close();
+        if (!$resArea) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Área no encontrada']);
+            exit;
+        }
+        $empresaDestino = (int) ($resArea['id_empresa'] ?? 0);
     }
-    $stmt->execute();
 
-    registrarLog($conn, $usuarioId, 'Áreas', "Actualización de área ID: {$id}");
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresaDestino,
+        'id_solicitante' => $usuarioId,
+        'modulo' => 'Áreas',
+        'tipo_accion' => 'area_actualizar',
+        'resumen' => 'Actualización del área ID #' . $id,
+        'descripcion' => 'Solicitud de modificación de área.',
+        'payload' => [
+            'area_id' => $id,
+            'empresa_id' => $empresaDestino,
+            'nombre' => $nombre,
+            'descripcion' => $descripcion,
+            'ancho' => $ancho,
+            'alto' => $alto,
+            'largo' => $largo,
+            'volumen' => $volumen
+        ]
+    ]);
 
-    if ($id) {
-        actualizarOcupacionArea($conn, $id);
-    }
-
-    echo json_encode(['success' => $stmt->affected_rows > 0]);
-    exit;
+    opti_responder_solicitud_creada($resultadoSolicitud);
 }
 
 if ($method === 'DELETE') {
@@ -261,19 +290,35 @@ if ($method === 'DELETE') {
         exit;
     }
 
-    if ($empresaId) {
-        $stmt = $conn->prepare('DELETE FROM areas WHERE id=? AND id_empresa=?');
-        $stmt->bind_param('ii', $id, $empresaId);
-    } else {
-        $stmt = $conn->prepare('DELETE FROM areas WHERE id=?');
-        $stmt->bind_param('i', $id);
+    $empresaDestino = $empresaId;
+    if ($empresaDestino <= 0) {
+        $stmtArea = $conn->prepare('SELECT id_empresa FROM areas WHERE id = ?');
+        $stmtArea->bind_param('i', $id);
+        $stmtArea->execute();
+        $resArea = $stmtArea->get_result()->fetch_assoc();
+        $stmtArea->close();
+        if (!$resArea) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Área no encontrada']);
+            exit;
+        }
+        $empresaDestino = (int) ($resArea['id_empresa'] ?? 0);
     }
-    $stmt->execute();
 
-    registrarLog($conn, $usuarioId, 'Áreas', "Eliminación de área ID: {$id}");
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresaDestino,
+        'id_solicitante' => $usuarioId,
+        'modulo' => 'Áreas',
+        'tipo_accion' => 'area_eliminar',
+        'resumen' => 'Eliminación del área ID #' . $id,
+        'descripcion' => 'Solicitud de eliminación de área.',
+        'payload' => [
+            'area_id' => $id,
+            'empresa_id' => $empresaDestino
+        ]
+    ]);
 
-    echo json_encode(['success' => true]);
-    exit;
+    opti_responder_solicitud_creada($resultadoSolicitud);
 }
 
 http_response_code(405);

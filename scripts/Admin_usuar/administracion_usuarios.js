@@ -396,11 +396,13 @@
     })
       .then(res => res.json())
       .then(data => {
-        if (!data?.success) {
-          alert(data?.message || 'No se pudo guardar la asignación.');
+        if (data?.solicitud) {
+          alert(`Solicitud registrada para asignar el acceso. Folio ${data.solicitud.id}. Espera la aprobación del revisor.`);
           return;
         }
-        actualizarAccesosUsuario(usuarioAccesosSeleccionadoId, true);
+        if (!data?.success) {
+          alert(data?.message || 'No se pudo guardar la asignación.');
+        }
       })
       .catch(err => {
         console.error('Error al guardar la asignación:', err);
@@ -439,11 +441,13 @@
     })
       .then(res => res.json())
       .then(data => {
-        if (!data?.success) {
-          alert(data?.message || 'No se pudo eliminar la asignación.');
+        if (data?.solicitud) {
+          alert(`Solicitud registrada para revocar el acceso. Folio ${data.solicitud.id}.`);
           return;
         }
-        actualizarAccesosUsuario(usuarioAccesosSeleccionadoId, true);
+        if (!data?.success) {
+          alert(data?.message || 'No se pudo eliminar la asignación.');
+        }
       })
       .catch(err => {
         console.error('Error al eliminar la asignación:', err);
@@ -649,9 +653,11 @@
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
-          cargarUsuariosEmpresa();
-        } else {
+        if (data?.solicitud) {
+          alert(`Solicitud registrada para ${accion} la cuenta. Folio ${data.solicitud.id}.`);
+          return;
+        }
+        if (!data?.success) {
           alert('❌ No se pudo actualizar el estado: ' + (data.message || 'Error desconocido.'));
         }
       })
@@ -690,10 +696,12 @@
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
-          cargarUsuariosEmpresa();
-        } else {
-          alert('❌ No se pudo eliminar: ' + data.message);
+        if (data?.solicitud) {
+          alert(`Solicitud registrada para eliminar al usuario ${correo}. Folio ${data.solicitud.id}.`);
+          return;
+        }
+        if (!data?.success) {
+          alert('❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
         }
       })
       .catch(err => {
@@ -721,12 +729,16 @@
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
+        if (data?.solicitud) {
           const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario'));
-          modal.hide();
-          cargarUsuariosEmpresa();
-        } else {
-          alert('❌ Error: ' + data.message);
+          if (modal) {
+            modal.hide();
+          }
+          alert(`Solicitud registrada para actualizar al usuario. Folio ${data.solicitud.id}.`);
+          return;
+        }
+        if (!data?.success) {
+          alert('❌ Error: ' + (data.message || 'No se pudo registrar la solicitud.'));
         }
       })
       .catch(err => {

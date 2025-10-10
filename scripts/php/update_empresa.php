@@ -4,6 +4,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/solicitudes_utils.php';
 
 $usuarioId = obtenerUsuarioIdSesion();
 if (!$usuarioId) {
@@ -26,6 +27,8 @@ if (!$conn) {
 $id_empresa     = $_POST['id_empresa']     ?? null;
 $nombre_empresa = $_POST['nombre_empresa'] ?? null;
 $sector_empresa = $_POST['sector_empresa'] ?? null;
+$forzarEjecucion = isset($_POST['forzar_ejecucion']) && $_POST['forzar_ejecucion'] === '1';
+$logoPendiente = $_POST['logo_pendiente'] ?? null;
 
 if (!$id_empresa || !$nombre_empresa || !$sector_empresa) {
     echo json_encode(["success" => false, "message" => "Faltan datos obligatorios"]);
@@ -42,36 +45,48 @@ $stmt->close();
 $logo_empresa = $logo_actual;
 
 // Logo nuevo (opcional)
-if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
-    $destDir = $_SERVER['DOCUMENT_ROOT'] . '/images/logos/';
-    if (!is_dir($destDir)) mkdir($destDir, 0755, true);
-
-    $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-    $ext = strtolower(pathinfo($_FILES['logo_empresa']['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, $allowed)) {
-        echo json_encode(["success" => false, "message" => "Formato de logo no permitido"]);
+if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK && !$forzarEjecucion) {
+    $archivoPendiente = opti_guardar_archivo_pendiente($_FILES['logo_empresa'], 'logos', 'logo_' . $id_empresa);
+    if (!$archivoPendiente) {
+        echo json_encode(["success" => false, "message" => "No se pudo preparar el logo para revisión"]);
         exit;
     }
+    $logoPendiente = $archivoPendiente['ruta_relativa'];
+}
 
-    $filename = 'logo_' . $id_empresa . '_' . time() . '.' . $ext;
-    if (!move_uploaded_file($_FILES['logo_empresa']['tmp_name'], $destDir . $filename)) {
-        echo json_encode(["success" => false, "message" => "Error al subir el logo"]);
-        exit;
+if ($forzarEjecucion) {
+    $payload = [
+        'id_empresa' => (int) $id_empresa,
+        'nombre_empresa' => $nombre_empresa,
+        'sector_empresa' => $sector_empresa,
+    ];
+    if ($logoPendiente) {
+        $payload['logo_pendiente'] = $logoPendiente;
     }
-    $logo_empresa = '/images/logos/' . $filename;
+    $resultado = opti_aplicar_empresa_actualizar($conn, $payload, $usuarioId);
+    echo json_encode($resultado);
+    exit;
 }
 
-$stmt = $conn->prepare("UPDATE empresa SET nombre_empresa = ?, logo_empresa = ?, sector_empresa = ? WHERE id_empresa = ?");
-$stmt->bind_param("sssi", $nombre_empresa, $logo_empresa, $sector_empresa, $id_empresa);
-$stmt->execute();
-
-if ($stmt->affected_rows > 0) {
-    $resp = ["success" => true, "message" => "Empresa actualizada"];
-    if ($logo_empresa !== $logo_actual) $resp["logo_empresa"] = $logo_empresa;
-    registrarLog($conn, $usuarioId, 'Empresas', "Actualización de empresa ID: {$id_empresa}");
-    echo json_encode($resp);
-} else {
-    echo json_encode(["success" => false, "message" => "No se actualizó ningún dato"]);
+$payload = [
+    'id_empresa' => (int) $id_empresa,
+    'nombre_empresa' => $nombre_empresa,
+    'sector_empresa' => $sector_empresa
+];
+if ($logoPendiente) {
+    $payload['logo_pendiente'] = $logoPendiente;
 }
+
+$resultadoSolicitud = opti_registrar_solicitud($conn, [
+    'id_empresa' => (int) $id_empresa,
+    'id_solicitante' => $usuarioId,
+    'modulo' => 'Empresa',
+    'tipo_accion' => 'empresa_actualizar',
+    'resumen' => 'Actualización de la empresa #' . $id_empresa,
+    'descripcion' => 'Solicitud de actualización de datos de empresa.',
+    'payload' => $payload
+]);
+
+opti_responder_solicitud_creada($resultadoSolicitud);
 ?>
 

@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -20,17 +21,49 @@ try {
     jsonResponse(false, 'Error de conexión a la base de datos.');
 }
 
+require_once __DIR__ . '/solicitudes_utils.php';
+
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $idUsuario = isset($input['id_usuario']) ? (int) $input['id_usuario'] : 0;
 $idArea = isset($input['id_area']) ? (int) $input['id_area'] : 0;
 $idZonaRaw = $input['id_zona'] ?? null;
 $idZona = ($idZonaRaw === '' || $idZonaRaw === null) ? null : (int) $idZonaRaw;
+$forzarEjecucion = !empty($input['forzar_ejecucion']);
 
 if ($idUsuario <= 0 || $idArea <= 0) {
     jsonResponse(false, 'Datos inválidos para eliminar la asignación.');
 }
 
 $compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
+
+$idEmpresa = 0;
+$stmtArea = $conn->prepare('SELECT id_empresa FROM areas WHERE id = ? LIMIT 1');
+if ($stmtArea) {
+    $stmtArea->bind_param('i', $idArea);
+    $stmtArea->execute();
+    $filaArea = $stmtArea->get_result()->fetch_assoc();
+    if ($filaArea) {
+        $idEmpresa = (int) ($filaArea['id_empresa'] ?? 0);
+    }
+    $stmtArea->close();
+}
+
+if (!$forzarEjecucion) {
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $idEmpresa ?: (int) ($input['id_empresa'] ?? 0),
+        'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
+        'modulo' => 'Usuarios',
+        'tipo_accion' => 'usuario_eliminar_acceso',
+        'resumen' => 'Eliminar acceso del usuario #' . $idUsuario . ' al área #' . $idArea,
+        'descripcion' => 'Solicitud para revocar acceso a área o zona.',
+        'payload' => [
+            'id_usuario' => $idUsuario,
+            'id_area' => $idArea,
+            'id_zona' => $idZona
+        ]
+    ]);
+    opti_responder_solicitud_creada($resultadoSolicitud);
+}
 
 try {
     if ($idZona === null) {

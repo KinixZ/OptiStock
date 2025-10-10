@@ -172,17 +172,15 @@ function mainAccountSuscrip() {
       body: formData,
     }).then((r) => r.json());
 
-    if (resp.success) {
-      localStorage.setItem('usuario_nombre', `${formData.get('nombre')} ${formData.get('apellido')}`.trim());
-      localStorage.setItem('usuario_email', formData.get('correo'));
-      localStorage.setItem('usuario_telefono', formData.get('telefono'));
-      if (resp.foto_perfil) {
-        localStorage.setItem('foto_perfil', resp.foto_perfil);
-      }
+    if (resp?.solicitud) {
+      alert(`Solicitud registrada para revisión (folio ${resp.solicitud.id}). Recibirás los cambios una vez aprobados.`);
       modalUsuario.hide();
-      location.reload();
-    } else {
-      alert(resp.message || 'Error al actualizar usuario');
+      return;
+    }
+
+    if (!resp?.success) {
+      alert(resp?.message || 'Error al registrar la solicitud de cambio de usuario');
+      return;
     }
   });
 
@@ -212,18 +210,15 @@ function mainAccountSuscrip() {
       body: formData,
     }).then((r) => r.json());
 
-    if (resp.success) {
-      localStorage.setItem('empresa_nombre', formData.get('nombre_empresa'));
-      localStorage.setItem('empresa_sector', formData.get('sector_empresa'));
-      if (resp.logo_empresa) {
-        const logoPath = sanitizePath(resp.logo_empresa);
-        localStorage.setItem('logo_empresa', logoPath);
-        setImageContent('logoEmpresa', logoPath, DEFAULT_COMPANY_LOGO);
-      }
+    if (resp?.solicitud) {
+      alert(`Solicitud enviada. Los cambios en la empresa se aplicarán cuando sean aprobados (folio ${resp.solicitud.id}).`);
       modalEmpresa.hide();
-      location.reload();
-    } else {
-      alert(resp.message || 'Error al actualizar empresa');
+      return;
+    }
+
+    if (!resp?.success) {
+      alert(resp?.message || 'Error al registrar la solicitud de actualización de empresa');
+      return;
     }
   });
 
