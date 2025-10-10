@@ -26,7 +26,7 @@ if (!$correo) {
     exit;
 }
 
-$stmtUsuario = $conn->prepare('SELECT id, nombre, apellido FROM usuarios WHERE correo = ? LIMIT 1');
+$stmtUsuario = $conn->prepare('SELECT id_usuario, nombre, apellido FROM usuario WHERE correo = ? LIMIT 1');
 $usuarioEncontrado = null;
 if ($stmtUsuario) {
     $stmtUsuario->bind_param('s', $correo);
@@ -35,7 +35,7 @@ if ($stmtUsuario) {
     $stmtUsuario->close();
 }
 
-$usuarioId = $usuarioEncontrado ? (int) ($usuarioEncontrado['id'] ?? 0) : 0;
+$usuarioId = $usuarioEncontrado ? (int) ($usuarioEncontrado['id_usuario'] ?? 0) : 0;
 $nombreUsuario = '';
 if ($usuarioEncontrado) {
     $nombre = trim((string) ($usuarioEncontrado['nombre'] ?? ''));

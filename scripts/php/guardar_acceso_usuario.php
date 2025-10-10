@@ -90,7 +90,7 @@ try {
         jsonResponse(false, 'La asignación seleccionada ya existe.', ['composite_id' => $compositeId]);
     }
 
-    $stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
+    $stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuario WHERE id_usuario = ? LIMIT 1');
     $nombreUsuario = '';
     if ($stmtUsuario) {
         $stmtUsuario->bind_param('i', $idUsuario);
