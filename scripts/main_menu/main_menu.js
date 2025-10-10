@@ -76,6 +76,7 @@ let criticalStockNotifications = [];
 let capacityAlertNotifications = [];
 let criticalStockState = new Map();
 let capacityAlertState = new Map();
+let autoArchiveInProgress = false;
 
 const NOTIFICATION_PRIORITIES = ['Alta', 'Media', 'Baja'];
 const NOTIFICATION_STATES = ['Pendiente', 'Enviada', 'Leida', 'Archivada'];
@@ -770,23 +771,27 @@ function renderNotifications(notifications = []) {
             listItem.tabIndex = 0;
             listItem.addEventListener('click', () => {
                 openTarget();
+                handleNotificationResolved(notification);
                 if (notificationWrapper) {
                     notificationWrapper.classList.remove('open');
                 }
                 if (notificationBell) {
                     notificationBell.setAttribute('aria-expanded', 'false');
                 }
+                autoArchiveSeenNotifications();
             });
             listItem.addEventListener('keydown', event => {
                 if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     openTarget();
+                    handleNotificationResolved(notification);
                     if (notificationWrapper) {
                         notificationWrapper.classList.remove('open');
                     }
                     if (notificationBell) {
                         notificationBell.setAttribute('aria-expanded', 'false');
                     }
+                    autoArchiveSeenNotifications();
                 }
             });
         }
@@ -849,6 +854,161 @@ function buildNotificationIdentity(notification) {
     ).toString().trim().slice(0, 19).replace('T', ' ');
 
     return `${titulo}__${mensaje}__${ruta}__${fecha}`;
+}
+
+function getNotificationNumericId(notification) {
+    if (!notification || typeof notification !== 'object') {
+        return null;
+    }
+
+    const parsed = Number.parseInt(notification.id, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+    }
+
+    return null;
+}
+
+function removeNotificationLocally(notification) {
+    if (!notification || typeof notification !== 'object') {
+        return false;
+    }
+
+    let changed = false;
+    const id = getNotificationNumericId(notification);
+    const identity = buildNotificationIdentity(notification);
+
+    if (id !== null) {
+        const nextServer = serverNotifications.filter(item => getNotificationNumericId(item) !== id);
+        if (nextServer.length !== serverNotifications.length) {
+            serverNotifications = nextServer;
+            changed = true;
+        }
+    }
+
+    if (identity) {
+        const filterByIdentity = collection => collection.filter(item => buildNotificationIdentity(item) !== identity);
+
+        const nextCritical = filterByIdentity(criticalStockNotifications);
+        if (nextCritical.length !== criticalStockNotifications.length) {
+            criticalStockNotifications = nextCritical;
+            changed = true;
+        }
+
+        const nextCapacity = filterByIdentity(capacityAlertNotifications);
+        if (nextCapacity.length !== capacityAlertNotifications.length) {
+            capacityAlertNotifications = nextCapacity;
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+
+function removeServerNotificationsByIdSet(idSet) {
+    if (!(idSet instanceof Set) || idSet.size === 0) {
+        return false;
+    }
+
+    const nextServer = serverNotifications.filter(notification => {
+        const id = getNotificationNumericId(notification);
+        return id === null || !idSet.has(id);
+    });
+
+    const changed = nextServer.length !== serverNotifications.length;
+    if (changed) {
+        serverNotifications = nextServer;
+    }
+
+    return changed;
+}
+
+function clearGeneratedNotifications() {
+    let changed = false;
+
+    if (criticalStockNotifications.length) {
+        criticalStockNotifications = [];
+        changed = true;
+    }
+
+    if (capacityAlertNotifications.length) {
+        capacityAlertNotifications = [];
+        changed = true;
+    }
+
+    return changed;
+}
+
+function handleNotificationResolved(notification) {
+    if (!notification) {
+        return;
+    }
+
+    const changed = removeNotificationLocally(notification);
+    if (changed) {
+        refreshNotificationUI();
+    }
+
+    const id = getNotificationNumericId(notification);
+    if (id === null) {
+        return;
+    }
+
+    archiveServerNotifications([id]).catch(error => {
+        console.error('No se pudo eliminar la notificación resuelta:', error);
+        fetchNotifications({ force: true });
+    });
+}
+
+async function autoArchiveSeenNotifications() {
+    if (autoArchiveInProgress) {
+        return;
+    }
+
+    const hasCached = Array.isArray(cachedNotifications) && cachedNotifications.length > 0;
+    const hasGenerated = criticalStockNotifications.length > 0 || capacityAlertNotifications.length > 0;
+
+    if (!hasCached && !hasGenerated) {
+        return;
+    }
+
+    autoArchiveInProgress = true;
+
+    const idsToArchive = hasCached
+        ? cachedNotifications
+            .map(notification => getNotificationNumericId(notification))
+            .filter(id => id !== null)
+        : [];
+
+    const idsSet = new Set(idsToArchive);
+
+    const previousState = {
+        server: serverNotifications.slice(),
+        critical: criticalStockNotifications.slice(),
+        capacity: capacityAlertNotifications.slice()
+    };
+
+    try {
+        if (idsSet.size) {
+            await archiveServerNotifications(Array.from(idsSet));
+        }
+
+        const stateChanged = removeServerNotificationsByIdSet(idsSet);
+        const clearedGenerated = clearGeneratedNotifications();
+
+        if (stateChanged || clearedGenerated || idsSet.size === 0) {
+            refreshNotificationUI();
+        }
+    } catch (error) {
+        console.error('No se pudieron eliminar las notificaciones vistas:', error);
+        serverNotifications = previousState.server;
+        criticalStockNotifications = previousState.critical;
+        capacityAlertNotifications = previousState.capacity;
+        refreshNotificationUI();
+        fetchNotifications({ force: true });
+    } finally {
+        autoArchiveInProgress = false;
+    }
 }
 
 function refreshNotificationUI() {
@@ -922,7 +1082,7 @@ async function archiveServerNotifications(notificationIds = []) {
     const result = await response.json();
 
     if (!result || result.success !== true) {
-        throw new Error(result && result.message ? result.message : 'No se pudieron archivar las notificaciones.');
+        throw new Error(result && result.message ? result.message : 'No se pudieron eliminar las notificaciones.');
     }
 
     return result;
@@ -957,18 +1117,16 @@ async function clearNotificationTray() {
             await archiveServerNotifications(Array.from(idsToArchiveSet));
         }
 
-        serverNotifications = serverNotifications.filter(notification => {
-            const id = Number.parseInt(notification && notification.id, 10);
-            return !idsToArchiveSet.has(id);
-        });
+        const stateChanged = removeServerNotificationsByIdSet(idsToArchiveSet);
+        const clearedGenerated = clearGeneratedNotifications();
 
-        criticalStockNotifications = [];
-        capacityAlertNotifications = [];
+        if (stateChanged || clearedGenerated || idsToArchiveSet.size === 0) {
+            refreshNotificationUI();
+        }
 
-        refreshNotificationUI();
         fetchNotifications({ force: true });
     } catch (error) {
-        console.error('No se pudieron archivar las notificaciones:', error);
+        console.error('No se pudieron eliminar las notificaciones:', error);
         serverNotifications = previousState.server;
         criticalStockNotifications = previousState.critical;
         capacityAlertNotifications = previousState.capacity;
@@ -2883,6 +3041,7 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
         notificationWrapper.classList.remove('open');
         notificationBell.setAttribute('aria-expanded', 'false');
+        autoArchiveSeenNotifications();
     };
 
     notificationBell.addEventListener('click', event => {
@@ -2893,6 +3052,8 @@ if (notificationWrapper && notificationBell && notificationTray) {
         if (isOpen) {
             fetchNotifications();
             notificationTray.focus();
+        } else {
+            autoArchiveSeenNotifications();
         }
     });
 
@@ -2935,6 +3096,7 @@ if (notificationViewAll) {
         if (notificationBell) {
             notificationBell.setAttribute('aria-expanded', 'false');
         }
+        autoArchiveSeenNotifications();
     });
 }
 
