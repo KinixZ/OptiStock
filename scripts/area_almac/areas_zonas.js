@@ -351,6 +351,40 @@ async function fetchAPI(endpoint, method = 'GET', data = null) {
   }
 }
 
+function esRespuestaSolicitud(payload) {
+  return Boolean(
+    payload &&
+    typeof payload === 'object' &&
+    payload.success === true &&
+    payload.solicitud &&
+    typeof payload.solicitud === 'object'
+  );
+}
+
+function manejarRespuestaSolicitud(payload, mensajeSolicitud, mensajeInmediato = '') {
+  if (esRespuestaSolicitud(payload)) {
+    mostrarError('');
+    if (typeof showToast === 'function') {
+      showToast(mensajeSolicitud, 'success');
+    } else if (typeof window !== 'undefined' && typeof window.toastOk === 'function') {
+      window.toastOk(mensajeSolicitud);
+    } else {
+      alert(mensajeSolicitud);
+    }
+    return true;
+  }
+  if (mensajeInmediato) {
+    if (typeof showToast === 'function') {
+      showToast(mensajeInmediato, 'success');
+    } else if (typeof window !== 'undefined' && typeof window.toastOk === 'function') {
+      window.toastOk(mensajeInmediato);
+    } else {
+      alert(mensajeInmediato);
+    }
+  }
+  return false;
+}
+
 
 // Función para mostrar errores
 function mostrarError(mensaje) {
@@ -681,12 +715,22 @@ zoneForm.addEventListener('submit', async (e) => {
 
     if (id) {
       // Edición
-      await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'PUT', zonaData);
+      const respuesta = await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'PUT', zonaData);
+      manejarRespuestaSolicitud(
+        respuesta,
+        'Solicitud de actualización de zona enviada para revisión.',
+        'Zona actualizada correctamente'
+      );
     } else {
       // Creación
-      await fetchAPI(API_ENDPOINTS.zonas, 'POST', zonaData);
+      const respuesta = await fetchAPI(API_ENDPOINTS.zonas, 'POST', zonaData);
+      manejarRespuestaSolicitud(
+        respuesta,
+        'Solicitud de creación de zona enviada para revisión.',
+        'Zona registrada correctamente'
+      );
     }
-    
+
     await cargarYMostrarRegistros();
     zoneForm.reset();
     renderSublevels(0);
@@ -721,7 +765,12 @@ async function eliminarArea(id) {
   }
 
   try {
-    await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+    const respuesta = await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+    manejarRespuestaSolicitud(
+      respuesta,
+      'Solicitud de eliminación de área enviada para revisión.',
+      'Área eliminada correctamente'
+    );
     await cargarYMostrarRegistros();
   } catch (error) {
     console.error('Error eliminando área:', error);
@@ -744,7 +793,12 @@ async function ejecutarEliminacionZona(id, zonaDestino = null) {
       params.set('reasignar_a', zonaDestino);
     }
 
-    await fetchAPI(`${API_ENDPOINTS.zonas}?${params.toString()}`, 'DELETE');
+    const respuesta = await fetchAPI(`${API_ENDPOINTS.zonas}?${params.toString()}`, 'DELETE');
+    manejarRespuestaSolicitud(
+      respuesta,
+      'Solicitud de eliminación de zona enviada para revisión.',
+      'Zona eliminada correctamente'
+    );
     await cargarYMostrarRegistros();
   } catch (error) {
     console.error('Error eliminando zona:', error);

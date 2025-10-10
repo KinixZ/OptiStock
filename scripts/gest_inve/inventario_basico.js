@@ -1215,6 +1215,27 @@ async function fetchAPI(url, method = 'GET', data) {
   return payload;
 }
 
+  function esRespuestaSolicitud(payload) {
+    return Boolean(
+      payload &&
+      typeof payload === 'object' &&
+      payload.success === true &&
+      payload.solicitud &&
+      typeof payload.solicitud === 'object'
+    );
+  }
+
+  function manejarMensajeSolicitud(respuesta, mensajeSolicitud, mensajeInmediato = '') {
+    if (esRespuestaSolicitud(respuesta)) {
+      showToast(mensajeSolicitud, 'success');
+      return true;
+    }
+    if (mensajeInmediato) {
+      showToast(mensajeInmediato, 'success');
+    }
+    return false;
+  }
+
   function showToast(message, type = 'info') {
     if (type === 'success' && typeof window.toastOk === 'function') {
       window.toastOk(message);
@@ -2586,23 +2607,30 @@ prodForm?.addEventListener('submit', async e => {
     try {
       // 2) POST o PUT
       const base = API.productos;
-if (editProdId) {
-  await fetchAPI(
-    `${base}?id=${editProdId}&empresa_id=${EMP_ID}`,
-    'PUT',
-    {...data, empresa_id: EMP_ID}
-  );
-  showToast('Producto editado correctamente', 'success');
-  editProdId = null;
-} else {
-  // POST con filtro por empresa
-    await fetchAPI(
-    `${base}?empresa_id=${EMP_ID}`,
-    'POST',
-    {...data, empresa_id: EMP_ID}
-  );
-  showToast('Producto guardado correctamente', 'success');
-}
+      if (editProdId) {
+        const respuestaEdicion = await fetchAPI(
+          `${base}?id=${editProdId}&empresa_id=${EMP_ID}`,
+          'PUT',
+          { ...data, empresa_id: EMP_ID }
+        );
+        manejarMensajeSolicitud(
+          respuestaEdicion,
+          'Solicitud de actualización de producto enviada para revisión.',
+          'Producto editado correctamente'
+        );
+        editProdId = null;
+      } else {
+        const respuestaCreacion = await fetchAPI(
+          `${base}?empresa_id=${EMP_ID}`,
+          'POST',
+          { ...data, empresa_id: EMP_ID }
+        );
+        manejarMensajeSolicitud(
+          respuestaCreacion,
+          'Solicitud de creación de producto enviada para revisión.',
+          'Producto guardado correctamente'
+        );
+      }
 
       // 3) Reset y recarga de datos
       prodForm.reset();
@@ -2792,20 +2820,18 @@ if (editProdId) {
       await cargarProductos();
       renderResumen();
 
-      const movimientosEliminados = resultadoEliminacion?.movimientos_eliminados || 0;
-      let mensaje = 'Producto eliminado correctamente';
-      if (movimientosEliminados > 0) {
-        mensaje += ` junto con ${movimientosEliminados} movimiento(s) asociado(s).`;
-      } else {
-        mensaje += '.';
-      }
-      showToast(mensaje, 'success');
+      manejarMensajeSolicitud(
+        resultadoEliminacion,
+        'Solicitud de eliminación de producto enviada para revisión.',
+        'Producto eliminado correctamente.'
+      );
 
   // --- BORRAR CATEGORÍA + OPCIONES EN CASCADA ---
   } else if (tipo === 'categoria') {
     // 1) Subcategorías de esta categoría
     const subs = subcategorias.filter(sc => sc.categoria_id === id);
     let eliminarSubs = true;
+    let solicitudesPendientes = false;
     if (subs.length) {
       eliminarSubs = confirm(
         `Esta categoría tiene ${subs.length} subcategoría(s).\n¿Quieres eliminar también las subcategorías relacionadas?`
@@ -2823,18 +2849,32 @@ if (editProdId) {
         }
         if (eliminarProds) {
           for (const p of prods) {
-            await fetchAPI(
+            const resultadoProd = await fetchAPI(
               `${API.productos}?id=${p.id}&empresa_id=${EMP_ID}`,
               'DELETE'
             );
+            if (manejarMensajeSolicitud(
+              resultadoProd,
+              `Solicitud de eliminación del producto "${p.nombre}" enviada para revisión.`
+            )) {
+              solicitudesPendientes = true;
+            }
           }
         }
         // 3) Borrar la subcategoría
-        await fetchAPI(
-          `${API.subcategorias}?id=${sc.id}&empresa_id=${EMP_ID}`,
-          'DELETE'
-        );
+        if (!solicitudesPendientes) {
+          await fetchAPI(
+            `${API.subcategorias}?id=${sc.id}&empresa_id=${EMP_ID}`,
+            'DELETE'
+          );
+        }
       }
+    }
+    if (solicitudesPendientes) {
+      showToast('Se registraron solicitudes de eliminación de productos asociados. Intenta eliminar la categoría cuando se aprueben.', 'info');
+      await cargarProductos();
+      renderResumen();
+      return;
     }
     // 4) Borrar finalmente la categoría
     await fetchAPI(
@@ -2855,11 +2895,24 @@ if (editProdId) {
       );
     }
     if (eliminarProds) {
+      let solicitudesSubPendientes = false;
       for (const p of prods) {
-        await fetchAPI(
+        const resultadoProd = await fetchAPI(
           `${API.productos}?id=${p.id}&empresa_id=${EMP_ID}`,
           'DELETE'
         );
+        if (manejarMensajeSolicitud(
+          resultadoProd,
+          `Solicitud de eliminación del producto "${p.nombre}" enviada para revisión.`
+        )) {
+          solicitudesSubPendientes = true;
+        }
+      }
+      if (solicitudesSubPendientes) {
+        showToast('Se registraron solicitudes de eliminación de productos. Elimina la subcategoría cuando se aprueben.', 'info');
+        await cargarProductos();
+        renderResumen();
+        return;
       }
     }
     await fetchAPI(

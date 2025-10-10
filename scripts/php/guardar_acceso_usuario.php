@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -20,18 +21,17 @@ try {
     jsonResponse(false, 'Error de conexión a la base de datos.');
 }
 
+require_once __DIR__ . '/solicitudes_utils.php';
+
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $idUsuario = isset($input['id_usuario']) ? (int) $input['id_usuario'] : 0;
 $idArea    = isset($input['id_area']) ? (int) $input['id_area'] : 0;
+$forzarEjecucion = !empty($input['forzar_ejecucion']);
 $compositeId = $idUsuario . ':' . $idArea . ':null';
 $transaccionActiva = false;
 
 if ($idUsuario <= 0 || $idArea <= 0) {
     jsonResponse(false, 'Datos incompletos. Selecciona al menos un área.');
-}
-
-if ($idZona !== null && $idZona <= 0) {
-    jsonResponse(false, 'Selecciona una zona válida.');
 }
 
 try {
@@ -69,6 +69,22 @@ try {
 
     if ($existe) {
         jsonResponse(false, 'La asignación seleccionada ya existe.', ['composite_id' => $compositeId]);
+    }
+
+    if (!$forzarEjecucion) {
+        $resultadoSolicitud = opti_registrar_solicitud($conn, [
+            'id_empresa' => $idEmpresa,
+            'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
+            'modulo' => 'Usuarios',
+            'tipo_accion' => 'usuario_asignar_area',
+            'resumen' => 'Asignar área #' . $idArea . ' al usuario #' . $idUsuario,
+            'descripcion' => 'Solicitud de asignación de acceso a área.',
+            'payload' => [
+                'id_usuario' => $idUsuario,
+                'id_area' => $idArea
+            ]
+        ]);
+        opti_responder_solicitud_creada($resultadoSolicitud);
     }
 
     $conn->begin_transaction();

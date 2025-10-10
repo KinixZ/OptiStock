@@ -100,6 +100,39 @@
       </div>
     </section>
 
+    <section class="requests-card" id="requestsBoard">
+      <div class="requests-heading">
+        <div>
+          <span class="requests-eyebrow">Solicitudes pendientes</span>
+          <h2 class="requests-title">Aprobaciones en el registro de actividades</h2>
+          <p class="requests-description">Revisa y resuelve los cambios solicitados antes de que impacten en el sistema.</p>
+        </div>
+        <div class="requests-actions">
+          <button type="button" class="btn btn-outline-secondary" id="refreshRequests">
+            <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+          </button>
+        </div>
+      </div>
+
+      <div class="requests-columns">
+        <article class="requests-panel">
+          <header class="requests-panel__header">
+            <h3>En revisión</h3>
+            <span class="requests-counter" id="pendingRequestsCount">0</span>
+          </header>
+          <div class="requests-panel__body" id="pendingRequests"></div>
+        </article>
+
+        <article class="requests-panel requests-panel--history">
+          <header class="requests-panel__header">
+            <h3>Historial concluido</h3>
+            <span class="requests-counter" id="historyRequestsCount">0</span>
+          </header>
+          <div class="requests-panel__body" id="historyRequests"></div>
+        </article>
+      </div>
+    </section>
+
     <section class="table-card">
       <div class="table-heading">
         <div>

@@ -22,6 +22,7 @@ try {
 require_once __DIR__ . '/log_utils.php';
 require_once __DIR__ . '/accesos_utils.php';
 require_once __DIR__ . '/infraestructura_utils.php';
+require_once __DIR__ . '/solicitudes_utils.php';
 
 function requireUserIdZonas()
 {
@@ -178,7 +179,7 @@ if ($method === 'POST') {
     $largo = floatval($data['largo'] ?? 0);
     $volumen = $ancho * $alto * $largo;
     $tipo = $data['tipo_almacenamiento'] ?? null;
-    $subniveles = isset($data['subniveles']) ? json_encode($data['subniveles']) : null;
+    $subniveles = isset($data['subniveles']) ? $data['subniveles'] : null;
     $area_id = isset($data['area_id']) ? intval($data['area_id']) : null;
     if ($area_id !== null && $area_id <= 0) {
         $area_id = null;
@@ -206,16 +207,28 @@ if ($method === 'POST') {
         }
     }
 
-    $stmt = $conn->prepare('INSERT INTO zonas (nombre, descripcion, ancho, alto, largo, volumen, tipo_almacenamiento, subniveles, area_id, id_empresa) VALUES (?,?,?,?,?,?,?,?,?,?)');
-    $stmt->bind_param('ssddddssii', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $tipo, $subniveles, $area_id, $empresa_id);
-    $stmt->execute();
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresa_id,
+        'id_solicitante' => $usuarioId,
+        'modulo' => 'Zonas',
+        'tipo_accion' => 'zona_crear',
+        'resumen' => 'Creación de zona: ' . $nombre,
+        'descripcion' => 'Solicitud de creación de zona en el almacén.',
+        'payload' => [
+            'empresa_id' => $empresa_id,
+            'nombre' => $nombre,
+            'descripcion' => $descripcion,
+            'ancho' => $ancho,
+            'alto' => $alto,
+            'largo' => $largo,
+            'volumen' => $volumen,
+            'tipo_almacenamiento' => $tipo,
+            'subniveles' => $subniveles,
+            'area_id' => $area_id
+        ]
+    ]);
 
-    registrarLog($conn, $usuarioId, 'Zonas', "Creación de zona: {$nombre}");
-
-    actualizarOcupacionZona($conn, $stmt->insert_id);
-
-    echo json_encode(['id' => $stmt->insert_id]);
-    exit;
+    opti_responder_solicitud_creada($resultadoSolicitud);
 }
 
 if ($method === 'PUT') {
@@ -230,7 +243,7 @@ if ($method === 'PUT') {
     $largo = floatval($data['largo'] ?? 0);
     $volumen = $ancho * $alto * $largo;
     $tipo = $data['tipo_almacenamiento'] ?? null;
-    $subniveles = isset($data['subniveles']) ? json_encode($data['subniveles']) : null;
+    $subniveles = isset($data['subniveles']) ? $data['subniveles'] : null;
     $area_id = isset($data['area_id']) ? intval($data['area_id']) : null;
     if ($area_id !== null && $area_id <= 0) {
         $area_id = null;
@@ -279,24 +292,33 @@ if ($method === 'PUT') {
         }
     }
 
-    if ($empresaId) {
-        $stmt = $conn->prepare('UPDATE zonas SET nombre=?, descripcion=?, ancho=?, alto=?, largo=?, volumen=?, tipo_almacenamiento=?, subniveles=?, area_id=? WHERE id=? AND id_empresa=?');
-        $stmt->bind_param('ssddddssiii', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $tipo, $subniveles, $area_id, $id, $empresaId);
-    } else {
-        $stmt = $conn->prepare('UPDATE zonas SET nombre=?, descripcion=?, ancho=?, alto=?, largo=?, volumen=?, tipo_almacenamiento=?, subniveles=?, area_id=? WHERE id=?');
-        $stmt->bind_param('ssddddssii', $nombre, $descripcion, $ancho, $alto, $largo, $volumen, $tipo, $subniveles, $area_id, $id);
-    }
-    $stmt->execute();
+    $empresaDestino = $empresaId ?: (int) ($zonaActual['id_empresa'] ?? 0);
 
-    registrarLog($conn, $usuarioId, 'Zonas', "Actualización de zona ID: {$id}");
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresaDestino,
+        'id_solicitante' => $usuarioId,
+        'modulo' => 'Zonas',
+        'tipo_accion' => 'zona_actualizar',
+        'resumen' => 'Actualización de la zona ID #' . $id,
+        'descripcion' => 'Solicitud de modificación de zona.',
+        'payload' => [
+            'zona_id' => $id,
+            'empresa_id' => $empresaDestino,
+            'nombre' => $nombre,
+            'descripcion' => $descripcion,
+            'ancho' => $ancho,
+            'alto' => $alto,
+            'largo' => $largo,
+            'volumen' => $volumen,
+            'tipo_almacenamiento' => $tipo,
+            'subniveles' => $subniveles,
+            'area_id' => $area_id,
+            'area_anterior' => $areaAnterior,
+            'capacidad_actual' => $capacidadActual
+        ]
+    ]);
 
-    actualizarOcupacionZona($conn, $id);
-    if ($areaAnterior && $areaAnterior !== $area_id) {
-        actualizarOcupacionArea($conn, $areaAnterior);
-    }
-
-    echo json_encode(['success' => $stmt->affected_rows > 0]);
-    exit;
+    opti_responder_solicitud_creada($resultadoSolicitud);
 }
 
 if ($method === 'DELETE') {
@@ -343,23 +365,38 @@ if ($method === 'DELETE') {
         exit;
     }
 
-    if ($empresaId) {
-        $stmt = $conn->prepare('DELETE FROM zonas WHERE id=? AND id_empresa=?');
-        $stmt->bind_param('ii', $id, $empresaId);
-    } else {
-        $stmt = $conn->prepare('DELETE FROM zonas WHERE id=?');
-        $stmt->bind_param('i', $id);
+    $empresaDestino = $empresaId;
+    if ($empresaDestino <= 0) {
+        $stmtEmpresa = $conn->prepare('SELECT id_empresa FROM zonas WHERE id = ?');
+        $stmtEmpresa->bind_param('i', $id);
+        $stmtEmpresa->execute();
+        $zonaEmpresa = $stmtEmpresa->get_result()->fetch_assoc();
+        $stmtEmpresa->close();
+        if (!$zonaEmpresa) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Zona no encontrada']);
+            exit;
+        }
+        $empresaDestino = (int) ($zonaEmpresa['id_empresa'] ?? 0);
     }
-    $stmt->execute();
 
-    registrarLog($conn, $usuarioId, 'Zonas', "Eliminación de zona ID: {$id}");
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresaDestino,
+        'id_solicitante' => $usuarioId,
+        'modulo' => 'Zonas',
+        'tipo_accion' => 'zona_eliminar',
+        'resumen' => 'Eliminación de la zona ID #' . $id,
+        'descripcion' => 'Solicitud de eliminación de zona.',
+        'payload' => [
+            'zona_id' => $id,
+            'empresa_id' => $empresaDestino,
+            'area_id' => (int) $areaZona,
+            'productos_en_zona' => (int) $productosEnZona,
+            'movimientos_recientes' => (int) $movimientosRecientes
+        ]
+    ]);
 
-    if (!empty($areaZona)) {
-        actualizarOcupacionArea($conn, (int) $areaZona);
-    }
-
-    echo json_encode(['success' => true]);
-    exit;
+    opti_responder_solicitud_creada($resultadoSolicitud);
 }
 
 http_response_code(405);

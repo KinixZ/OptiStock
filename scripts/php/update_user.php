@@ -13,6 +13,7 @@ if (!$conn) {
 }
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/solicitudes_utils.php';
 
 $usuarioAccionId = obtenerUsuarioIdSesion();
 if (!$usuarioAccionId) {
@@ -27,56 +28,71 @@ $apellido   = $_POST['apellido'] ?? null;
 $telefono   = $_POST['telefono'] ?? null;
 $correo     = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
+$forzarEjecucion = isset($_POST['forzar_ejecucion']) && $_POST['forzar_ejecucion'] === '1';
+$fotoPendiente = $_POST['foto_pendiente'] ?? null;
 
 if (!$usuario_id || !$nombre || !$apellido || !$telefono || !$correo) {
     echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
     exit;
 }
 
+$empresaId = 0;
+$stmtEmpresa = $conn->prepare('SELECT id_empresa FROM usuario_empresa WHERE id_usuario = ? LIMIT 1');
+if ($stmtEmpresa) {
+    $stmtEmpresa->bind_param('i', $usuario_id);
+    $stmtEmpresa->execute();
+    $resEmpresa = $stmtEmpresa->get_result();
+    $empresaFila = $resEmpresa->fetch_assoc();
+    $empresaId = (int)($empresaFila['id_empresa'] ?? 0);
+    $stmtEmpresa->close();
+}
+
+if ($empresaId <= 0) {
+    echo json_encode(['success' => false, 'message' => 'No se pudo identificar la empresa del usuario.']);
+    exit;
+}
+
+$payload = [
+    'id_usuario' => (int) $usuario_id,
+    'nombre' => $nombre,
+    'apellido' => $apellido,
+    'telefono' => $telefono,
+    'correo' => $correo
+];
+
+if ($contrasena && strlen(trim($contrasena)) > 0) {
+    $payload['contrasena_hash'] = strlen($contrasena) === 40 && preg_match('/^[a-f0-9]+$/i', $contrasena)
+        ? $contrasena
+        : sha1($contrasena);
+}
+
+if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK && !$forzarEjecucion) {
+    $archivoPendiente = opti_guardar_archivo_pendiente($_FILES['foto_perfil'], 'perfiles', 'perfil_' . $usuario_id);
+    if ($archivoPendiente) {
+        $payload['foto_pendiente'] = $archivoPendiente['ruta_relativa'];
+    }
+}
+
+if ($forzarEjecucion) {
+    if ($fotoPendiente) {
+        $payload['foto_pendiente'] = $fotoPendiente;
+    }
+    $resultado = opti_aplicar_usuario_actualizar($conn, $payload, $usuarioAccionId);
+    echo json_encode($resultado);
+    exit;
+}
+
 try {
-    // Actualizar datos
-    if ($contrasena && strlen($contrasena) > 0) {
-        $pass_hash = sha1($contrasena);
-        $stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, telefono = ?, correo = ?, contrasena = ? WHERE id_usuario = ?");
-        $stmt->bind_param("sssssi", $nombre, $apellido, $telefono, $correo, $pass_hash, $usuario_id);
-    } else {
-        $stmt = $conn->prepare("UPDATE usuario SET nombre = ?, apellido = ?, telefono = ?, correo = ? WHERE id_usuario = ?");
-        $stmt->bind_param("ssssi", $nombre, $apellido, $telefono, $correo, $usuario_id);
-    }
-    $stmt->execute();
-
-    // Subir imagen si existe
-    if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] == UPLOAD_ERR_OK) {
-        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-        $ext = strtolower(pathinfo($_FILES['foto_perfil']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, $allowed)) {
-            $destDir = $_SERVER['DOCUMENT_ROOT'] . '/images/profiles/';
-            if (!is_dir($destDir)) mkdir($destDir, 0755, true);
-            $filename = 'perfil_' . $usuario_id . '_' . time() . '.' . $ext;
-            $path = $destDir . $filename;
-            if (move_uploaded_file($_FILES['foto_perfil']['tmp_name'], $path)) {
-                $ruta_bd = 'images/profiles/' . $filename;
-                $stmt2 = $conn->prepare("UPDATE usuario SET foto_perfil=? WHERE id_usuario=?");
-                $stmt2->bind_param("si", $ruta_bd, $usuario_id);
-                $stmt2->execute();
-            }
-        }
-    }
-    
-    $stmt3 = $conn->prepare("SELECT foto_perfil FROM usuario WHERE id_usuario = ?");
-    $stmt3->bind_param("i", $usuario_id);
-    $stmt3->execute();
-    $res3 = $stmt3->get_result();
-    $row = $res3->fetch_assoc();
-    $ruta_foto = $row ? $row['foto_perfil'] : null;
-
-    registrarLog($conn, $usuarioAccionId, 'Usuarios', "Actualización de usuario: $usuario_id");
-
-    echo json_encode([
-        'success' => true,
-        'foto_perfil' => $ruta_foto,
-        'message' => 'Usuario actualizado'
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresaId,
+        'id_solicitante' => $usuarioAccionId,
+        'modulo' => 'Usuarios',
+        'tipo_accion' => 'usuario_actualizar',
+        'resumen' => 'Actualización de datos del usuario #' . $usuario_id,
+        'descripcion' => 'Actualización solicitada desde la edición de perfil.',
+        'payload' => $payload
     ]);
+    opti_responder_solicitud_creada($resultadoSolicitud);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }

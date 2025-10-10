@@ -52,6 +52,27 @@ let editZoneId = null;
     'Armario', 'Otro'
   ];
 
+  function esRespuestaSolicitud(data) {
+    return Boolean(
+      data &&
+      typeof data === 'object' &&
+      data.success === true &&
+      data.solicitud &&
+      typeof data.solicitud === 'object'
+    );
+  }
+
+  function manejarRespuestaSolicitud(data, mensajeSolicitud, mensajeInmediato = '') {
+    if (esRespuestaSolicitud(data)) {
+      showToast(mensajeSolicitud, 'success');
+      return true;
+    }
+    if (mensajeInmediato) {
+      showToast(mensajeInmediato, 'success');
+    }
+    return false;
+  }
+
   function llenarTipos() {
     zonaTipoSel.innerHTML = '<option value="">Seleccione tipo</option>';
     // al menos las primeras 20
@@ -481,17 +502,26 @@ formArea.addEventListener('submit', async e => {
       body: JSON.stringify(payload)
     });
     const j = await res.json();
-    if (res.ok && (j.id || j.success)) {
-      showToast(editAreaId ? 'Área actualizada' : 'Área registrada');
-      // reset
-      formArea.reset();
-      calcularVolumenArea();
-      editAreaId = null;
-      activarFormulario('area');
-      await recargarDatos();
-    } else {
+    if (!res.ok) {
       throw new Error(j.error || 'Error en el servidor');
     }
+    if (j.success === false && !esRespuestaSolicitud(j)) {
+      throw new Error(j.error || j.message || 'No se pudo procesar la solicitud');
+    }
+
+    manejarRespuestaSolicitud(
+      j,
+      editAreaId
+        ? 'Solicitud de actualización de área enviada para revisión.'
+        : 'Solicitud de creación de área enviada para revisión.',
+      editAreaId ? 'Área actualizada' : 'Área registrada'
+    );
+
+    formArea.reset();
+    calcularVolumenArea();
+    editAreaId = null;
+    activarFormulario('area');
+    await recargarDatos();
   } catch (err) {
     showToast(err.message);
   }
@@ -672,16 +702,26 @@ formZona.addEventListener('submit', async e => {
       body: JSON.stringify(payload)
     });
     const j = await res.json();
-    if (res.ok && (j.id || j.success)) {
-      showToast(editZoneId ? 'Zona actualizada' : 'Zona registrada');
-      formZona.reset();
-      calcularVolumenZona();
-      editZoneId = null;
-      activarFormulario('zona');
-      await recargarDatos();
-    } else {
+    if (!res.ok) {
       throw new Error(j.error || 'Error en el servidor');
     }
+    if (j.success === false && !esRespuestaSolicitud(j)) {
+      throw new Error(j.error || j.message || 'No se pudo procesar la solicitud');
+    }
+
+    manejarRespuestaSolicitud(
+      j,
+      editZoneId
+        ? 'Solicitud de actualización de zona enviada para revisión.'
+        : 'Solicitud de creación de zona enviada para revisión.',
+      editZoneId ? 'Zona actualizada' : 'Zona registrada'
+    );
+
+    formZona.reset();
+    calcularVolumenZona();
+    editZoneId = null;
+    activarFormulario('zona');
+    await recargarDatos();
   } catch (err) {
     showToast(err.message);
   }
@@ -701,7 +741,11 @@ async function deleteArea(id) {
     if (!res.ok) {
       throw new Error(respuesta.error || 'No se pudo eliminar el área');
     }
-    showToast('Área eliminada');
+    manejarRespuestaSolicitud(
+      respuesta,
+      'Solicitud de eliminación de área enviada para revisión.',
+      'Área eliminada'
+    );
     await recargarDatos();
   } catch (error) {
     showToast(error.message);
@@ -722,7 +766,11 @@ async function deleteZone(id) {
     if (!res.ok) {
       throw new Error(respuesta.error || 'No se pudo eliminar la zona');
     }
-    showToast('Zona eliminada');
+    manejarRespuestaSolicitud(
+      respuesta,
+      'Solicitud de eliminación de zona enviada para revisión.',
+      'Zona eliminada'
+    );
     await recargarDatos();
   } catch (error) {
     showToast(error.message);

@@ -4,6 +4,12 @@
     const filtroUsuario = document.getElementById('filtroUsuario');
     const filtroRol = document.getElementById('filtroRol');
     const tablaBody = document.getElementById('logTableBody');
+    const pendingRequestsContainer = document.getElementById('pendingRequests');
+    const historyRequestsContainer = document.getElementById('historyRequests');
+    const pendingRequestsCount = document.getElementById('pendingRequestsCount');
+    const historyRequestsCount = document.getElementById('historyRequestsCount');
+    const refreshRequestsBtn = document.getElementById('refreshRequests');
+    const requestsBoard = document.getElementById('requestsBoard');
     const exportPdfBtn = document.getElementById('exportPdf');
     const exportExcelBtn = document.getElementById('exportExcel');
     const buscadorInput = document.getElementById('logSearch');
@@ -148,6 +154,218 @@
         week: 7,
         month: 30
     };
+
+    const tieneTableroSolicitudes = pendingRequestsContainer && historyRequestsContainer;
+
+    async function fetchSolicitudes(estado = 'en_proceso') {
+        const params = new URLSearchParams({ estado });
+        if (ID_EMPRESA) {
+            params.append('id_empresa', ID_EMPRESA);
+        }
+
+        const response = await fetch(`/scripts/php/solicitudes_admin.php?${params.toString()}`);
+        if (!response.ok) {
+            throw new Error('No se pudo obtener la información de solicitudes.');
+        }
+
+        const data = await response.json();
+        if (!data?.success) {
+            throw new Error(data?.message || 'Error inesperado al consultar solicitudes.');
+        }
+
+        return Array.isArray(data.items) ? data.items : [];
+    }
+
+    function formatearFecha(fechaIso) {
+        if (!fechaIso) {
+            return '—';
+        }
+        const fecha = new Date(fechaIso);
+        if (Number.isNaN(fecha.getTime())) {
+            return '—';
+        }
+        return fecha.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function crearEtiqueta(texto) {
+        const span = document.createElement('span');
+        span.className = 'request-tag';
+        span.textContent = texto;
+        return span;
+    }
+
+    function crearEstadoSolicitud(estado) {
+        const span = document.createElement('span');
+        const clase = estado === 'aceptada' ? 'approved' : estado === 'denegada' ? 'rejected' : 'pending';
+        span.className = `request-status request-status--${clase}`;
+        span.textContent = estado === 'aceptada' ? 'Aceptada' : estado === 'denegada' ? 'Denegada' : 'Pendiente';
+        return span;
+    }
+
+    function construirSolicitudCard(item, esHistorial = false) {
+        const card = document.createElement('div');
+        card.className = 'request-item';
+
+        const encabezado = document.createElement('div');
+        encabezado.className = 'request-item__header';
+
+        const titulo = document.createElement('h4');
+        titulo.className = 'request-item__title';
+        titulo.textContent = item.resumen || 'Solicitud de cambio';
+        encabezado.appendChild(titulo);
+
+        const meta = document.createElement('div');
+        meta.className = 'request-item__meta';
+        const solicitante = [item.solicitante_nombre, item.solicitante_apellido].filter(Boolean).join(' ') || 'Usuario desconocido';
+        meta.appendChild(crearEtiqueta(`Solicitante: ${solicitante}`));
+        if (item.modulo) {
+            meta.appendChild(crearEtiqueta(`Módulo: ${item.modulo}`));
+        }
+        if (item.tipo_accion) {
+            meta.appendChild(crearEtiqueta(`Acción: ${item.tipo_accion}`));
+        }
+        encabezado.appendChild(meta);
+        card.appendChild(encabezado);
+
+        const descripcion = document.createElement('p');
+        descripcion.className = 'request-item__description';
+        descripcion.textContent = item.descripcion || 'Sin descripción adicional.';
+        card.appendChild(descripcion);
+
+        const fecha = document.createElement('p');
+        fecha.className = 'request-item__meta';
+        const etiquetaFecha = esHistorial ? 'Resuelta' : 'Solicitada';
+        const valorFecha = esHistorial ? (item.fecha_resolucion || item.fecha_creacion) : item.fecha_creacion;
+        fecha.textContent = `${etiquetaFecha}: ${formatearFecha(valorFecha)}`;
+        card.appendChild(fecha);
+
+        if (esHistorial) {
+            const estado = crearEstadoSolicitud(item.estado);
+            card.appendChild(estado);
+            if (item.comentario) {
+                const comentario = document.createElement('p');
+                comentario.className = 'request-item__meta';
+                comentario.textContent = `Comentario: ${item.comentario}`;
+                card.appendChild(comentario);
+            }
+        } else {
+            const acciones = document.createElement('div');
+            acciones.className = 'request-item__actions request-actions';
+
+            const aprobar = document.createElement('button');
+            aprobar.type = 'button';
+            aprobar.className = 'btn btn-success btn-sm';
+            aprobar.textContent = 'Aprobar';
+            aprobar.addEventListener('click', () => resolverSolicitud(item.id, 'aceptada'));
+
+            const rechazar = document.createElement('button');
+            rechazar.type = 'button';
+            rechazar.className = 'btn btn-outline-danger btn-sm';
+            rechazar.textContent = 'Rechazar';
+            rechazar.addEventListener('click', () => resolverSolicitud(item.id, 'denegada'));
+
+            acciones.appendChild(aprobar);
+            acciones.appendChild(rechazar);
+            card.appendChild(acciones);
+        }
+
+        return card;
+    }
+
+    function renderizarSolicitudes(items, contenedor, contadorEl, mensajeVacio, esHistorial = false) {
+        if (!contenedor) {
+            return;
+        }
+
+        contenedor.innerHTML = '';
+        if (Array.isArray(items) && items.length) {
+            items.forEach(item => {
+                const card = construirSolicitudCard(item, esHistorial);
+                contenedor.appendChild(card);
+            });
+        } else {
+            const vacio = document.createElement('div');
+            vacio.className = 'request-empty';
+            vacio.textContent = mensajeVacio;
+            contenedor.appendChild(vacio);
+        }
+
+        if (contadorEl) {
+            contadorEl.textContent = Array.isArray(items) ? items.length : 0;
+        }
+    }
+
+    async function cargarTableroSolicitudes() {
+        if (!tieneTableroSolicitudes) {
+            return;
+        }
+
+        try {
+            const [pendientes, historico] = await Promise.all([
+                fetchSolicitudes('en_proceso'),
+                fetchSolicitudes('concluidas')
+            ]);
+
+            renderizarSolicitudes(
+                pendientes,
+                pendingRequestsContainer,
+                pendingRequestsCount,
+                'No hay solicitudes pendientes por revisar.',
+                false
+            );
+
+            renderizarSolicitudes(
+                historico,
+                historyRequestsContainer,
+                historyRequestsCount,
+                'Aún no hay solicitudes concluidas.',
+                true
+            );
+        } catch (error) {
+            console.warn('No se pudo cargar el tablero de solicitudes:', error);
+            if (pendingRequestsContainer) {
+                pendingRequestsContainer.innerHTML = '<div class="request-empty">No se pudo cargar el tablero de solicitudes.</div>';
+            }
+        }
+    }
+
+    async function resolverSolicitud(id, estado) {
+        if (!id) {
+            return;
+        }
+
+        if (estado === 'denegada' && !confirm('¿Deseas rechazar la solicitud seleccionada?')) {
+            return;
+        }
+        if (estado === 'aceptada' && !confirm('¿Deseas aprobar la solicitud seleccionada?')) {
+            return;
+        }
+
+        let comentario = '';
+        if (estado === 'denegada') {
+            comentario = prompt('Agrega un comentario para el solicitante (opcional):', '') || '';
+        }
+
+        try {
+            const respuesta = await fetch('/scripts/php/solicitudes_admin.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, estado, comentario })
+            });
+            const data = await respuesta.json();
+            if (!data?.success) {
+                alert(data?.message || 'No se pudo actualizar la solicitud.');
+                return;
+            }
+
+            alert(`La solicitud fue marcada como ${estado}.`);
+            cargarTableroSolicitudes();
+            cargarUsuariosEmpresa?.();
+        } catch (error) {
+            console.error('Error al resolver la solicitud:', error);
+            alert('No se pudo actualizar la solicitud.');
+        }
+    }
 
     function escapeHtml(valor) {
         return String(valor ?? '')
@@ -1282,6 +1500,17 @@
     mostrarLogsGuardados();
     cargarRegistros();
     loadNotificationHistory();
+
+    if (tieneTableroSolicitudes) {
+        cargarTableroSolicitudes();
+        if (refreshRequestsBtn) {
+            refreshRequestsBtn.addEventListener('click', () => {
+                cargarTableroSolicitudes();
+            });
+        }
+    } else if (requestsBoard) {
+        requestsBoard.classList.add('d-none');
+    }
 
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {

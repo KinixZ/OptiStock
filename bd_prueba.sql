@@ -1642,3 +1642,44 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- ---------------------------------------------------------------------------
+-- Tabla para solicitudes de cambios pendientes de revisión
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS solicitudes_cambios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_empresa INT NOT NULL,
+    id_solicitante INT NOT NULL,
+    modulo VARCHAR(100) NOT NULL,
+    tipo_accion VARCHAR(100) NOT NULL,
+    resumen VARCHAR(255) NOT NULL,
+    descripcion TEXT NULL,
+    payload LONGTEXT NOT NULL,
+    estado ENUM('en_proceso','aceptada','denegada') NOT NULL DEFAULT 'en_proceso',
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_solicitudes_empresa (id_empresa),
+    INDEX idx_solicitudes_estado (estado)
+);
+
+-- ---------------------------------------------------------------------------
+-- Historial de solicitudes revisadas
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS solicitudes_cambios_historial (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id INT NOT NULL,
+    id_empresa INT NOT NULL,
+    id_solicitante INT NOT NULL,
+    id_revisor INT NOT NULL,
+    modulo VARCHAR(100) NOT NULL,
+    tipo_accion VARCHAR(100) NOT NULL,
+    resumen VARCHAR(255) NOT NULL,
+    descripcion TEXT NULL,
+    payload LONGTEXT NOT NULL,
+    estado ENUM('aceptada','denegada') NOT NULL,
+    comentario TEXT NULL,
+    fecha_creacion DATETIME NULL,
+    fecha_resolucion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resultado LONGTEXT NULL,
+    INDEX idx_historial_empresa (id_empresa),
+    INDEX idx_historial_estado (estado)
+);
