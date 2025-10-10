@@ -202,6 +202,230 @@
         return span;
     }
 
+    function capitalizar(texto) {
+        if (!texto) {
+            return '';
+        }
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    function obtenerValorRuta(obj, ruta) {
+        if (!obj || !ruta) {
+            return undefined;
+        }
+        return ruta.split('.').reduce((acumulado, segmento) => {
+            if (acumulado && Object.prototype.hasOwnProperty.call(acumulado, segmento)) {
+                return acumulado[segmento];
+            }
+            return undefined;
+        }, obj);
+    }
+
+    function obtenerTextoDesdeRutas(obj, rutas = []) {
+        for (const ruta of rutas) {
+            const valor = obtenerValorRuta(obj, ruta);
+            if (typeof valor === 'string') {
+                const limpio = valor.trim();
+                if (limpio) {
+                    return limpio;
+                }
+            }
+        }
+        return '';
+    }
+
+    function obtenerNumeroDesdeRutas(obj, rutas = []) {
+        for (const ruta of rutas) {
+            const valor = obtenerValorRuta(obj, ruta);
+            const numero = typeof valor === 'number' ? valor : Number(valor);
+            if (Number.isFinite(numero) && numero > 0) {
+                return Math.floor(numero);
+            }
+        }
+        return null;
+    }
+
+    function construirDetalleEntidad(nombre, id, extras = []) {
+        const partes = [];
+        if (nombre) {
+            partes.push(`"${nombre}"`);
+        }
+        if (id) {
+            partes.push(`ID #${id}`);
+        }
+        if (!Array.isArray(extras)) {
+            extras = extras ? [extras] : [];
+        }
+        extras.filter(Boolean).forEach(extra => partes.push(extra));
+        return partes.length ? ` ${partes.join(' · ')}` : '';
+    }
+
+    function construirFraseAccion(base, nombre, id, extras = []) {
+        const detalle = construirDetalleEntidad(nombre, id, extras);
+        return detalle ? `${base}${detalle}` : base;
+    }
+
+    function obtenerNombreUsuarioDesdePayload(item) {
+        const payload = item && typeof item.payload === 'object' ? item.payload : {};
+        const nombreCompleto = obtenerTextoDesdeRutas(payload, ['nombre_usuario', 'nombre_completo', 'nombreCompleto']);
+        if (nombreCompleto) {
+            return nombreCompleto;
+        }
+        const nombre = obtenerTextoDesdeRutas(payload, ['nombre', 'usuario_nombre']);
+        const apellido = obtenerTextoDesdeRutas(payload, ['apellido', 'usuario_apellido']);
+        return [nombre, apellido].filter(Boolean).join(' ').trim();
+    }
+
+    function obtenerNombreDesdePayload(item, claves) {
+        const payload = item && typeof item.payload === 'object' ? item.payload : {};
+        return obtenerTextoDesdeRutas(payload, claves);
+    }
+
+    function formatearAccionGenerica(tipoAccion) {
+        const partes = String(tipoAccion || '')
+            .split('_')
+            .filter(Boolean);
+        if (!partes.length) {
+            return '';
+        }
+        if (partes.length === 1) {
+            return capitalizar(partes[0]);
+        }
+        const verbo = capitalizar(partes.pop());
+        const resto = partes.map(capitalizar).join(' ');
+        return `${verbo}${resto ? ` ${resto}` : ''}`;
+    }
+
+    const ACCION_FORMATTERS = {
+        usuario_actualizar: item => {
+            const nombre = obtenerNombreUsuarioDesdePayload(item);
+            const id = obtenerNumeroDesdeRutas(item.payload, ['id_usuario']);
+            return construirFraseAccion('Actualizar usuario', nombre, id);
+        },
+        usuario_editar_datos: item => {
+            const nombre = obtenerNombreUsuarioDesdePayload(item);
+            const id = obtenerNumeroDesdeRutas(item.payload, ['id_usuario']);
+            return construirFraseAccion('Actualizar datos internos del usuario', nombre, id);
+        },
+        usuario_cambiar_estado: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const activo = obtenerValorRuta(payload, 'activo');
+            const verbo = Number(activo) === 1 ? 'Activar' : 'Desactivar';
+            const nombre = obtenerNombreUsuarioDesdePayload(item);
+            const id = obtenerNumeroDesdeRutas(payload, ['id_usuario']);
+            return construirFraseAccion(`${verbo} usuario`, nombre, id);
+        },
+        usuario_asignar_area: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const usuarioNombre = obtenerNombreUsuarioDesdePayload(item);
+            const usuarioId = obtenerNumeroDesdeRutas(payload, ['id_usuario']);
+            const areaNombre = obtenerNombreDesdePayload(item, ['nombre_area']);
+            const areaId = obtenerNumeroDesdeRutas(payload, ['id_area']);
+            const areaDetalle = construirDetalleEntidad(areaNombre, areaId);
+            const usuarioDetalle = construirDetalleEntidad(usuarioNombre, usuarioId);
+            return `Asignar área${areaDetalle} al usuario${usuarioDetalle}`;
+        },
+        usuario_eliminar_acceso: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const usuarioNombre = obtenerNombreUsuarioDesdePayload(item);
+            const usuarioId = obtenerNumeroDesdeRutas(payload, ['id_usuario']);
+            const areaNombre = obtenerNombreDesdePayload(item, ['nombre_area']);
+            const areaId = obtenerNumeroDesdeRutas(payload, ['id_area']);
+            const zonaNombre = obtenerNombreDesdePayload(item, ['nombre_zona']);
+            const zonaId = obtenerNumeroDesdeRutas(payload, ['id_zona']);
+            const usuarioDetalle = construirDetalleEntidad(usuarioNombre, usuarioId);
+            if (zonaId || zonaNombre) {
+                const zonaDetalle = construirDetalleEntidad(zonaNombre, zonaId);
+                return `Revocar acceso del usuario${usuarioDetalle} a la zona${zonaDetalle}`;
+            }
+            const areaDetalle = construirDetalleEntidad(areaNombre, areaId);
+            return `Revocar acceso del usuario${usuarioDetalle} al área${areaDetalle}`;
+        },
+        usuario_eliminar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreUsuarioDesdePayload(item);
+            const id = obtenerNumeroDesdeRutas(payload, ['id_usuario']);
+            const correo = obtenerTextoDesdeRutas(payload, ['correo']);
+            const extras = correo ? [`correo ${correo}`] : [];
+            return construirFraseAccion('Eliminar usuario', nombre, id, extras);
+        },
+        empresa_actualizar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerTextoDesdeRutas(payload, ['nombre_empresa']);
+            const id = obtenerNumeroDesdeRutas(payload, ['id_empresa']);
+            return construirFraseAccion('Actualizar empresa', nombre, id);
+        },
+        producto_crear: item => {
+            const nombre = obtenerNombreDesdePayload(item, ['nombre', 'nombre_producto']);
+            return construirFraseAccion('Registrar producto', nombre, null);
+        },
+        producto_actualizar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreDesdePayload(item, ['nombre', 'nombre_producto']);
+            const id = obtenerNumeroDesdeRutas(payload, ['id_producto']);
+            return construirFraseAccion('Actualizar producto', nombre, id);
+        },
+        producto_eliminar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreDesdePayload(item, ['nombre_producto', 'nombre']);
+            const id = obtenerNumeroDesdeRutas(payload, ['id_producto']);
+            return construirFraseAccion('Eliminar producto', nombre, id);
+        },
+        area_crear: item => {
+            const nombre = obtenerNombreDesdePayload(item, ['nombre', 'nombre_area']);
+            return construirFraseAccion('Registrar área', nombre, null);
+        },
+        area_actualizar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreDesdePayload(item, ['nombre', 'nombre_area']);
+            const id = obtenerNumeroDesdeRutas(payload, ['area_id']);
+            return construirFraseAccion('Actualizar área', nombre, id);
+        },
+        area_eliminar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreDesdePayload(item, ['nombre_area', 'nombre']);
+            const id = obtenerNumeroDesdeRutas(payload, ['area_id']);
+            return construirFraseAccion('Eliminar área', nombre, id);
+        },
+        zona_crear: item => {
+            const nombre = obtenerNombreDesdePayload(item, ['nombre', 'nombre_zona']);
+            return construirFraseAccion('Registrar zona', nombre, null);
+        },
+        zona_actualizar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreDesdePayload(item, ['nombre', 'nombre_zona']);
+            const id = obtenerNumeroDesdeRutas(payload, ['zona_id']);
+            return construirFraseAccion('Actualizar zona', nombre, id);
+        },
+        zona_eliminar: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const nombre = obtenerNombreDesdePayload(item, ['nombre_zona', 'nombre']);
+            const id = obtenerNumeroDesdeRutas(payload, ['zona_id']);
+            return construirFraseAccion('Eliminar zona', nombre, id);
+        }
+    };
+
+    function formatearAccionSolicitud(item) {
+        if (!item) {
+            return '';
+        }
+
+        const tipoAccion = String(item.tipo_accion ?? '').trim();
+        if (!tipoAccion) {
+            return '';
+        }
+
+        const formatter = ACCION_FORMATTERS[tipoAccion];
+        if (typeof formatter === 'function') {
+            const resultado = formatter(item);
+            if (resultado) {
+                return resultado;
+            }
+        }
+
+        return formatearAccionGenerica(tipoAccion);
+    }
+
     function construirSolicitudCard(item, esHistorial = false) {
         const card = document.createElement('div');
         card.className = 'request-item';
@@ -221,8 +445,9 @@
         if (item.modulo) {
             meta.appendChild(crearEtiqueta(`Módulo: ${item.modulo}`));
         }
-        if (item.tipo_accion) {
-            meta.appendChild(crearEtiqueta(`Acción: ${item.tipo_accion}`));
+        const textoAccion = formatearAccionSolicitud(item);
+        if (textoAccion) {
+            meta.appendChild(crearEtiqueta(`Acción: ${textoAccion}`));
         }
         encabezado.appendChild(meta);
         card.appendChild(encabezado);

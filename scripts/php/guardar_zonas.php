@@ -212,7 +212,7 @@ if ($method === 'POST') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
         'tipo_accion' => 'zona_crear',
-        'resumen' => 'Creación de zona: ' . $nombre,
+        'resumen' => 'Creación de la zona "' . $nombre . '"',
         'descripcion' => 'Solicitud de creación de zona en el almacén.',
         'payload' => [
             'empresa_id' => $empresa_id,
@@ -299,7 +299,7 @@ if ($method === 'PUT') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
         'tipo_accion' => 'zona_actualizar',
-        'resumen' => 'Actualización de la zona ID #' . $id,
+        'resumen' => 'Actualización de la zona "' . $nombre . '" (ID #' . $id . ')',
         'descripcion' => 'Solicitud de modificación de zona.',
         'payload' => [
             'zona_id' => $id,
@@ -326,10 +326,10 @@ if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
 
-    $stmtZona = $conn->prepare('SELECT area_id FROM zonas WHERE id = ?');
+    $stmtZona = $conn->prepare('SELECT area_id, nombre FROM zonas WHERE id = ?');
     $stmtZona->bind_param('i', $id);
     $stmtZona->execute();
-    $stmtZona->bind_result($areaZona);
+    $stmtZona->bind_result($areaZona, $nombreZona);
     $existe = $stmtZona->fetch();
     $stmtZona->close();
 
@@ -337,6 +337,16 @@ if ($method === 'DELETE') {
         http_response_code(404);
         echo json_encode(['error' => 'Zona no encontrada']);
         exit;
+    }
+
+    $nombreZona = $nombreZona ?? '';
+    $tieneNombreZona = trim($nombreZona) !== '';
+    if ($tieneNombreZona) {
+        $resumenSolicitud = sprintf("Eliminar zona \"%s\" (ID #%d)", $nombreZona, $id);
+        $descripcionSolicitud = sprintf("Solicitud de eliminación de la zona \"%s\".", $nombreZona);
+    } else {
+        $resumenSolicitud = sprintf('Eliminar zona ID #%d', $id);
+        $descripcionSolicitud = sprintf('Solicitud de eliminación de la zona ID #%d.', $id);
     }
 
     $stmt = $conn->prepare('SELECT COUNT(*) FROM productos WHERE zona_id = ?');
@@ -385,12 +395,13 @@ if ($method === 'DELETE') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
         'tipo_accion' => 'zona_eliminar',
-        'resumen' => 'Eliminación de la zona ID #' . $id,
-        'descripcion' => 'Solicitud de eliminación de zona.',
+        'resumen' => $resumenSolicitud,
+        'descripcion' => $descripcionSolicitud,
         'payload' => [
             'zona_id' => $id,
             'empresa_id' => $empresaDestino,
             'area_id' => (int) $areaZona,
+            'nombre_zona' => $tieneNombreZona ? $nombreZona : '',
             'productos_en_zona' => (int) $productosEnZona,
             'movimientos_recientes' => (int) $movimientosRecientes
         ]

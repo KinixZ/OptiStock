@@ -47,12 +47,35 @@ $payload = [
     'id_empresa' => $id_empresa
 ];
 
+$stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
+if ($stmtUsuario) {
+    $stmtUsuario->bind_param('i', $id_usuario);
+    $stmtUsuario->execute();
+    $usuarioData = $stmtUsuario->get_result()->fetch_assoc();
+    $stmtUsuario->close();
+} else {
+    $usuarioData = null;
+}
+
+$nombreUsuario = '';
+if ($usuarioData) {
+    $nombre = trim((string) ($usuarioData['nombre'] ?? ''));
+    $apellido = trim((string) ($usuarioData['apellido'] ?? ''));
+    $nombreUsuario = trim($nombre . ' ' . $apellido);
+    if ($nombre !== '' || $apellido !== '') {
+        $payload['nombre_usuario'] = $nombreUsuario !== '' ? $nombreUsuario : ($nombre ?: $apellido);
+    }
+}
+
+$accionVerbo = $nuevoEstado === 1 ? 'Activar' : 'Desactivar';
+$detalleUsuario = $nombreUsuario !== '' ? '"' . $nombreUsuario . '"' : 'ID #' . $id_usuario;
+
 $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'id_empresa' => $id_empresa,
     'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
     'modulo' => 'Usuarios',
     'tipo_accion' => 'usuario_cambiar_estado',
-    'resumen' => ($nuevoEstado === 1 ? 'Activar' : 'Desactivar') . ' usuario #' . $id_usuario,
+    'resumen' => $accionVerbo . ' usuario ' . $detalleUsuario,
     'descripcion' => 'Cambio de estado de usuario solicitado.',
     'payload' => $payload
 ]);

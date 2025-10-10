@@ -82,7 +82,7 @@ $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'id_solicitante' => $usuarioId,
     'modulo' => 'Empresa',
     'tipo_accion' => 'empresa_actualizar',
-    'resumen' => 'Actualización de la empresa #' . $id_empresa,
+    'resumen' => 'Actualización de la empresa "' . $nombre_empresa . '" (ID #' . $id_empresa . ')',
     'descripcion' => 'Solicitud de actualización de datos de empresa.',
     'payload' => $payload
 ]);

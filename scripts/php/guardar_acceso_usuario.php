@@ -71,17 +71,36 @@ try {
         jsonResponse(false, 'La asignación seleccionada ya existe.', ['composite_id' => $compositeId]);
     }
 
+    $stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
+    $nombreUsuario = '';
+    if ($stmtUsuario) {
+        $stmtUsuario->bind_param('i', $idUsuario);
+        $stmtUsuario->execute();
+        $usuarioDatos = $stmtUsuario->get_result()->fetch_assoc();
+        $stmtUsuario->close();
+        if ($usuarioDatos) {
+            $nombre = trim((string) ($usuarioDatos['nombre'] ?? ''));
+            $apellido = trim((string) ($usuarioDatos['apellido'] ?? ''));
+            $nombreUsuario = trim($nombre . ' ' . $apellido);
+        }
+    }
+
     if (!$forzarEjecucion) {
+        $detalleUsuario = $nombreUsuario !== '' ? '"' . $nombreUsuario . '" (ID #' . $idUsuario . ')' : 'ID #' . $idUsuario;
+        $detalleArea = $area['nombre'] !== '' ? '"' . $area['nombre'] . '" (ID #' . $idArea . ')' : 'ID #' . $idArea;
+
         $resultadoSolicitud = opti_registrar_solicitud($conn, [
             'id_empresa' => $idEmpresa,
             'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
             'modulo' => 'Usuarios',
             'tipo_accion' => 'usuario_asignar_area',
-            'resumen' => 'Asignar área #' . $idArea . ' al usuario #' . $idUsuario,
+            'resumen' => 'Asignar área ' . $detalleArea . ' al usuario ' . $detalleUsuario,
             'descripcion' => 'Solicitud de asignación de acceso a área.',
             'payload' => [
                 'id_usuario' => $idUsuario,
-                'id_area' => $idArea
+                'id_area' => $idArea,
+                'nombre_usuario' => $nombreUsuario,
+                'nombre_area' => $area['nombre']
             ]
         ]);
         opti_responder_solicitud_creada($resultadoSolicitud);

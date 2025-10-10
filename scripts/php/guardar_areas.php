@@ -187,7 +187,7 @@ if ($method === 'POST') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Áreas',
         'tipo_accion' => 'area_crear',
-        'resumen' => 'Creación de área: ' . $nombre,
+        'resumen' => 'Creación del área "' . $nombre . '"',
         'descripcion' => 'Solicitud de creación de área en el almacén.',
         'payload' => [
             'empresa_id' => $empresa_id,
@@ -255,7 +255,7 @@ if ($method === 'PUT') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Áreas',
         'tipo_accion' => 'area_actualizar',
-        'resumen' => 'Actualización del área ID #' . $id,
+        'resumen' => 'Actualización del área "' . $nombre . '" (ID #' . $id . ')',
         'descripcion' => 'Solicitud de modificación de área.',
         'payload' => [
             'area_id' => $id,
@@ -277,6 +277,20 @@ if ($method === 'DELETE') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $empresaId = isset($_GET['empresa_id']) ? intval($_GET['empresa_id']) : 0;
 
+    $stmtAreaDatos = $conn->prepare('SELECT id_empresa, nombre FROM areas WHERE id = ?');
+    $stmtAreaDatos->bind_param('i', $id);
+    $stmtAreaDatos->execute();
+    $areaDatos = $stmtAreaDatos->get_result()->fetch_assoc();
+    $stmtAreaDatos->close();
+
+    if (!$areaDatos) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Área no encontrada']);
+        exit;
+    }
+
+    $nombreArea = trim((string) ($areaDatos['nombre'] ?? ''));
+
     $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
@@ -290,31 +304,21 @@ if ($method === 'DELETE') {
         exit;
     }
 
-    $empresaDestino = $empresaId;
-    if ($empresaDestino <= 0) {
-        $stmtArea = $conn->prepare('SELECT id_empresa FROM areas WHERE id = ?');
-        $stmtArea->bind_param('i', $id);
-        $stmtArea->execute();
-        $resArea = $stmtArea->get_result()->fetch_assoc();
-        $stmtArea->close();
-        if (!$resArea) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Área no encontrada']);
-            exit;
-        }
-        $empresaDestino = (int) ($resArea['id_empresa'] ?? 0);
-    }
+    $empresaDestino = $empresaId > 0 ? $empresaId : (int) ($areaDatos['id_empresa'] ?? 0);
 
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Áreas',
         'tipo_accion' => 'area_eliminar',
-        'resumen' => 'Eliminación del área ID #' . $id,
+        'resumen' => $nombreArea !== ''
+            ? 'Eliminación del área "' . $nombreArea . '" (ID #' . $id . ')'
+            : 'Eliminación del área ID #' . $id,
         'descripcion' => 'Solicitud de eliminación de área.',
         'payload' => [
             'area_id' => $id,
-            'empresa_id' => $empresaDestino
+            'empresa_id' => $empresaDestino,
+            'nombre_area' => $nombreArea
         ]
     ]);
 

@@ -34,10 +34,13 @@ if (!$id_usuario) {
     exit;
 }
 
+$nombreCompleto = trim($nombre . ' ' . $apellido);
+
 $payload = [
     'id_usuario' => $id_usuario,
     'nombre' => $nombre,
     'apellido' => $apellido,
+    'nombre_completo' => $nombreCompleto,
     'telefono' => $telefono,
     'fecha_nacimiento' => $fecha_nacimiento,
     'rol' => $rol
@@ -66,7 +69,8 @@ $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
     'modulo' => 'Usuarios',
     'tipo_accion' => 'usuario_editar_datos',
-    'resumen' => 'Actualizar datos internos del usuario #' . $id_usuario,
+    'resumen' => 'Actualizar datos internos del usuario ' .
+        ($nombreCompleto !== '' ? '"' . $nombreCompleto . '" ' : '') . '(ID #' . $id_usuario . ')',
     'descripcion' => 'Solicitud de edición de datos de usuario desde administración.',
     'payload' => $payload
 ]);

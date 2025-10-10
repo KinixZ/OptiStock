@@ -265,9 +265,10 @@ if ($method === 'POST' || $method === 'PUT') {
     }
 
     $tipoAccion = $method === 'POST' ? 'producto_crear' : 'producto_actualizar';
+    $detalleProducto = '"' . $nombre . '"';
     $resumen = $method === 'POST'
-        ? 'Creación de producto: ' . $nombre
-        : 'Actualización del producto ID #' . $id;
+        ? 'Creación del producto ' . $detalleProducto
+        : 'Actualización del producto ' . $detalleProducto . ' (ID #' . $id . ')';
 
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
@@ -293,10 +294,10 @@ if ($method === 'DELETE') {
         exit;
     }
 
-    $stmtZona = $conn->prepare('SELECT zona_id FROM productos WHERE id = ? AND empresa_id = ?');
+    $stmtZona = $conn->prepare('SELECT nombre, zona_id FROM productos WHERE id = ? AND empresa_id = ?');
     $stmtZona->bind_param('ii', $id, $empresa_id);
     $stmtZona->execute();
-    $stmtZona->bind_result($zonaProducto);
+    $stmtZona->bind_result($nombreProducto, $zonaProducto);
     $existeProducto = $stmtZona->fetch();
     $stmtZona->close();
 
@@ -323,17 +324,21 @@ if ($method === 'DELETE') {
         exit;
     }
 
+    $nombreProducto = $existeProducto ? trim((string) $nombreProducto) : '';
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Productos',
         'tipo_accion' => 'producto_eliminar',
-        'resumen' => 'Eliminación del producto ID #' . $id,
+        'resumen' => $nombreProducto !== ''
+            ? 'Eliminación del producto "' . $nombreProducto . '" (ID #' . $id . ')'
+            : 'Eliminación del producto ID #' . $id,
         'descripcion' => 'Solicitud de eliminación de producto.',
         'payload' => [
             'id_producto' => $id,
             'empresa_id' => $empresa_id,
             'zona_id' => (int) $zonaProducto,
+            'nombre_producto' => $nombreProducto,
             'movimientos_asociados' => (int) $movCount,
             'force_delete' => $forceDelete
         ]

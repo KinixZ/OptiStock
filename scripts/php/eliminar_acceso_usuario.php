@@ -36,8 +36,23 @@ if ($idUsuario <= 0 || $idArea <= 0) {
 
 $compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
 
+$stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
+$nombreUsuario = '';
+if ($stmtUsuario) {
+    $stmtUsuario->bind_param('i', $idUsuario);
+    $stmtUsuario->execute();
+    $usuarioDatos = $stmtUsuario->get_result()->fetch_assoc();
+    $stmtUsuario->close();
+    if ($usuarioDatos) {
+        $nombre = trim((string) ($usuarioDatos['nombre'] ?? ''));
+        $apellido = trim((string) ($usuarioDatos['apellido'] ?? ''));
+        $nombreUsuario = trim($nombre . ' ' . $apellido);
+    }
+}
+
 $idEmpresa = 0;
-$stmtArea = $conn->prepare('SELECT id_empresa FROM areas WHERE id = ? LIMIT 1');
+$filaArea = null;
+$stmtArea = $conn->prepare('SELECT id_empresa, nombre FROM areas WHERE id = ? LIMIT 1');
 if ($stmtArea) {
     $stmtArea->bind_param('i', $idArea);
     $stmtArea->execute();
@@ -48,18 +63,49 @@ if ($stmtArea) {
     $stmtArea->close();
 }
 
+$nombreArea = trim((string) ($filaArea['nombre'] ?? ''));
+$nombreZona = null;
+if ($idZona !== null) {
+    $stmtZona = $conn->prepare('SELECT nombre FROM zonas WHERE id = ? LIMIT 1');
+    if ($stmtZona) {
+        $stmtZona->bind_param('i', $idZona);
+        $stmtZona->execute();
+        $zonaData = $stmtZona->get_result()->fetch_assoc();
+        $stmtZona->close();
+        if ($zonaData) {
+            $nombreZona = trim((string) ($zonaData['nombre'] ?? ''));
+        }
+    }
+}
+
 if (!$forzarEjecucion) {
+    $usuarioDetalle = $nombreUsuario !== '' ? '"' . $nombreUsuario . '" (ID #' . $idUsuario . ')' : 'ID #' . $idUsuario;
+    if ($nombreUsuario === '' && $idUsuario <= 0) {
+        $usuarioDetalle = 'usuario especificado';
+    }
+
+    if ($idZona === null) {
+        $destinoNombre = $nombreArea !== '' ? '"' . $nombreArea . '" (ID #' . $idArea . ')' : 'ID #' . $idArea;
+        $resumen = 'Revocar acceso del usuario ' . $usuarioDetalle . ' al área ' . $destinoNombre;
+    } else {
+        $destinoNombre = $nombreZona !== null && $nombreZona !== '' ? '"' . $nombreZona . '" (ID #' . $idZona . ')' : 'ID #' . $idZona;
+        $resumen = 'Revocar acceso del usuario ' . $usuarioDetalle . ' a la zona ' . $destinoNombre;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $idEmpresa ?: (int) ($input['id_empresa'] ?? 0),
         'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
         'modulo' => 'Usuarios',
         'tipo_accion' => 'usuario_eliminar_acceso',
-        'resumen' => 'Eliminar acceso del usuario #' . $idUsuario . ' al área #' . $idArea,
+        'resumen' => $resumen,
         'descripcion' => 'Solicitud para revocar acceso a área o zona.',
         'payload' => [
             'id_usuario' => $idUsuario,
             'id_area' => $idArea,
-            'id_zona' => $idZona
+            'id_zona' => $idZona,
+            'nombre_usuario' => $nombreUsuario,
+            'nombre_area' => $nombreArea,
+            'nombre_zona' => $nombreZona
         ]
     ]);
     opti_responder_solicitud_creada($resultadoSolicitud);
