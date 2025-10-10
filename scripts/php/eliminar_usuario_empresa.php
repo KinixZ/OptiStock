@@ -49,6 +49,14 @@ $payload = [
     'nombre_usuario' => $nombreUsuario
 ];
 
+if (!$forzarEjecucion && !$idEmpresa && isset($_SESSION['id_empresa'])) {
+    $idEmpresa = (int) $_SESSION['id_empresa'];
+}
+
+if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
+    $forzarEjecucion = true;
+}
+
 if ($forzarEjecucion) {
     $resultado = opti_aplicar_usuario_eliminar($conn, $payload, $_SESSION['usuario_id'] ?? 0);
     echo json_encode($resultado);

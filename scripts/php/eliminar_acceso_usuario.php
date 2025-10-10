@@ -79,6 +79,12 @@ if ($idZona !== null) {
 }
 
 if (!$forzarEjecucion) {
+    if (!opti_solicitudes_habilitadas($conn)) {
+        $forzarEjecucion = true;
+    }
+}
+
+if (!$forzarEjecucion) {
     $usuarioDetalle = $nombreUsuario !== '' ? '"' . $nombreUsuario . '" (ID #' . $idUsuario . ')' : 'ID #' . $idUsuario;
     if ($nombreUsuario === '' && $idUsuario <= 0) {
         $usuarioDetalle = 'usuario especificado';

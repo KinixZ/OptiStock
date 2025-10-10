@@ -30,6 +30,7 @@ $correo     = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
 $forzarEjecucion = isset($_POST['forzar_ejecucion']) && $_POST['forzar_ejecucion'] === '1';
 $fotoPendiente = $_POST['foto_pendiente'] ?? null;
+$solicitudesHabilitadas = opti_solicitudes_habilitadas($conn);
 
 if (!$usuario_id || !$nombre || !$apellido || !$telefono || !$correo) {
     echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
@@ -47,9 +48,12 @@ if ($stmtEmpresa) {
     $stmtEmpresa->close();
 }
 
+if ($empresaId <= 0 && isset($_SESSION['id_empresa'])) {
+    $empresaId = (int) $_SESSION['id_empresa'];
+}
+
 if ($empresaId <= 0) {
-    echo json_encode(['success' => false, 'message' => 'No se pudo identificar la empresa del usuario.']);
-    exit;
+    $forzarEjecucion = true;
 }
 
 $nombreCompleto = trim($nombre . ' ' . $apellido);
@@ -69,11 +73,15 @@ if ($contrasena && strlen(trim($contrasena)) > 0) {
         : sha1($contrasena);
 }
 
-if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK && !$forzarEjecucion) {
+if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK) {
     $archivoPendiente = opti_guardar_archivo_pendiente($_FILES['foto_perfil'], 'perfiles', 'perfil_' . $usuario_id);
     if ($archivoPendiente) {
         $payload['foto_pendiente'] = $archivoPendiente['ruta_relativa'];
     }
+}
+
+if (!$forzarEjecucion && !$solicitudesHabilitadas) {
+    $forzarEjecucion = true;
 }
 
 if ($forzarEjecucion) {

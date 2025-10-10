@@ -58,6 +58,10 @@ try {
         jsonResponse(false, 'El usuario no pertenece a la empresa de esta área.');
     }
 
+    if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
+        $forzarEjecucion = true;
+    }
+
     $zonaNombre = null;
 
     $stmtExiste = $conn->prepare('SELECT 1 FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona IS NULL LIMIT 1');
