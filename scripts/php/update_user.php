@@ -30,6 +30,7 @@ $correo     = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
 $forzarEjecucion = isset($_POST['forzar_ejecucion']) && $_POST['forzar_ejecucion'] === '1';
 $fotoPendiente = $_POST['foto_pendiente'] ?? null;
+$solicitudesHabilitadas = opti_solicitudes_habilitadas($conn);
 
 if (!$usuario_id || !$nombre || !$apellido || !$telefono || !$correo) {
     echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
@@ -47,9 +48,12 @@ if ($stmtEmpresa) {
     $stmtEmpresa->close();
 }
 
+if ($empresaId <= 0 && isset($_SESSION['id_empresa'])) {
+    $empresaId = (int) $_SESSION['id_empresa'];
+}
+
 if ($empresaId <= 0) {
-    echo json_encode(['success' => false, 'message' => 'No se pudo identificar la empresa del usuario.']);
-    exit;
+    $forzarEjecucion = true;
 }
 
 $nombreCompleto = trim($nombre . ' ' . $apellido);
@@ -69,11 +73,15 @@ if ($contrasena && strlen(trim($contrasena)) > 0) {
         : sha1($contrasena);
 }
 
-if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK && !$forzarEjecucion) {
+if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK) {
     $archivoPendiente = opti_guardar_archivo_pendiente($_FILES['foto_perfil'], 'perfiles', 'perfil_' . $usuario_id);
     if ($archivoPendiente) {
         $payload['foto_pendiente'] = $archivoPendiente['ruta_relativa'];
     }
+}
+
+if (!$solicitudesHabilitadas) {
+    $forzarEjecucion = true;
 }
 
 if ($forzarEjecucion) {
@@ -85,19 +93,32 @@ if ($forzarEjecucion) {
     exit;
 }
 
-try {
-    $resultadoSolicitud = opti_registrar_solicitud($conn, [
-        'id_empresa' => $empresaId,
-        'id_solicitante' => $usuarioAccionId,
-        'modulo' => 'Usuarios',
-        'tipo_accion' => 'usuario_actualizar',
-        'resumen' => 'Actualización de datos del usuario ' .
-            ($nombreCompleto !== '' ? '"' . $nombreCompleto . '" ' : '') . '(ID #' . $usuario_id . ')',
-        'descripcion' => 'Actualización solicitada desde la edición de perfil.',
-        'payload' => $payload
-    ]);
+$resultadoSolicitud = opti_registrar_solicitud($conn, [
+    'id_empresa' => $empresaId,
+    'id_solicitante' => $usuarioAccionId,
+    'modulo' => 'Usuarios',
+    'tipo_accion' => 'usuario_actualizar',
+    'resumen' => 'Actualización de datos del usuario ' .
+        ($nombreCompleto !== '' ? '"' . $nombreCompleto . '" ' : '') . '(ID #' . $usuario_id . ')',
+    'descripcion' => 'Actualización solicitada desde la edición de perfil.',
+    'payload' => $payload
+]);
+
+if (!empty($resultadoSolicitud['success'])) {
     opti_responder_solicitud_creada($resultadoSolicitud);
-} catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }
+
+if (!empty($resultadoSolicitud['permitir_fallback'])) {
+    if ($fotoPendiente) {
+        $payload['foto_pendiente'] = $fotoPendiente;
+    }
+    $resultado = opti_aplicar_usuario_actualizar($conn, $payload, $usuarioAccionId);
+    echo json_encode($resultado);
+    exit;
+}
+
+echo json_encode([
+    'success' => false,
+    'message' => $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.'
+]);
 ?>

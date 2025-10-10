@@ -58,6 +58,10 @@ try {
         jsonResponse(false, 'El usuario no pertenece a la empresa de esta área.');
     }
 
+    if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
+        $forzarEjecucion = true;
+    }
+
     $zonaNombre = null;
 
     $stmtExiste = $conn->prepare('SELECT 1 FROM usuario_area_zona WHERE id_usuario = ? AND id_area = ? AND id_zona IS NULL LIMIT 1');
@@ -103,7 +107,16 @@ try {
                 'nombre_area' => $area['nombre']
             ]
         ]);
-        opti_responder_solicitud_creada($resultadoSolicitud);
+
+        if (!empty($resultadoSolicitud['success'])) {
+            opti_responder_solicitud_creada($resultadoSolicitud);
+        }
+
+        if (!empty($resultadoSolicitud['permitir_fallback'])) {
+            $forzarEjecucion = true;
+        } else {
+            jsonResponse(false, $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.');
+        }
     }
 
     $conn->begin_transaction();

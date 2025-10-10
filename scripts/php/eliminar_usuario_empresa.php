@@ -49,6 +49,10 @@ $payload = [
     'nombre_usuario' => $nombreUsuario
 ];
 
+if (!$forzarEjecucion && !$idEmpresa && isset($_SESSION['id_empresa'])) {
+    $idEmpresa = (int) $_SESSION['id_empresa'];
+}
+
 if ($forzarEjecucion) {
     $resultado = opti_aplicar_usuario_eliminar($conn, $payload, $_SESSION['usuario_id'] ?? 0);
     echo json_encode($resultado);
@@ -60,6 +64,16 @@ $detalleId = $usuarioId > 0 ? 'ID #' . $usuarioId : null;
 $partes = array_filter([$detalleNombre, $detalleId]);
 $usuarioResumen = $partes ? implode(' · ', $partes) : 'con correo ' . $correo;
 
+if (!opti_solicitudes_habilitadas($conn)) {
+    $forzarEjecucion = true;
+}
+
+if ($forzarEjecucion) {
+    $resultado = opti_aplicar_usuario_eliminar($conn, $payload, $_SESSION['usuario_id'] ?? 0);
+    echo json_encode($resultado);
+    exit;
+}
+
 $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'id_empresa' => $idEmpresa,
     'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
@@ -70,6 +84,18 @@ $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'payload' => $payload
 ]);
 
-opti_responder_solicitud_creada($resultadoSolicitud);
+if (!empty($resultadoSolicitud['success'])) {
+    opti_responder_solicitud_creada($resultadoSolicitud);
+}
 
+if (!empty($resultadoSolicitud['permitir_fallback'])) {
+    $resultado = opti_aplicar_usuario_eliminar($conn, $payload, $_SESSION['usuario_id'] ?? 0);
+    echo json_encode($resultado);
+    exit;
+}
+
+echo json_encode([
+    'success' => false,
+    'message' => $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.'
+]);
 exit;

@@ -79,6 +79,12 @@ if ($idZona !== null) {
 }
 
 if (!$forzarEjecucion) {
+    if (!opti_solicitudes_habilitadas($conn)) {
+        $forzarEjecucion = true;
+    }
+}
+
+if (!$forzarEjecucion) {
     $usuarioDetalle = $nombreUsuario !== '' ? '"' . $nombreUsuario . '" (ID #' . $idUsuario . ')' : 'ID #' . $idUsuario;
     if ($nombreUsuario === '' && $idUsuario <= 0) {
         $usuarioDetalle = 'usuario especificado';
@@ -108,7 +114,16 @@ if (!$forzarEjecucion) {
             'nombre_zona' => $nombreZona
         ]
     ]);
-    opti_responder_solicitud_creada($resultadoSolicitud);
+
+    if (!empty($resultadoSolicitud['success'])) {
+        opti_responder_solicitud_creada($resultadoSolicitud);
+    }
+
+    if (!empty($resultadoSolicitud['permitir_fallback'])) {
+        $forzarEjecucion = true;
+    } else {
+        jsonResponse(false, $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.');
+    }
 }
 
 try {
