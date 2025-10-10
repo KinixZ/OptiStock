@@ -20,8 +20,14 @@
     const moduleActivityCanvas = document.getElementById('moduleActivityChart');
     const topUsersCanvas = document.getElementById('topUsersChart');
     const trendRangeButtons = Array.from(document.querySelectorAll('[data-trend-range]'));
+    const notificationHistoryCard = document.getElementById('notificationHistoryCard');
+    const notificationHistoryList = document.getElementById('notificationHistoryList');
+    const notificationHistoryStatusEl = document.getElementById('notificationHistoryStatus');
+    const notificationHistoryRefreshBtn = document.getElementById('notificationHistoryRefresh');
+    const notificationHistoryExportBtn = document.getElementById('notificationHistoryExport');
 
     const REPORT_SOURCE = 'Control de registros';
+    const NOTIFICATION_HISTORY_LIMIT = 50;
 
     function descargarArchivo(blob, fileName) {
         if (!(blob instanceof Blob)) {
@@ -136,6 +142,8 @@
     let topUsersChart = null;
     let trendLabelsISO = [];
     let trendSeries = [];
+    let notificationHistoryData = [];
+    let notificationHistoryLoading = false;
     const TREND_RANGE_DAYS = {
         week: 7,
         month: 30
@@ -279,6 +287,283 @@
             console.warn('No se pudo formatear la fecha en formato completo.', error);
             return fechaISO;
         }
+    }
+
+    function formatNotificationDateTime(dateTimeString) {
+        if (!dateTimeString) {
+            return { display: '', iso: '' };
+        }
+
+        const raw = String(dateTimeString).trim();
+        if (!raw) {
+            return { display: '', iso: '' };
+        }
+
+        const normalized = raw.replace(' ', 'T');
+        let date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) {
+            date = new Date(raw);
+        }
+
+        if (Number.isNaN(date.getTime())) {
+            return { display: raw, iso: raw };
+        }
+
+        let display = '';
+        try {
+            const options = { dateStyle: 'medium', timeStyle: 'short' };
+            if (navegadorTimeZone) {
+                options.timeZone = navegadorTimeZone;
+            }
+            display = new Intl.DateTimeFormat('es', options).format(date);
+        } catch (error) {
+            display = date.toLocaleString();
+        }
+
+        if (display && timeZoneLabel) {
+            display += ` (${timeZoneLabel})`;
+        }
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const iso = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+        return { display, iso };
+    }
+
+    function setNotificationHistoryStatus(message) {
+        if (notificationHistoryStatusEl) {
+            notificationHistoryStatusEl.textContent = message;
+        }
+    }
+
+    function renderNotificationHistory(notifications = []) {
+        if (!notificationHistoryList) {
+            return;
+        }
+
+        notificationHistoryList.innerHTML = '';
+
+        if (!Array.isArray(notifications) || !notifications.length) {
+            setNotificationHistoryStatus('No hay alertas registradas todavía.');
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        notifications.forEach(notification => {
+            if (!notification) {
+                return;
+            }
+
+            const item = document.createElement('li');
+            item.className = 'notification-history-item';
+
+            const header = document.createElement('div');
+            header.className = 'notification-history-item__header';
+
+            const title = document.createElement('h3');
+            title.className = 'notification-history-item__title';
+            title.textContent = notification.titulo || 'Notificación';
+            header.appendChild(title);
+
+            const prioridad = (notification.prioridad || 'Media').toLowerCase();
+            const prioridadClass = ['alta', 'media', 'baja'].includes(prioridad)
+                ? prioridad
+                : 'media';
+            const badge = document.createElement('span');
+            badge.className = `notification-history-badge notification-history-badge--${prioridadClass}`;
+            badge.textContent = (notification.prioridad || 'Media').toUpperCase();
+            header.appendChild(badge);
+
+            item.appendChild(header);
+
+            if (notification.mensaje) {
+                const message = document.createElement('p');
+                message.className = 'notification-history-item__message';
+                message.textContent = notification.mensaje;
+                item.appendChild(message);
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'notification-history-meta';
+
+            const dateInfo = formatNotificationDateTime(
+                notification.fecha_disponible_desde
+                || notification.creado_en
+                || notification.actualizado_en
+                || ''
+            );
+            if (dateInfo.display) {
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'notification-history-meta__item';
+                dateSpan.textContent = dateInfo.display;
+                if (dateInfo.iso && dateInfo.iso !== dateInfo.display) {
+                    dateSpan.title = dateInfo.iso;
+                }
+                meta.appendChild(dateSpan);
+            }
+
+            if (notification.estado) {
+                const estadoSpan = document.createElement('span');
+                estadoSpan.className = 'notification-history-meta__item';
+                estadoSpan.textContent = `Estado: ${notification.estado}`;
+                meta.appendChild(estadoSpan);
+            }
+
+            const targetParts = [];
+            if (notification.tipo_destinatario) {
+                targetParts.push(notification.tipo_destinatario);
+            }
+            if (notification.rol_destinatario) {
+                targetParts.push(notification.rol_destinatario);
+            }
+            if (notification.id_usuario_destinatario) {
+                targetParts.push(`#${notification.id_usuario_destinatario}`);
+            }
+            if (targetParts.length) {
+                const targetSpan = document.createElement('span');
+                targetSpan.className = 'notification-history-meta__item';
+                targetSpan.textContent = `Destinatario: ${targetParts.join(' · ')}`;
+                meta.appendChild(targetSpan);
+            }
+
+            if (notification.ruta_destino) {
+                const routeSpan = document.createElement('span');
+                routeSpan.className = 'notification-history-meta__item';
+                routeSpan.textContent = `Ruta: ${notification.ruta_destino}`;
+                meta.appendChild(routeSpan);
+            }
+
+            if (meta.children.length) {
+                item.appendChild(meta);
+            }
+
+            fragment.appendChild(item);
+        });
+
+        notificationHistoryList.appendChild(fragment);
+
+        const total = notifications.length;
+        const label = total === 1 ? '1 alerta registrada' : `${total} alertas registradas`;
+        setNotificationHistoryStatus(`Mostrando ${label}.`);
+    }
+
+    async function loadNotificationHistory() {
+        if (!notificationHistoryList || !notificationHistoryStatusEl) {
+            return;
+        }
+
+        if (!ID_EMPRESA) {
+            notificationHistoryData = [];
+            notificationHistoryList.innerHTML = '';
+            setNotificationHistoryStatus('Conecta tu empresa para ver las alertas registradas.');
+            return;
+        }
+
+        if (notificationHistoryLoading) {
+            return;
+        }
+
+        notificationHistoryLoading = true;
+        setNotificationHistoryStatus('Cargando historial de alertas...');
+
+        try {
+            const params = new URLSearchParams({
+                id_empresa: ID_EMPRESA,
+                limite: String(NOTIFICATION_HISTORY_LIMIT)
+            });
+
+            const response = await fetch(`/scripts/php/get_notification_history.php?${params.toString()}`, {
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const payload = await response.json();
+            if (!payload || payload.success !== true) {
+                throw new Error(payload && payload.message ? payload.message : 'Respuesta inválida del servidor.');
+            }
+
+            notificationHistoryData = Array.isArray(payload.notifications)
+                ? payload.notifications
+                : [];
+
+            renderNotificationHistory(notificationHistoryData);
+        } catch (error) {
+            console.error('No se pudo cargar el historial de notificaciones:', error);
+            notificationHistoryData = [];
+            notificationHistoryList.innerHTML = '';
+            setNotificationHistoryStatus('No se pudo cargar el historial de notificaciones.');
+        } finally {
+            notificationHistoryLoading = false;
+        }
+    }
+
+    async function exportNotificationHistory() {
+        if (!notificationHistoryData.length) {
+            setNotificationHistoryStatus('No hay alertas para guardar en este momento.');
+            return;
+        }
+
+        if (!(window.XLSX && XLSX.utils && typeof XLSX.write === 'function')) {
+            const blob = new Blob([
+                JSON.stringify(notificationHistoryData, null, 2)
+            ], { type: 'application/json' });
+            const fileName = 'historial_notificaciones.json';
+            descargarArchivo(blob, fileName);
+            await guardarReporteHistorial(blob, fileName, 'Historial de notificaciones exportado en formato JSON');
+            setNotificationHistoryStatus('Historial de alertas guardado en formato JSON.');
+            return;
+        }
+
+        const rows = notificationHistoryData.map((notification, index) => {
+            const fecha = formatNotificationDateTime(
+                notification.fecha_disponible_desde
+                || notification.creado_en
+                || notification.actualizado_en
+                || ''
+            );
+
+            return {
+                '#': index + 1,
+                Titulo: notification.titulo || '',
+                Mensaje: notification.mensaje || '',
+                Prioridad: notification.prioridad || '',
+                Estado: notification.estado || '',
+                'Fecha disponible': fecha.iso || '',
+                'Ruta destino': notification.ruta_destino || '',
+                'Tipo destinatario': notification.tipo_destinatario || '',
+                'Rol destinatario': notification.rol_destinatario || '',
+                'Usuario destinatario': notification.id_usuario_destinatario || ''
+            };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Notificaciones');
+
+        let arrayBuffer;
+        try {
+            arrayBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        } catch (error) {
+            console.error('No se pudo generar el archivo de Excel del historial de alertas:', error);
+            return;
+        }
+
+        const blob = new Blob([arrayBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const fileName = 'historial_notificaciones.xlsx';
+        descargarArchivo(blob, fileName);
+        await guardarReporteHistorial(blob, fileName, 'Historial de alertas exportado desde el registro de actividades');
+        setNotificationHistoryStatus('Historial de alertas guardado correctamente.');
     }
 
     function extraerFechaISO(valor) {
@@ -996,6 +1281,7 @@
     cargarFiltrosGuardados();
     mostrarLogsGuardados();
     cargarRegistros();
+    loadNotificationHistory();
 
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
@@ -1085,6 +1371,18 @@
             });
             descargarArchivo(blob, fileName);
             await guardarReporteHistorial(blob, fileName, 'Exportación del registro a Excel');
+        });
+    }
+
+    if (notificationHistoryRefreshBtn) {
+        notificationHistoryRefreshBtn.addEventListener('click', () => {
+            loadNotificationHistory();
+        });
+    }
+
+    if (notificationHistoryExportBtn) {
+        notificationHistoryExportBtn.addEventListener('click', () => {
+            exportNotificationHistory();
         });
     }
 })();

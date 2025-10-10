@@ -148,6 +148,45 @@
       </div>
     </section>
 
+    <section class="notification-history-card" id="notificationHistoryCard">
+      <div class="notification-history-card__header">
+        <div>
+          <span class="notification-history-eyebrow">Alertas y avisos</span>
+          <h2 class="notification-history-title">Historial de alarmas y notificaciones</h2>
+          <p class="notification-history-description">
+            Consulta las alertas enviadas a la barra superior y guarda un respaldo cuando lo necesites.
+          </p>
+        </div>
+        <div class="notification-history-actions">
+          <button type="button" id="notificationHistoryRefresh" class="btn-icon btn-icon--ghost" title="Actualizar historial">
+            <span class="btn-icon__circle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <polyline points="23 20 23 14 17 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L21 8"></path>
+                <path d="M20.49 15a9 9 0 0 1-14.85 3.36L3 16"></path>
+              </svg>
+            </span>
+            <span class="btn-icon__label">Actualizar</span>
+          </button>
+          <button type="button" id="notificationHistoryExport" class="btn-icon" title="Guardar historial">
+            <span class="btn-icon__circle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 5v14"></path>
+                <polyline points="5 12 12 19 19 12"></polyline>
+                <path d="M5 19h14"></path>
+              </svg>
+            </span>
+            <span class="btn-icon__label">Guardar historial</span>
+          </button>
+        </div>
+      </div>
+      <div class="notification-history-card__body">
+        <p class="notification-history-status" id="notificationHistoryStatus">Conecta tu empresa para ver las alertas registradas.</p>
+        <ul class="notification-history-list" id="notificationHistoryList" aria-live="polite"></ul>
+      </div>
+    </section>
+
     <section class="insights-card">
       <div class="insights-heading">
         <span class="insights-eyebrow">Panorama general</span>

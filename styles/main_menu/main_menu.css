@@ -729,9 +729,16 @@ img {
     color: rgba(15, 23, 42, 0.6);
 }
 
+.notification-tray__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+}
+
 .notification-tray__action {
     width: 100%;
-    margin-top: 0.8rem;
+    margin-top: 0;
     background: #0f172a;
     color: #ffffff;
     border: none;
@@ -746,6 +753,24 @@ img {
 .notification-tray__action:hover {
     transform: translateY(-2px);
     box-shadow: 0 15px 35px -22px rgba(15, 23, 42, 0.6);
+}
+
+.notification-tray__action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.notification-tray__action--secondary {
+    background: rgba(15, 23, 42, 0.07);
+    color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.notification-tray__action--secondary:hover {
+    box-shadow: none;
+    background: rgba(15, 23, 42, 0.12);
 }
 
 .user-profile {
