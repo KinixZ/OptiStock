@@ -260,9 +260,6 @@
         if (nombre) {
             partes.push(`"${nombre}"`);
         }
-        if (id) {
-            partes.push(`ID #${id}`);
-        }
         if (!Array.isArray(extras)) {
             extras = extras ? [extras] : [];
         }
