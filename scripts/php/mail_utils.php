@@ -1,9 +1,27 @@
 <?php
+if (!array_key_exists('_MAIL_UTILS_LAST_ERROR', $GLOBALS)) {
+    $GLOBALS['_MAIL_UTILS_LAST_ERROR'] = null;
+}
+
 if (!function_exists('enviarCorreo')) {
+    function establecerUltimoErrorCorreo($mensaje)
+    {
+        $GLOBALS['_MAIL_UTILS_LAST_ERROR'] = $mensaje !== '' ? $mensaje : null;
+    }
+
+    function obtenerUltimoErrorCorreo()
+    {
+        return isset($GLOBALS['_MAIL_UTILS_LAST_ERROR']) ? $GLOBALS['_MAIL_UTILS_LAST_ERROR'] : null;
+    }
+
     function enviarCorreo($destinatario, $asunto, $mensaje, array $opciones = [])
     {
+        establecerUltimoErrorCorreo(null);
+
         if (!filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
-            registrarEnvioCorreo(false, $destinatario, $asunto, 'Correo destinatario inválido.');
+            $detalleError = 'Correo destinatario inválido.';
+            establecerUltimoErrorCorreo($detalleError);
+            registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
 
@@ -56,10 +74,12 @@ if (!function_exists('enviarCorreo')) {
 
         if (!$resultado) {
             $detalleError = obtenerDetalleErrorCorreo();
+            establecerUltimoErrorCorreo($detalleError);
             registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
 
+        establecerUltimoErrorCorreo(null);
         registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
         return true;
     }
