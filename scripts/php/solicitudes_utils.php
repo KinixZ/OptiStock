@@ -74,6 +74,142 @@ function opti_normalize_path($path)
     return preg_replace('#/{2,}#', '/', $path);
 }
 
+function opti_resolver_id_solicitante(array ...$contextos)
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
+    }
+
+    $sessionId = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+    if ($sessionId > 0) {
+        return $sessionId;
+    }
+
+    $headerId = isset($_SERVER['HTTP_X_USUARIO_ID']) ? (int) $_SERVER['HTTP_X_USUARIO_ID'] : 0;
+    if ($headerId > 0) {
+        return $headerId;
+    }
+
+    $fuentes = $contextos;
+    $fuentes[] = isset($_POST) && is_array($_POST) ? $_POST : [];
+    $fuentes[] = isset($_GET) && is_array($_GET) ? $_GET : [];
+
+    $claves = [
+        'id_solicitante',
+        'idSolicitante',
+        'id_usuario_solicitante',
+        'solicitante_id',
+        'solicitanteId',
+        'usuario_id',
+        'usuarioId',
+        'id_usuario',
+        'usuario',
+        'idUser'
+    ];
+
+    foreach ($fuentes as $fuente) {
+        if (!is_array($fuente)) {
+            continue;
+        }
+
+        foreach ($claves as $clave) {
+            if (!array_key_exists($clave, $fuente)) {
+                continue;
+            }
+
+            $valorBruto = $fuente[$clave];
+            if (is_array($valorBruto)) {
+                continue;
+            }
+
+            if (is_numeric($valorBruto)) {
+                $valor = (int) $valorBruto;
+            } else {
+                $filtrado = preg_replace('/[^0-9\-]+/', '', (string) $valorBruto);
+                $valor = (int) $filtrado;
+            }
+
+            if ($valor > 0) {
+                return $valor;
+            }
+        }
+    }
+
+    return 0;
+}
+
+function opti_resolver_id_empresa(mysqli $conn, ?int $idSolicitante = null, array ...$contextos)
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
+    }
+
+    $fuentes = $contextos;
+    $fuentes[] = isset($_POST) && is_array($_POST) ? $_POST : [];
+    $fuentes[] = isset($_GET) && is_array($_GET) ? $_GET : [];
+    $fuentes[] = isset($_SESSION) && is_array($_SESSION) ? $_SESSION : [];
+
+    $claves = [
+        'id_empresa',
+        'empresa_id',
+        'idEmpresa',
+        'empresaId',
+        'idCompany',
+        'company_id'
+    ];
+
+    foreach ($fuentes as $fuente) {
+        if (!is_array($fuente)) {
+            continue;
+        }
+
+        foreach ($claves as $clave) {
+            if (!array_key_exists($clave, $fuente)) {
+                continue;
+            }
+
+            $valorBruto = $fuente[$clave];
+            if (is_array($valorBruto)) {
+                continue;
+            }
+
+            if (is_numeric($valorBruto)) {
+                $valor = (int) $valorBruto;
+            } else {
+                $filtrado = preg_replace('/[^0-9\-]+/', '', (string) $valorBruto);
+                $valor = (int) $filtrado;
+            }
+
+            if ($valor > 0) {
+                return $valor;
+            }
+        }
+    }
+
+    if ($idSolicitante !== null && $idSolicitante > 0) {
+        try {
+            $stmt = $conn->prepare('SELECT id_empresa FROM usuario_empresa WHERE id_usuario = ? LIMIT 1');
+            if ($stmt) {
+                $stmt->bind_param('i', $idSolicitante);
+                $stmt->execute();
+                $resultado = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if ($resultado && isset($resultado['id_empresa'])) {
+                    $valor = (int) $resultado['id_empresa'];
+                    if ($valor > 0) {
+                        return $valor;
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // Ignorar y devolver 0 como último recurso.
+        }
+    }
+
+    return 0;
+}
+
 function opti_guardar_archivo_pendiente(array $file, string $categoria, string $prefijo = '')
 {
     if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
@@ -159,6 +295,14 @@ function opti_registrar_solicitud(mysqli $conn, array $datos)
 {
     $idEmpresa = (int)($datos['id_empresa'] ?? 0);
     $idSolicitante = (int)($datos['id_solicitante'] ?? 0);
+    if ($idSolicitante <= 0) {
+        $idSolicitante = opti_resolver_id_solicitante($datos, $datos['payload'] ?? []);
+        $datos['id_solicitante'] = $idSolicitante;
+    }
+    if ($idEmpresa <= 0) {
+        $idEmpresa = opti_resolver_id_empresa($conn, $idSolicitante, $datos, $datos['payload'] ?? []);
+        $datos['id_empresa'] = $idEmpresa;
+    }
     $modulo = trim($datos['modulo'] ?? 'General');
     $tipo = trim($datos['tipo_accion'] ?? 'accion');
     $resumen = trim($datos['resumen'] ?? 'Solicitud de cambio');

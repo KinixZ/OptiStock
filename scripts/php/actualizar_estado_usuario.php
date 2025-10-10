@@ -30,18 +30,8 @@ if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
     $forzarEjecucion = true;
 }
 
-if (!$id_usuario || ($nuevoEstado !== 0 && $nuevoEstado !== 1) || !$id_empresa) {
+if (!$id_usuario || ($nuevoEstado !== 0 && $nuevoEstado !== 1)) {
     echo json_encode(["success" => false, "message" => "Datos incompletos para actualizar el estado."]);
-    exit;
-}
-
-if ($forzarEjecucion) {
-    $resultado = opti_aplicar_usuario_estado($conn, [
-        'id_usuario' => $id_usuario,
-        'activo' => $nuevoEstado,
-        'id_empresa' => $id_empresa
-    ], $_SESSION['usuario_id'] ?? 0);
-    echo json_encode($resultado);
     exit;
 }
 
@@ -50,6 +40,36 @@ $payload = [
     'activo' => $nuevoEstado,
     'id_empresa' => $id_empresa
 ];
+
+$idSolicitante = opti_resolver_id_solicitante($data, $payload);
+$id_empresa = $id_empresa > 0 ? $id_empresa : opti_resolver_id_empresa($conn, $idSolicitante, $data, $payload);
+$payload['id_empresa'] = $id_empresa;
+
+if ($id_empresa <= 0) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'No se pudo determinar la empresa asociada al cambio solicitado.'
+    ]);
+    exit;
+}
+
+if ($forzarEjecucion) {
+    if ($idSolicitante <= 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No se puede aplicar el cambio porque falta el identificador del solicitante.'
+        ]);
+        exit;
+    }
+
+    $resultado = opti_aplicar_usuario_estado($conn, [
+        'id_usuario' => $id_usuario,
+        'activo' => $nuevoEstado,
+        'id_empresa' => $id_empresa
+    ], $idSolicitante);
+    echo json_encode($resultado);
+    exit;
+}
 
 $stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
 if ($stmtUsuario) {
@@ -76,7 +96,7 @@ $detalleUsuario = $nombreUsuario !== '' ? '"' . $nombreUsuario . '"' : 'ID #' . 
 
 $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'id_empresa' => $id_empresa,
-    'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
+    'id_solicitante' => $idSolicitante,
     'modulo' => 'Usuarios',
     'tipo_accion' => 'usuario_cambiar_estado',
     'resumen' => $accionVerbo . ' usuario ' . $detalleUsuario,

@@ -78,6 +78,23 @@ if ($idZona !== null) {
     }
 }
 
+$idSolicitante = opti_resolver_id_solicitante($input, [
+    'id_empresa' => $idEmpresa,
+    'id_usuario' => $idUsuario,
+    'id_area' => $idArea,
+    'id_zona' => $idZona
+]);
+$idEmpresa = $idEmpresa > 0 ? $idEmpresa : opti_resolver_id_empresa($conn, $idSolicitante, $input, [
+    'id_empresa' => $idEmpresa,
+    'id_usuario' => $idUsuario,
+    'id_area' => $idArea,
+    'id_zona' => $idZona
+]);
+
+if ($forzarEjecucion && $idSolicitante <= 0) {
+    jsonResponse(false, 'No se puede aplicar la revocación porque falta el identificador del solicitante.');
+}
+
 if (!$forzarEjecucion) {
     if (!opti_solicitudes_habilitadas($conn)) {
         $forzarEjecucion = true;
@@ -98,9 +115,11 @@ if (!$forzarEjecucion) {
         $resumen = 'Revocar acceso del usuario ' . $usuarioDetalle . ' a la zona ' . $destinoNombre;
     }
 
+    $idEmpresaSolicitud = $idEmpresa ?: (int) ($input['id_empresa'] ?? 0);
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
-        'id_empresa' => $idEmpresa ?: (int) ($input['id_empresa'] ?? 0),
-        'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
+        'id_empresa' => $idEmpresaSolicitud,
+        'id_solicitante' => $idSolicitante,
         'modulo' => 'Usuarios',
         'tipo_accion' => 'usuario_eliminar_acceso',
         'resumen' => $resumen,
@@ -109,6 +128,7 @@ if (!$forzarEjecucion) {
             'id_usuario' => $idUsuario,
             'id_area' => $idArea,
             'id_zona' => $idZona,
+            'id_empresa' => $idEmpresaSolicitud,
             'nombre_usuario' => $nombreUsuario,
             'nombre_area' => $nombreArea,
             'nombre_zona' => $nombreZona
