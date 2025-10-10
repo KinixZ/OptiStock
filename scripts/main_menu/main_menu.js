@@ -2391,6 +2391,17 @@ function restoreHomeData() {
     }
 }
 
+function refreshHomeDashboard(options = {}) {
+    const { restore = true } = options;
+
+    if (restore) {
+        restoreHomeData();
+    }
+
+    loadMetrics();
+    loadAccessLogs();
+}
+
 function formatRelativeDate(date) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3978,14 +3989,31 @@ document.addEventListener('movimientoNoAutorizado', e => {
 
 document.addEventListener("DOMContentLoaded", function () {
     const mainContent = document.getElementById('mainContent');
-    let contenidoInicial = mainContent.innerHTML;
+    if (!mainContent) {
+        return;
+    }
+
+    const homeViewContainer = document.createElement('div');
+    homeViewContainer.id = 'mainMenuHomeView';
+    homeViewContainer.classList.add('main-menu-home-view');
+    while (mainContent.firstChild) {
+        homeViewContainer.appendChild(mainContent.firstChild);
+    }
+    mainContent.appendChild(homeViewContainer);
+
+    const spaContainer = document.createElement('div');
+    spaContainer.id = 'mainMenuSpaContainer';
+    spaContainer.classList.add('main-menu-spa-container');
+    spaContainer.hidden = true;
+    mainContent.appendChild(spaContainer);
+
     let estaEnInicio = true;
 
     function removeSearchBodyClass() {
         document.body.classList.remove('search-page-body');
-        if (mainContent) {
-            mainContent.classList.remove('search-page-host');
-            const existingSearchRoot = mainContent.querySelector('.search-page-root');
+        mainContent.classList.remove('search-page-host');
+        if (spaContainer) {
+            const existingSearchRoot = spaContainer.querySelector('.search-page-root');
             if (existingSearchRoot) {
                 existingSearchRoot.classList.remove('search-page-root');
             }
@@ -4044,6 +4072,26 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function showHomeView(options = {}) {
+        const { restore = true } = options;
+
+        homeViewContainer.hidden = false;
+        spaContainer.hidden = true;
+        spaContainer.innerHTML = '';
+
+        refreshHomeDashboard({ restore });
+
+        estaEnInicio = true;
+        removeSearchBodyClass();
+    }
+
+    function renderSpaContent(html) {
+        homeViewContainer.hidden = true;
+        spaContainer.hidden = false;
+        spaContainer.innerHTML = html;
+        executeEmbeddedScripts(spaContainer);
+    }
+
     function loadPageIntoMain(pageUrl, options = {}) {
         const { title = '', pageId = '' } = options;
         const normalizedUrl = normalizePageUrl(pageUrl);
@@ -4051,11 +4099,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!normalizedUrl) return;
 
         if (/^https?:\/\//i.test(normalizedUrl)) {
-            window.location.href = normalizedUrl;
-            return;
-        }
-
-        if (!mainContent) {
             window.location.href = normalizedUrl;
             return;
         }
@@ -4076,11 +4119,10 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch(targetUrl)
             .then(res => res.text())
             .then(html => {
-                mainContent.innerHTML = html;
-                executeEmbeddedScripts(mainContent);
+                renderSpaContent(html);
             })
             .catch(err => {
-                mainContent.innerHTML = `<p>Error cargando la página: ${err}</p>`;
+                renderSpaContent(`<p>Error cargando la página: ${err}</p>`);
             });
     }
 
@@ -4136,12 +4178,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const sanitizedQuery = (query || '').trim();
         const topbarTitle = document.querySelector('.topbar-title');
 
-        if (!mainContent) {
-            const searchUrl = sanitizedQuery ? `global_search.html?q=${encodeURIComponent(sanitizedQuery)}` : 'global_search.html';
-            window.location.href = searchUrl;
-            return;
-        }
-
         if (estaEnInicio) {
             saveHomeData();
             estaEnInicio = false;
@@ -4149,7 +4185,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
 
-        showSearchLoader(mainContent);
+        showSearchLoader(spaContainer);
+        homeViewContainer.hidden = true;
+        spaContainer.hidden = false;
 
         fetch('../main_menu/global_search.html')
             .then(res => res.text())
@@ -4165,21 +4203,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (incomingMain) {
-                    mainContent.innerHTML = '';
+                    spaContainer.innerHTML = '';
                     if (incomingMain.classList.contains('content')) {
                         incomingMain.classList.remove('content');
                     }
                     incomingMain.classList.add('search-page-root');
-                    mainContent.appendChild(incomingMain);
+                    spaContainer.appendChild(incomingMain);
                 } else if (doc.body) {
-                    mainContent.innerHTML = doc.body.innerHTML;
-                    const fallbackRoot = mainContent.querySelector('.search-page');
+                    spaContainer.innerHTML = doc.body.innerHTML;
+                    const fallbackRoot = spaContainer.querySelector('.search-page');
                     if (fallbackRoot) {
                         fallbackRoot.classList.remove('content');
                         fallbackRoot.classList.add('search-page-root');
                     }
                 } else {
-                    mainContent.innerHTML = html;
+                    spaContainer.innerHTML = html;
                 }
 
                 mainContent.classList.add('search-page-host');
@@ -4192,7 +4230,9 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(err => {
                 removeSearchBodyClass();
-                mainContent.innerHTML = `<div class="search-error-state">No se pudo cargar el buscador global. ${err}</div>`;
+                spaContainer.innerHTML = `<div class="search-error-state">No se pudo cargar el buscador global. ${err}</div>`;
+                spaContainer.hidden = false;
+                homeViewContainer.hidden = true;
             });
     }
 
@@ -4212,10 +4252,16 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    restoreHomeData();
-    loadMetrics();
-    loadAccessLogs();
+    refreshHomeDashboard();
     window.addEventListener('beforeunload', saveHomeData);
+    window.addEventListener('pageshow', event => {
+        if (event.persisted && !spaContainer.hidden) {
+            return;
+        }
+        if (event.persisted && homeViewContainer.hidden === false) {
+            refreshHomeDashboard({ restore: true });
+        }
+    });
     document.addEventListener('movimientoRegistrado', loadMetrics);
 
     // Mostrar nombre y rol del usuario
@@ -4299,6 +4345,8 @@ if (userImgEl) {
                 tituloEmpresa.textContent = `Bienvenido a ${data.empresa_nombre}`;
             }
             document.querySelectorAll('.empresa-elements').forEach(el => el.style.display = 'block');
+
+            refreshHomeDashboard({ restore: false });
 
     const msg = document.getElementById('message');
     if (msg) msg.style.display = 'none';
@@ -4410,12 +4458,7 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
             if (pageUrl === 'inicio') {
                 const label = setActiveSidebarItem('inicio') || this.textContent.trim();
                 setTopbarTitle(label);
-                mainContent.innerHTML = contenidoInicial;
-                restoreHomeData();
-                estaEnInicio = true;
-                removeSearchBodyClass();
-                loadMetrics();
-                loadAccessLogs();
+                showHomeView();
                 return;
             }
 
@@ -4456,26 +4499,12 @@ if (params.has("load")) {
     fetch(`../${page}`)
         .then(res => res.text())
         .then(html => {
-            const mainContent = document.getElementById("mainContent");
-            mainContent.innerHTML = html;
+            renderSpaContent(html);
             estaEnInicio = false;
             removeSearchBodyClass();
-
-            // Ejecutar scripts embebidos si los hay
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(script => {
-                const newScript = document.createElement("script");
-                if (script.src) {
-                    newScript.src = script.src;
-                    newScript.async = false;
-                } else {
-                    newScript.textContent = script.textContent;
-                }
-                document.body.appendChild(newScript);
-            });
         })
         .catch(err => {
-            document.getElementById("mainContent").innerHTML = `<p>Error cargando la vista: ${err}</p>`;
+            renderSpaContent(`<p>Error cargando la vista: ${err}</p>`);
         });
     }
 
@@ -4488,25 +4517,9 @@ if (vistaPendiente) {
     fetch(`../${vistaPendiente}`)
         .then(res => res.text())
         .then(html => {
-            const mainContent = document.getElementById("mainContent");
-            mainContent.innerHTML = html;
+            renderSpaContent(html);
             estaEnInicio = false;
             removeSearchBodyClass();
-
-            // Ejecutar los scripts externos/internos del HTML cargado
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                Array.from(oldScript.attributes).forEach(attr => {
-                    newScript.setAttribute(attr.name, attr.value);
-                });
-                if (oldScript.src) {
-                    newScript.async = false;
-                } else {
-                    newScript.textContent = oldScript.textContent;
-                }
-                document.body.appendChild(newScript);
-            });
 
             // Actualizar topbar (opcional)
             const titulo = vistaPendiente.split('/').pop().replace('.html', '').replace(/_/g, ' ');
@@ -4516,10 +4529,7 @@ if (vistaPendiente) {
             }
         })
         .catch(err => {
-            const mainContent = document.getElementById("mainContent");
-            if (mainContent) {
-                mainContent.innerHTML = `<p>Error cargando la vista: ${err}</p>`;
-            }
+            renderSpaContent(`<p>Error cargando la vista: ${err}</p>`);
         });
     }
 });
