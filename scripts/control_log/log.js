@@ -202,6 +202,49 @@
         return span;
     }
 
+    function capitalizar(texto) {
+        if (!texto) {
+            return '';
+        }
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    function formatearAccionSolicitud(item) {
+        if (!item) {
+            return '';
+        }
+
+        const tipoAccion = String(item.tipo_accion ?? '').trim();
+        const payload = item.payload && typeof item.payload === 'object' ? item.payload : {};
+
+        if (!tipoAccion) {
+            return '';
+        }
+
+        if (tipoAccion === 'zona_eliminar') {
+            const nombreZona = String(payload.nombre_zona ?? '').trim();
+            const zonaId = payload.zona_id ?? '';
+            const partes = [];
+            if (nombreZona) {
+                partes.push(`"${nombreZona}"`);
+            }
+            const zonaIdNumero = Number(zonaId);
+            if (!Number.isNaN(zonaIdNumero) && zonaIdNumero > 0) {
+                partes.push(`ID #${zonaIdNumero}`);
+            }
+            const detalle = partes.length ? ` ${partes.join(' · ')}` : '';
+            return `Eliminar zona${detalle}`;
+        }
+
+        const textoNormalizado = tipoAccion
+            .split('_')
+            .filter(Boolean)
+            .map(fragmento => capitalizar(fragmento))
+            .join(' ');
+
+        return textoNormalizado || capitalizar(tipoAccion);
+    }
+
     function construirSolicitudCard(item, esHistorial = false) {
         const card = document.createElement('div');
         card.className = 'request-item';
@@ -221,8 +264,9 @@
         if (item.modulo) {
             meta.appendChild(crearEtiqueta(`Módulo: ${item.modulo}`));
         }
-        if (item.tipo_accion) {
-            meta.appendChild(crearEtiqueta(`Acción: ${item.tipo_accion}`));
+        const textoAccion = formatearAccionSolicitud(item);
+        if (textoAccion) {
+            meta.appendChild(crearEtiqueta(`Acción: ${textoAccion}`));
         }
         encabezado.appendChild(meta);
         card.appendChild(encabezado);
