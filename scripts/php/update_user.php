@@ -80,7 +80,7 @@ if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_
     }
 }
 
-if (!$solicitudesHabilitadas) {
+if (!$forzarEjecucion && !$solicitudesHabilitadas) {
     $forzarEjecucion = true;
 }
 
@@ -93,32 +93,19 @@ if ($forzarEjecucion) {
     exit;
 }
 
-$resultadoSolicitud = opti_registrar_solicitud($conn, [
-    'id_empresa' => $empresaId,
-    'id_solicitante' => $usuarioAccionId,
-    'modulo' => 'Usuarios',
-    'tipo_accion' => 'usuario_actualizar',
-    'resumen' => 'Actualización de datos del usuario ' .
-        ($nombreCompleto !== '' ? '"' . $nombreCompleto . '" ' : '') . '(ID #' . $usuario_id . ')',
-    'descripcion' => 'Actualización solicitada desde la edición de perfil.',
-    'payload' => $payload
-]);
-
-if (!empty($resultadoSolicitud['success'])) {
+try {
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+        'id_empresa' => $empresaId,
+        'id_solicitante' => $usuarioAccionId,
+        'modulo' => 'Usuarios',
+        'tipo_accion' => 'usuario_actualizar',
+        'resumen' => 'Actualización de datos del usuario ' .
+            ($nombreCompleto !== '' ? '"' . $nombreCompleto . '" ' : '') . '(ID #' . $usuario_id . ')',
+        'descripcion' => 'Actualización solicitada desde la edición de perfil.',
+        'payload' => $payload
+    ]);
     opti_responder_solicitud_creada($resultadoSolicitud);
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'Error: '.$e->getMessage()]);
 }
-
-if (!empty($resultadoSolicitud['permitir_fallback'])) {
-    if ($fotoPendiente) {
-        $payload['foto_pendiente'] = $fotoPendiente;
-    }
-    $resultado = opti_aplicar_usuario_actualizar($conn, $payload, $usuarioAccionId);
-    echo json_encode($resultado);
-    exit;
-}
-
-echo json_encode([
-    'success' => false,
-    'message' => $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.'
-]);
 ?>
