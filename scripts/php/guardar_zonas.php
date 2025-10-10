@@ -212,7 +212,7 @@ if ($method === 'POST') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
         'tipo_accion' => 'zona_crear',
-        'resumen' => 'Creación de zona: ' . $nombre,
+        'resumen' => 'Creación de la zona "' . $nombre . '"',
         'descripcion' => 'Solicitud de creación de zona en el almacén.',
         'payload' => [
             'empresa_id' => $empresa_id,
@@ -299,7 +299,7 @@ if ($method === 'PUT') {
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
         'tipo_accion' => 'zona_actualizar',
-        'resumen' => 'Actualización de la zona ID #' . $id,
+        'resumen' => 'Actualización de la zona "' . $nombre . '" (ID #' . $id . ')',
         'descripcion' => 'Solicitud de modificación de zona.',
         'payload' => [
             'zona_id' => $id,

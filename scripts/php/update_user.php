@@ -52,10 +52,13 @@ if ($empresaId <= 0) {
     exit;
 }
 
+$nombreCompleto = trim($nombre . ' ' . $apellido);
+
 $payload = [
     'id_usuario' => (int) $usuario_id,
     'nombre' => $nombre,
     'apellido' => $apellido,
+    'nombre_completo' => $nombreCompleto,
     'telefono' => $telefono,
     'correo' => $correo
 ];
@@ -88,7 +91,8 @@ try {
         'id_solicitante' => $usuarioAccionId,
         'modulo' => 'Usuarios',
         'tipo_accion' => 'usuario_actualizar',
-        'resumen' => 'Actualización de datos del usuario #' . $usuario_id,
+        'resumen' => 'Actualización de datos del usuario ' .
+            ($nombreCompleto !== '' ? '"' . $nombreCompleto . '" ' : '') . '(ID #' . $usuario_id . ')',
         'descripcion' => 'Actualización solicitada desde la edición de perfil.',
         'payload' => $payload
     ]);
