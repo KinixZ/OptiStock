@@ -71,7 +71,7 @@ if ($forzarEjecucion) {
     exit;
 }
 
-$stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
+$stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuario WHERE id_usuario = ? LIMIT 1');
 if ($stmtUsuario) {
     $stmtUsuario->bind_param('i', $id_usuario);
     $stmtUsuario->execute();

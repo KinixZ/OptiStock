@@ -36,7 +36,7 @@ if ($idUsuario <= 0 || $idArea <= 0) {
 
 $compositeId = $idUsuario . ':' . $idArea . ':' . ($idZona === null ? 'null' : $idZona);
 
-$stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuarios WHERE id = ? LIMIT 1');
+$stmtUsuario = $conn->prepare('SELECT nombre, apellido FROM usuario WHERE id_usuario = ? LIMIT 1');
 $nombreUsuario = '';
 if ($stmtUsuario) {
     $stmtUsuario->bind_param('i', $idUsuario);
