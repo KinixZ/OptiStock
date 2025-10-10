@@ -47,6 +47,10 @@ try {
     $mail_subject = "OPTISTOCK - Reenvío de Código de Verificación";
     $mail_message = "Hola de nuevo. tu código de verificación es: $codigo_verificacion";
     if (!enviarCorreo($email, $mail_subject, $mail_message)) {
+        $detalleCorreo = obtenerUltimoErrorCorreo();
+        if ($detalleCorreo) {
+            throw new Exception("Error al enviar el correo de verificación. Detalle: " . $detalleCorreo);
+        }
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
