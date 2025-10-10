@@ -27,6 +27,13 @@
   const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
   let modalAsignarInstancia = null;
 
+  function obtenerIdSolicitante() {
+    const raw = localStorage.getItem('usuario_id');
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
   if (selectZona) {
     selectZona.innerHTML = '<option value="">Asignación por zona deshabilitada</option>';
     selectZona.disabled = true;
@@ -386,13 +393,20 @@
       botonAgregarAcceso.textContent = 'Guardando...';
     }
 
+    const solicitanteId = obtenerIdSolicitante();
+    const body = {
+      id_usuario: usuarioAccesosSeleccionadoId,
+      id_area: areaSeleccionada
+    };
+
+    if (solicitanteId) {
+      body.id_solicitante = solicitanteId;
+    }
+
     fetch('/scripts/php/guardar_acceso_usuario.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id_usuario: usuarioAccesosSeleccionadoId,
-        id_area: areaSeleccionada
-      })
+      body: JSON.stringify(body)
     })
       .then(res => res.json())
       .then(data => {
@@ -433,6 +447,11 @@
       id_area: acceso.id_area,
       id_zona: acceso.id_zona === null || typeof acceso.id_zona === 'undefined' ? null : acceso.id_zona
     };
+
+    const solicitanteId = obtenerIdSolicitante();
+    if (solicitanteId) {
+      payload.id_solicitante = solicitanteId;
+    }
 
     fetch('/scripts/php/eliminar_acceso_usuario.php', {
       method: 'POST',
@@ -642,14 +661,21 @@
 
     const id_empresa = localStorage.getItem('id_empresa');
 
+    const solicitanteId = obtenerIdSolicitante();
+    const body = {
+      id_usuario: usuario.id_usuario,
+      activo: nuevoEstado,
+      id_empresa
+    };
+
+    if (solicitanteId) {
+      body.id_solicitante = solicitanteId;
+    }
+
     fetch('/scripts/php/actualizar_estado_usuario.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id_usuario: usuario.id_usuario,
-        activo: nuevoEstado,
-        id_empresa
-      })
+      body: JSON.stringify(body)
     })
       .then(res => res.json())
       .then(data => {
@@ -689,10 +715,22 @@
   }
 
   function eliminarUsuario(correo) {
+    const solicitanteId = obtenerIdSolicitante();
+    const idEmpresa = localStorage.getItem('id_empresa');
+    const body = { correo };
+
+    if (idEmpresa) {
+      body.id_empresa = idEmpresa;
+    }
+
+    if (solicitanteId) {
+      body.id_solicitante = solicitanteId;
+    }
+
     fetch('/scripts/php/eliminar_usuario_empresa.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correo })
+      body: JSON.stringify(body)
     })
       .then(res => res.json())
       .then(data => {

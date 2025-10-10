@@ -48,6 +48,16 @@ try {
 
     $idEmpresa = (int) $area['id_empresa'];
 
+    $idSolicitante = opti_resolver_id_solicitante($input, [
+        'id_empresa' => $idEmpresa,
+        'id_usuario' => $idUsuario,
+        'id_area' => $idArea
+    ]);
+
+    if ($forzarEjecucion && $idSolicitante <= 0) {
+        jsonResponse(false, 'No se puede aplicar la asignación porque falta el identificador del solicitante.');
+    }
+
     $stmtUsuarioEmpresa = $conn->prepare('SELECT 1 FROM usuario_empresa WHERE id_usuario = ? AND id_empresa = ? LIMIT 1');
     $stmtUsuarioEmpresa->bind_param('ii', $idUsuario, $idEmpresa);
     $stmtUsuarioEmpresa->execute();
@@ -95,7 +105,7 @@ try {
 
         $resultadoSolicitud = opti_registrar_solicitud($conn, [
             'id_empresa' => $idEmpresa,
-            'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
+            'id_solicitante' => $idSolicitante,
             'modulo' => 'Usuarios',
             'tipo_accion' => 'usuario_asignar_area',
             'resumen' => 'Asignar área ' . $detalleArea . ' al usuario ' . $detalleUsuario,
