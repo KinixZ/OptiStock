@@ -30,6 +30,7 @@ const notificationList = document.getElementById('notificationList');
 const notificationBadge = document.querySelector('.notification-badge');
 const notificationCounter = document.querySelector('.notification-tray__counter');
 const notificationViewAll = document.getElementById('notificationViewAll');
+const notificationClearButton = document.getElementById('notificationClear');
 
 const DASHBOARD_HISTORY_STORAGE_PREFIX = 'dashboardStatsHistory';
 
@@ -893,6 +894,94 @@ function refreshNotificationUI() {
 
     const sorted = sortNotificationsByPriorityAndDate(merged);
     renderNotifications(sorted);
+}
+
+async function archiveServerNotifications(notificationIds = []) {
+    if (!Array.isArray(notificationIds) || !notificationIds.length || !activeEmpresaId) {
+        return { success: true, archived: 0 };
+    }
+
+    const payloadIds = notificationIds
+        .map(id => Number.parseInt(id, 10))
+        .filter(id => Number.isFinite(id) && id > 0);
+
+    if (!payloadIds.length) {
+        return { success: true, archived: 0 };
+    }
+
+    const response = await fetch('/scripts/php/archive_notifications.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id_empresa: activeEmpresaId,
+            notification_ids: payloadIds
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result || result.success !== true) {
+        throw new Error(result && result.message ? result.message : 'No se pudieron archivar las notificaciones.');
+    }
+
+    return result;
+}
+
+async function clearNotificationTray() {
+    if (!Array.isArray(cachedNotifications) || !cachedNotifications.length) {
+        return;
+    }
+
+    const originalLabel = notificationClearButton ? notificationClearButton.textContent : '';
+
+    if (notificationClearButton) {
+        notificationClearButton.disabled = true;
+        notificationClearButton.textContent = 'Vaciando...';
+    }
+
+    const previousState = {
+        server: serverNotifications.slice(),
+        critical: criticalStockNotifications.slice(),
+        capacity: capacityAlertNotifications.slice()
+    };
+
+    const idsToArchive = cachedNotifications
+        .map(notification => Number.parseInt(notification && notification.id, 10))
+        .filter(id => Number.isFinite(id) && id > 0);
+
+    const idsToArchiveSet = new Set(idsToArchive);
+
+    try {
+        if (idsToArchiveSet.size) {
+            await archiveServerNotifications(Array.from(idsToArchiveSet));
+        }
+
+        serverNotifications = serverNotifications.filter(notification => {
+            const id = Number.parseInt(notification && notification.id, 10);
+            return !idsToArchiveSet.has(id);
+        });
+
+        criticalStockNotifications = [];
+        capacityAlertNotifications = [];
+
+        refreshNotificationUI();
+        fetchNotifications({ force: true });
+    } catch (error) {
+        console.error('No se pudieron archivar las notificaciones:', error);
+        serverNotifications = previousState.server;
+        criticalStockNotifications = previousState.critical;
+        capacityAlertNotifications = previousState.capacity;
+        refreshNotificationUI();
+    } finally {
+        if (notificationClearButton) {
+            notificationClearButton.disabled = false;
+            notificationClearButton.textContent = originalLabel || 'Vaciar bandeja';
+        }
+    }
 }
 
 async function fetchNotifications(options = {}) {
@@ -2846,6 +2935,12 @@ if (notificationViewAll) {
         if (notificationBell) {
             notificationBell.setAttribute('aria-expanded', 'false');
         }
+    });
+}
+
+if (notificationClearButton) {
+    notificationClearButton.addEventListener('click', () => {
+        clearNotificationTray();
     });
 }
 
