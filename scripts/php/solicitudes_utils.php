@@ -2,6 +2,51 @@
 require_once __DIR__ . '/log_utils.php';
 require_once __DIR__ . '/infraestructura_utils.php';
 
+/**
+ * Determina si las tablas necesarias para el flujo de solicitudes están disponibles.
+ */
+function opti_solicitudes_habilitadas(mysqli $conn)
+{
+    static $cache = null;
+
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    try {
+        $resSolicitudes = $conn->query("SHOW TABLES LIKE 'solicitudes_cambios'");
+        if ($resSolicitudes === false) {
+            $cache = false;
+            return $cache;
+        }
+
+        $existeSolicitudes = $resSolicitudes->num_rows > 0;
+        $resSolicitudes->close();
+
+        if (!$existeSolicitudes) {
+            $cache = false;
+            return $cache;
+        }
+
+        $resHistorial = $conn->query("SHOW TABLES LIKE 'solicitudes_cambios_historial'");
+        if ($resHistorial === false) {
+            $cache = false;
+            return $cache;
+        }
+
+        $cache = $resHistorial->num_rows > 0;
+        $resHistorial->close();
+    } catch (Throwable $e) {
+        $cache = false;
+    }
+
+    if ($cache === false) {
+        error_log('Sistema de solicitudes deshabilitado: tablas necesarias no disponibles.');
+    }
+
+    return $cache;
+}
+
 function opti_get_project_root()
 {
     static $root = null;
