@@ -244,11 +244,8 @@ async function persistNotifications(notifications = []) {
     }
 }
 
-const CAPACITY_ZONE_THRESHOLD = 85;
+const CAPACITY_ZONE_THRESHOLD = 90;
 const CAPACITY_AREA_THRESHOLD = 90;
-const CAPACITY_MIN_FREE_PERCENT = 15;
-const CAPACITY_ZONE_MIN_FREE_VOLUME = 2;
-const CAPACITY_AREA_MIN_FREE_VOLUME = 5;
 
 let navegadorTimeZone = null;
 
@@ -1321,36 +1318,23 @@ function toFiniteNumber(value, fallback = 0) {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function computeFreePercent(disponible, total) {
-    const safeDisponible = toFiniteNumber(disponible, 0);
-    const safeTotal = toFiniteNumber(total, 0);
-    if (safeTotal <= 0) {
-        return 100;
-    }
-    return Math.max(0, Math.min(100, (safeDisponible / safeTotal) * 100));
-}
-
-function isCriticalCapacity({ porcentaje, disponible, total, threshold, minFreePercent, minFreeVolume }) {
-    const ocupacion = toFiniteNumber(porcentaje, 0);
-    const libre = toFiniteNumber(disponible, 0);
+function computeOccupancyPercent({ porcentaje, disponible, total }) {
     const capacidadTotal = toFiniteNumber(total, 0);
+    let ocupacion = toFiniteNumber(porcentaje, NaN);
 
-    if (ocupacion >= threshold) {
-        return true;
-    }
-
-    if (capacidadTotal > 0) {
-        const porcentajeLibre = computeFreePercent(libre, capacidadTotal);
-        if (porcentajeLibre <= minFreePercent) {
-            return true;
+    if (!Number.isFinite(ocupacion)) {
+        const libre = toFiniteNumber(disponible, NaN);
+        if (capacidadTotal > 0 && Number.isFinite(libre)) {
+            const utilizada = capacidadTotal - libre;
+            ocupacion = (utilizada / capacidadTotal) * 100;
         }
     }
 
-    if (libre > 0 && libre <= minFreeVolume) {
-        return true;
+    if (!Number.isFinite(ocupacion)) {
+        return null;
     }
 
-    return false;
+    return Math.max(0, Math.min(100, ocupacion));
 }
 
 function buildCapacityAlertEntries(areasRaw, zonasRaw) {
@@ -1369,19 +1353,19 @@ function buildCapacityAlertEntries(areasRaw, zonasRaw) {
             ? areaMap.get(zona.area_id)
             : null;
 
-        const ocupacion = toFiniteNumber(zona.porcentaje ?? zona.porcentaje_ocupacion, 0);
+        const porcentajeReportado = zona.porcentaje ?? zona.porcentaje_ocupacion;
+        const ocupacion = toFiniteNumber(porcentajeReportado, 0);
         const disponible = toFiniteNumber(zona.capacidad_disponible ?? 0, 0);
         const utilizada = toFiniteNumber(zona.capacidad_utilizada ?? 0, 0);
         const total = disponible + utilizada;
 
-        const isCritical = isCriticalCapacity({
-            porcentaje: ocupacion,
+        const porcentajeOcupacion = computeOccupancyPercent({
+            porcentaje: porcentajeReportado,
             disponible,
-            total,
-            threshold: CAPACITY_ZONE_THRESHOLD,
-            minFreePercent: CAPACITY_MIN_FREE_PERCENT,
-            minFreeVolume: CAPACITY_ZONE_MIN_FREE_VOLUME
+            total
         });
+
+        const isCritical = Number.isFinite(porcentajeOcupacion) && porcentajeOcupacion >= CAPACITY_ZONE_THRESHOLD;
 
         if (!isCritical) {
             return;
@@ -1393,13 +1377,15 @@ function buildCapacityAlertEntries(areasRaw, zonasRaw) {
         if (areaNombre) {
             detallePartes.push(areaNombre);
         }
-        if (Number.isFinite(ocupacion)) {
-            detallePartes.push(`${ocupacion.toFixed(1)}% ocupado`);
+        const ocupacionVisible = Number.isFinite(porcentajeOcupacion) ? porcentajeOcupacion : ocupacion;
+        if (Number.isFinite(ocupacionVisible)) {
+            detallePartes.push(`${ocupacionVisible.toFixed(1)}% ocupado`);
         }
 
         const detalle = detallePartes.join(' · ') || 'Sin detalles de ocupación';
         const libresTexto = Number.isFinite(disponible) ? `${disponible.toFixed(2)} m³ libres` : 'Sin espacio disponible';
-        const severidad = Math.max(1, Math.round(Math.max(0, ocupacion - CAPACITY_ZONE_THRESHOLD)) + (disponible <= CAPACITY_ZONE_MIN_FREE_VOLUME ? 1 : 0));
+        const ocupacionParaSeveridad = Number.isFinite(ocupacionVisible) ? ocupacionVisible : 0;
+        const severidad = Math.max(1, Math.round(Math.max(0, ocupacionParaSeveridad - CAPACITY_ZONE_THRESHOLD)) + (Number.isFinite(disponible) && disponible <= 0 ? 1 : 0));
 
         alerts.push({
             type: 'capacity',
@@ -1418,7 +1404,7 @@ function buildCapacityAlertEntries(areasRaw, zonasRaw) {
             areaId: zona.area_id ?? (area && area.id) ?? null,
             name: zonaNombre,
             areaName: areaNombre || null,
-            occupancy: ocupacion,
+            occupancy: ocupacionVisible,
             freeVolume: disponible,
             totalVolume: total,
             severity: severidad
@@ -1428,19 +1414,20 @@ function buildCapacityAlertEntries(areasRaw, zonasRaw) {
     areas.forEach(area => {
         if (!area) return;
 
-        const ocupacion = toFiniteNumber(area.porcentaje ?? area.porcentaje_ocupacion, 0);
+        const porcentajeReportado = area.porcentaje ?? area.porcentaje_ocupacion;
+        const ocupacion = toFiniteNumber(porcentajeReportado, 0);
         const disponible = toFiniteNumber(area.disponible ?? area.capacidad_disponible, 0);
         const utilizada = toFiniteNumber(area.utilizada ?? area.capacidad_utilizada, 0);
         const total = disponible + utilizada;
 
-        const isCritical = isCriticalCapacity({
-            porcentaje: ocupacion,
+        const totalReferencia = total > 0 ? total : toFiniteNumber(area.volumen, 0);
+        const porcentajeOcupacion = computeOccupancyPercent({
+            porcentaje: porcentajeReportado,
             disponible,
-            total: total > 0 ? total : toFiniteNumber(area.volumen, 0),
-            threshold: CAPACITY_AREA_THRESHOLD,
-            minFreePercent: CAPACITY_MIN_FREE_PERCENT,
-            minFreeVolume: CAPACITY_AREA_MIN_FREE_VOLUME
+            total: totalReferencia
         });
+
+        const isCritical = Number.isFinite(porcentajeOcupacion) && porcentajeOcupacion >= CAPACITY_AREA_THRESHOLD;
 
         if (!isCritical) {
             return;
@@ -1449,15 +1436,17 @@ function buildCapacityAlertEntries(areasRaw, zonasRaw) {
         const areaNombre = ((area.nombre || (area.id ? `Área ${area.id}` : 'Área sin nombre'))).trim();
         const libresTexto = Number.isFinite(disponible) ? `${disponible.toFixed(2)} m³ libres` : 'Sin espacio disponible';
         const detallePartes = [];
-        if (Number.isFinite(ocupacion)) {
-            detallePartes.push(`${ocupacion.toFixed(1)}% ocupado`);
+        const ocupacionVisible = Number.isFinite(porcentajeOcupacion) ? porcentajeOcupacion : ocupacion;
+        if (Number.isFinite(ocupacionVisible)) {
+            detallePartes.push(`${ocupacionVisible.toFixed(1)}% ocupado`);
         }
         if (Number.isFinite(area.productos)) {
             const productos = Math.max(0, Math.round(area.productos));
             detallePartes.push(`${productos} ${productos === 1 ? 'tipo' : 'tipos'}`);
         }
         const detalle = detallePartes.join(' · ') || 'Sin detalles de ocupación';
-        const severidad = Math.max(1, Math.round(Math.max(0, ocupacion - CAPACITY_AREA_THRESHOLD)) + (disponible <= CAPACITY_AREA_MIN_FREE_VOLUME ? 1 : 0));
+        const ocupacionParaSeveridad = Number.isFinite(ocupacionVisible) ? ocupacionVisible : 0;
+        const severidad = Math.max(1, Math.round(Math.max(0, ocupacionParaSeveridad - CAPACITY_AREA_THRESHOLD)) + (Number.isFinite(disponible) && disponible <= 0 ? 1 : 0));
 
         alerts.push({
             type: 'capacity',
@@ -1475,9 +1464,9 @@ function buildCapacityAlertEntries(areasRaw, zonasRaw) {
             id: area.id ?? null,
             name: areaNombre,
             areaName: areaNombre,
-            occupancy: ocupacion,
+            occupancy: ocupacionVisible,
             freeVolume: disponible,
-            totalVolume: total > 0 ? total : toFiniteNumber(area.volumen, 0),
+            totalVolume: totalReferencia,
             severity: severidad
         });
     });
