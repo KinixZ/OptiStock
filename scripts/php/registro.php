@@ -62,6 +62,10 @@ try {
     $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
 
     if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
+        $detalleCorreo = obtenerUltimoErrorCorreo();
+        if ($detalleCorreo) {
+            throw new Exception("Error al enviar el correo de verificación. Detalle: " . $detalleCorreo);
+        }
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
