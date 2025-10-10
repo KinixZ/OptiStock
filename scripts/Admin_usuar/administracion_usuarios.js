@@ -760,6 +760,11 @@
       rol: document.getElementById('editar_rol').value
     };
 
+    const solicitanteId = obtenerIdSolicitante();
+    if (solicitanteId) {
+      datos.id_solicitante = solicitanteId;
+    }
+
     fetch('/scripts/php/editar_usuario_empresa.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
