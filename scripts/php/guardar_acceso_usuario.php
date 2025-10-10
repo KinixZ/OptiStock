@@ -107,16 +107,7 @@ try {
                 'nombre_area' => $area['nombre']
             ]
         ]);
-
-        if (!empty($resultadoSolicitud['success'])) {
-            opti_responder_solicitud_creada($resultadoSolicitud);
-        }
-
-        if (!empty($resultadoSolicitud['permitir_fallback'])) {
-            $forzarEjecucion = true;
-        } else {
-            jsonResponse(false, $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.');
-        }
+        opti_responder_solicitud_creada($resultadoSolicitud);
     }
 
     $conn->begin_transaction();
