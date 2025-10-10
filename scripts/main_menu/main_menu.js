@@ -76,6 +76,173 @@ let capacityAlertNotifications = [];
 let criticalStockState = new Map();
 let capacityAlertState = new Map();
 
+const NOTIFICATION_PRIORITIES = ['Alta', 'Media', 'Baja'];
+const NOTIFICATION_STATES = ['Pendiente', 'Enviada', 'Leida', 'Archivada'];
+const NOTIFICATION_TARGETS = ['General', 'Rol', 'Usuario'];
+
+function normalizeNotificationDateTime(value) {
+    if (!value) {
+        return null;
+    }
+
+    const raw = String(value).trim();
+    if (!raw) {
+        return null;
+    }
+
+    const directMatch = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2}))?$/);
+    if (directMatch) {
+        const [, datePart, timePart] = directMatch;
+        return `${datePart} ${timePart || '00:00:00'}`;
+    }
+
+    const parsedDate = new Date(raw);
+    if (Number.isNaN(parsedDate.getTime())) {
+        return null;
+    }
+
+    const year = parsedDate.getFullYear();
+    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(parsedDate.getDate()).padStart(2, '0');
+    const hours = String(parsedDate.getHours()).padStart(2, '0');
+    const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+    const seconds = String(parsedDate.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function sanitizeNotificationForPersistence(notification) {
+    if (!notification || typeof notification !== 'object') {
+        return null;
+    }
+
+    const titulo = typeof notification.titulo === 'string'
+        ? notification.titulo.trim()
+        : String(notification.titulo ?? '').trim();
+    const mensaje = typeof notification.mensaje === 'string'
+        ? notification.mensaje.trim()
+        : String(notification.mensaje ?? '').trim();
+
+    if (!titulo || !mensaje) {
+        return null;
+    }
+
+    const prioridadRaw = typeof notification.prioridad === 'string'
+        ? notification.prioridad.trim()
+        : '';
+    const prioridad = NOTIFICATION_PRIORITIES.includes(prioridadRaw)
+        ? prioridadRaw
+        : 'Media';
+
+    const estadoRaw = typeof notification.estado === 'string'
+        ? notification.estado.trim()
+        : '';
+    const estado = NOTIFICATION_STATES.includes(estadoRaw)
+        ? estadoRaw
+        : 'Pendiente';
+
+    const tipoRaw = typeof notification.tipo_destinatario === 'string'
+        ? notification.tipo_destinatario.trim()
+        : 'General';
+    const tipoDestinatario = NOTIFICATION_TARGETS.includes(tipoRaw)
+        ? tipoRaw
+        : 'General';
+
+    let rolDestinatario = '';
+    if (tipoDestinatario === 'Rol') {
+        const rawRol = notification.rol_destinatario ?? activeUsuarioRol ?? '';
+        rolDestinatario = String(rawRol).trim();
+    }
+
+    let idUsuarioDestinatario = 0;
+    if (tipoDestinatario === 'Usuario') {
+        const rawId = Number.parseInt(notification.id_usuario_destinatario, 10);
+        if (Number.isFinite(rawId) && rawId > 0) {
+            idUsuarioDestinatario = rawId;
+        } else if (Number.isFinite(activeUsuarioId) && activeUsuarioId > 0) {
+            idUsuarioDestinatario = activeUsuarioId;
+        }
+    }
+
+    const rutaDestinoRaw = typeof notification.ruta_destino === 'string'
+        ? notification.ruta_destino.trim()
+        : String(notification.ruta_destino ?? '').trim();
+    const rutaDestino = rutaDestinoRaw ? rutaDestinoRaw.slice(0, 255) : '';
+
+    const fechaDisponible = normalizeNotificationDateTime(
+        notification.fecha_disponible_desde
+        || notification.creado_en
+        || notification.actualizado_en
+    ) || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    return {
+        titulo: titulo.slice(0, 150),
+        mensaje: mensaje.slice(0, 2000),
+        prioridad,
+        estado,
+        tipo_destinatario: tipoDestinatario,
+        rol_destinatario: rolDestinatario.slice(0, 60),
+        id_usuario_destinatario: idUsuarioDestinatario,
+        ruta_destino: rutaDestino,
+        fecha_disponible_desde: fechaDisponible
+    };
+}
+
+async function persistNotifications(notifications = []) {
+    if (!Array.isArray(notifications) || !notifications.length) {
+        return;
+    }
+
+    if (!activeEmpresaId) {
+        return;
+    }
+
+    const prepared = notifications
+        .filter(notification => notification && notification.es_local !== false)
+        .map(notification => sanitizeNotificationForPersistence(notification))
+        .filter(Boolean);
+
+    if (!prepared.length) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/scripts/php/save_notifications.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_empresa: activeEmpresaId,
+                id_usuario: activeUsuarioId || 0,
+                notifications: prepared
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (!result || result.success !== true) {
+            throw new Error(result && result.message ? result.message : 'No se pudo guardar el historial de notificaciones.');
+        }
+
+        notifications.forEach(notification => {
+            if (notification && typeof notification === 'object') {
+                notification.es_local = false;
+            }
+        });
+
+        refreshNotificationUI();
+
+        if (result.stored > 0) {
+            fetchNotifications({ force: true });
+        }
+    } catch (error) {
+        console.error('No se pudieron guardar las notificaciones en la base de datos:', error);
+    }
+}
+
 const CAPACITY_ZONE_THRESHOLD = 85;
 const CAPACITY_AREA_THRESHOLD = 90;
 const CAPACITY_MIN_FREE_PERCENT = 15;
@@ -668,13 +835,64 @@ function sortNotificationsByPriorityAndDate(notifications) {
     });
 }
 
+function buildNotificationIdentity(notification) {
+    if (!notification || typeof notification !== 'object') {
+        return '';
+    }
+
+    const titulo = (notification.titulo || '').toString().trim().toLowerCase();
+    const mensaje = (notification.mensaje || '').toString().trim().toLowerCase();
+    const ruta = (notification.ruta_destino || '').toString().trim().toLowerCase();
+    const fecha = (
+        notification.fecha_disponible_desde
+        || notification.creado_en
+        || notification.actualizado_en
+        || ''
+    ).toString().trim().slice(0, 19).replace('T', ' ');
+
+    return `${titulo}__${mensaje}__${ruta}__${fecha}`;
+}
+
 function refreshNotificationUI() {
-    const combined = sortNotificationsByPriorityAndDate([
+    const identityMap = new Map();
+    const merged = [];
+
+    [
         ...criticalStockNotifications,
         ...capacityAlertNotifications,
         ...serverNotifications
-    ]);
-    renderNotifications(combined);
+    ].forEach(notification => {
+        if (!notification) {
+            return;
+        }
+
+        const identity = buildNotificationIdentity(notification);
+
+        if (!identity) {
+            merged.push(notification);
+            return;
+        }
+
+        if (!identityMap.has(identity)) {
+            identityMap.set(identity, notification);
+            merged.push(notification);
+            return;
+        }
+
+        const existing = identityMap.get(identity);
+        if (existing && existing.es_local && notification.es_local === false) {
+            const index = merged.indexOf(existing);
+            if (index !== -1) {
+                merged[index] = notification;
+            } else {
+                merged.push(notification);
+            }
+            identityMap.set(identity, notification);
+        }
+    });
+
+    const sorted = sortNotificationsByPriorityAndDate(merged);
+    renderNotifications(sorted);
 }
 
 async function fetchNotifications(options = {}) {
@@ -1277,12 +1495,16 @@ function updateCapacityAlertNotifications(entries) {
         capacityAlertNotifications = Array.from(nextState.values()).map(entry => entry.notification);
     }
 
-    if (newlyTriggered.length && JSON.parse(localStorage.getItem('alertFallosInventario') || 'true')) {
-        newlyTriggered.forEach(notification => {
-            const titulo = notification.titulo || 'Espacio crítico en el almacén';
-            const mensaje = notification.mensaje || 'Se detectó una zona con espacio crítico en el almacén.';
-            showCriticalStockAlert(titulo, mensaje);
-        });
+    if (newlyTriggered.length) {
+        if (JSON.parse(localStorage.getItem('alertFallosInventario') || 'true')) {
+            newlyTriggered.forEach(notification => {
+                const titulo = notification.titulo || 'Espacio crítico en el almacén';
+                const mensaje = notification.mensaje || 'Se detectó una zona con espacio crítico en el almacén.';
+                showCriticalStockAlert(titulo, mensaje);
+            });
+        }
+
+        persistNotifications(newlyTriggered);
     }
 
     refreshNotificationUI();
@@ -1373,11 +1595,15 @@ function updateCriticalStockNotifications(productos, threshold) {
         criticalStockNotifications = Array.from(nextState.values()).map(entry => entry.notification);
     }
 
-    if (newlyTriggered.length && JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
-        newlyTriggered.forEach(notification => {
-            const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
-            showCriticalStockAlert(notification.titulo || 'Stock crítico', mensaje);
-        });
+    if (newlyTriggered.length) {
+        if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
+            newlyTriggered.forEach(notification => {
+                const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
+                showCriticalStockAlert(notification.titulo || 'Stock crítico', mensaje);
+            });
+        }
+
+        persistNotifications(newlyTriggered);
     }
 
     refreshNotificationUI();
