@@ -49,6 +49,16 @@ $payload = [
     'nombre_usuario' => $nombreUsuario
 ];
 
+$idSolicitante = opti_resolver_id_solicitante($data, $payload);
+
+if ($forzarEjecucion && $idSolicitante <= 0) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'No se puede aplicar la eliminación porque falta el identificador del solicitante.'
+    ]);
+    exit;
+}
+
 if (!$forzarEjecucion && !$idEmpresa && isset($_SESSION['id_empresa'])) {
     $idEmpresa = (int) $_SESSION['id_empresa'];
 }
@@ -58,7 +68,7 @@ if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
 }
 
 if ($forzarEjecucion) {
-    $resultado = opti_aplicar_usuario_eliminar($conn, $payload, $_SESSION['usuario_id'] ?? 0);
+    $resultado = opti_aplicar_usuario_eliminar($conn, $payload, $idSolicitante);
     echo json_encode($resultado);
     exit;
 }
@@ -70,7 +80,7 @@ $usuarioResumen = $partes ? implode(' · ', $partes) : 'con correo ' . $correo;
 
 $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'id_empresa' => $idEmpresa,
-    'id_solicitante' => $_SESSION['usuario_id'] ?? 0,
+    'id_solicitante' => $idSolicitante,
     'modulo' => 'Usuarios',
     'tipo_accion' => 'usuario_eliminar',
     'resumen' => 'Eliminar usuario ' . ($partes ? $usuarioResumen . ' (correo ' . $correo . ')' : $usuarioResumen),
