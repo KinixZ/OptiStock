@@ -1191,7 +1191,9 @@ function opti_aplicar_zona_eliminar(mysqli $conn, array $payload, int $idRevisor
         actualizarOcupacionArea($conn, $areaId);
     }
 
-    registrarLog($conn, $idRevisor, 'Zonas', 'Eliminación aprobada de la zona ID ' . $zonaId);
+    $nombreZona = trim((string)($payload['nombre_zona'] ?? ''));
+    $detalleZona = $nombreZona !== '' ? ' (' . $nombreZona . ')' : '';
+    registrarLog($conn, $idRevisor, 'Zonas', 'Eliminación aprobada de la zona ID ' . $zonaId . $detalleZona);
 
     return ['success' => true];
 }
