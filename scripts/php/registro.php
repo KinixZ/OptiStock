@@ -4,7 +4,33 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
-require_once __DIR__ . '/mail_utils.php';
+
+// Helper simple que usa mail() directamente y registra el intento en logs/mail.log
+function send_mail_simple($destinatario, $asunto, $mensaje, $fromEmail = 'no-reply@optistock.site', $fromName = 'OptiStock')
+{
+    $headers = '';
+    $headers .= 'From: ' . sprintf('%s <%s>', $fromName, $fromEmail) . "\r\n";
+    $headers .= 'Reply-To: ' . $fromEmail . "\r\n";
+    $headers .= 'MIME-Version: 1.0' . "\r\n";
+    $headers .= 'Content-Type: text/plain; charset=UTF-8' . "\r\n";
+
+    // Intentar enviar (usar -f para envelope if disponible)
+    $param = '-f' . escapeshellarg($fromEmail);
+    $result = @mail($destinatario, $asunto, $mensaje, $headers, $param);
+
+    // Registrar intento en logs/mail.log
+    $logDir = dirname(__DIR__, 2) . '/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+    $logFile = $logDir . '/mail.log';
+    $estado = $result ? 'OK' : 'ERROR';
+    $linea = sprintf('[%s] [%s] Destinatario: %s | Asunto: %s', date('Y-m-d H:i:s'), $estado, $destinatario, $asunto);
+    $linea .= PHP_EOL;
+    @file_put_contents($logFile, $linea, FILE_APPEND);
+
+    return (bool) $result;
+}
 
 $response = ["success" => false, "message" => ""]; // Respuesta inicial
 
@@ -57,11 +83,11 @@ try {
     $_SESSION['codigo_verificacion'] = $codigo_verificacion;
     $_SESSION['correo_verificacion'] = $correo;
 
-    // 8. Enviar el correo
+    // 8. Enviar el correo (usando mail() localmente)
     $mail_subject = "OPTISTOCK - Codigo de Verificación";
     $mail_message = "Hola, $nombre. Tu código de verificación es: $codigo_verificacion";
 
-    if (!enviarCorreo($correo, $mail_subject, $mail_message)) {
+    if (!send_mail_simple($correo, $mail_subject, $mail_message)) {
         throw new Exception("Error al enviar el correo de verificación.");
     }
 
