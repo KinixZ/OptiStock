@@ -52,6 +52,7 @@ $sql = "
         actualizado_en
     FROM notificaciones
     WHERE id_empresa = ?
+      AND estado <> 'Archivada'
     ORDER BY fecha_disponible_desde DESC
     LIMIT ?
 ";

@@ -50,7 +50,7 @@ if (empty($ids)) {
     echo json_encode([
         'success' => true,
         'archived' => 0,
-        'message' => 'No se proporcionaron notificaciones para archivar.'
+        'message' => 'No se proporcionaron notificaciones para eliminar.'
     ]);
     exit;
 }
@@ -75,11 +75,8 @@ $conn->set_charset('utf8mb4');
 
 $placeholders = implode(',', array_fill(0, count($ids), '?'));
 $sql = "
-    UPDATE notificaciones
-       SET estado = 'Archivada',
-           actualizado_en = NOW()
+    DELETE FROM notificaciones
      WHERE id_empresa = ?
-       AND estado <> 'Archivada'
        AND id IN ($placeholders)
 ";
 
@@ -89,7 +86,7 @@ if (!$stmt) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'No se pudo preparar la consulta para archivar notificaciones.'
+        'message' => 'No se pudo preparar la consulta para eliminar notificaciones.'
     ]);
     $conn->close();
     exit;
@@ -108,7 +105,7 @@ if (!$stmt->execute()) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'No se pudieron archivar las notificaciones.'
+        'message' => 'No se pudieron eliminar las notificaciones.'
     ]);
     $stmt->close();
     $conn->close();

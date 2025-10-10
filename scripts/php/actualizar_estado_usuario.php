@@ -26,6 +26,10 @@ $nuevoEstado = isset($data['activo']) ? intval($data['activo']) : null;
 $id_empresa = intval($data['id_empresa'] ?? 0);
 $forzarEjecucion = !empty($data['forzar_ejecucion']);
 
+if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
+    $forzarEjecucion = true;
+}
+
 if (!$id_usuario || ($nuevoEstado !== 0 && $nuevoEstado !== 1) || !$id_empresa) {
     echo json_encode(["success" => false, "message" => "Datos incompletos para actualizar el estado."]);
     exit;
