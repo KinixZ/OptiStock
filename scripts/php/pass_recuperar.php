@@ -48,6 +48,10 @@ try {
     $asunto = "OPTISTOCK - Código de recuperación";
     $mensaje = "Tu código para recuperar tu contraseña es: $codigo. Es válido por 10 minutos.";
     if (!enviarCorreo($email, $asunto, $mensaje)) {
+        $detalleCorreo = obtenerUltimoErrorCorreo();
+        if ($detalleCorreo) {
+            throw new Exception("Error al enviar el correo de recuperación. Detalle: " . $detalleCorreo);
+        }
         throw new Exception("Error al enviar el correo de recuperación.");
     }
 

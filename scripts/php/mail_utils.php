@@ -1,9 +1,27 @@
 <?php
+if (!array_key_exists('_MAIL_UTILS_LAST_ERROR', $GLOBALS)) {
+    $GLOBALS['_MAIL_UTILS_LAST_ERROR'] = null;
+}
+
 if (!function_exists('enviarCorreo')) {
+    function establecerUltimoErrorCorreo($mensaje)
+    {
+        $GLOBALS['_MAIL_UTILS_LAST_ERROR'] = $mensaje !== '' ? $mensaje : null;
+    }
+
+    function obtenerUltimoErrorCorreo()
+    {
+        return isset($GLOBALS['_MAIL_UTILS_LAST_ERROR']) ? $GLOBALS['_MAIL_UTILS_LAST_ERROR'] : null;
+    }
+
     function enviarCorreo($destinatario, $asunto, $mensaje, array $opciones = [])
     {
+        establecerUltimoErrorCorreo(null);
+
         if (!filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
-            registrarEnvioCorreo(false, $destinatario, $asunto, 'Correo destinatario inválido.');
+            $detalleError = 'Correo destinatario inválido.';
+            establecerUltimoErrorCorreo($detalleError);
+            registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
 
@@ -52,14 +70,28 @@ if (!function_exists('enviarCorreo')) {
             $parametrosAdicionales = '-f' . escapeshellarg($envelopeFrom);
         }
 
-        $resultado = @mail($destinatario, $asunto, $mensaje, $headerString, $parametrosAdicionales);
+        $errorPhpMail = null;
+        $manejadorErrores = function ($errno, $errstr, $errfile, $errline) use (&$errorPhpMail) {
+            $errorPhpMail = sprintf('%s (código %d en %s:%d)', $errstr, $errno, $errfile, $errline);
+            return true;
+        };
+
+        if (function_exists('error_clear_last')) {
+            error_clear_last();
+        }
+
+        set_error_handler($manejadorErrores);
+        $resultado = mail($destinatario, $asunto, $mensaje, $headerString, $parametrosAdicionales);
+        restore_error_handler();
 
         if (!$resultado) {
-            $detalleError = obtenerDetalleErrorCorreo();
+            $detalleError = obtenerDetalleErrorCorreo($errorPhpMail);
+            establecerUltimoErrorCorreo($detalleError);
             registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
 
+        establecerUltimoErrorCorreo(null);
         registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
         return true;
     }
@@ -110,11 +142,61 @@ if (!function_exists('enviarCorreo')) {
         }
     }
 
-    function obtenerDetalleErrorCorreo()
+    function obtenerDetalleErrorCorreo($mensajeCapturado = null)
     {
+        if ($mensajeCapturado) {
+            return $mensajeCapturado;
+        }
+
         $ultimoError = error_get_last();
         if ($ultimoError && isset($ultimoError['message'])) {
             return $ultimoError['message'];
+        }
+
+        $detalles = [];
+
+        $funcionesDeshabilitadas = ini_get('disable_functions');
+        if ($funcionesDeshabilitadas && stripos($funcionesDeshabilitadas, 'mail') !== false) {
+            return 'mail() está deshabilitada en php.ini (disable_functions). En Hostinger ve a hPanel → Sitio web → Administrar → Avanzado → Configuración PHP, entra en la pestaña "Opciones", borra "mail" de la lista de funciones deshabilitadas y guarda los cambios; después usa "Reiniciar PHP". Si tu plan no permite editarlo, deberás contactar al soporte de Hostinger para que lo habiliten o actualizar a un plan que incluya mail().';
+        }
+
+        $sendmailPath = ini_get('sendmail_path');
+        if ($sendmailPath) {
+            $detalles[] = 'sendmail_path=' . $sendmailPath;
+
+            $sendmailEjecutable = trim(strtok($sendmailPath, ' '));
+            if ($sendmailEjecutable && !file_exists($sendmailEjecutable)) {
+                return sprintf('El ejecutable de sendmail no existe: %s', $sendmailEjecutable);
+            }
+
+            if ($sendmailEjecutable && !is_executable($sendmailEjecutable)) {
+                return sprintf('El ejecutable de sendmail no tiene permisos de ejecución: %s', $sendmailEjecutable);
+            }
+        }
+
+        $smtpHost = ini_get('SMTP');
+        if ($smtpHost) {
+            $detalles[] = 'SMTP=' . $smtpHost;
+        }
+
+        $smtpPort = ini_get('smtp_port');
+        if ($smtpPort) {
+            $detalles[] = 'smtp_port=' . $smtpPort;
+        }
+
+        if ($smtpHost) {
+            $puerto = $smtpPort ? (int) $smtpPort : 25;
+            $errno = 0;
+            $errstr = '';
+            $conexion = @fsockopen($smtpHost, $puerto, $errno, $errstr, 2.0);
+            if (!$conexion) {
+                return sprintf('No se pudo conectar al servidor SMTP %s:%d (%s %d).', $smtpHost, $puerto, $errstr ?: 'sin mensaje', $errno);
+            }
+            fclose($conexion);
+        }
+
+        if ($detalles) {
+            return 'mail() devolvió false. Configuración relevante: ' . implode('; ', $detalles);
         }
 
         return 'mail() devolvió false sin mensaje adicional.';
