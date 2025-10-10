@@ -8,6 +8,10 @@
     const historyRequestsContainer = document.getElementById('historyRequests');
     const pendingRequestsCount = document.getElementById('pendingRequestsCount');
     const historyRequestsCount = document.getElementById('historyRequestsCount');
+    const historyRequestsControls = document.getElementById('historyRequestsControls');
+    const historyRequestsPrevBtn = document.getElementById('historyRequestsPrev');
+    const historyRequestsNextBtn = document.getElementById('historyRequestsNext');
+    const historyRequestsRange = document.getElementById('historyRequestsRange');
     const refreshRequestsBtn = document.getElementById('refreshRequests');
     const requestsBoard = document.getElementById('requestsBoard');
     const exportPdfBtn = document.getElementById('exportPdf');
@@ -156,6 +160,12 @@
     };
 
     const tieneTableroSolicitudes = pendingRequestsContainer && historyRequestsContainer;
+    const MENSAJE_PENDIENTES_VACIO = 'No hay solicitudes pendientes por revisar.';
+    const MENSAJE_HISTORIAL_VACIO = 'Aún no hay solicitudes concluidas.';
+    const HISTORY_ITEMS_PER_PAGE = 3;
+
+    let historySolicitudes = [];
+    let historyPage = 0;
 
     async function fetchSolicitudes(estado = 'en_proceso') {
         const params = new URLSearchParams({ estado });
@@ -497,10 +507,14 @@
         return card;
     }
 
-    function renderizarSolicitudes(items, contenedor, contadorEl, mensajeVacio, esHistorial = false) {
+    function renderizarSolicitudes(items, contenedor, contadorEl, mensajeVacio, esHistorial = false, opciones = {}) {
         if (!contenedor) {
             return;
         }
+
+        const totalItems = typeof opciones.totalItems === 'number'
+            ? opciones.totalItems
+            : (Array.isArray(items) ? items.length : 0);
 
         contenedor.innerHTML = '';
         if (Array.isArray(items) && items.length) {
@@ -516,7 +530,67 @@
         }
 
         if (contadorEl) {
-            contadorEl.textContent = Array.isArray(items) ? items.length : 0;
+            contadorEl.textContent = totalItems;
+        }
+    }
+
+    function actualizarHistorialSolicitudes(mensajeVacio = MENSAJE_HISTORIAL_VACIO) {
+        if (!historyRequestsContainer) {
+            return;
+        }
+
+        const total = historySolicitudes.length;
+        if (!total) {
+            renderizarSolicitudes(
+                [],
+                historyRequestsContainer,
+                historyRequestsCount,
+                mensajeVacio,
+                true,
+                { totalItems: 0 }
+            );
+
+            if (historyRequestsControls) {
+                historyRequestsControls.hidden = true;
+            }
+            if (historyRequestsPrevBtn) {
+                historyRequestsPrevBtn.disabled = true;
+            }
+            if (historyRequestsNextBtn) {
+                historyRequestsNextBtn.disabled = true;
+            }
+            if (historyRequestsRange) {
+                historyRequestsRange.textContent = 'Sin registros';
+            }
+            return;
+        }
+
+        const totalPaginas = Math.max(1, Math.ceil(total / HISTORY_ITEMS_PER_PAGE));
+        historyPage = Math.min(Math.max(historyPage, 0), totalPaginas - 1);
+        const inicio = historyPage * HISTORY_ITEMS_PER_PAGE;
+        const fin = Math.min(inicio + HISTORY_ITEMS_PER_PAGE, total);
+        const segmento = historySolicitudes.slice(inicio, fin);
+
+        renderizarSolicitudes(
+            segmento,
+            historyRequestsContainer,
+            historyRequestsCount,
+            mensajeVacio,
+            true,
+            { totalItems: total }
+        );
+
+        if (historyRequestsControls) {
+            historyRequestsControls.hidden = total <= HISTORY_ITEMS_PER_PAGE;
+        }
+        if (historyRequestsPrevBtn) {
+            historyRequestsPrevBtn.disabled = historyPage === 0;
+        }
+        if (historyRequestsNextBtn) {
+            historyRequestsNextBtn.disabled = historyPage >= totalPaginas - 1;
+        }
+        if (historyRequestsRange) {
+            historyRequestsRange.textContent = `${inicio + 1}-${fin} de ${total}`;
         }
     }
 
@@ -535,21 +609,31 @@
                 pendientes,
                 pendingRequestsContainer,
                 pendingRequestsCount,
-                'No hay solicitudes pendientes por revisar.',
+                MENSAJE_PENDIENTES_VACIO,
                 false
             );
 
-            renderizarSolicitudes(
-                historico,
-                historyRequestsContainer,
-                historyRequestsCount,
-                'Aún no hay solicitudes concluidas.',
-                true
-            );
+            historySolicitudes = Array.isArray(historico) ? historico : [];
+            historyPage = 0;
+            actualizarHistorialSolicitudes(MENSAJE_HISTORIAL_VACIO);
         } catch (error) {
             console.warn('No se pudo cargar el tablero de solicitudes:', error);
             if (pendingRequestsContainer) {
                 pendingRequestsContainer.innerHTML = '<div class="request-empty">No se pudo cargar el tablero de solicitudes.</div>';
+            }
+            historySolicitudes = [];
+            historyPage = 0;
+            if (historyRequestsContainer) {
+                historyRequestsContainer.innerHTML = '<div class="request-empty">No se pudo cargar el tablero de solicitudes.</div>';
+            }
+            if (historyRequestsControls) {
+                historyRequestsControls.hidden = true;
+            }
+            if (historyRequestsCount) {
+                historyRequestsCount.textContent = '0';
+            }
+            if (historyRequestsRange) {
+                historyRequestsRange.textContent = 'Sin registros';
             }
         }
     }
@@ -1718,6 +1802,27 @@
             }
             paginaActual += 1;
             mostrarRegistros(registros);
+        });
+    }
+
+    if (historyRequestsPrevBtn) {
+        historyRequestsPrevBtn.addEventListener('click', () => {
+            if (historyPage <= 0) {
+                return;
+            }
+            historyPage -= 1;
+            actualizarHistorialSolicitudes();
+        });
+    }
+
+    if (historyRequestsNextBtn) {
+        historyRequestsNextBtn.addEventListener('click', () => {
+            const totalPaginas = Math.ceil(historySolicitudes.length / HISTORY_ITEMS_PER_PAGE);
+            if (historyPage >= totalPaginas - 1) {
+                return;
+            }
+            historyPage += 1;
+            actualizarHistorialSolicitudes();
         });
     }
 

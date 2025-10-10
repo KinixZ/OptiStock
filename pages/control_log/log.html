@@ -128,6 +128,15 @@
             <h3>Historial concluido</h3>
             <span class="requests-counter" id="historyRequestsCount">0</span>
           </header>
+          <div class="requests-panel__controls" id="historyRequestsControls" hidden>
+            <button type="button" class="requests-panel__control-btn" id="historyRequestsPrev" aria-label="Ver solicitudes anteriores">
+              <span aria-hidden="true">&larr;</span>
+            </button>
+            <span class="requests-panel__range" id="historyRequestsRange" aria-live="polite">0-0 de 0</span>
+            <button type="button" class="requests-panel__control-btn" id="historyRequestsNext" aria-label="Ver solicitudes siguientes">
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
           <div class="requests-panel__body" id="historyRequests"></div>
         </article>
       </div>
