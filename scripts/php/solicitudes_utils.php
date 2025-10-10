@@ -157,6 +157,14 @@ function opti_mover_archivo_desde_pendiente(?string $rutaRelativa, string $destD
 
 function opti_registrar_solicitud(mysqli $conn, array $datos)
 {
+    if (!opti_solicitudes_habilitadas($conn)) {
+        return [
+            'success' => false,
+            'message' => 'El flujo de solicitudes no está disponible.',
+            'permitir_fallback' => true,
+        ];
+    }
+
     $idEmpresa = (int)($datos['id_empresa'] ?? 0);
     $idSolicitante = (int)($datos['id_solicitante'] ?? 0);
     $modulo = trim($datos['modulo'] ?? 'General');
@@ -176,7 +184,11 @@ function opti_registrar_solicitud(mysqli $conn, array $datos)
 
     $stmt = $conn->prepare('INSERT INTO solicitudes_cambios (id_empresa, id_solicitante, modulo, tipo_accion, resumen, descripcion, payload, estado) VALUES (?, ?, ?, ?, ?, ?, ?, "en_proceso")');
     if (!$stmt) {
-        return ['success' => false, 'message' => 'No fue posible preparar el registro de solicitud.'];
+        return [
+            'success' => false,
+            'message' => 'No fue posible preparar el registro de solicitud.',
+            'permitir_fallback' => true,
+        ];
     }
 
     $stmt->bind_param('iisssss', $idEmpresa, $idSolicitante, $modulo, $tipo, $resumen, $descripcion, $payloadJson);
@@ -192,8 +204,13 @@ function opti_registrar_solicitud(mysqli $conn, array $datos)
         ];
     } catch (mysqli_sql_exception $e) {
         error_log('Error al registrar solicitud: ' . $e->getMessage());
+        $permitirFallback = in_array((int)$e->getCode(), [1044, 1049, 1051, 1054, 1142, 1146], true);
         $stmt->close();
-        return ['success' => false, 'message' => 'No fue posible registrar la solicitud.'];
+        return [
+            'success' => false,
+            'message' => 'No fue posible registrar la solicitud.',
+            'permitir_fallback' => $permitirFallback,
+        ];
     }
 }
 

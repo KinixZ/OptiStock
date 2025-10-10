@@ -35,6 +35,10 @@ if (!$id_usuario || ($nuevoEstado !== 0 && $nuevoEstado !== 1) || !$id_empresa) 
     exit;
 }
 
+if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
+    $forzarEjecucion = true;
+}
+
 if ($forzarEjecucion) {
     $resultado = opti_aplicar_usuario_estado($conn, [
         'id_usuario' => $id_usuario,
@@ -84,4 +88,20 @@ $resultadoSolicitud = opti_registrar_solicitud($conn, [
     'payload' => $payload
 ]);
 
-opti_responder_solicitud_creada($resultadoSolicitud);
+$solicitudExitosa = !empty($resultadoSolicitud['success']);
+
+if ($solicitudExitosa) {
+    opti_responder_solicitud_creada($resultadoSolicitud);
+}
+
+if (!empty($resultadoSolicitud['permitir_fallback'])) {
+    $resultado = opti_aplicar_usuario_estado($conn, $payload, $_SESSION['usuario_id'] ?? 0);
+    echo json_encode($resultado);
+    exit;
+}
+
+echo json_encode([
+    'success' => false,
+    'message' => $resultadoSolicitud['message'] ?? 'No fue posible registrar la solicitud.'
+]);
+exit;
