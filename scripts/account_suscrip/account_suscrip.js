@@ -182,6 +182,10 @@ function mainAccountSuscrip() {
       alert(resp?.message || 'Error al registrar la solicitud de cambio de usuario');
       return;
     }
+
+    await cargar();
+    modalUsuario.hide();
+    alert(resp?.message || 'Datos del usuario actualizados.');
   });
 
   // --- Editar empresa ---
@@ -220,6 +224,10 @@ function mainAccountSuscrip() {
       alert(resp?.message || 'Error al registrar la solicitud de actualización de empresa');
       return;
     }
+
+    await cargar();
+    modalEmpresa.hide();
+    alert(resp?.message || 'Información de la empresa actualizada.');
   });
 
   // --- Suscripción local (estado 0/1) ---
