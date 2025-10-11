@@ -77,7 +77,9 @@ try {
     ];
 
     if (!enviarCorreo($correo, $mail_subject, $mail_message, $opcionesCorreo)) {
-        throw new Exception('Error al enviar el correo de verificación.');
+        $detalle = obtenerUltimoErrorEnvioCorreo();
+        $detalleMensaje = $detalle ? " Detalle: $detalle" : '';
+        throw new Exception('Error al enviar el correo de verificación.' . $detalleMensaje);
     }
 
     registrarLog($conn, $id_usuario, 'Usuarios', "Registro de usuario: $correo");

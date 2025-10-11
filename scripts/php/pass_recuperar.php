@@ -57,7 +57,9 @@ try {
     ];
 
     if (!enviarCorreo($email, $asunto, $mensaje, $opcionesCorreo)) {
-        throw new Exception("Error al enviar el correo de recuperación.");
+        $detalle = obtenerUltimoErrorEnvioCorreo();
+        $detalleMensaje = $detalle ? " Detalle: $detalle" : '';
+        throw new Exception("Error al enviar el correo de recuperación." . $detalleMensaje);
     }
 
     registrarLog($conn, $userId, 'Usuarios', 'Solicitud de código de recuperación de contraseña');

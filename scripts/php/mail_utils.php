@@ -2,6 +2,7 @@
 require_once __DIR__ . '/mail_config.php';
 
 if (!function_exists('enviarCorreo')) {
+    $GLOBALS['__ultimo_error_envio_correo'] = null;
     /**
      * Envía un correo utilizando la función mail() nativa.
      */
@@ -82,10 +83,12 @@ if (!function_exists('enviarCorreo')) {
 
         if (!$resultado) {
             $detalleError = obtenerDetalleErrorCorreo();
+            $GLOBALS['__ultimo_error_envio_correo'] = $detalleError;
             registrarEnvioCorreo(false, $destinatario, $asunto, $detalleError);
             return false;
         }
 
+        $GLOBALS['__ultimo_error_envio_correo'] = null;
         registrarEnvioCorreo(true, $destinatario, $asunto, 'mail() aceptó el envío.');
         return true;
     }
@@ -173,5 +176,10 @@ if (!function_exists('enviarCorreo')) {
         }
 
         return 'mail() devolvió false sin mensaje adicional.';
+    }
+
+    function obtenerUltimoErrorEnvioCorreo()
+    {
+        return $GLOBALS['__ultimo_error_envio_correo'] ?? null;
     }
 }

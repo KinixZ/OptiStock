@@ -65,6 +65,7 @@ function resendVerificationEmail(email) {
         if (data.success) {
             alert("El código de verificación ha sido reenviado.");
         } else {
+            console.error("Error al reenviar el código de verificación:", data.message);
             alert("Error al reenviar el código: " + data.message);
         }
     })

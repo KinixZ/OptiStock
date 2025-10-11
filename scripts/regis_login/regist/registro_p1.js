@@ -71,6 +71,7 @@ document.getElementById('registerForm').addEventListener('submit', function(even
             console.log("Usuario registrado correctamente.");
             window.location.href = `regist_inter.html?email=${encodeURIComponent(correo)}`;
         } else {
+            console.error("Error al intentar enviar el correo de verificación:", data.message);
             alert("Error en el registro: " + (data.message || "Vuelva a intentarlo."));
         }
     })
