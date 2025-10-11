@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""];
 
@@ -43,12 +44,23 @@ try {
     $_SESSION['codigo_verificacion'] = $codigo_verificacion;
     $_SESSION['correo_verificacion'] = $email;
 
-    $mail_subject = "OPTISTOCK - Reenvío de Código de Verificación";
-    $mail_message = "Hola de nuevo. tu código de verificación es: $codigo_verificacion";
-    $mail_headers = "From: no-reply@optistock.site";
+    $mail_subject = 'OptiStock - Nuevo código de verificación';
+    $mail_message = "Hola,\n\n" .
+        "Detectamos que solicitaste nuevamente el código de verificación para tu cuenta OptiStock." .
+        "\n\nCódigo: $codigo_verificacion\n\n" .
+        "Este código es temporal. Si no realizaste esta solicitud, puedes ignorar el mensaje." .
+        "\n\nEquipo OptiStock";
 
-    if (!mail($email, $mail_subject, $mail_message, $mail_headers)) {
-        throw new Exception("Error al enviar el correo de verificación.");
+    $opcionesCorreo = [
+        'from_email'    => 'no-reply@optistock.site',
+        'from_name'     => 'OptiStock',
+        'reply_to'      => 'soporte@optistock.site',
+        'reply_to_name' => 'Equipo OptiStock',
+        'envelope_from' => 'no-reply@optistock.site',
+    ];
+
+    if (!enviarCorreo($email, $mail_subject, $mail_message, $opcionesCorreo)) {
+        throw new Exception('Error al enviar el correo de verificación.');
     }
 
     registrarLog($conn, $userId, 'Usuarios', 'Reenvío de código de verificación de cuenta');
@@ -61,4 +73,5 @@ try {
 } finally {
     echo json_encode($response);
 }
+
 
