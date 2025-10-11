@@ -207,6 +207,28 @@ if ($method === 'POST') {
         }
     }
 
+    $payloadZona = [
+        'empresa_id' => $empresa_id,
+        'nombre' => $nombre,
+        'descripcion' => $descripcion,
+        'ancho' => $ancho,
+        'alto' => $alto,
+        'largo' => $largo,
+        'volumen' => $volumen,
+        'tipo_almacenamiento' => $tipo,
+        'subniveles' => $subniveles,
+        'area_id' => $area_id
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_zona_crear($conn, $payloadZona, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
@@ -214,18 +236,7 @@ if ($method === 'POST') {
         'tipo_accion' => 'zona_crear',
         'resumen' => 'Creación de la zona "' . $nombre . '"',
         'descripcion' => 'Solicitud de creación de zona en el almacén.',
-        'payload' => [
-            'empresa_id' => $empresa_id,
-            'nombre' => $nombre,
-            'descripcion' => $descripcion,
-            'ancho' => $ancho,
-            'alto' => $alto,
-            'largo' => $largo,
-            'volumen' => $volumen,
-            'tipo_almacenamiento' => $tipo,
-            'subniveles' => $subniveles,
-            'area_id' => $area_id
-        ]
+        'payload' => $payloadZona
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
@@ -294,6 +305,31 @@ if ($method === 'PUT') {
 
     $empresaDestino = $empresaId ?: (int) ($zonaActual['id_empresa'] ?? 0);
 
+    $payloadZona = [
+        'zona_id' => $id,
+        'empresa_id' => $empresaDestino,
+        'nombre' => $nombre,
+        'descripcion' => $descripcion,
+        'ancho' => $ancho,
+        'alto' => $alto,
+        'largo' => $largo,
+        'volumen' => $volumen,
+        'tipo_almacenamiento' => $tipo,
+        'subniveles' => $subniveles,
+        'area_id' => $area_id,
+        'area_anterior' => $areaAnterior,
+        'capacidad_actual' => $capacidadActual
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_zona_actualizar($conn, $payloadZona, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
@@ -301,21 +337,7 @@ if ($method === 'PUT') {
         'tipo_accion' => 'zona_actualizar',
         'resumen' => 'Actualización de la zona "' . $nombre . '" (ID #' . $id . ')',
         'descripcion' => 'Solicitud de modificación de zona.',
-        'payload' => [
-            'zona_id' => $id,
-            'empresa_id' => $empresaDestino,
-            'nombre' => $nombre,
-            'descripcion' => $descripcion,
-            'ancho' => $ancho,
-            'alto' => $alto,
-            'largo' => $largo,
-            'volumen' => $volumen,
-            'tipo_almacenamiento' => $tipo,
-            'subniveles' => $subniveles,
-            'area_id' => $area_id,
-            'area_anterior' => $areaAnterior,
-            'capacidad_actual' => $capacidadActual
-        ]
+        'payload' => $payloadZona
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
@@ -390,6 +412,24 @@ if ($method === 'DELETE') {
         $empresaDestino = (int) ($zonaEmpresa['id_empresa'] ?? 0);
     }
 
+    $payloadEliminar = [
+        'zona_id' => $id,
+        'empresa_id' => $empresaDestino,
+        'area_id' => (int) $areaZona,
+        'nombre_zona' => $tieneNombreZona ? $nombreZona : '',
+        'productos_en_zona' => (int) $productosEnZona,
+        'movimientos_recientes' => (int) $movimientosRecientes
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_zona_eliminar($conn, $payloadEliminar, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
@@ -397,14 +437,7 @@ if ($method === 'DELETE') {
         'tipo_accion' => 'zona_eliminar',
         'resumen' => $resumenSolicitud,
         'descripcion' => $descripcionSolicitud,
-        'payload' => [
-            'zona_id' => $id,
-            'empresa_id' => $empresaDestino,
-            'area_id' => (int) $areaZona,
-            'nombre_zona' => $tieneNombreZona ? $nombreZona : '',
-            'productos_en_zona' => (int) $productosEnZona,
-            'movimientos_recientes' => (int) $movimientosRecientes
-        ]
+        'payload' => $payloadEliminar
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);

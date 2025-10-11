@@ -182,6 +182,25 @@ if ($method === 'POST') {
         exit;
     }
 
+    $payloadArea = [
+        'empresa_id' => $empresa_id,
+        'nombre' => $nombre,
+        'descripcion' => $descripcion,
+        'ancho' => $ancho,
+        'alto' => $alto,
+        'largo' => $largo,
+        'volumen' => $volumen
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_area_crear($conn, $payloadArea, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
@@ -189,15 +208,7 @@ if ($method === 'POST') {
         'tipo_accion' => 'area_crear',
         'resumen' => 'Creación del área "' . $nombre . '"',
         'descripcion' => 'Solicitud de creación de área en el almacén.',
-        'payload' => [
-            'empresa_id' => $empresa_id,
-            'nombre' => $nombre,
-            'descripcion' => $descripcion,
-            'ancho' => $ancho,
-            'alto' => $alto,
-            'largo' => $largo,
-            'volumen' => $volumen
-        ]
+        'payload' => $payloadArea
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
@@ -250,6 +261,26 @@ if ($method === 'PUT') {
         $empresaDestino = (int) ($resArea['id_empresa'] ?? 0);
     }
 
+    $payloadArea = [
+        'area_id' => $id,
+        'empresa_id' => $empresaDestino,
+        'nombre' => $nombre,
+        'descripcion' => $descripcion,
+        'ancho' => $ancho,
+        'alto' => $alto,
+        'largo' => $largo,
+        'volumen' => $volumen
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_area_actualizar($conn, $payloadArea, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
@@ -257,16 +288,7 @@ if ($method === 'PUT') {
         'tipo_accion' => 'area_actualizar',
         'resumen' => 'Actualización del área "' . $nombre . '" (ID #' . $id . ')',
         'descripcion' => 'Solicitud de modificación de área.',
-        'payload' => [
-            'area_id' => $id,
-            'empresa_id' => $empresaDestino,
-            'nombre' => $nombre,
-            'descripcion' => $descripcion,
-            'ancho' => $ancho,
-            'alto' => $alto,
-            'largo' => $largo,
-            'volumen' => $volumen
-        ]
+        'payload' => $payloadArea
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
@@ -306,6 +328,21 @@ if ($method === 'DELETE') {
 
     $empresaDestino = $empresaId > 0 ? $empresaId : (int) ($areaDatos['id_empresa'] ?? 0);
 
+    $payloadEliminar = [
+        'area_id' => $id,
+        'empresa_id' => $empresaDestino,
+        'nombre_area' => $nombreArea
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_area_eliminar($conn, $payloadEliminar, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
@@ -315,11 +352,7 @@ if ($method === 'DELETE') {
             ? 'Eliminación del área "' . $nombreArea . '" (ID #' . $id . ')'
             : 'Eliminación del área ID #' . $id,
         'descripcion' => 'Solicitud de eliminación de área.',
-        'payload' => [
-            'area_id' => $id,
-            'empresa_id' => $empresaDestino,
-            'nombre_area' => $nombreArea
-        ]
+        'payload' => $payloadEliminar
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);

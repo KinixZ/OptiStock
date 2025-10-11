@@ -29,6 +29,7 @@ $telefono   = $_POST['telefono'] ?? null;
 $correo     = $_POST['correo'] ?? null;
 $contrasena = $_POST['contrasena'] ?? null;
 $forzarEjecucion = isset($_POST['forzar_ejecucion']) && $_POST['forzar_ejecucion'] === '1';
+$forzarEjecucion = $forzarEjecucion || opti_usuario_actual_es_admin();
 $fotoPendiente = $_POST['foto_pendiente'] ?? null;
 $solicitudesHabilitadas = opti_solicitudes_habilitadas($conn);
 

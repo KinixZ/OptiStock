@@ -19,6 +19,7 @@ require_once __DIR__ . '/solicitudes_utils.php';
 $data = json_decode(file_get_contents("php://input"), true);
 $correo = $data['correo'] ?? null;
 $forzarEjecucion = !empty($data['forzar_ejecucion']);
+$forzarEjecucion = $forzarEjecucion || opti_usuario_actual_es_admin();
 $idEmpresa = isset($data['id_empresa']) ? (int) $data['id_empresa'] : 0;
 
 if (!$correo) {
