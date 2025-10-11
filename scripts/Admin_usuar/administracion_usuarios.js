@@ -71,6 +71,21 @@
       .replace(/'/g, '&#39;');
   }
 
+  function notificar(tipo, mensaje) {
+    const mapa = {
+      success: typeof window !== 'undefined' ? window.toastOk : null,
+      error: typeof window !== 'undefined' ? window.toastError : null,
+      info: typeof window !== 'undefined' ? window.toastInfo : null
+    };
+
+    const handler = mapa[tipo] || mapa.info || mapa.success;
+    if (typeof handler === 'function') {
+      handler(mensaje);
+    } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(mensaje);
+    }
+  }
+
   function poblarFiltroRoles(roles) {
     const filtroRol = document.getElementById('filtroRol');
     if (!filtroRol) return;
@@ -391,7 +406,7 @@
 
     const areaSeleccionada = selectArea && selectArea.value !== '' ? Number(selectArea.value) : 0;
     if (!Number.isInteger(areaSeleccionada) || areaSeleccionada <= 0) {
-      alert('Debes seleccionar un área para continuar.');
+      notificar('info', 'Debes seleccionar un área para continuar.');
       return;
     }
 
@@ -423,16 +438,16 @@
           return;
         }
         if (!data?.success) {
-          alert(data?.message || 'No se pudo guardar la asignación.');
+          notificar('error', data?.message || 'No se pudo guardar la asignación.');
           return;
         }
 
-        alert(data?.message || 'Acceso asignado correctamente.');
+        notificar('success', data?.message || 'Acceso asignado correctamente.');
         actualizarAccesosUsuario(usuarioAccesosSeleccionadoId, true);
       })
       .catch(err => {
         console.error('Error al guardar la asignación:', err);
-        alert('Ocurrió un error al guardar la asignación.');
+        notificar('error', 'Ocurrió un error al guardar la asignación.');
       })
       .finally(() => {
         asignacionEnCurso = false;
@@ -477,16 +492,16 @@
           return;
         }
         if (!data?.success) {
-          alert(data?.message || 'No se pudo eliminar la asignación.');
+          notificar('error', data?.message || 'No se pudo eliminar la asignación.');
           return;
         }
 
-        alert(data?.message || 'Acceso eliminado.');
+        notificar('success', data?.message || 'Acceso eliminado.');
         actualizarAccesosUsuario(acceso.id_usuario, true);
       })
       .catch(err => {
         console.error('Error al eliminar la asignación:', err);
-        alert('Ocurrió un error al eliminar la asignación.');
+        notificar('error', 'Ocurrió un error al eliminar la asignación.');
       });
   }
 
@@ -700,7 +715,7 @@
           return;
         }
         if (!data?.success) {
-          alert('❌ No se pudo actualizar el estado: ' + (data.message || 'Error desconocido.'));
+          notificar('error', '❌ No se pudo actualizar el estado: ' + (data.message || 'Error desconocido.'));
           return;
         }
 
@@ -711,11 +726,11 @@
           return item;
         });
         sincronizarUsuariosEmpresaUI();
-        alert(data?.message || `Usuario ${accion === 'activar' ? 'activado' : 'desactivado'}.`);
+        notificar('success', data?.message || `Usuario ${accion === 'activar' ? 'activado' : 'desactivado'}.`);
       })
       .catch(err => {
         console.error('Error al cambiar estado:', err);
-        alert('❌ Error al actualizar el estado del usuario.');
+        notificar('error', '❌ Error al actualizar el estado del usuario.');
       });
   }
 
@@ -765,17 +780,17 @@
           return;
         }
         if (!data?.success) {
-          alert('❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
+          notificar('error', '❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
           return;
         }
 
         usuariosEmpresa = usuariosEmpresa.filter(usuario => (usuario.correo || '').toLowerCase() !== correo.toLowerCase());
         sincronizarUsuariosEmpresaUI();
-        alert(data?.message || `Usuario ${correo} eliminado.`);
+        notificar('success', data?.message || `Usuario ${correo} eliminado.`);
       })
       .catch(err => {
         console.error('Error eliminando usuario:', err);
-        alert('❌ Error al eliminar usuario.');
+        notificar('error', '❌ Error al eliminar usuario.');
       });
   }
 
@@ -812,7 +827,7 @@
           return;
         }
         if (!data?.success) {
-          alert('❌ Error: ' + (data.message || 'No se pudo registrar la solicitud.'));
+          notificar('error', '❌ Error: ' + (data.message || 'No se pudo registrar la solicitud.'));
           return;
         }
 
@@ -835,11 +850,11 @@
           return usuario;
         });
         sincronizarUsuariosEmpresaUI();
-        alert(data?.message || 'Usuario actualizado.');
+        notificar('success', data?.message || 'Usuario actualizado.');
       })
       .catch(err => {
         console.error('❌', err);
-        alert('❌ Error al guardar');
+        notificar('error', '❌ Error al guardar');
       });
   }
 
@@ -919,7 +934,7 @@
   async function exportarExcel() {
     const tabla = document.getElementById('tablaUsuariosEmpresa');
     if (!tabla) {
-      alert('❌ No se encontró la tabla de usuarios.');
+      notificar('error', '❌ No se encontró la tabla de usuarios.');
       return;
     }
     const wb = XLSX.utils.table_to_book(tabla, { sheet: 'Usuarios' });
@@ -928,7 +943,7 @@
       wbArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     } catch (error) {
       console.error('No se pudo generar el archivo de Excel:', error);
-      alert('❌ No se pudo generar el archivo de Excel.');
+      notificar('error', '❌ No se pudo generar el archivo de Excel.');
       return;
     }
 
@@ -943,19 +958,19 @@
   async function exportarPDF() {
     const tabla = document.getElementById('tablaUsuariosEmpresa');
     if (!(tabla instanceof HTMLTableElement)) {
-      alert('❌ No se encontró la tabla de usuarios.');
+      notificar('error', '❌ No se encontró la tabla de usuarios.');
       return;
     }
 
     const exporter = window.ReportExporter;
     if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
-      alert('❌ No se pudo cargar el módulo para exportar reportes. Recarga la página e inténtalo nuevamente.');
+      notificar('error', '❌ No se pudo cargar el módulo para exportar reportes. Recarga la página e inténtalo nuevamente.');
       return;
     }
 
     const dataset = exporter.extractTableData(tabla);
     if (!dataset || !dataset.rowCount) {
-      alert('❌ No hay usuarios disponibles para generar el reporte.');
+      notificar('info', '❌ No hay usuarios disponibles para generar el reporte.');
       return;
     }
 
@@ -981,10 +996,10 @@
     } catch (error) {
       console.error('No se pudo generar el PDF de usuarios:', error);
       if (error && error.message === 'PDF_LIBRARY_MISSING') {
-        alert('❌ La librería para generar PDF no está disponible. Actualiza la página e inténtalo nuevamente.');
+        notificar('error', '❌ La librería para generar PDF no está disponible. Actualiza la página e inténtalo nuevamente.');
         return;
       }
-      alert('❌ Ocurrió un problema al generar el PDF de usuarios.');
+      notificar('error', '❌ Ocurrió un problema al generar el PDF de usuarios.');
     }
   }
 
