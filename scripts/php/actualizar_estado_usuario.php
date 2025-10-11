@@ -26,6 +26,10 @@ $nuevoEstado = isset($data['activo']) ? intval($data['activo']) : null;
 $id_empresa = intval($data['id_empresa'] ?? 0);
 $forzarEjecucion = !empty($data['forzar_ejecucion']);
 
+if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
+    $forzarEjecucion = true;
+}
+
 if (!$id_usuario || ($nuevoEstado !== 0 && $nuevoEstado !== 1)) {
     echo json_encode(["success" => false, "message" => "Datos incompletos para actualizar el estado."]);
     exit;
@@ -38,15 +42,6 @@ $payload = [
 ];
 
 $idSolicitante = opti_resolver_id_solicitante($data, $payload);
-
-if (!$forzarEjecucion && opti_es_usuario_admin($conn, $idSolicitante, $data, $payload)) {
-    $forzarEjecucion = true;
-}
-
-if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
-    $forzarEjecucion = true;
-}
-
 $id_empresa = $id_empresa > 0 ? $id_empresa : opti_resolver_id_empresa($conn, $idSolicitante, $data, $payload);
 $payload['id_empresa'] = $id_empresa;
 

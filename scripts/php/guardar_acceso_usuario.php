@@ -59,6 +59,10 @@ try {
         'id_area' => $idArea
     ]);
 
+    if ($forzarEjecucion && $idSolicitante <= 0) {
+        jsonResponse(false, 'No se puede aplicar la asignación porque falta el identificador del solicitante.');
+    }
+
     $stmtUsuarioEmpresa = $conn->prepare('SELECT 1 FROM usuario_empresa WHERE id_usuario = ? AND id_empresa = ? LIMIT 1');
     $stmtUsuarioEmpresa->bind_param('ii', $idUsuario, $idEmpresa);
     $stmtUsuarioEmpresa->execute();
@@ -67,18 +71,6 @@ try {
 
     if (!$usuarioEmpresa) {
         jsonResponse(false, 'El usuario no pertenece a la empresa de esta área.');
-    }
-
-    if (!$forzarEjecucion && opti_es_usuario_admin($conn, $idSolicitante, $input, [
-        'id_empresa' => $idEmpresa,
-        'id_usuario' => $idUsuario,
-        'id_area' => $idArea
-    ])) {
-        $forzarEjecucion = true;
-    }
-
-    if ($forzarEjecucion && $idSolicitante <= 0) {
-        jsonResponse(false, 'No se puede aplicar la asignación porque falta el identificador del solicitante.');
     }
 
     if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {

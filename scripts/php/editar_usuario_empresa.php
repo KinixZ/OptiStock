@@ -66,10 +66,6 @@ if ($idEmpresa <= 0) {
 
 $payload['id_empresa'] = $idEmpresa;
 
-if (!$forzarEjecucion && opti_es_usuario_admin($conn, $idSolicitante, $data, $payload)) {
-    $forzarEjecucion = true;
-}
-
 if ($forzarEjecucion && $idSolicitante <= 0) {
     echo json_encode([
         'success' => false,
