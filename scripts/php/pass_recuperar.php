@@ -5,6 +5,7 @@ error_reporting(E_ALL);
 session_start(); // Muy importante para usar $_SESSION
 
 require_once __DIR__ . '/log_utils.php';
+require_once __DIR__ . '/mail_utils.php';
 
 $response = ["success" => false, "message" => ""];
 
@@ -46,9 +47,15 @@ try {
     // Enviar el correo
     $asunto = "OPTISTOCK - Código de recuperación";
     $mensaje = "Tu código para recuperar tu contraseña es: $codigo. Es válido por 10 minutos.";
-    $cabeceras = "From: no-reply@optistock.site";
 
-    if (!mail($email, $asunto, $mensaje, $cabeceras)) {
+    $opcionesCorreo = [
+        'from_email' => 'no-reply@optistock.site',
+        'from_name' => 'OptiStock',
+        'reply_to' => 'soporte@optistock.site',
+        'reply_to_name' => 'Equipo OptiStock',
+    ];
+
+    if (!enviarCorreo($email, $asunto, $mensaje, $opcionesCorreo)) {
         throw new Exception("Error al enviar el correo de recuperación.");
     }
 
