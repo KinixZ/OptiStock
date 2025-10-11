@@ -20,6 +20,8 @@ emailForm.addEventListener("submit", function (event) {
         if (data.success) {
             emailForm.style.display = "none";
             codeForm.style.display = "block";
+        } else {
+            console.error("Error al enviar el correo de recuperación:", data.message);
         }
     })
     .catch(err => {

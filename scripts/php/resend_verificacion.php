@@ -60,7 +60,9 @@ try {
     ];
 
     if (!enviarCorreo($email, $mail_subject, $mail_message, $opcionesCorreo)) {
-        throw new Exception('Error al enviar el correo de verificación.');
+        $detalle = obtenerUltimoErrorEnvioCorreo();
+        $detalleMensaje = $detalle ? " Detalle: $detalle" : '';
+        throw new Exception('Error al enviar el correo de verificación.' . $detalleMensaje);
     }
 
     registrarLog($conn, $userId, 'Usuarios', 'Reenvío de código de verificación de cuenta');
