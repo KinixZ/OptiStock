@@ -25,6 +25,7 @@ $id_usuario = intval($data['id_usuario'] ?? 0);
 $nuevoEstado = isset($data['activo']) ? intval($data['activo']) : null;
 $id_empresa = intval($data['id_empresa'] ?? 0);
 $forzarEjecucion = !empty($data['forzar_ejecucion']);
+$forzarEjecucion = $forzarEjecucion || opti_usuario_actual_es_admin();
 
 if (!$forzarEjecucion && !opti_solicitudes_habilitadas($conn)) {
     $forzarEjecucion = true;

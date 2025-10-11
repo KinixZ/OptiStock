@@ -27,6 +27,14 @@
   const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
   let modalAsignarInstancia = null;
 
+  function sincronizarUsuariosEmpresaUI() {
+    const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
+    poblarFiltroRoles(Object.keys(conteoPorRol));
+    actualizarResumen(conteoPorRol);
+    renderMetricas(conteoPorRol);
+    aplicarFiltros();
+  }
+
   function obtenerIdSolicitante() {
     const raw = localStorage.getItem('usuario_id');
     if (!raw) return null;
@@ -416,7 +424,11 @@
         }
         if (!data?.success) {
           alert(data?.message || 'No se pudo guardar la asignación.');
+          return;
         }
+
+        alert(data?.message || 'Acceso asignado correctamente.');
+        actualizarAccesosUsuario(usuarioAccesosSeleccionadoId, true);
       })
       .catch(err => {
         console.error('Error al guardar la asignación:', err);
@@ -466,7 +478,11 @@
         }
         if (!data?.success) {
           alert(data?.message || 'No se pudo eliminar la asignación.');
+          return;
         }
+
+        alert(data?.message || 'Acceso eliminado.');
+        actualizarAccesosUsuario(acceso.id_usuario, true);
       })
       .catch(err => {
         console.error('Error al eliminar la asignación:', err);
@@ -685,7 +701,17 @@
         }
         if (!data?.success) {
           alert('❌ No se pudo actualizar el estado: ' + (data.message || 'Error desconocido.'));
+          return;
         }
+
+        usuariosEmpresa = usuariosEmpresa.map(item => {
+          if (Number(item.id_usuario) === Number(usuario.id_usuario)) {
+            return { ...item, activo: nuevoEstado };
+          }
+          return item;
+        });
+        sincronizarUsuariosEmpresaUI();
+        alert(data?.message || `Usuario ${accion === 'activar' ? 'activado' : 'desactivado'}.`);
       })
       .catch(err => {
         console.error('Error al cambiar estado:', err);
@@ -740,7 +766,12 @@
         }
         if (!data?.success) {
           alert('❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
+          return;
         }
+
+        usuariosEmpresa = usuariosEmpresa.filter(usuario => (usuario.correo || '').toLowerCase() !== correo.toLowerCase());
+        sincronizarUsuariosEmpresaUI();
+        alert(data?.message || `Usuario ${correo} eliminado.`);
       })
       .catch(err => {
         console.error('Error eliminando usuario:', err);
@@ -782,7 +813,29 @@
         }
         if (!data?.success) {
           alert('❌ Error: ' + (data.message || 'No se pudo registrar la solicitud.'));
+          return;
         }
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario'));
+        if (modal) {
+          modal.hide();
+        }
+
+        usuariosEmpresa = usuariosEmpresa.map(usuario => {
+          if (Number(usuario.id_usuario) === Number(datos.id_usuario)) {
+            return {
+              ...usuario,
+              nombre: datos.nombre,
+              apellido: datos.apellido,
+              telefono: datos.telefono,
+              fecha_nacimiento: datos.fecha_nacimiento,
+              rol: datos.rol
+            };
+          }
+          return usuario;
+        });
+        sincronizarUsuariosEmpresaUI();
+        alert(data?.message || 'Usuario actualizado.');
       })
       .catch(err => {
         console.error('❌', err);
@@ -794,10 +847,7 @@
     const id_empresa = localStorage.getItem('id_empresa');
     if (!id_empresa) {
       usuariosEmpresa = [];
-      poblarFiltroRoles([]);
-      renderTabla([]);
-      actualizarResumen({});
-      renderMetricas({});
+      sincronizarUsuariosEmpresaUI();
       return;
     }
 
@@ -810,10 +860,7 @@
       .then(data => {
         if (!data.success) {
           usuariosEmpresa = [];
-          poblarFiltroRoles([]);
-          renderTabla([]);
-          actualizarResumen({});
-          renderMetricas({});
+          sincronizarUsuariosEmpresaUI();
           return;
         }
 
@@ -824,12 +871,7 @@
               accesos: Array.isArray(usuario.accesos) ? usuario.accesos : []
             }))
           : [];
-        const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
-
-        poblarFiltroRoles(Object.keys(conteoPorRol));
-        actualizarResumen(conteoPorRol);
-        renderMetricas(conteoPorRol);
-        aplicarFiltros();
+        sincronizarUsuariosEmpresaUI();
       })
       .catch(err => {
         console.error('Error al cargar usuarios:', err);

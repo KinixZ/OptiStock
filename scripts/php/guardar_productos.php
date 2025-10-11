@@ -264,13 +264,24 @@ if ($method === 'POST' || $method === 'PUT') {
         $payloadSolicitud['volumen_anterior_m3'] = $volumenAnteriorM3;
     }
 
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = $method === 'POST'
+            ? opti_aplicar_producto_crear($conn, $payloadSolicitud, $usuarioId)
+            : opti_aplicar_producto_actualizar($conn, $payloadSolicitud, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $tipoAccion = $method === 'POST' ? 'producto_crear' : 'producto_actualizar';
     $detalleProducto = '"' . $nombre . '"';
     $resumen = $method === 'POST'
         ? 'Creación del producto ' . $detalleProducto
         : 'Actualización del producto ' . $detalleProducto . ' (ID #' . $id . ')';
 
-    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+    $solicitudPayload = [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Productos',
@@ -278,7 +289,9 @@ if ($method === 'POST' || $method === 'PUT') {
         'resumen' => $resumen,
         'descripcion' => 'Solicitud registrada desde el gestor de inventario.',
         'payload' => $payloadSolicitud
-    ]);
+    ];
+
+    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudPayload);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
@@ -325,6 +338,24 @@ if ($method === 'DELETE') {
     }
 
     $nombreProducto = $existeProducto ? trim((string) $nombreProducto) : '';
+    $payloadEliminar = [
+        'id_producto' => $id,
+        'empresa_id' => $empresa_id,
+        'zona_id' => (int) $zonaProducto,
+        'nombre_producto' => $nombreProducto,
+        'movimientos_asociados' => (int) $movCount,
+        'force_delete' => $forceDelete
+    ];
+
+    if (opti_usuario_actual_es_admin()) {
+        $resultado = opti_aplicar_producto_eliminar($conn, $payloadEliminar, $usuarioId);
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        echo json_encode($resultado);
+        exit;
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
@@ -334,14 +365,7 @@ if ($method === 'DELETE') {
             ? 'Eliminación del producto "' . $nombreProducto . '" (ID #' . $id . ')'
             : 'Eliminación del producto ID #' . $id,
         'descripcion' => 'Solicitud de eliminación de producto.',
-        'payload' => [
-            'id_producto' => $id,
-            'empresa_id' => $empresa_id,
-            'zona_id' => (int) $zonaProducto,
-            'nombre_producto' => $nombreProducto,
-            'movimientos_asociados' => (int) $movCount,
-            'force_delete' => $forceDelete
-        ]
+        'payload' => $payloadEliminar
     ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);

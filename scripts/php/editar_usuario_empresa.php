@@ -28,6 +28,7 @@ $telefono         = $data['telefono'];
 $fecha_nacimiento = $data['fecha_nacimiento'];
 $rol              = $data['rol'];
 $forzarEjecucion  = !empty($data['forzar_ejecucion']);
+$forzarEjecucion  = $forzarEjecucion || opti_usuario_actual_es_admin();
 
 if (!$id_usuario) {
     echo json_encode(["success" => false, "message" => "ID de usuario inválido."]);
