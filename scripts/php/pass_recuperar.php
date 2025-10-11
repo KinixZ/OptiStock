@@ -49,10 +49,11 @@ try {
     $mensaje = "Tu código para recuperar tu contraseña es: $codigo. Es válido por 10 minutos.";
 
     $opcionesCorreo = [
-        'from_email' => 'no-reply@optistock.site',
-        'from_name' => 'OptiStock',
-        'reply_to' => 'soporte@optistock.site',
+        'from_email'    => 'no-reply@optistock.site',
+        'from_name'     => 'OptiStock',
+        'reply_to'      => 'soporte@optistock.site',
         'reply_to_name' => 'Equipo OptiStock',
+        'envelope_from' => 'no-reply@optistock.site',
     ];
 
     if (!enviarCorreo($email, $asunto, $mensaje, $opcionesCorreo)) {
