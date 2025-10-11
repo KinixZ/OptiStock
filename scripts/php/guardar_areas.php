@@ -182,7 +182,7 @@ if ($method === 'POST') {
         exit;
     }
 
-    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+    $solicitudData = [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Áreas',
@@ -198,7 +198,15 @@ if ($method === 'POST') {
             'largo' => $largo,
             'volumen' => $volumen
         ]
-    ]);
+    ];
+
+    if (!opti_requiere_aprobacion($conn, $usuarioId, $data, $solicitudData)) {
+        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
+        echo json_encode($resultado);
+        exit;
+    }
+
+    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
@@ -250,7 +258,7 @@ if ($method === 'PUT') {
         $empresaDestino = (int) ($resArea['id_empresa'] ?? 0);
     }
 
-    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+    $solicitudData = [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Áreas',
@@ -267,7 +275,15 @@ if ($method === 'PUT') {
             'largo' => $largo,
             'volumen' => $volumen
         ]
-    ]);
+    ];
+
+    if (!opti_requiere_aprobacion($conn, $usuarioId, $data, $solicitudData)) {
+        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
+        echo json_encode($resultado);
+        exit;
+    }
+
+    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
@@ -306,7 +322,7 @@ if ($method === 'DELETE') {
 
     $empresaDestino = $empresaId > 0 ? $empresaId : (int) ($areaDatos['id_empresa'] ?? 0);
 
-    $resultadoSolicitud = opti_registrar_solicitud($conn, [
+    $solicitudData = [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Áreas',
@@ -320,7 +336,15 @@ if ($method === 'DELETE') {
             'empresa_id' => $empresaDestino,
             'nombre_area' => $nombreArea
         ]
-    ]);
+    ];
+
+    if (!opti_requiere_aprobacion($conn, $usuarioId, $_GET, $solicitudData)) {
+        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
+        echo json_encode($resultado);
+        exit;
+    }
+
+    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
