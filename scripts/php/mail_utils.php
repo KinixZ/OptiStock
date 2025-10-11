@@ -1,5 +1,10 @@
 <?php
+require_once __DIR__ . '/mail_config.php';
+
 if (!function_exists('enviarCorreo')) {
+    /**
+     * Envía un correo utilizando la función mail() nativa.
+     */
     function enviarCorreo($destinatario, $asunto, $mensaje, array $opciones = [])
     {
         if (!filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
@@ -9,35 +14,55 @@ if (!function_exists('enviarCorreo')) {
 
         $fromEmail = isset($opciones['from_email']) && $opciones['from_email']
             ? $opciones['from_email']
-            : 'no-reply@optistock.site';
-        $fromName = isset($opciones['from_name']) && $opciones['from_name']
-            ? $opciones['from_name']
-            : 'OptiStock';
+            : MAIL_FROM_EMAIL;
+        $fromName = array_key_exists('from_name', $opciones)
+            ? (string) $opciones['from_name']
+            : MAIL_FROM_NAME;
         $replyToEmail = isset($opciones['reply_to']) && $opciones['reply_to']
             ? $opciones['reply_to']
-            : $fromEmail;
-        $replyToName = isset($opciones['reply_to_name']) && $opciones['reply_to_name']
-            ? $opciones['reply_to_name']
-            : $fromName;
+            : MAIL_REPLYTO_EMAIL;
+        $replyToName = array_key_exists('reply_to_name', $opciones)
+            ? (string) $opciones['reply_to_name']
+            : MAIL_REPLYTO_NAME;
+
+        $charset = isset($opciones['charset']) && $opciones['charset']
+            ? $opciones['charset']
+            : MAIL_DEFAULT_CHARSET;
+
+        $contentType = !empty($opciones['content_type'])
+            ? $opciones['content_type']
+            : (!empty($opciones['is_html']) ? 'text/html' : 'text/plain');
 
         $headers = [
             'From' => formatearDireccionCorreo($fromName, $fromEmail),
             'Reply-To' => formatearDireccionCorreo($replyToName, $replyToEmail),
             'MIME-Version' => '1.0',
-            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Type' => $contentType . '; charset=' . $charset,
             'Content-Transfer-Encoding' => '8bit',
             'X-Mailer' => 'PHP/' . phpversion(),
         ];
 
-        if (isset($opciones['headers']) && is_array($opciones['headers'])) {
+        if (!empty($opciones['cc'])) {
+            $headers['Cc'] = construirListaCorreos($opciones['cc']);
+        }
+
+        if (!empty($opciones['bcc'])) {
+            $headers['Bcc'] = construirListaCorreos($opciones['bcc']);
+        }
+
+        if (!empty($opciones['headers']) && is_array($opciones['headers'])) {
             foreach ($opciones['headers'] as $clave => $valor) {
-                $headers[$clave] = $valor;
+                if ($clave !== '') {
+                    $headers[$clave] = $valor;
+                }
             }
         }
 
         $headerString = '';
         foreach ($headers as $clave => $valor) {
-            $headerString .= $clave . ': ' . $valor . "\r\n";
+            if ($valor !== null && $valor !== '') {
+                $headerString .= $clave . ': ' . $valor . "\r\n";
+            }
         }
 
         if ($fromEmail) {
@@ -46,7 +71,8 @@ if (!function_exists('enviarCorreo')) {
 
         $envelopeFrom = isset($opciones['envelope_from']) && $opciones['envelope_from']
             ? $opciones['envelope_from']
-            : $fromEmail;
+            : MAIL_ENVELOPE_FROM;
+
         $parametrosAdicionales = '';
         if ($envelopeFrom) {
             $parametrosAdicionales = '-f' . escapeshellarg($envelopeFrom);
@@ -78,6 +104,35 @@ if (!function_exists('enviarCorreo')) {
         }
 
         return sprintf('%s <%s>', $nombre, $correo);
+    }
+
+    function construirListaCorreos($lista)
+    {
+        if (is_string($lista)) {
+            $lista = array_map('trim', explode(',', $lista));
+        }
+
+        if (!is_array($lista)) {
+            return '';
+        }
+
+        $direcciones = [];
+        foreach ($lista as $entrada) {
+            if (is_array($entrada)) {
+                $correo = $entrada['email'] ?? '';
+                $nombre = $entrada['name'] ?? '';
+                if (filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+                    $direcciones[] = formatearDireccionCorreo($nombre, $correo);
+                }
+            } else {
+                $correo = trim((string) $entrada);
+                if (filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+                    $direcciones[] = $correo;
+                }
+            }
+        }
+
+        return implode(', ', $direcciones);
     }
 
     function registrarEnvioCorreo($exito, $destinatario, $asunto, $detalle = '')
