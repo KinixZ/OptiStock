@@ -91,15 +91,6 @@ $idEmpresa = $idEmpresa > 0 ? $idEmpresa : opti_resolver_id_empresa($conn, $idSo
     'id_zona' => $idZona
 ]);
 
-if (!$forzarEjecucion && opti_es_usuario_admin($conn, $idSolicitante, $input, [
-    'id_empresa' => $idEmpresa,
-    'id_usuario' => $idUsuario,
-    'id_area' => $idArea,
-    'id_zona' => $idZona
-])) {
-    $forzarEjecucion = true;
-}
-
 if ($forzarEjecucion && $idSolicitante <= 0) {
     jsonResponse(false, 'No se puede aplicar la revocación porque falta el identificador del solicitante.');
 }

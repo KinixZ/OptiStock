@@ -207,7 +207,7 @@ if ($method === 'POST') {
         }
     }
 
-    $solicitudData = [
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
@@ -226,15 +226,7 @@ if ($method === 'POST') {
             'subniveles' => $subniveles,
             'area_id' => $area_id
         ]
-    ];
-
-    if (!opti_requiere_aprobacion($conn, $usuarioId, $data, $solicitudData)) {
-        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
-        echo json_encode($resultado);
-        exit;
-    }
-
-    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
+    ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
@@ -302,7 +294,7 @@ if ($method === 'PUT') {
 
     $empresaDestino = $empresaId ?: (int) ($zonaActual['id_empresa'] ?? 0);
 
-    $solicitudData = [
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
@@ -324,15 +316,7 @@ if ($method === 'PUT') {
             'area_anterior' => $areaAnterior,
             'capacidad_actual' => $capacidadActual
         ]
-    ];
-
-    if (!opti_requiere_aprobacion($conn, $usuarioId, $data, $solicitudData)) {
-        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
-        echo json_encode($resultado);
-        exit;
-    }
-
-    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
+    ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
@@ -406,7 +390,7 @@ if ($method === 'DELETE') {
         $empresaDestino = (int) ($zonaEmpresa['id_empresa'] ?? 0);
     }
 
-    $solicitudData = [
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Zonas',
@@ -421,15 +405,7 @@ if ($method === 'DELETE') {
             'productos_en_zona' => (int) $productosEnZona,
             'movimientos_recientes' => (int) $movimientosRecientes
         ]
-    ];
-
-    if (!opti_requiere_aprobacion($conn, $usuarioId, $_GET, $solicitudData)) {
-        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
-        echo json_encode($resultado);
-        exit;
-    }
-
-    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
+    ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }

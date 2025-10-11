@@ -80,10 +80,6 @@ if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_
     }
 }
 
-if (!$forzarEjecucion && opti_es_usuario_admin($conn, $usuarioAccionId, $_POST, $payload)) {
-    $forzarEjecucion = true;
-}
-
 if (!$forzarEjecucion && !$solicitudesHabilitadas) {
     $forzarEjecucion = true;
 }

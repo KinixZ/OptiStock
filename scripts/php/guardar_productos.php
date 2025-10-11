@@ -270,7 +270,7 @@ if ($method === 'POST' || $method === 'PUT') {
         ? 'Creación del producto ' . $detalleProducto
         : 'Actualización del producto ' . $detalleProducto . ' (ID #' . $id . ')';
 
-    $solicitudData = [
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Productos',
@@ -278,15 +278,7 @@ if ($method === 'POST' || $method === 'PUT') {
         'resumen' => $resumen,
         'descripcion' => 'Solicitud registrada desde el gestor de inventario.',
         'payload' => $payloadSolicitud
-    ];
-
-    if (!opti_requiere_aprobacion($conn, $usuarioId, $data, $solicitudData, $_GET)) {
-        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
-        echo json_encode($resultado);
-        exit;
-    }
-
-    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
+    ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
@@ -333,7 +325,7 @@ if ($method === 'DELETE') {
     }
 
     $nombreProducto = $existeProducto ? trim((string) $nombreProducto) : '';
-    $solicitudData = [
+    $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresa_id,
         'id_solicitante' => $usuarioId,
         'modulo' => 'Productos',
@@ -350,15 +342,7 @@ if ($method === 'DELETE') {
             'movimientos_asociados' => (int) $movCount,
             'force_delete' => $forceDelete
         ]
-    ];
-
-    if (!opti_requiere_aprobacion($conn, $usuarioId, $_GET, $solicitudData)) {
-        $resultado = opti_ejecutar_accion_inmediata($conn, $solicitudData, $usuarioId);
-        echo json_encode($resultado);
-        exit;
-    }
-
-    $resultadoSolicitud = opti_registrar_solicitud($conn, $solicitudData);
+    ]);
 
     opti_responder_solicitud_creada($resultadoSolicitud);
 }
