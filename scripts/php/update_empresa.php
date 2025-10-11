@@ -28,6 +28,7 @@ $id_empresa     = $_POST['id_empresa']     ?? null;
 $nombre_empresa = $_POST['nombre_empresa'] ?? null;
 $sector_empresa = $_POST['sector_empresa'] ?? null;
 $forzarEjecucion = isset($_POST['forzar_ejecucion']) && $_POST['forzar_ejecucion'] === '1';
+$forzarEjecucion = $forzarEjecucion || opti_usuario_actual_es_admin();
 $logoPendiente = $_POST['logo_pendiente'] ?? null;
 
 if (!$id_empresa || !$nombre_empresa || !$sector_empresa) {

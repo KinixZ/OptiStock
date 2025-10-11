@@ -210,6 +210,21 @@ function opti_resolver_id_empresa(mysqli $conn, ?int $idSolicitante = null, arra
     return 0;
 }
 
+function opti_usuario_actual_es_admin()
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
+    }
+
+    if (!isset($_SESSION['usuario_rol'])) {
+        return false;
+    }
+
+    $rol = trim((string) $_SESSION['usuario_rol']);
+
+    return $rol !== '' && strcasecmp($rol, 'Administrador') === 0;
+}
+
 function opti_guardar_archivo_pendiente(array $file, string $categoria, string $prefijo = '')
 {
     if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {

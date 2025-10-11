@@ -27,6 +27,7 @@ $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $idUsuario = isset($input['id_usuario']) ? (int) $input['id_usuario'] : 0;
 $idArea    = isset($input['id_area']) ? (int) $input['id_area'] : 0;
 $forzarEjecucion = !empty($input['forzar_ejecucion']);
+$forzarEjecucion = $forzarEjecucion || opti_usuario_actual_es_admin();
 $compositeId = $idUsuario . ':' . $idArea . ':null';
 $transaccionActiva = false;
 

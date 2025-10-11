@@ -29,6 +29,7 @@ $idArea = isset($input['id_area']) ? (int) $input['id_area'] : 0;
 $idZonaRaw = $input['id_zona'] ?? null;
 $idZona = ($idZonaRaw === '' || $idZonaRaw === null) ? null : (int) $idZonaRaw;
 $forzarEjecucion = !empty($input['forzar_ejecucion']);
+$forzarEjecucion = $forzarEjecucion || opti_usuario_actual_es_admin();
 
 if ($idUsuario <= 0 || $idArea <= 0) {
     jsonResponse(false, 'Datos inválidos para eliminar la asignación.');
