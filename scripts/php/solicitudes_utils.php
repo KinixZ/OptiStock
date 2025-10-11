@@ -210,6 +210,88 @@ function opti_resolver_id_empresa(mysqli $conn, ?int $idSolicitante = null, arra
     return 0;
 }
 
+function opti_es_usuario_admin(mysqli $conn, ?int $idUsuario = null, array ...$contextos)
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
+    }
+
+    $fuentes = $contextos;
+    $fuentes[] = isset($_SESSION) && is_array($_SESSION) ? $_SESSION : [];
+
+    $clavesRol = [
+        'rol',
+        'usuario_rol',
+        'rol_usuario',
+        'user_role'
+    ];
+
+    foreach ($fuentes as $fuente) {
+        if (!is_array($fuente)) {
+            continue;
+        }
+
+        foreach ($clavesRol as $clave) {
+            if (!array_key_exists($clave, $fuente)) {
+                continue;
+            }
+
+            $valor = strtolower(trim((string) $fuente[$clave]));
+            if ($valor === 'administrador') {
+                return true;
+            }
+        }
+    }
+
+    if ($idUsuario === null || $idUsuario <= 0) {
+        $sessionId = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+        if ($sessionId > 0) {
+            $idUsuario = $sessionId;
+        }
+    }
+
+    if ($idUsuario <= 0) {
+        return false;
+    }
+
+    static $cacheRoles = [];
+    if (array_key_exists($idUsuario, $cacheRoles)) {
+        return $cacheRoles[$idUsuario];
+    }
+
+    try {
+        $stmt = $conn->prepare('SELECT rol FROM usuario WHERE id_usuario = ? LIMIT 1');
+        if (!$stmt) {
+            $cacheRoles[$idUsuario] = false;
+            return false;
+        }
+
+        $stmt->bind_param('i', $idUsuario);
+        $stmt->execute();
+        $resultado = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $rol = isset($resultado['rol']) ? strtolower(trim((string) $resultado['rol'])) : '';
+        $cacheRoles[$idUsuario] = ($rol === 'administrador');
+        return $cacheRoles[$idUsuario];
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function opti_requiere_aprobacion(mysqli $conn, ?int $idSolicitante = null, array ...$contextos)
+{
+    if ($idSolicitante === null || $idSolicitante <= 0) {
+        $idSolicitante = opti_resolver_id_solicitante(...$contextos);
+    }
+
+    if (opti_es_usuario_admin($conn, $idSolicitante, ...$contextos)) {
+        return false;
+    }
+
+    return opti_solicitudes_habilitadas($conn);
+}
+
 function opti_guardar_archivo_pendiente(array $file, string $categoria, string $prefijo = '')
 {
     if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
@@ -364,6 +446,21 @@ function opti_responder_solicitud_creada(array $resultado)
         'message' => 'La solicitud fue registrada y está en revisión.'
     ]);
     exit;
+}
+
+function opti_ejecutar_accion_inmediata(mysqli $conn, array $datos, int $idSolicitante)
+{
+    $solicitud = [
+        'id_empresa' => $datos['id_empresa'] ?? 0,
+        'id_solicitante' => $idSolicitante,
+        'modulo' => $datos['modulo'] ?? '',
+        'tipo_accion' => $datos['tipo_accion'] ?? '',
+        'resumen' => $datos['resumen'] ?? '',
+        'descripcion' => $datos['descripcion'] ?? '',
+        'payload' => $datos['payload'] ?? []
+    ];
+
+    return opti_aplicar_solicitud($conn, $solicitud, $idSolicitante);
 }
 
 function opti_obtener_solicitud(mysqli $conn, int $id)

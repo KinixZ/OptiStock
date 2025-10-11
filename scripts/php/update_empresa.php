@@ -54,6 +54,10 @@ if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOA
     $logoPendiente = $archivoPendiente['ruta_relativa'];
 }
 
+if (!$forzarEjecucion && opti_es_usuario_admin($conn, $usuarioId, $_POST, ['id_empresa' => $id_empresa])) {
+    $forzarEjecucion = true;
+}
+
 if ($forzarEjecucion) {
     $payload = [
         'id_empresa' => (int) $id_empresa,

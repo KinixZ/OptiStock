@@ -53,6 +53,10 @@ $payload = [
 $idSolicitante = opti_resolver_id_solicitante($data, $payload);
 $idEmpresa = $idEmpresa > 0 ? $idEmpresa : opti_resolver_id_empresa($conn, $idSolicitante, $data, $payload);
 
+if (!$forzarEjecucion && opti_es_usuario_admin($conn, $idSolicitante, $data, $payload)) {
+    $forzarEjecucion = true;
+}
+
 if ($forzarEjecucion && $idSolicitante <= 0) {
     echo json_encode([
         'success' => false,
