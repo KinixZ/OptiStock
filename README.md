@@ -32,6 +32,30 @@ PORT=3000
 Ajuste cada valor según la configuración de su entorno (por ejemplo, los datos
 para la conexión de MySQL o el puerto en el que se ejecutará la aplicación).
 
+### Envío de correos
+
+El proyecto incluye utilidades PHP para enviar correos electrónicos. Por
+defecto se utiliza la función nativa `mail()`, pero ahora es posible configurar
+un servidor SMTP sin depender de servicios externos avanzados.
+
+Opcionalmente agregue a su `.env` las siguientes variables:
+
+```bash
+MAIL_TRANSPORT=auto          # Valores: auto, mail, smtp
+MAIL_SMTP_HOST=mail.midominio.com
+MAIL_SMTP_PORT=587
+MAIL_SMTP_USERNAME=usuario
+MAIL_SMTP_PASSWORD=clave
+MAIL_SMTP_ENCRYPTION=tls     # Valores: tls, ssl o vacío para sin cifrado
+MAIL_SMTP_HELO=optistock.site
+MAIL_FROM_EMAIL=no-reply@midominio.com
+MAIL_REPLYTO_EMAIL=soporte@midominio.com
+```
+
+Si `MAIL_TRANSPORT` está en `auto`, el sistema intentará primero enviar por
+SMTP cuando `MAIL_SMTP_HOST` tenga un valor y, si falla, volverá a `mail()`.
+Deje `MAIL_TRANSPORT=mail` para forzar el uso exclusivo de `mail()`.
+
 ## Ejecución de la aplicación
 
 Inicie el servidor ejecutando:
