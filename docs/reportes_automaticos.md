@@ -125,6 +125,37 @@ Esta propuesta permite consolidar los reportes creados manualmente o de forma au
   4. Configura una tarea cron desde el panel de Hostinger que ejecute cada 5 minutos: `wget -q -O - "https://tu-dominio.com/scripts/php/scheduler.php" >/dev/null 2>&1` o `curl -s "https://tu-dominio.com/scripts/php/scheduler.php" >/dev/null 2>&1`.
   5. Verifica que `Dompdf` esté disponible. Si no puedes instalar Dompdf, alternativa: instalar wkhtmltopdf en el servidor (si el plan lo permite) y modificar `scheduler.php` para invocar `wkhtmltopdf` y capturar el PDF.
 
+### 9.1 Instalar Dompdf cuando trabajas desde VS Code sincronizado con el repositorio
+
+Si editas el proyecto desde Visual Studio Code y lo sincronizas con este repositorio (por ejemplo, usando Git o GitHub Desktop), puedes instalar Dompdf en tu computadora y luego subir la carpeta `vendor/` resultante junto con tus cambios. No necesitas Node.js ni herramientas avanzadas, solo PHP y Composer (el instalador oficial para dependencias PHP).
+
+1. **Verifica que Composer esté instalado**
+   - Abre la terminal integrada de VS Code (menú *View → Terminal*).
+   - Ejecuta `composer --version`. Si ves un número de versión, ya está listo. Si no, descarga el instalador desde [https://getcomposer.org/download/](https://getcomposer.org/download/) y ejecútalo (en Windows puedes usar `composer-setup.exe`; en Linux/Mac sigue las instrucciones del sitio). Composer es una herramienta básica que corre en consola, no requiere Node.js.
+2. **Instala Dompdf dentro del proyecto**
+   - En la misma terminal, muévete a la carpeta raíz del proyecto (`cd /ruta/a/tu/proyecto/OptiStock`).
+   - Ejecuta:
+     ```bash
+     composer require dompdf/dompdf
+     ```
+   - Composer descargará Dompdf y creará/actualizará la carpeta `vendor/` y el archivo `composer.lock` (si no existían).
+3. **Sincroniza los archivos con tu repositorio**
+   - Asegúrate de que `vendor/` esté incluido en `.gitignore`. Si tu hosting compartido no permite ejecutar Composer, entonces *sí* necesitas subir la carpeta `vendor/` al servidor manualmente. En ese caso, puedes crear un archivo `.gitkeep` dentro de `vendor/` para recordar subirla desde tu cliente FTP, pero evita commitear todo el `vendor/` en Git para que el repositorio se mantenga ligero.
+   - Sube los cambios relevantes (`composer.json`, `composer.lock` y ajustes de configuración) a tu repositorio remoto desde VS Code.
+4. **Sube Dompdf al hosting sin SSH**
+   - Si tu hosting solo ofrece administrador de archivos o FTP, comprime la carpeta `vendor/` en un `.zip` (desde tu PC) y súbela al servidor dentro del mismo directorio del proyecto.
+   - Descomprime el `.zip` en el servidor y verifica que la ruta `vendor/autoload.php` exista.
+5. **Verifica la instalación**
+   - Ejecuta en tu hosting `php -r "require 'vendor/autoload.php'; echo class_exists('Dompdf\\Dompdf') ? 'OK' : 'FAIL';"` desde la consola del panel (si está disponible) o crea un script temporal `test_dompdf.php` con:
+     ```php
+     <?php
+     require __DIR__.'/vendor/autoload.php';
+     echo class_exists('Dompdf\\Dompdf') ? 'DOMPDF OK' : 'DOMPDF NO DISPONIBLE';
+     ```
+   - Abre `https://tu-dominio.com/test_dompdf.php` en el navegador. Si ves `DOMPDF OK`, puedes borrar el archivo.
+
+> **Consejo**: Si prefieres no usar Composer, descarga el paquete oficial `.zip` desde [https://github.com/dompdf/dompdf/releases](https://github.com/dompdf/dompdf/releases), descomprímelo en `vendor/dompdf/` y crea manualmente el `autoload.inc.php` siguiendo la guía incluida. Sin embargo, Composer simplifica la configuración y mantiene las versiones actualizadas sin instalar herramientas pesadas.
+
 - Notas prácticas:
   - Guarda las credenciales de base de datos fuera del repositorio (usa un archivo `config.php` no versionado).
   - Prueba el endpoint `automations.php` con `empresa` param para ver la lista y con `POST` para crear/upsert.
