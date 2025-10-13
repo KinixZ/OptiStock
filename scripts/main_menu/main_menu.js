@@ -70,6 +70,12 @@ const STOCK_ALERT_REFRESH_MS = 30 * 1000;
 let notificationAbortController = null;
 let notificationPollIntervalId = null;
 let stockAlertPollIntervalId = null;
+const PENDING_REQUEST_REFRESH_MS = NOTIFICATION_REFRESH_MS;
+let pendingRequestsAbortController = null;
+let pendingRequestsPollIntervalId = null;
+let pendingRequestNotifications = [];
+let pendingRequestState = new Map();
+let lastPendingRequestsFetch = 0;
 let cachedNotifications = [];
 let serverNotifications = [];
 let criticalStockNotifications = [];
@@ -743,16 +749,26 @@ function renderNotifications(notifications = []) {
         content.className = 'notification-tray__content';
 
         const title = document.createElement('h4');
-        title.textContent = notification.titulo || 'Notificación';
-
-        const message = document.createElement('p');
-        message.textContent = notification.mensaje || '';
+        const titleSource = notification.titulo == null ? '' : notification.titulo;
+        const rawTitle = typeof titleSource === 'string'
+            ? titleSource.trim()
+            : String(titleSource).trim();
+        title.textContent = rawTitle || 'Notificación';
 
         const time = document.createElement('span');
         time.className = 'notification-tray__time';
         time.textContent = formatRelativeNotificationTime(notification.fecha_disponible_desde);
 
-        content.append(title, message, time);
+        const messageSource = notification.mensaje == null ? '' : notification.mensaje;
+        const rawMessage = typeof messageSource === 'string'
+            ? messageSource.trim()
+            : String(messageSource).trim();
+
+        if (rawMessage) {
+            listItem.setAttribute('title', rawMessage);
+        }
+
+        content.append(title, time);
         listItem.append(iconWrapper, content);
 
         const targetRoute = resolveNotificationRoute(notification.ruta_destino);
@@ -869,6 +885,32 @@ function getNotificationNumericId(notification) {
     return null;
 }
 
+function markPendingRequestDismissedByIdentity(identity) {
+    if (!identity || !pendingRequestState.size) {
+        return false;
+    }
+
+    let updated = false;
+    pendingRequestState = new Map(Array.from(pendingRequestState.entries()).map(([key, entry]) => {
+        if (!entry || !entry.notification) {
+            return [key, entry];
+        }
+
+        if (buildNotificationIdentity(entry.notification) !== identity) {
+            return [key, entry];
+        }
+
+        if (entry.dismissed) {
+            return [key, entry];
+        }
+
+        updated = true;
+        return [key, { ...entry, dismissed: true }];
+    }));
+
+    return updated;
+}
+
 function removeNotificationLocally(notification) {
     if (!notification || typeof notification !== 'object') {
         return false;
@@ -900,6 +942,16 @@ function removeNotificationLocally(notification) {
             capacityAlertNotifications = nextCapacity;
             changed = true;
         }
+
+        const nextPending = filterByIdentity(pendingRequestNotifications);
+        if (nextPending.length !== pendingRequestNotifications.length) {
+            pendingRequestNotifications = nextPending;
+            changed = true;
+        }
+
+        if (markPendingRequestDismissedByIdentity(identity)) {
+            changed = true;
+        }
     }
 
     return changed;
@@ -923,7 +975,26 @@ function removeServerNotificationsByIdSet(idSet) {
     return changed;
 }
 
-function clearGeneratedNotifications() {
+function dismissAllPendingRequests() {
+    if (!pendingRequestState.size) {
+        return false;
+    }
+
+    let updated = false;
+    pendingRequestState = new Map(Array.from(pendingRequestState.entries()).map(([key, entry]) => {
+        if (!entry || entry.dismissed) {
+            return [key, entry];
+        }
+
+        updated = true;
+        return [key, { ...entry, dismissed: true }];
+    }));
+
+    return updated;
+}
+
+function clearGeneratedNotifications(options = {}) {
+    const { includePending = false } = options;
     let changed = false;
 
     if (criticalStockNotifications.length) {
@@ -934,6 +1005,17 @@ function clearGeneratedNotifications() {
     if (capacityAlertNotifications.length) {
         capacityAlertNotifications = [];
         changed = true;
+    }
+
+    if (includePending) {
+        if (pendingRequestNotifications.length) {
+            pendingRequestNotifications = [];
+            changed = true;
+        }
+
+        if (dismissAllPendingRequests()) {
+            changed = true;
+        }
     }
 
     return changed;
@@ -1016,6 +1098,7 @@ function refreshNotificationUI() {
     const merged = [];
 
     [
+        ...pendingRequestNotifications,
         ...criticalStockNotifications,
         ...capacityAlertNotifications,
         ...serverNotifications
@@ -1089,7 +1172,14 @@ async function archiveServerNotifications(notificationIds = []) {
 }
 
 async function clearNotificationTray() {
-    if (!Array.isArray(cachedNotifications) || !cachedNotifications.length) {
+    const hasServerNotifications = Array.isArray(cachedNotifications) && cachedNotifications.length > 0;
+    const hasGeneratedNotifications = (
+        pendingRequestNotifications.length > 0
+        || criticalStockNotifications.length > 0
+        || capacityAlertNotifications.length > 0
+    );
+
+    if (!hasServerNotifications && !hasGeneratedNotifications) {
         return;
     }
 
@@ -1103,10 +1193,12 @@ async function clearNotificationTray() {
     const previousState = {
         server: serverNotifications.slice(),
         critical: criticalStockNotifications.slice(),
-        capacity: capacityAlertNotifications.slice()
+        capacity: capacityAlertNotifications.slice(),
+        pendingState: new Map(pendingRequestState),
+        pending: pendingRequestNotifications.slice()
     };
 
-    const idsToArchive = cachedNotifications
+    const idsToArchive = (Array.isArray(cachedNotifications) ? cachedNotifications : [])
         .map(notification => Number.parseInt(notification && notification.id, 10))
         .filter(id => Number.isFinite(id) && id > 0);
 
@@ -1118,7 +1210,7 @@ async function clearNotificationTray() {
         }
 
         const stateChanged = removeServerNotificationsByIdSet(idsToArchiveSet);
-        const clearedGenerated = clearGeneratedNotifications();
+        const clearedGenerated = clearGeneratedNotifications({ includePending: true });
 
         if (stateChanged || clearedGenerated || idsToArchiveSet.size === 0) {
             refreshNotificationUI();
@@ -1130,6 +1222,8 @@ async function clearNotificationTray() {
         serverNotifications = previousState.server;
         criticalStockNotifications = previousState.critical;
         capacityAlertNotifications = previousState.capacity;
+        pendingRequestState = new Map(previousState.pendingState);
+        pendingRequestNotifications = previousState.pending;
         refreshNotificationUI();
     } finally {
         if (notificationClearButton) {
@@ -1137,6 +1231,92 @@ async function clearNotificationTray() {
             notificationClearButton.textContent = originalLabel || 'Vaciar bandeja';
         }
     }
+}
+
+async function fetchPendingRequestNotifications(options = {}) {
+    if (!notificationList) {
+        return;
+    }
+
+    if (!activeEmpresaId) {
+        if (pendingRequestNotifications.length || pendingRequestState.size) {
+            pendingRequestNotifications = [];
+            pendingRequestState.clear();
+            refreshNotificationUI();
+        }
+        return;
+    }
+
+    const { force = false } = options;
+    const now = Date.now();
+    if (!force && now - lastPendingRequestsFetch < PENDING_REQUEST_REFRESH_MS) {
+        return;
+    }
+
+    if (pendingRequestsAbortController) {
+        pendingRequestsAbortController.abort();
+    }
+
+    pendingRequestsAbortController = new AbortController();
+    const { signal } = pendingRequestsAbortController;
+
+    try {
+        const params = new URLSearchParams({ estado: 'en_proceso' });
+        params.set('id_empresa', activeEmpresaId);
+
+        const response = await fetch(`/scripts/php/solicitudes_admin.php?${params.toString()}`, {
+            signal,
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data || data.success !== true) {
+            throw new Error(data && data.message ? data.message : 'No se pudo obtener las solicitudes pendientes.');
+        }
+
+        lastPendingRequestsFetch = Date.now();
+        const items = Array.isArray(data.items) ? data.items : [];
+        updatePendingRequestNotifications(items);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return;
+        }
+
+        console.error('No se pudieron cargar las solicitudes pendientes:', error);
+    } finally {
+        if (pendingRequestsAbortController && pendingRequestsAbortController.signal === signal) {
+            pendingRequestsAbortController = null;
+        }
+    }
+}
+
+function startPendingRequestsPolling() {
+    if (pendingRequestsPollIntervalId) {
+        return;
+    }
+
+    pendingRequestsPollIntervalId = window.setInterval(() => {
+        fetchPendingRequestNotifications();
+    }, PENDING_REQUEST_REFRESH_MS);
+}
+
+function stopPendingRequestsPolling() {
+    if (pendingRequestsPollIntervalId) {
+        clearInterval(pendingRequestsPollIntervalId);
+        pendingRequestsPollIntervalId = null;
+    }
+
+    if (pendingRequestsAbortController) {
+        pendingRequestsAbortController.abort();
+        pendingRequestsAbortController = null;
+    }
+
+    lastPendingRequestsFetch = 0;
 }
 
 async function fetchNotifications(options = {}) {
@@ -1191,6 +1371,7 @@ async function fetchNotifications(options = {}) {
         lastNotificationsFetch = Date.now();
         serverNotifications = Array.isArray(data.notifications) ? data.notifications : [];
         refreshNotificationUI();
+        fetchPendingRequestNotifications();
     } catch (error) {
         if (error.name === 'AbortError') {
             return;
@@ -1216,16 +1397,20 @@ function startNotificationPolling() {
     notificationPollIntervalId = window.setInterval(() => {
         fetchNotifications();
     }, NOTIFICATION_REFRESH_MS);
+
+    startPendingRequestsPolling();
 }
 
 function stopNotificationPolling() {
     if (!notificationPollIntervalId) {
+        stopPendingRequestsPolling();
         return;
     }
 
     clearInterval(notificationPollIntervalId);
     notificationPollIntervalId = null;
     lastNotificationsFetch = 0;
+    stopPendingRequestsPolling();
 }
 
 function normalizeHex(hexColor) {
@@ -1742,6 +1927,149 @@ function updateCapacityAlertNotifications(entries) {
 
         persistNotifications(newlyTriggered);
     }
+
+    refreshNotificationUI();
+}
+
+function formatRequestActionLabel(rawAction) {
+    if (!rawAction) {
+        return '';
+    }
+
+    const sanitized = rawAction.toString().trim().replace(/_/g, ' ');
+    if (!sanitized) {
+        return '';
+    }
+
+    return sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
+}
+
+function getPendingRequestFingerprint(request) {
+    if (!request || typeof request !== 'object') {
+        return '';
+    }
+
+    const parts = [
+        request.resumen,
+        request.descripcion,
+        request.tipo_accion,
+        request.estado,
+        request.modulo,
+        request.actualizado_en,
+        request.fecha_actualizacion,
+        request.fecha_actualizado
+    ];
+
+    return parts
+        .map(part => (part == null ? '' : String(part).trim().toLowerCase()))
+        .join('|');
+}
+
+function buildPendingRequestNotification(request, markAsNew, preservedTimestamp) {
+    if (!request || request.id == null) {
+        return null;
+    }
+
+    const requestId = String(request.id);
+    const resumen = typeof request.resumen === 'string' ? request.resumen.trim() : '';
+    const modulo = typeof request.modulo === 'string' ? request.modulo.trim() : '';
+    const descripcion = typeof request.descripcion === 'string' ? request.descripcion.trim() : '';
+    const solicitanteNombre = [request.solicitante_nombre, request.solicitante_apellido]
+        .filter(part => typeof part === 'string' && part.trim())
+        .map(part => part.trim())
+        .join(' ');
+    const accion = formatRequestActionLabel(request.tipo_accion);
+
+    const mensajePartes = [];
+    if (accion) {
+        mensajePartes.push(`Acción solicitada: ${accion}`);
+    }
+    if (modulo) {
+        mensajePartes.push(`Módulo: ${modulo}`);
+    }
+    if (solicitanteNombre) {
+        mensajePartes.push(`Solicitante: ${solicitanteNombre}`);
+    }
+    if (descripcion) {
+        mensajePartes.push(descripcion);
+    }
+
+    const mensaje = mensajePartes.join('\n') || 'Hay una solicitud pendiente de revisión.';
+    const timestamp = preservedTimestamp
+        || normalizeNotificationDateTime(request.fecha_creacion)
+        || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    const tituloBase = resumen || (accion ? accion : 'Solicitud pendiente por revisar');
+
+    return {
+        id: `pending-request-${requestId}`,
+        titulo: `Solicitud pendiente: ${tituloBase}`,
+        mensaje,
+        prioridad: 'Alta',
+        fecha_disponible_desde: timestamp,
+        ruta_destino: 'control_log/log.html',
+        estado: 'Pendiente',
+        es_nueva: !!markAsNew,
+        tipo_destinatario: 'Usuario',
+        es_local: true
+    };
+}
+
+function updatePendingRequestNotifications(requests) {
+    const normalizedRequests = Array.isArray(requests) ? requests : [];
+    const previousState = new Map(pendingRequestState);
+    const nextState = new Map();
+    const notifications = [];
+
+    normalizedRequests.forEach(request => {
+        if (!request || request.id == null) {
+            return;
+        }
+
+        const key = String(request.id);
+        const previousEntry = previousState.get(key);
+        const preservedTimestamp = previousEntry && previousEntry.notification
+            ? previousEntry.notification.fecha_disponible_desde
+            : null;
+        const fingerprint = getPendingRequestFingerprint(request);
+        const wasDismissedWithoutChange = Boolean(
+            previousEntry
+            && previousEntry.dismissed
+            && previousEntry.fingerprint === fingerprint
+        );
+
+        const notification = buildPendingRequestNotification(
+            request,
+            !previousEntry || previousEntry.dismissed,
+            preservedTimestamp
+        );
+
+        if (!notification) {
+            return;
+        }
+
+        if (wasDismissedWithoutChange) {
+            nextState.set(key, {
+                notification,
+                raw: request,
+                fingerprint,
+                dismissed: true
+            });
+            return;
+        }
+
+        nextState.set(key, {
+            notification,
+            raw: request,
+            fingerprint,
+            dismissed: false
+        });
+
+        notifications.push(notification);
+    });
+
+    pendingRequestState = nextState;
+    pendingRequestNotifications = notifications;
 
     refreshNotificationUI();
 }
@@ -3051,6 +3379,7 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
         if (isOpen) {
             fetchNotifications();
+            fetchPendingRequestNotifications({ force: true });
             notificationTray.focus();
         } else {
             autoArchiveSeenNotifications();
@@ -3073,21 +3402,14 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
 if (notificationViewAll) {
     notificationViewAll.addEventListener('click', () => {
-        const targetNotification = cachedNotifications.find(notification => resolveNotificationRoute(notification.ruta_destino));
+        const targetRoute = 'control_log/log.html';
 
-        if (targetNotification) {
-            const targetRoute = resolveNotificationRoute(targetNotification.ruta_destino);
-            if (targetRoute) {
-                if (typeof window.loadPageIntoMainFromNotifications === 'function') {
-                    window.loadPageIntoMainFromNotifications(targetRoute, {
-                        title: targetNotification.titulo || ''
-                    });
-                } else {
-                    window.location.href = targetRoute;
-                }
-            }
+        if (typeof window.loadPageIntoMainFromNotifications === 'function') {
+            window.loadPageIntoMainFromNotifications(targetRoute, {
+                title: 'Registro de actividades'
+            });
         } else {
-            fetchNotifications({ force: true });
+            window.location.href = targetRoute;
         }
 
         if (notificationWrapper) {
@@ -4498,6 +4820,7 @@ if (userImgEl) {
         if (data.success) {
             activeEmpresaId = data.empresa_id;
             fetchNotifications({ force: true });
+            fetchPendingRequestNotifications({ force: true });
             startNotificationPolling();
             startStockAlertAutoRefresh();
             localStorage.setItem('id_empresa', data.empresa_id); // 🟢 GUARDAMOS EL ID
