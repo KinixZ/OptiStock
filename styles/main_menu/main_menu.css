@@ -632,6 +632,29 @@ img {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
+    max-height: 12rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(15, 23, 42, 0.3) transparent;
+}
+
+.notification-tray__list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notification-tray__list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notification-tray__list::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.2);
+    border-radius: 999px;
+}
+
+.notification-tray__list:hover::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.35);
 }
 
 .notification-tray__item {
@@ -642,6 +665,7 @@ img {
     background: rgba(15, 23, 42, 0.03);
     border: 1px solid transparent;
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    min-height: 4.75rem;
 }
 
 .notification-tray__item--placeholder {

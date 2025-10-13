@@ -70,6 +70,12 @@ const STOCK_ALERT_REFRESH_MS = 30 * 1000;
 let notificationAbortController = null;
 let notificationPollIntervalId = null;
 let stockAlertPollIntervalId = null;
+const PENDING_REQUEST_REFRESH_MS = NOTIFICATION_REFRESH_MS;
+let pendingRequestsAbortController = null;
+let pendingRequestsPollIntervalId = null;
+let pendingRequestNotifications = [];
+let pendingRequestState = new Map();
+let lastPendingRequestsFetch = 0;
 let cachedNotifications = [];
 let serverNotifications = [];
 let criticalStockNotifications = [];
@@ -900,6 +906,12 @@ function removeNotificationLocally(notification) {
             capacityAlertNotifications = nextCapacity;
             changed = true;
         }
+
+        const nextPending = filterByIdentity(pendingRequestNotifications);
+        if (nextPending.length !== pendingRequestNotifications.length) {
+            pendingRequestNotifications = nextPending;
+            changed = true;
+        }
     }
 
     return changed;
@@ -1016,6 +1028,7 @@ function refreshNotificationUI() {
     const merged = [];
 
     [
+        ...pendingRequestNotifications,
         ...criticalStockNotifications,
         ...capacityAlertNotifications,
         ...serverNotifications
@@ -1139,6 +1152,92 @@ async function clearNotificationTray() {
     }
 }
 
+async function fetchPendingRequestNotifications(options = {}) {
+    if (!notificationList) {
+        return;
+    }
+
+    if (!activeEmpresaId) {
+        if (pendingRequestNotifications.length || pendingRequestState.size) {
+            pendingRequestNotifications = [];
+            pendingRequestState.clear();
+            refreshNotificationUI();
+        }
+        return;
+    }
+
+    const { force = false } = options;
+    const now = Date.now();
+    if (!force && now - lastPendingRequestsFetch < PENDING_REQUEST_REFRESH_MS) {
+        return;
+    }
+
+    if (pendingRequestsAbortController) {
+        pendingRequestsAbortController.abort();
+    }
+
+    pendingRequestsAbortController = new AbortController();
+    const { signal } = pendingRequestsAbortController;
+
+    try {
+        const params = new URLSearchParams({ estado: 'en_proceso' });
+        params.set('id_empresa', activeEmpresaId);
+
+        const response = await fetch(`/scripts/php/solicitudes_admin.php?${params.toString()}`, {
+            signal,
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data || data.success !== true) {
+            throw new Error(data && data.message ? data.message : 'No se pudo obtener las solicitudes pendientes.');
+        }
+
+        lastPendingRequestsFetch = Date.now();
+        const items = Array.isArray(data.items) ? data.items : [];
+        updatePendingRequestNotifications(items);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return;
+        }
+
+        console.error('No se pudieron cargar las solicitudes pendientes:', error);
+    } finally {
+        if (pendingRequestsAbortController && pendingRequestsAbortController.signal === signal) {
+            pendingRequestsAbortController = null;
+        }
+    }
+}
+
+function startPendingRequestsPolling() {
+    if (pendingRequestsPollIntervalId) {
+        return;
+    }
+
+    pendingRequestsPollIntervalId = window.setInterval(() => {
+        fetchPendingRequestNotifications();
+    }, PENDING_REQUEST_REFRESH_MS);
+}
+
+function stopPendingRequestsPolling() {
+    if (pendingRequestsPollIntervalId) {
+        clearInterval(pendingRequestsPollIntervalId);
+        pendingRequestsPollIntervalId = null;
+    }
+
+    if (pendingRequestsAbortController) {
+        pendingRequestsAbortController.abort();
+        pendingRequestsAbortController = null;
+    }
+
+    lastPendingRequestsFetch = 0;
+}
+
 async function fetchNotifications(options = {}) {
     if (!notificationList || !activeEmpresaId) {
         return;
@@ -1191,6 +1290,7 @@ async function fetchNotifications(options = {}) {
         lastNotificationsFetch = Date.now();
         serverNotifications = Array.isArray(data.notifications) ? data.notifications : [];
         refreshNotificationUI();
+        fetchPendingRequestNotifications();
     } catch (error) {
         if (error.name === 'AbortError') {
             return;
@@ -1216,16 +1316,20 @@ function startNotificationPolling() {
     notificationPollIntervalId = window.setInterval(() => {
         fetchNotifications();
     }, NOTIFICATION_REFRESH_MS);
+
+    startPendingRequestsPolling();
 }
 
 function stopNotificationPolling() {
     if (!notificationPollIntervalId) {
+        stopPendingRequestsPolling();
         return;
     }
 
     clearInterval(notificationPollIntervalId);
     notificationPollIntervalId = null;
     lastNotificationsFetch = 0;
+    stopPendingRequestsPolling();
 }
 
 function normalizeHex(hexColor) {
@@ -1742,6 +1846,105 @@ function updateCapacityAlertNotifications(entries) {
 
         persistNotifications(newlyTriggered);
     }
+
+    refreshNotificationUI();
+}
+
+function formatRequestActionLabel(rawAction) {
+    if (!rawAction) {
+        return '';
+    }
+
+    const sanitized = rawAction.toString().trim().replace(/_/g, ' ');
+    if (!sanitized) {
+        return '';
+    }
+
+    return sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
+}
+
+function buildPendingRequestNotification(request, markAsNew, preservedTimestamp) {
+    if (!request || request.id == null) {
+        return null;
+    }
+
+    const requestId = String(request.id);
+    const resumen = typeof request.resumen === 'string' ? request.resumen.trim() : '';
+    const modulo = typeof request.modulo === 'string' ? request.modulo.trim() : '';
+    const descripcion = typeof request.descripcion === 'string' ? request.descripcion.trim() : '';
+    const solicitanteNombre = [request.solicitante_nombre, request.solicitante_apellido]
+        .filter(part => typeof part === 'string' && part.trim())
+        .map(part => part.trim())
+        .join(' ');
+    const accion = formatRequestActionLabel(request.tipo_accion);
+
+    const mensajePartes = [];
+    if (accion) {
+        mensajePartes.push(accion);
+    }
+    if (modulo) {
+        mensajePartes.push(`Módulo: ${modulo}`);
+    }
+    if (solicitanteNombre) {
+        mensajePartes.push(`Solicitante: ${solicitanteNombre}`);
+    }
+    if (descripcion) {
+        mensajePartes.push(descripcion);
+    }
+
+    const mensaje = mensajePartes.join(' · ') || 'Hay una solicitud pendiente de revisión.';
+    const timestamp = preservedTimestamp
+        || normalizeNotificationDateTime(request.fecha_creacion)
+        || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    const tituloBase = resumen || (accion ? accion : 'Solicitud pendiente por revisar');
+
+    return {
+        id: `pending-request-${requestId}`,
+        titulo: `Solicitud pendiente: ${tituloBase}`,
+        mensaje,
+        prioridad: 'Alta',
+        fecha_disponible_desde: timestamp,
+        ruta_destino: 'control_log/log.html',
+        estado: 'Pendiente',
+        es_nueva: !!markAsNew,
+        tipo_destinatario: 'Usuario',
+        es_local: true
+    };
+}
+
+function updatePendingRequestNotifications(requests) {
+    const normalizedRequests = Array.isArray(requests) ? requests : [];
+    const previousState = new Map(pendingRequestState);
+    const nextState = new Map();
+    const notifications = [];
+
+    normalizedRequests.forEach(request => {
+        if (!request || request.id == null) {
+            return;
+        }
+
+        const key = String(request.id);
+        const previousEntry = previousState.get(key);
+        const preservedTimestamp = previousEntry && previousEntry.notification
+            ? previousEntry.notification.fecha_disponible_desde
+            : null;
+
+        const notification = buildPendingRequestNotification(request, !previousEntry, preservedTimestamp);
+        if (!notification) {
+            return;
+        }
+
+        nextState.set(key, {
+            notification,
+            raw: request
+        });
+
+        notifications.push(notification);
+    });
+
+    pendingRequestState = nextState;
+    pendingRequestNotifications = notifications;
 
     refreshNotificationUI();
 }
@@ -3051,6 +3254,7 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
         if (isOpen) {
             fetchNotifications();
+            fetchPendingRequestNotifications({ force: true });
             notificationTray.focus();
         } else {
             autoArchiveSeenNotifications();
@@ -3073,21 +3277,14 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
 if (notificationViewAll) {
     notificationViewAll.addEventListener('click', () => {
-        const targetNotification = cachedNotifications.find(notification => resolveNotificationRoute(notification.ruta_destino));
+        const targetRoute = 'control_log/log.html';
 
-        if (targetNotification) {
-            const targetRoute = resolveNotificationRoute(targetNotification.ruta_destino);
-            if (targetRoute) {
-                if (typeof window.loadPageIntoMainFromNotifications === 'function') {
-                    window.loadPageIntoMainFromNotifications(targetRoute, {
-                        title: targetNotification.titulo || ''
-                    });
-                } else {
-                    window.location.href = targetRoute;
-                }
-            }
+        if (typeof window.loadPageIntoMainFromNotifications === 'function') {
+            window.loadPageIntoMainFromNotifications(targetRoute, {
+                title: 'Registro de actividades'
+            });
         } else {
-            fetchNotifications({ force: true });
+            window.location.href = targetRoute;
         }
 
         if (notificationWrapper) {
@@ -4498,6 +4695,7 @@ if (userImgEl) {
         if (data.success) {
             activeEmpresaId = data.empresa_id;
             fetchNotifications({ force: true });
+            fetchPendingRequestNotifications({ force: true });
             startNotificationPolling();
             startStockAlertAutoRefresh();
             localStorage.setItem('id_empresa', data.empresa_id); // 🟢 GUARDAMOS EL ID
