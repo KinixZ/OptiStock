@@ -749,10 +749,18 @@ function renderNotifications(notifications = []) {
         content.className = 'notification-tray__content';
 
         const title = document.createElement('h4');
-        title.textContent = notification.titulo || 'Notificación';
+        const titleSource = notification.titulo == null ? '' : notification.titulo;
+        const rawTitle = typeof titleSource === 'string'
+            ? titleSource.trim()
+            : String(titleSource).trim();
+        title.textContent = rawTitle || 'Notificación';
 
         const message = document.createElement('p');
-        message.textContent = notification.mensaje || '';
+        const messageSource = notification.mensaje == null ? '' : notification.mensaje;
+        const rawMessage = typeof messageSource === 'string'
+            ? messageSource.trim()
+            : String(messageSource).trim();
+        message.textContent = rawMessage;
 
         const time = document.createElement('span');
         time.className = 'notification-tray__time';
@@ -875,6 +883,32 @@ function getNotificationNumericId(notification) {
     return null;
 }
 
+function markPendingRequestDismissedByIdentity(identity) {
+    if (!identity || !pendingRequestState.size) {
+        return false;
+    }
+
+    let updated = false;
+    pendingRequestState = new Map(Array.from(pendingRequestState.entries()).map(([key, entry]) => {
+        if (!entry || !entry.notification) {
+            return [key, entry];
+        }
+
+        if (buildNotificationIdentity(entry.notification) !== identity) {
+            return [key, entry];
+        }
+
+        if (entry.dismissed) {
+            return [key, entry];
+        }
+
+        updated = true;
+        return [key, { ...entry, dismissed: true }];
+    }));
+
+    return updated;
+}
+
 function removeNotificationLocally(notification) {
     if (!notification || typeof notification !== 'object') {
         return false;
@@ -912,6 +946,10 @@ function removeNotificationLocally(notification) {
             pendingRequestNotifications = nextPending;
             changed = true;
         }
+
+        if (markPendingRequestDismissedByIdentity(identity)) {
+            changed = true;
+        }
     }
 
     return changed;
@@ -935,7 +973,26 @@ function removeServerNotificationsByIdSet(idSet) {
     return changed;
 }
 
-function clearGeneratedNotifications() {
+function dismissAllPendingRequests() {
+    if (!pendingRequestState.size) {
+        return false;
+    }
+
+    let updated = false;
+    pendingRequestState = new Map(Array.from(pendingRequestState.entries()).map(([key, entry]) => {
+        if (!entry || entry.dismissed) {
+            return [key, entry];
+        }
+
+        updated = true;
+        return [key, { ...entry, dismissed: true }];
+    }));
+
+    return updated;
+}
+
+function clearGeneratedNotifications(options = {}) {
+    const { includePending = false } = options;
     let changed = false;
 
     if (criticalStockNotifications.length) {
@@ -946,6 +1003,17 @@ function clearGeneratedNotifications() {
     if (capacityAlertNotifications.length) {
         capacityAlertNotifications = [];
         changed = true;
+    }
+
+    if (includePending) {
+        if (pendingRequestNotifications.length) {
+            pendingRequestNotifications = [];
+            changed = true;
+        }
+
+        if (dismissAllPendingRequests()) {
+            changed = true;
+        }
     }
 
     return changed;
@@ -1102,7 +1170,14 @@ async function archiveServerNotifications(notificationIds = []) {
 }
 
 async function clearNotificationTray() {
-    if (!Array.isArray(cachedNotifications) || !cachedNotifications.length) {
+    const hasServerNotifications = Array.isArray(cachedNotifications) && cachedNotifications.length > 0;
+    const hasGeneratedNotifications = (
+        pendingRequestNotifications.length > 0
+        || criticalStockNotifications.length > 0
+        || capacityAlertNotifications.length > 0
+    );
+
+    if (!hasServerNotifications && !hasGeneratedNotifications) {
         return;
     }
 
@@ -1116,10 +1191,12 @@ async function clearNotificationTray() {
     const previousState = {
         server: serverNotifications.slice(),
         critical: criticalStockNotifications.slice(),
-        capacity: capacityAlertNotifications.slice()
+        capacity: capacityAlertNotifications.slice(),
+        pendingState: new Map(pendingRequestState),
+        pending: pendingRequestNotifications.slice()
     };
 
-    const idsToArchive = cachedNotifications
+    const idsToArchive = (Array.isArray(cachedNotifications) ? cachedNotifications : [])
         .map(notification => Number.parseInt(notification && notification.id, 10))
         .filter(id => Number.isFinite(id) && id > 0);
 
@@ -1131,7 +1208,7 @@ async function clearNotificationTray() {
         }
 
         const stateChanged = removeServerNotificationsByIdSet(idsToArchiveSet);
-        const clearedGenerated = clearGeneratedNotifications();
+        const clearedGenerated = clearGeneratedNotifications({ includePending: true });
 
         if (stateChanged || clearedGenerated || idsToArchiveSet.size === 0) {
             refreshNotificationUI();
@@ -1143,6 +1220,8 @@ async function clearNotificationTray() {
         serverNotifications = previousState.server;
         criticalStockNotifications = previousState.critical;
         capacityAlertNotifications = previousState.capacity;
+        pendingRequestState = new Map(previousState.pendingState);
+        pendingRequestNotifications = previousState.pending;
         refreshNotificationUI();
     } finally {
         if (notificationClearButton) {
@@ -1863,6 +1942,27 @@ function formatRequestActionLabel(rawAction) {
     return sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
 }
 
+function getPendingRequestFingerprint(request) {
+    if (!request || typeof request !== 'object') {
+        return '';
+    }
+
+    const parts = [
+        request.resumen,
+        request.descripcion,
+        request.tipo_accion,
+        request.estado,
+        request.modulo,
+        request.actualizado_en,
+        request.fecha_actualizacion,
+        request.fecha_actualizado
+    ];
+
+    return parts
+        .map(part => (part == null ? '' : String(part).trim().toLowerCase()))
+        .join('|');
+}
+
 function buildPendingRequestNotification(request, markAsNew, preservedTimestamp) {
     if (!request || request.id == null) {
         return null;
@@ -1880,7 +1980,7 @@ function buildPendingRequestNotification(request, markAsNew, preservedTimestamp)
 
     const mensajePartes = [];
     if (accion) {
-        mensajePartes.push(accion);
+        mensajePartes.push(`Acción solicitada: ${accion}`);
     }
     if (modulo) {
         mensajePartes.push(`Módulo: ${modulo}`);
@@ -1892,7 +1992,7 @@ function buildPendingRequestNotification(request, markAsNew, preservedTimestamp)
         mensajePartes.push(descripcion);
     }
 
-    const mensaje = mensajePartes.join(' · ') || 'Hay una solicitud pendiente de revisión.';
+    const mensaje = mensajePartes.join('\n') || 'Hay una solicitud pendiente de revisión.';
     const timestamp = preservedTimestamp
         || normalizeNotificationDateTime(request.fecha_creacion)
         || new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -1929,15 +2029,38 @@ function updatePendingRequestNotifications(requests) {
         const preservedTimestamp = previousEntry && previousEntry.notification
             ? previousEntry.notification.fecha_disponible_desde
             : null;
+        const fingerprint = getPendingRequestFingerprint(request);
+        const wasDismissedWithoutChange = Boolean(
+            previousEntry
+            && previousEntry.dismissed
+            && previousEntry.fingerprint === fingerprint
+        );
 
-        const notification = buildPendingRequestNotification(request, !previousEntry, preservedTimestamp);
+        const notification = buildPendingRequestNotification(
+            request,
+            !previousEntry || previousEntry.dismissed,
+            preservedTimestamp
+        );
+
         if (!notification) {
+            return;
+        }
+
+        if (wasDismissedWithoutChange) {
+            nextState.set(key, {
+                notification,
+                raw: request,
+                fingerprint,
+                dismissed: true
+            });
             return;
         }
 
         nextState.set(key, {
             notification,
-            raw: request
+            raw: request,
+            fingerprint,
+            dismissed: false
         });
 
         notifications.push(notification);
