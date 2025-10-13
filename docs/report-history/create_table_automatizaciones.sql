@@ -1,20 +1,22 @@
--- Tabla para almacenar automatizaciones de reportes
-CREATE TABLE IF NOT EXISTS `automatizaciones` (
-  `id` varchar(64) NOT NULL,
-  `id_empresa` int NOT NULL DEFAULT 0,
-  `name` varchar(120) NOT NULL,
-  `module` varchar(120) DEFAULT '',
-  `format` enum('pdf','excel') NOT NULL DEFAULT 'pdf',
-  `frequency` enum('daily','weekly','monthly') NOT NULL DEFAULT 'daily',
-  `weekday` tinyint unsigned DEFAULT 1,
-  `monthday` tinyint unsigned DEFAULT 1,
-  `time` varchar(5) NOT NULL DEFAULT '08:00',
-  `notes` varchar(240) DEFAULT '',
-  `active` tinyint(1) NOT NULL DEFAULT 1,
-  `next_run_at` datetime DEFAULT NULL,
-  `last_run_at` datetime DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_empresa_next` (`id_empresa`,`next_run_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Tabla para almacenar automatizaciones de reportes (escenario B)
+-- Ejecuta este script en la consola SQL de phpMyAdmin.
+CREATE TABLE IF NOT EXISTS `reportes_automatizados` (
+  `uuid` varchar(64) NOT NULL,
+  `id_empresa` int NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `modulo` varchar(120) DEFAULT NULL,
+  `formato` enum('pdf','excel') NOT NULL DEFAULT 'pdf',
+  `frecuencia` enum('daily','weekly','biweekly','monthly') NOT NULL DEFAULT 'daily',
+  `hora_ejecucion` time NOT NULL DEFAULT '08:00:00',
+  `dia_semana` tinyint(1) DEFAULT NULL,
+  `dia_mes` tinyint(2) DEFAULT NULL,
+  `notas` varchar(240) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `ultimo_ejecutado` datetime DEFAULT NULL,
+  `proxima_ejecucion` datetime DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`uuid`),
+  KEY `idx_empresa_proxima` (`id_empresa`,`proxima_ejecucion`),
+  CONSTRAINT `fk_reportes_automatizados_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

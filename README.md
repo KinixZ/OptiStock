@@ -1,7 +1,8 @@
 # OptiStock
 
 OptiStock es una aplicación para la gestión y administración de almacenes. Este proyecto
-contiene un frontend estático en HTML/CSS y un backend basado en Node.js y PHP.
+contiene un frontend estático en HTML/CSS y un backend que puede trabajar únicamente con PHP/MySQL,
+aunque también incluye utilidades opcionales en Node.js para entornos que las necesiten.
 
 ## Instalación de dependencias
 
@@ -34,7 +35,7 @@ para la conexión de MySQL o el puerto en el que se ejecutará la aplicación).
 
 ## Ejecución de la aplicación
 
-Inicie el servidor ejecutando:
+Si deseas utilizar el servidor Node.js incluido (opcional) ejecuta:
 
 ```bash
 node scripts/server/server.js
@@ -42,6 +43,12 @@ node scripts/server/server.js
 
 El backend se iniciará en `http://localhost:3000` (o en el puerto definido en
 `PORT`).
+
+### ¿No quieres usar Node.js?
+
+- Puedes servir el frontend directamente desde tu hosting compartido o entorno local usando solo PHP/Apache.
+- Todos los endpoints necesarios para reportes, historial y automatizaciones se encuentran en `scripts/php/`.
+- Consulta la guía [docs/reportes_automaticos.md](docs/reportes_automaticos.md) para configurar el planificador con PHP + cron o incluso ejecutar las automatizaciones únicamente desde el navegador utilizando `localStorage`.
 
 ## Estructura del proyecto
 
