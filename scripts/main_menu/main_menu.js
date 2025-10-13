@@ -755,18 +755,20 @@ function renderNotifications(notifications = []) {
             : String(titleSource).trim();
         title.textContent = rawTitle || 'Notificación';
 
-        const message = document.createElement('p');
-        const messageSource = notification.mensaje == null ? '' : notification.mensaje;
-        const rawMessage = typeof messageSource === 'string'
-            ? messageSource.trim()
-            : String(messageSource).trim();
-        message.textContent = rawMessage;
-
         const time = document.createElement('span');
         time.className = 'notification-tray__time';
         time.textContent = formatRelativeNotificationTime(notification.fecha_disponible_desde);
 
-        content.append(title, message, time);
+        const messageSource = notification.mensaje == null ? '' : notification.mensaje;
+        const rawMessage = typeof messageSource === 'string'
+            ? messageSource.trim()
+            : String(messageSource).trim();
+
+        if (rawMessage) {
+            listItem.setAttribute('title', rawMessage);
+        }
+
+        content.append(title, time);
         listItem.append(iconWrapper, content);
 
         const targetRoute = resolveNotificationRoute(notification.ruta_destino);
