@@ -41,6 +41,156 @@ let editZoneId = null;
   let areasData = [];
   let zonasData = [];
 
+  function formatDecimal(value, decimals = 2) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return (0).toFixed(decimals);
+    }
+    return number.toFixed(decimals);
+  }
+
+  function obtenerNombreAreaPorId(areaId) {
+    if (areaId === null || areaId === undefined) {
+      return 'Sin área';
+    }
+    const match = areasData.find(area => `${area.id}` === `${areaId}`);
+    if (match && match.nombre) {
+      return match.nombre;
+    }
+    return `Área ${areaId}`;
+  }
+
+  function describirFiltrosActivos() {
+    const descripciones = [];
+    const nombreValor = (filtroNombre?.value || '').trim();
+    if (nombreValor) {
+      descripciones.push(`Nombre contiene "${nombreValor}"`);
+    }
+
+    if (filtroArea) {
+      const valorArea = filtroArea.value;
+      if (valorArea === 'sin-area') {
+        descripciones.push('Solo zonas sin área');
+      } else if (valorArea && valorArea !== 'todos') {
+        descripciones.push(`Área: ${obtenerNombreAreaPorId(valorArea)}`);
+      }
+    }
+
+    if (filtroOcupacion) {
+      const ocupacionMin = parseInt(filtroOcupacion.value, 10);
+      if (Number.isFinite(ocupacionMin) && ocupacionMin > 0) {
+        descripciones.push(`Ocupación ≥ ${ocupacionMin}%`);
+      }
+    }
+
+    if (filtroProductos) {
+      const productosMin = parseInt(filtroProductos.value, 10);
+      if (Number.isFinite(productosMin) && productosMin > 0) {
+        descripciones.push(`Productos ≥ ${productosMin}`);
+      }
+    }
+
+    return descripciones;
+  }
+
+  function construirDatasetZonas() {
+    const datos = filtrarZonas().todas;
+    if (!Array.isArray(datos) || !datos.length) {
+      return null;
+    }
+
+    const header = [
+      'Zona',
+      'Área',
+      'Dimensiones (m)',
+      'Capacidad utilizada (m³)',
+      'Disponible (m³)',
+      'Ocupación (%)',
+      'Productos (tipos / uds.)'
+    ];
+
+    const rows = datos.map(zona => {
+      const ancho = formatDecimal(zona.ancho ?? zona.width ?? 0, 2);
+      const largo = formatDecimal(zona.largo ?? zona.length ?? 0, 2);
+      const alto = formatDecimal(zona.alto ?? zona.height ?? 0, 2);
+      const capacidadUtilizada = formatDecimal(zona.capacidad_utilizada ?? zona.capacidad ?? 0, 2);
+      const volumen = Number(zona.volumen ?? 0);
+      const disponibleCalculado = zona.capacidad_disponible !== undefined
+        ? Number(zona.capacidad_disponible)
+        : volumen - Number(zona.capacidad_utilizada ?? 0);
+      const disponible = formatDecimal(Math.max(disponibleCalculado, 0), 2);
+      const porcentaje = formatDecimal(zona.porcentaje_ocupacion ?? zona.ocupacion ?? 0, 1);
+      const productos = Number(zona.productos_registrados ?? zona.productos ?? 0) || 0;
+      const totalUnidades = Number(zona.total_unidades ?? 0) || 0;
+      const productosLabel = totalUnidades
+        ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
+        : `${productos} tipo${productos === 1 ? '' : 's'}`;
+      const tipoAlmacenamiento = zona.tipo_almacenamiento
+        ? ` (${zona.tipo_almacenamiento})`
+        : ' (Sin tipo)';
+
+      return [
+        `${zona.nombre || 'Sin nombre'}${tipoAlmacenamiento}`,
+        obtenerNombreAreaPorId(zona.area_id),
+        `${ancho} × ${largo} × ${alto}`,
+        capacidadUtilizada,
+        disponible,
+        `${porcentaje}%`,
+        productosLabel
+      ];
+    });
+
+    return {
+      header,
+      rows,
+      rowCount: rows.length,
+      columnCount: header.length
+    };
+  }
+
+  function construirSubtituloZonas(rowCount) {
+    const exporter = window.ReportExporter || null;
+    const partes = [];
+    const empresaNombre = exporter?.getEmpresaNombre
+      ? exporter.getEmpresaNombre()
+      : 'OptiStock';
+    const contador = exporter?.pluralize
+      ? exporter.pluralize(rowCount, 'zona')
+      : (rowCount === 1 ? '1 zona' : `${rowCount} zonas`);
+    const filtros = describirFiltrosActivos();
+    const timestamp = exporter?.formatTimestamp
+      ? exporter.formatTimestamp()
+      : new Date().toLocaleString();
+
+    partes.push(`Empresa: ${empresaNombre}`);
+    partes.push(`${contador} filtrada${rowCount === 1 ? '' : 's'}`);
+    if (filtros.length) {
+      partes.push(filtros.join(' • '));
+    }
+    partes.push(`Generado: ${timestamp}`);
+
+    return partes.filter(Boolean).join(' • ');
+  }
+
+  async function guardarReporteZonas(blob, fileName, notes) {
+    if (!(blob instanceof Blob)) {
+      return;
+    }
+    if (!window.ReportHistory || typeof window.ReportHistory.saveGeneratedFile !== 'function') {
+      return;
+    }
+    try {
+      await window.ReportHistory.saveGeneratedFile({
+        blob,
+        fileName,
+        source: 'Gestión de áreas y zonas',
+        notes
+      });
+    } catch (error) {
+      console.warn('No se pudo guardar el reporte en el historial:', error);
+    }
+  }
+
   const API_BASE     = '../../scripts/php';
   const EMP_ID       = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
 
@@ -283,98 +433,78 @@ let editZoneId = null;
     alertasBanner.innerHTML = `<span>Capacidad reducida detectada:</span><ul>${items}</ul>`;
   }
 
-  function exportarZonasCSV() {
-    const datos = filtrarZonas().todas;
-    if (!datos.length) {
+  async function exportarZonasExcel() {
+    const exporter = window.ReportExporter;
+    if (!exporter || typeof exporter.exportTableToExcel !== 'function') {
+      showToast('No se pudo cargar el módulo de exportación');
+      return;
+    }
+
+    const dataset = construirDatasetZonas();
+    if (!dataset) {
       showToast('No hay datos filtrados para exportar');
       return;
     }
 
-    const cabecera = ['Zona', 'Área', 'Capacidad utilizada (m³)', 'Disponible (m³)', 'Ocupación (%)', 'Productos (tipos)', 'Unidades totales'];
-    const filas = datos.map(z => {
-      const areaNombre = z.area_id ? (areasData.find(a => a.id === z.area_id)?.nombre || z.area_id) : 'Sin área';
-      return [
-        z.nombre,
-        areaNombre,
-        (z.capacidad_utilizada || 0).toFixed(2),
-        (z.capacidad_disponible || 0).toFixed(2),
-        (z.porcentaje_ocupacion || 0).toFixed(1),
-        z.productos_registrados || 0,
-        z.total_unidades || 0
-      ].join(';');
-    });
+    try {
+      const result = exporter.exportTableToExcel({
+        data: dataset,
+        fileName: 'ocupacion_zonas.xlsx',
+        sheetName: 'Zonas'
+      });
 
-    const contenido = [cabecera.join(';'), ...filas].join('\n');
-    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
-    const enlace = document.createElement('a');
-    enlace.href = URL.createObjectURL(blob);
-    enlace.download = 'ocupacion_zonas.csv';
-    document.body.appendChild(enlace);
-    enlace.click();
-    document.body.removeChild(enlace);
-    URL.revokeObjectURL(enlace.href);
+      if (result?.blob) {
+        await guardarReporteZonas(result.blob, result.fileName, 'Exportación de zonas filtradas a Excel');
+      }
+
+      showToast('Archivo Excel generado correctamente');
+    } catch (error) {
+      console.error('Error al generar el Excel de zonas:', error);
+      if (error && error.message === 'EXCEL_LIBRARY_MISSING') {
+        showToast('La librería para generar Excel no está disponible.');
+        return;
+      }
+      showToast('No se pudo generar el archivo en Excel');
+    }
   }
 
-  function exportarZonasPDF() {
-    const datos = filtrarZonas().todas;
-    if (!datos.length) {
+  async function exportarZonasPDF() {
+    const exporter = window.ReportExporter;
+    if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
+      showToast('No se pudo cargar el módulo de exportación');
+      return;
+    }
+
+    const dataset = construirDatasetZonas();
+    if (!dataset) {
       showToast('No hay datos filtrados para exportar');
       return;
     }
 
-    const ventana = window.open('', '_blank');
-    if (!ventana) {
-      showToast('No se pudo abrir la ventana de impresión');
-      return;
+    const subtitle = construirSubtituloZonas(dataset.rowCount);
+
+    try {
+      const result = exporter.exportTableToPdf({
+        data: dataset,
+        title: 'Reporte de ocupación de zonas',
+        subtitle,
+        fileName: 'ocupacion_zonas.pdf',
+        orientation: 'landscape'
+      });
+
+      if (result?.blob) {
+        await guardarReporteZonas(result.blob, result.fileName, 'Exportación de zonas filtradas a PDF');
+      }
+
+      showToast('Reporte PDF generado correctamente');
+    } catch (error) {
+      console.error('Error al generar el PDF de zonas:', error);
+      if (error && error.message === 'PDF_LIBRARY_MISSING') {
+        showToast('La librería para generar PDF no está disponible.');
+        return;
+      }
+      showToast('No se pudo generar el reporte en PDF');
     }
-
-    const filas = datos.map(z => {
-      const areaNombre = z.area_id ? (areasData.find(a => a.id === z.area_id)?.nombre || z.area_id) : 'Sin área';
-      return `<tr>
-        <td>${z.nombre}</td>
-        <td>${areaNombre}</td>
-        <td>${(z.capacidad_utilizada || 0).toFixed(2)}</td>
-        <td>${(z.capacidad_disponible || 0).toFixed(2)}</td>
-        <td>${(z.porcentaje_ocupacion || 0).toFixed(1)}%</td>
-        <td>${z.productos_registrados || 0}</td>
-        <td>${z.total_unidades || 0}</td>
-      </tr>`;
-    }).join('');
-
-    ventana.document.write(`
-      <html>
-        <head>
-          <title>Reporte de ocupación de zonas</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; }
-            h1 { font-size: 20px; margin-bottom: 16px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #999; padding: 8px; font-size: 12px; text-align: left; }
-            th { background: #f1f3f8; }
-          </style>
-        </head>
-        <body>
-          <h1>Reporte de ocupación de zonas</h1>
-          <table>
-            <thead>
-              <tr>
-                <th>Zona</th>
-                <th>Área</th>
-                <th>Capacidad utilizada (m³)</th>
-                <th>Disponible (m³)</th>
-                <th>Ocupación (%)</th>
-                <th>Productos (tipos)</th>
-                <th>Unidades totales</th>
-              </tr>
-            </thead>
-            <tbody>${filas}</tbody>
-          </table>
-        </body>
-      </html>
-    `);
-    ventana.document.close();
-    ventana.focus();
-    ventana.print();
   }
 
   // —————— Helpers ——————
@@ -806,7 +936,9 @@ async function deleteZone(id) {
     filtroProductos.addEventListener('input', renderZonas);
   }
   if (exportExcelBtn) {
-    exportExcelBtn.addEventListener('click', exportarZonasCSV);
+    exportExcelBtn.addEventListener('click', () => {
+      exportarZonasExcel();
+    });
   }
   if (exportPdfBtn) {
     exportPdfBtn.addEventListener('click', exportarZonasPDF);
