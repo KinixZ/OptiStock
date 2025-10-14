@@ -148,7 +148,10 @@
     automationActiveInput: document.getElementById('automationActive'),
     automationModalTitle: document.getElementById('automationModalTitle'),
     automationSubmitBtn: document.getElementById('automationSubmitBtn'),
-    automationDeleteBtn: document.getElementById('automationDeleteBtn')
+    automationDeleteBtn: document.getElementById('automationDeleteBtn'),
+    manualGeneratorSection: document.getElementById('manualGeneratorSection'),
+    manualGeneratorGrid: document.getElementById('manualGeneratorGrid'),
+    manualGeneratorEmpty: document.getElementById('manualGeneratorEmpty')
   };
 
   const state = {
@@ -167,7 +170,9 @@
     automationSyncTimerId: null,
     automationsLoadedFromServer: false,
     automationRunInProgress: false,
-    automationRunQueued: false
+    automationRunQueued: false,
+    manualReports: [],
+    manualReportsStatus: {}
   };
 
   function setHistoryUnavailableState(message) {
@@ -198,6 +203,444 @@
   const EXPIRING_THRESHOLD_MS = 10 * 24 * 60 * 60 * 1000;
   const AUTOMATION_STORAGE_PREFIX = 'optistock:automations:';
   const AUTOMATION_REPORTS_PREFIX = 'optistock:automationReports:';
+  const MANUAL_FORMAT_LABELS = {
+    pdf: 'PDF',
+    excel: 'Excel'
+  };
+
+  function normalizeNumber(value) {
+    if (value === null || value === undefined || value === '') {
+      return 0;
+    }
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function formatManualInteger(value) {
+    const number = normalizeNumber(value);
+    try {
+      return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(number);
+    } catch (error) {
+      return String(number);
+    }
+  }
+
+  function formatManualDecimal(value, decimals = 2) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return '—';
+    }
+    try {
+      return new Intl.NumberFormat('es-MX', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(number);
+    } catch (error) {
+      return number.toFixed(decimals);
+    }
+  }
+
+  function formatManualDimensions(ancho, alto, largo, unit = 'm') {
+    const values = [ancho, alto, largo].map((value) => {
+      const number = Number(value);
+      if (!Number.isFinite(number) || number <= 0) {
+        return '—';
+      }
+      try {
+        return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(number);
+      } catch (error) {
+        return String(number);
+      }
+    });
+
+    if (values.every((item) => item === '—')) {
+      return '—';
+    }
+
+    const joined = values.join(' × ');
+    return unit ? `${joined} ${unit}` : joined;
+  }
+
+  function parseManualDate(value) {
+    if (!value && value !== 0) {
+      return null;
+    }
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? value : null;
+    }
+    const text = String(value).trim();
+    if (!text) {
+      return null;
+    }
+    let normalized = text;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      normalized = `${text}T00:00:00`;
+    } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(text)) {
+      normalized = text.replace(' ', 'T');
+    }
+    const date = new Date(normalized);
+    if (!Number.isFinite(date.getTime())) {
+      return null;
+    }
+    return date;
+  }
+
+  function formatManualDateTime(value) {
+    const date = value instanceof Date ? value : parseManualDate(value);
+    if (!date) {
+      return '—';
+    }
+    try {
+      return new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(date);
+    } catch (error) {
+      return date.toLocaleString();
+    }
+  }
+
+  function countZoneProductsSnapshot(zona) {
+    if (!zona || typeof zona !== 'object') {
+      return 0;
+    }
+    const base = normalizeNumber(
+      zona.productos_activos ?? zona.productos ?? zona.total_productos ?? zona.cantidad_productos
+    );
+    let total = base;
+    if (Array.isArray(zona.subniveles) && zona.subniveles.length) {
+      total += zona.subniveles.reduce((acc, subnivel) => {
+        return acc + normalizeNumber(
+          subnivel.productos_activos ?? subnivel.productos ?? subnivel.total_productos
+        );
+      }, 0);
+    }
+    return total;
+  }
+
+  function countAreaProductsSnapshot(area, zonas = []) {
+    const base = normalizeNumber(area?.productos_activos ?? area?.productos ?? area?.total_productos);
+    const zonasArray = Array.isArray(zonas) ? zonas : [];
+    const zonasTotal = zonasArray.reduce((acc, zona) => acc + countZoneProductsSnapshot(zona), 0);
+    return base + zonasTotal;
+  }
+
+  function joinAccessDescriptions(accesos) {
+    if (!Array.isArray(accesos) || !accesos.length) {
+      return 'Acceso completo';
+    }
+    return accesos
+      .map((item) => {
+        const area = item && item.area ? String(item.area) : 'Área general';
+        const zonaLabel = item && item.zona ? String(item.zona) : '';
+        if (zonaLabel) {
+          return `${area} · ${zonaLabel}`;
+        }
+        return `${area} · Todas las zonas`;
+      })
+      .join(' | ');
+  }
+
+  function getFormatLabel(format) {
+    const key = String(format).toLowerCase();
+    return MANUAL_FORMAT_LABELS[key] || key.toUpperCase();
+  }
+
+  function getManualFormatsLabel(formats = []) {
+    if (!Array.isArray(formats) || !formats.length) {
+      return '';
+    }
+    return formats.map((format) => getFormatLabel(format)).join(' · ');
+  }
+
+  async function fetchInventoryReportDataset({ empresaId, exporter }) {
+    const url = `../../scripts/php/guardar_productos.php?empresa_id=${encodeURIComponent(empresaId)}`;
+    const response = await fetch(url, { credentials: 'same-origin' });
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (error) {
+      data = null;
+    }
+    if (!response.ok) {
+      const message = (data && (data.message || data.error)) || 'No se pudo obtener el inventario de productos.';
+      throw new Error(message);
+    }
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('EMPTY_DATASET');
+    }
+
+    const header = [
+      'Nombre',
+      'Área',
+      'Zona',
+      'Descripción',
+      'Categoría',
+      'Subcategoría',
+      'Volumen (cm³)',
+      'Stock',
+      'Precio compra'
+    ];
+
+    const rows = data.map((item) => {
+      const nombre = item && item.nombre ? String(item.nombre) : 'Sin nombre';
+      const area = item && item.area_nombre ? String(item.area_nombre) : '—';
+      const zona = item && item.zona_nombre ? String(item.zona_nombre) : '—';
+      const descripcion = item && item.descripcion ? String(item.descripcion) : '—';
+      const categoria = item && item.categoria_nombre ? String(item.categoria_nombre) : '—';
+      const subcategoria = item && item.subcategoria_nombre ? String(item.subcategoria_nombre) : '—';
+      const x = Number(item && item.dim_x);
+      const y = Number(item && item.dim_y);
+      const z = Number(item && item.dim_z);
+      let volumen = '—';
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        const volumenValor = x * y * z;
+        if (volumenValor > 0) {
+          volumen = `${volumenValor.toFixed(2)} cm³`;
+        }
+      }
+      const stock = formatManualInteger(item && item.stock);
+      const precioBruto = Number(item && (item.precio_compra ?? item.precio));
+      const precio = Number.isFinite(precioBruto) && precioBruto > 0 ? formatManualDecimal(precioBruto, 2) : '—';
+      return [nombre, area, zona, descripcion, categoria, subcategoria, volumen, stock, precio];
+    });
+
+    const dataset = {
+      header,
+      rows,
+      rowCount: rows.length,
+      columnCount: header.length
+    };
+
+    const subtitleParts = [];
+    const empresaNombre = exporter && typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
+    if (empresaNombre) {
+      subtitleParts.push(empresaNombre);
+    }
+    if (exporter && typeof exporter.pluralize === 'function') {
+      subtitleParts.push(exporter.pluralize(rows.length, 'producto'));
+    } else {
+      subtitleParts.push(`${rows.length} producto${rows.length === 1 ? '' : 's'}`);
+    }
+
+    return {
+      dataset,
+      title: 'Inventario actual · Productos',
+      subtitle: subtitleParts.join(' • '),
+      fileNameBase: 'inventario_productos',
+      sheetName: 'Productos',
+      historyLabel: 'Inventario actual',
+      notes: {
+        pdf: 'Exportación del inventario actual a PDF (generada desde la página de reportes).',
+        excel: 'Exportación del inventario actual a Excel (generada desde la página de reportes).'
+      },
+      source: 'Gestión de inventario'
+    };
+  }
+
+  async function fetchAreasReportDataset({ empresaId, exporter }) {
+    const response = await fetch('../../scripts/php/obtener_areas_zonas.php', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_empresa: empresaId })
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok || !payload || payload.success === false) {
+      const message = (payload && payload.message) || 'No se pudo obtener el detalle de áreas y zonas.';
+      throw new Error(message);
+    }
+
+    const data = Array.isArray(payload && payload.data) ? payload.data : [];
+    const rows = [];
+
+    data.forEach((entry) => {
+      const area = entry && entry.area ? entry.area : {};
+      const zonas = Array.isArray(entry && entry.zonas) ? entry.zonas : [];
+      const areaNombre = area && area.nombre ? String(area.nombre) : 'Área sin nombre';
+      const areaDescripcion = area && area.descripcion ? String(area.descripcion) : '—';
+      const areaDimensiones = formatManualDimensions(area && area.ancho, area && area.alto, area && area.largo, 'm');
+
+      if (zonas.length) {
+        zonas.forEach((zona) => {
+          const zonaNombre = zona && zona.nombre ? String(zona.nombre) : '—';
+          const tipo = zona && zona.tipo_almacenamiento ? String(zona.tipo_almacenamiento) : '—';
+          const zonaDimensiones = formatManualDimensions(zona && zona.ancho, zona && zona.alto, zona && zona.largo, 'm');
+          const productosZona = formatManualInteger(countZoneProductsSnapshot(zona));
+          const subniveles = Array.isArray(zona && zona.subniveles) ? zona.subniveles.length : 0;
+          const subnivelesLabel = subniveles
+            ? `${subniveles} subnivel${subniveles === 1 ? '' : 'es'}`
+            : '—';
+          rows.push([
+            areaNombre,
+            areaDescripcion,
+            areaDimensiones,
+            zonaNombre,
+            tipo,
+            zonaDimensiones,
+            productosZona,
+            subnivelesLabel
+          ]);
+        });
+      } else {
+        const productosArea = formatManualInteger(countAreaProductsSnapshot(area, zonas));
+        rows.push([areaNombre, areaDescripcion, areaDimensiones, '—', '—', '—', productosArea, '—']);
+      }
+    });
+
+    if (!rows.length) {
+      throw new Error('EMPTY_DATASET');
+    }
+
+    const header = [
+      'Área',
+      'Descripción',
+      'Dimensiones área (m)',
+      'Zona',
+      'Tipo de almacenamiento',
+      'Dimensiones zona (m)',
+      'Productos activos',
+      'Subniveles'
+    ];
+
+    const dataset = {
+      header,
+      rows,
+      rowCount: rows.length,
+      columnCount: header.length
+    };
+
+    const subtitleParts = [];
+    const empresaNombre = exporter && typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
+    if (empresaNombre) {
+      subtitleParts.push(empresaNombre);
+    }
+    subtitleParts.push(`${data.length} área${data.length === 1 ? '' : 's'}`);
+    if (exporter && typeof exporter.pluralize === 'function') {
+      subtitleParts.push(exporter.pluralize(rows.length, 'registro'));
+    } else {
+      subtitleParts.push(`${rows.length} registros`);
+    }
+
+    return {
+      dataset,
+      title: 'Áreas y zonas del almacén',
+      subtitle: subtitleParts.join(' • '),
+      fileNameBase: 'areas_zonas',
+      sheetName: 'AreasZonas',
+      historyLabel: 'Áreas y zonas',
+      notes: {
+        pdf: 'Exportación de áreas y zonas a PDF (generada desde la página de reportes).',
+        excel: 'Exportación de áreas y zonas a Excel (generada desde la página de reportes).'
+      },
+      source: 'Áreas y zonas de almacén'
+    };
+  }
+
+  async function fetchUsersReportDataset({ empresaId, exporter }) {
+    const response = await fetch('../../scripts/php/obtener_usuarios_empresa.php', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_empresa: empresaId })
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok || !payload || payload.success === false) {
+      const message = (payload && payload.message) || 'No se pudo obtener la lista de usuarios.';
+      throw new Error(message);
+    }
+
+    const usuarios = Array.isArray(payload && payload.usuarios) ? payload.usuarios : [];
+    if (!usuarios.length) {
+      throw new Error('EMPTY_DATASET');
+    }
+
+    const header = ['Nombre', 'Apellido', 'Correo', 'Teléfono', 'Rol', 'Estado', 'Accesos'];
+
+    const rows = usuarios.map((usuario) => {
+      const nombre = usuario && usuario.nombre ? String(usuario.nombre) : '—';
+      const apellido = usuario && usuario.apellido ? String(usuario.apellido) : '—';
+      const correo = usuario && usuario.correo ? String(usuario.correo) : '—';
+      const telefono = usuario && usuario.telefono ? String(usuario.telefono) : '—';
+      const rol = usuario && usuario.rol ? String(usuario.rol) : '—';
+      const estado = usuario && usuario.activo ? 'Activo' : 'Inactivo';
+      const accesos = joinAccessDescriptions(usuario && usuario.accesos);
+      return [nombre, apellido, correo, telefono, rol, estado, accesos];
+    });
+
+    const dataset = {
+      header,
+      rows,
+      rowCount: rows.length,
+      columnCount: header.length
+    };
+
+    const subtitleParts = [];
+    const empresaNombre = exporter && typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
+    if (empresaNombre) {
+      subtitleParts.push(empresaNombre);
+    }
+    if (exporter && typeof exporter.pluralize === 'function') {
+      subtitleParts.push(exporter.pluralize(rows.length, 'usuario'));
+    } else {
+      subtitleParts.push(`${rows.length} usuario${rows.length === 1 ? '' : 's'}`);
+    }
+
+    return {
+      dataset,
+      title: 'Usuarios de la empresa',
+      subtitle: subtitleParts.join(' • '),
+      fileNameBase: 'usuarios_empresa',
+      sheetName: 'Usuarios',
+      historyLabel: 'Usuarios de la empresa',
+      notes: {
+        pdf: 'Exportación de usuarios a PDF (generada desde la página de reportes).',
+        excel: 'Exportación de usuarios a Excel (generada desde la página de reportes).'
+      },
+      source: 'Administración de usuarios'
+    };
+  }
+
+  const MANUAL_REPORTS = [
+    {
+      id: 'inventory-products',
+      title: 'Inventario actual',
+      description: 'Exporta el catálogo completo de productos y niveles de stock registrados en la empresa.',
+      formats: ['pdf', 'excel'],
+      fetchDataset: fetchInventoryReportDataset,
+      historySource: 'Gestión de inventario'
+    },
+    {
+      id: 'warehouse-areas',
+      title: 'Áreas y zonas de almacén',
+      description: 'Resume la capacidad de cada área y las zonas asociadas con sus productos activos.',
+      formats: ['pdf', 'excel'],
+      fetchDataset: fetchAreasReportDataset,
+      historySource: 'Áreas y zonas de almacén'
+    },
+    {
+      id: 'company-users',
+      title: 'Administración de usuarios',
+      description: 'Descarga la lista actualizada de colaboradores, roles y accesos asignados.',
+      formats: ['pdf', 'excel'],
+      fetchDataset: fetchUsersReportDataset,
+      historySource: 'Administración de usuarios'
+    }
+  ];
   const LOCAL_AUTOMATION_HISTORY_LIMIT = 30;
 
   function buildAutomationKey(automation) {
@@ -589,6 +1032,251 @@
       clearTimeout(state.alertTimerId);
       state.alertTimerId = null;
     }
+  }
+
+  function formatManualLastGenerated(timestamp) {
+    if (!timestamp) {
+      return 'Aún no se ha generado desde aquí';
+    }
+    const date = parseManualDate(timestamp);
+    if (!date) {
+      return 'Generado recientemente';
+    }
+    try {
+      return `Última generación: ${new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(date)}`;
+    } catch (error) {
+      return `Última generación: ${date.toLocaleString()}`;
+    }
+  }
+
+  function setManualReportLoading(reportId, loading) {
+    if (!reportId) {
+      return;
+    }
+    if (!state.manualReportsStatus[reportId]) {
+      state.manualReportsStatus[reportId] = {};
+    }
+    state.manualReportsStatus[reportId].loading = Boolean(loading);
+  }
+
+  function renderManualReports() {
+    if (!elements.manualGeneratorGrid) {
+      return;
+    }
+
+    const reports = Array.isArray(state.manualReports) ? state.manualReports : [];
+    const hasEmpresa = state.activeEmpresaId && state.activeEmpresaId !== 'local';
+
+    if (!reports.length) {
+      elements.manualGeneratorGrid.innerHTML = '';
+      if (elements.manualGeneratorEmpty) {
+        elements.manualGeneratorEmpty.textContent = 'No hay reportes manuales disponibles en este momento.';
+        elements.manualGeneratorEmpty.classList.remove('d-none');
+      }
+      return;
+    }
+
+    if (!hasEmpresa) {
+      elements.manualGeneratorGrid.innerHTML = '';
+      if (elements.manualGeneratorEmpty) {
+        elements.manualGeneratorEmpty.textContent = 'Vincula una empresa para comenzar a generar reportes desde aquí.';
+        elements.manualGeneratorEmpty.classList.remove('d-none');
+      }
+      return;
+    }
+
+    if (elements.manualGeneratorEmpty) {
+      elements.manualGeneratorEmpty.classList.add('d-none');
+    }
+
+    const cardsHtml = reports
+      .map((report) => {
+        const status = state.manualReportsStatus[report.id] || {};
+        const loading = Boolean(status.loading);
+        const statusClass = `manual-card__status${loading ? ' manual-card__status--loading' : ''}`;
+        const formatsLabel = getManualFormatsLabel(report.formats);
+        const hintText = formatsLabel ? `Formatos: ${formatsLabel}` : '';
+        const statusLabel = formatManualLastGenerated(status.lastGenerated);
+
+        const buttonsHtml = (report.formats || [])
+          .map((format) => {
+            const label = getFormatLabel(format);
+            const secondaryClass = String(format).toLowerCase() === 'excel' ? ' manual-card__button--secondary' : '';
+            const disabledAttr = loading ? ' disabled' : '';
+            const text = loading
+              ? (String(format).toLowerCase() === 'excel' ? 'Generando Excel…' : 'Generando PDF…')
+              : label;
+            return `<button type="button" class="manual-card__button${secondaryClass}" data-report-id="${escapeHtml(
+              report.id
+            )}" data-report-format="${escapeHtml(String(format))}"${disabledAttr}>${escapeHtml(text)}</button>`;
+          })
+          .join('');
+
+        return `
+          <article class="manual-card" role="listitem">
+            <div class="manual-card__body">
+              <span class="manual-card__label">${escapeHtml(report.historySource || 'Módulo')}</span>
+              <h3 class="manual-card__title">${escapeHtml(report.title)}</h3>
+              <p class="manual-card__description">${escapeHtml(report.description || '')}</p>
+            </div>
+            <div class="manual-card__actions">
+              ${buttonsHtml}
+            </div>
+            <div class="manual-card__meta">
+              <span class="${statusClass}">${escapeHtml(statusLabel)}</span>
+              <span class="manual-card__hint">${escapeHtml(hintText)}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    elements.manualGeneratorGrid.innerHTML = cardsHtml;
+  }
+
+  async function saveManualReport(blob, fileName, source, notes) {
+    if (!(blob instanceof Blob)) {
+      throw new Error('El archivo generado no es válido.');
+    }
+    if (!historyClient || typeof historyClient.saveGeneratedFile !== 'function') {
+      return false;
+    }
+    await historyClient.saveGeneratedFile({
+      blob,
+      fileName,
+      source,
+      notes
+    });
+    return true;
+  }
+
+  async function generateManualReport(reportId, format) {
+    const report = (state.manualReports || []).find((item) => item.id === reportId);
+    if (!report) {
+      return;
+    }
+
+    if (!state.activeEmpresaId || state.activeEmpresaId === 'local') {
+      showAlert('Vincula una empresa para generar reportes desde aquí.', 'warning', true);
+      return;
+    }
+
+    const exporter = window.ReportExporter;
+    if (!exporter) {
+      showAlert('No se pudo cargar el módulo de exportación. Recarga la página e inténtalo nuevamente.', 'danger', true);
+      return;
+    }
+
+    const normalizedFormat = String(format).toLowerCase();
+    if (normalizedFormat !== 'pdf' && normalizedFormat !== 'excel') {
+      showAlert('Formato de reporte no soportado.', 'danger');
+      return;
+    }
+
+    const status = state.manualReportsStatus[reportId] || {};
+    if (status.loading) {
+      return;
+    }
+
+    setManualReportLoading(reportId, true);
+    renderManualReports();
+
+    try {
+      const datasetInfo = await report.fetchDataset({
+        empresaId: state.activeEmpresaId,
+        exporter
+      });
+
+      if (!datasetInfo || !datasetInfo.dataset || !datasetInfo.dataset.rowCount) {
+        throw new Error('EMPTY_DATASET');
+      }
+
+      let result = null;
+      if (normalizedFormat === 'pdf') {
+        result = await exporter.exportTableToPdf({
+          data: datasetInfo.dataset,
+          title: datasetInfo.title || report.title,
+          subtitle: datasetInfo.subtitle || '',
+          fileName: `${datasetInfo.fileNameBase || 'reporte'}.pdf`
+        });
+      } else {
+        result = exporter.exportTableToExcel({
+          data: datasetInfo.dataset,
+          fileName: `${datasetInfo.fileNameBase || 'reporte'}.xlsx`,
+          sheetName: datasetInfo.sheetName || 'Datos'
+        });
+      }
+
+      if (!result || !(result.blob instanceof Blob)) {
+        showAlert('No se generó ningún archivo para este reporte.', 'warning');
+        return;
+      }
+
+      let savedToHistory = false;
+      try {
+        savedToHistory = await saveManualReport(
+          result.blob,
+          result.fileName,
+          datasetInfo.source || report.historySource || report.title,
+          datasetInfo.notes ? datasetInfo.notes[normalizedFormat] : undefined
+        );
+      } catch (error) {
+        console.warn('No se pudo guardar el reporte manual en el historial:', error);
+        showAlert(error.message || 'No se pudo guardar el reporte en el historial.', 'warning', true);
+      }
+
+      if (savedToHistory) {
+        await loadHistory({ showSpinner: false });
+      }
+
+      state.manualReportsStatus[reportId] = {
+        ...(state.manualReportsStatus[reportId] || {}),
+        lastGenerated: new Date().toISOString(),
+        loading: false
+      };
+
+      const message = savedToHistory
+        ? `Reporte "${report.title}" generado y guardado en el historial.`
+        : `Reporte "${report.title}" generado. Descarga disponible en tu navegador.`;
+      showAlert(message, 'success');
+    } catch (error) {
+      state.manualReportsStatus[reportId] = {
+        ...(state.manualReportsStatus[reportId] || {}),
+        loading: false
+      };
+
+      if (error && error.message === 'EMPTY_DATASET') {
+        showAlert('No hay datos disponibles para generar el reporte seleccionado.', 'warning', true);
+      } else if (error && error.message === 'MODULE_MISSING') {
+        showAlert('No se pudo cargar el módulo de exportación. Recarga la página e inténtalo nuevamente.', 'danger', true);
+      } else {
+        showAlert((error && error.message) || 'No se pudo generar el reporte solicitado.', 'danger', true);
+      }
+      console.error('No se pudo generar el reporte manual:', error);
+    } finally {
+      setManualReportLoading(reportId, false);
+      renderManualReports();
+    }
+  }
+
+  function handleManualGeneratorClick(event) {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) {
+      return;
+    }
+    const button = target.closest('[data-report-format]');
+    if (!button) {
+      return;
+    }
+    const reportId = button.getAttribute('data-report-id');
+    const format = button.getAttribute('data-report-format');
+    if (!reportId || !format) {
+      return;
+    }
+    generateManualReport(reportId, format);
   }
 
   function getAutomationStorageKey(empresaId) {
@@ -2126,6 +2814,9 @@
   function bootstrap() {
     const empresaId = getActiveEmpresaId();
     state.activeEmpresaId = empresaId || 'local';
+    state.manualReportsStatus = {};
+    state.manualReports = MANUAL_REPORTS.map((item) => ({ ...item }));
+    renderManualReports();
 
     if (elements.automationModuleInput) {
       populateAutomationModuleSelect();
@@ -2160,6 +2851,9 @@
     }
     if (elements.refreshButton) {
       elements.refreshButton.addEventListener('click', () => loadHistory());
+    }
+    if (elements.manualGeneratorGrid) {
+      elements.manualGeneratorGrid.addEventListener('click', handleManualGeneratorClick);
     }
     if (elements.uploadForm) {
       elements.uploadForm.addEventListener('submit', handleManualUpload);
