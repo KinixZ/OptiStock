@@ -2789,6 +2789,14 @@ prodForm?.addEventListener('submit', async e => {
           'DELETE'
         );
       } catch (err) {
+        if (err.status === 409 && err.payload?.error_code === 'producto_solicitudes_pendientes') {
+          const pendientes = parseInt(err.payload?.solicitudes_pendientes, 10) || 0;
+          const mensajePendientes = pendientes === 1
+            ? 'Este producto tiene una solicitud pendiente. Espera a que se resuelva antes de intentar eliminarlo.'
+            : `Este producto tiene ${pendientes} solicitudes pendientes. Espera a que se resuelvan antes de intentar eliminarlo.`;
+          showToast(mensajePendientes, 'info');
+          return;
+        }
         if (err.status === 409 && err.payload?.movimientos) {
           const movimientos = parseInt(err.payload.movimientos, 10) || 0;
           const confirmar = window.confirm(

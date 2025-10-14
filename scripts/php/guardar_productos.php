@@ -320,6 +320,59 @@ if ($method === 'DELETE') {
         exit;
     }
 
+    $solicitudesPendientes = 0;
+    $consultaPendientes = $conn->prepare(
+        "SELECT COUNT(*)
+         FROM solicitudes_cambios
+         WHERE estado = 'en_proceso'
+           AND id_empresa = ?
+           AND modulo = 'Productos'
+           AND tipo_accion IN ('producto_eliminar','producto_actualizar')
+           AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.id_producto')) = ?"
+    );
+    $idProductoStr = (string) $id;
+
+    if ($consultaPendientes) {
+        $consultaPendientes->bind_param('is', $empresa_id, $idProductoStr);
+        $consultaPendientes->execute();
+        $consultaPendientes->bind_result($solicitudesPendientes);
+        $consultaPendientes->fetch();
+        $consultaPendientes->close();
+    } else {
+        $patronPendientes = '\\"id_producto\\"[[:space:]]*:[[:space:]]*' . $id . '([^0-9]|$)';
+        $consultaPendientes = $conn->prepare(
+            "SELECT COUNT(*)
+             FROM solicitudes_cambios
+             WHERE estado = 'en_proceso'
+               AND id_empresa = ?
+               AND modulo = 'Productos'
+               AND tipo_accion IN ('producto_eliminar','producto_actualizar')
+               AND payload REGEXP ?"
+        );
+        if ($consultaPendientes) {
+            $consultaPendientes->bind_param('is', $empresa_id, $patronPendientes);
+            $consultaPendientes->execute();
+            $consultaPendientes->bind_result($solicitudesPendientes);
+            $consultaPendientes->fetch();
+            $consultaPendientes->close();
+        } else {
+            error_log('No se pudo preparar la verificación de solicitudes pendientes para el producto ID ' . $id);
+            http_response_code(500);
+            echo json_encode(['error' => 'No se pudo verificar el estado del producto.']);
+            exit;
+        }
+    }
+
+    if ($solicitudesPendientes > 0) {
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'El producto tiene solicitudes pendientes en revisión.',
+            'error_code' => 'producto_solicitudes_pendientes',
+            'solicitudes_pendientes' => $solicitudesPendientes
+        ]);
+        exit;
+    }
+
     $stmt = $conn->prepare('SELECT COUNT(*) FROM movimientos WHERE producto_id = ? AND empresa_id = ?');
     $stmt->bind_param('ii', $id, $empresa_id);
     $stmt->execute();
