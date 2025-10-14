@@ -982,7 +982,7 @@
     subtitleParts.push(exporter.pluralize(dataset.rowCount, 'usuario'));
 
     try {
-      const result = exporter.exportTableToPdf({
+      const result = await exporter.exportTableToPdf({
         table: tabla,
         data: dataset,
         title: 'Usuarios de la Empresa',

@@ -61,6 +61,16 @@ $module = automation_escape($automation['module'] ?? '');
 $notes = trim((string) ($automation['notes'] ?? ''));
 $companyName = automation_escape($company['name'] ?? 'OptiStock');
 $logoData = isset($company['logo']) && $company['logo'] ? $company['logo'] : null;
+if (!$logoData) {
+    $defaultLogoPath = realpath(__DIR__ . '/../../images/optistockLogo.png');
+    if ($defaultLogoPath && is_file($defaultLogoPath)) {
+        $defaultMime = @mime_content_type($defaultLogoPath) ?: 'image/png';
+        $defaultData = @file_get_contents($defaultLogoPath);
+        if ($defaultData !== false) {
+            $logoData = 'data:' . $defaultMime . ';base64,' . base64_encode($defaultData);
+        }
+    }
+}
 
 $primaryColor = automation_escape($palette['primary'] ?? '#ff6f91');
 $secondaryColor = automation_escape($palette['secondary'] ?? '#0f172a');
@@ -117,6 +127,7 @@ $recentResolved = $requests['recentResolved'] ?? [];
       color: var(--secondary);
     }
     .report-header {
+      position: relative;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -125,28 +136,34 @@ $recentResolved = $requests['recentResolved'] ?? [];
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 24px 28px;
+      padding-right: 160px;
       box-shadow: var(--shadow);
       margin-bottom: 28px;
     }
     .report-brand {
       display: flex;
-      gap: 18px;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
     }
     .report-logo {
-      width: 60px;
-      height: 60px;
-      border-radius: 16px;
+      position: absolute;
+      top: 20px;
+      right: 28px;
+      width: 110px;
+      height: 110px;
+      border-radius: 18px;
       border: 1px solid rgba(148, 163, 184, 0.35);
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       background: #fff;
+      padding: 10px;
     }
     .report-logo img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
     .report-company {
@@ -297,16 +314,34 @@ $recentResolved = $requests['recentResolved'] ?? [];
       padding: 16px;
       color: var(--muted);
     }
+    @media (max-width: 720px) {
+      .report-header {
+        flex-direction: column;
+        padding-right: 28px;
+      }
+      .report-logo {
+        position: static;
+        align-self: flex-end;
+        width: 88px;
+        height: 88px;
+        margin-bottom: 12px;
+        padding: 8px;
+      }
+      .report-meta {
+        width: 100%;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+    }
   </style>
 </head>
 <body>
   <header class="report-header">
+    <?php if ($logoData): ?>
+      <div class="report-logo">
+        <img src="<?php echo automation_escape($logoData); ?>" alt="Logotipo de la empresa" />
+      </div>
+    <?php endif; ?>
     <div class="report-brand">
-      <?php if ($logoData): ?>
-        <div class="report-logo">
-          <img src="<?php echo automation_escape($logoData); ?>" alt="Logotipo" />
-        </div>
-      <?php endif; ?>
       <div class="report-heading">
         <div class="report-company"><?php echo $companyName; ?></div>
         <h1 class="report-title"><?php echo $title; ?></h1>
