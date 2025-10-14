@@ -38,6 +38,17 @@ Este documento detalla la organización y las funciones sugeridas para la págin
   - Guardar la configuración en la base de datos local para que el proceso programado la ejecute.
   - Módulos permitidos para automatización: Inventario actual, Usuarios actuales, Áreas y zonas, Historial de movimientos, Ingresos y egresos, Ingresos registrados, Egresos registrados, Registro de actividades, Accesos de usuarios e Historial de solicitudes. Solo se aceptan opciones que ya existen en la interfaz.
 
+### 3.1 Cómo verificar qué datos se cargan en cada ejecución automática
+
+- El planificador (`scripts/php/scheduler.php`) calcula primero el periodo que cubre el reporte y luego arma el paquete de información con `build_report_payload()`. Allí se invocan las mismas consultas independientemente del módulo elegido en la interfaz: perfil de empresa (`gather_company_profile`), paleta (`gather_palette`), movimientos por usuario (`gather_movements_by_user`), historial cronológico (`gather_movement_timeline`), fotografía de áreas y zonas (`gather_area_snapshot`) y resumen de solicitudes (`gather_request_summary`). Cada función está diseñada para consultar tablas específicas como `movimientos`, `areas`, `zonas` y `solicitudes_cambios`, filtrando por `id_empresa` y por el intervalo calculado.【F:scripts/php/scheduler.php†L205-L362】【F:scripts/php/scheduler.php†L598-L644】
+- Para comprobar qué se guardó en una corrida concreta puedes revisar el array `$payload` antes de generar el PDF/CSV. El propio `scheduler.php` registra mensajes en el log (`error_log`) cuando alguna consulta falla; basta con activar el log de PHP para ver si se están leyendo movimientos, áreas o solicitudes en cada ejecución.【F:scripts/php/scheduler.php†L604-L702】
+- Si necesitas auditar resultados sin abrir el archivo final, agrega un volcado temporal a JSON en `scheduler.php` justo después de construir `$payload`. Por ejemplo, escribirlo en `docs/report-history/debug/` usando `file_put_contents` te permite comparar lo que llegó desde la base de datos con lo que ves en el PDF, todo sin depender de servicios externos como Firebase o AWS.【F:scripts/php/scheduler.php†L598-L644】
+
+### 3.2 Asegurar que el PDF conserve el diseño
+
+- El template `scripts/php/automation_template.php` ahora evita `flexbox` y `CSS Grid`, que Dompdf no interpreta bien. En su lugar usa tablas y bloques compatibles para que el PDF muestre siempre los indicadores, tablas y listas aun cuando se ejecute desde un hosting compartido sin librerías adicionales.【F:scripts/php/automation_template.php†L1-L313】
+- Si quieres personalizar colores o tipografías puedes modificar la sección `<style>` del template. Mantén propiedades sencillas (bordes, colores de fondo, márgenes) para que el motor de Dompdf pueda renderizarlas sin generar páginas en blanco.【F:scripts/php/automation_template.php†L139-L242】
+
 ## 4. Generación y entrega de reportes sin Node.js
 
 El objetivo principal es que cualquier persona pueda automatizar reportes usando únicamente herramientas básicas disponibles en un hosting compartido (PHP + MySQL) o, en su defecto, desde el propio navegador sin depender de servidores externos como Firebase o AWS.
