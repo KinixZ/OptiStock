@@ -11,6 +11,54 @@ const DB_USER = 'u296155119_Admin';
 const DB_PASSWORD = '4Dmin123o';
 const DB_NAME = 'u296155119_OptiStock';
 
+const AUTOMATION_MODULE_VALUES = [
+    'inventario',
+    'usuarios',
+    'areas_zonas',
+    'historial_movimientos',
+    'ingresos/egresos',
+    'ingresos',
+    'egresos',
+    'registro_actividades',
+    'solicitudes',
+    'accesos',
+];
+
+const LEGACY_AUTOMATION_MODULE_ALIASES = [
+    'gestión de inventario' => 'inventario',
+    'gestion de inventario' => 'inventario',
+    'gestión de usuarios' => 'usuarios',
+    'gestion de usuarios' => 'usuarios',
+    'reportes y análisis' => 'historial_movimientos',
+    'reportes y analisis' => 'historial_movimientos',
+    'ingresos y egresos' => 'ingresos/egresos',
+    'resumen de ingresos y egresos' => 'ingresos/egresos',
+    'recepción y almacenamiento' => 'ingresos',
+    'recepcion y almacenamiento' => 'ingresos',
+    'despacho y distribución' => 'egresos',
+    'despacho y distribucion' => 'egresos',
+    'alertas y monitoreo' => 'registro_actividades',
+    'registro de accesos' => 'accesos',
+    'accesos de usuarios' => 'accesos',
+    'control de accesos' => 'accesos',
+];
+
+function normalize_module_value(?string $value): string
+{
+    $candidate = trim((string) $value);
+    if ($candidate === '') {
+        return '';
+    }
+    if (in_array($candidate, AUTOMATION_MODULE_VALUES, true)) {
+        return $candidate;
+    }
+    $lower = function_exists('mb_strtolower') ? mb_strtolower($candidate, 'UTF-8') : strtolower($candidate);
+    if (isset(LEGACY_AUTOMATION_MODULE_ALIASES[$lower])) {
+        return LEGACY_AUTOMATION_MODULE_ALIASES[$lower];
+    }
+    return '';
+}
+
 function respond_json(int $statusCode, array $payload): void
 {
     http_response_code($statusCode);
@@ -110,7 +158,7 @@ function map_row(array $row): array
         'id' => (string) ($row['uuid'] ?? ''),
         'empresaId' => (int) ($row['id_empresa'] ?? 0),
         'name' => (string) ($row['nombre'] ?? ''),
-        'module' => (string) ($row['modulo'] ?? ''),
+        'module' => normalize_module_value($row['modulo'] ?? ''),
         'format' => (string) ($row['formato'] ?? 'pdf'),
         'frequency' => (string) ($row['frecuencia'] ?? 'daily'),
         'time' => $time,
@@ -176,6 +224,8 @@ function sync_automations(): void
     $rawAutomations = isset($input['automations']) && is_array($input['automations']) ? $input['automations'] : [];
     $normalized = [];
 
+    $invalidModules = [];
+
     foreach ($rawAutomations as $automation) {
         if (!is_array($automation)) {
             continue;
@@ -191,11 +241,10 @@ function sync_automations(): void
             $name = 'Reporte automatizado';
         }
 
-        $module = trim((string) ($automation['module'] ?? ''));
-        if (function_exists('mb_substr')) {
-            $module = mb_substr($module, 0, 120);
-        } else {
-            $module = substr($module, 0, 120);
+        $module = normalize_module_value($automation['module'] ?? null);
+        if ($module === '') {
+            $invalidModules[] = $name;
+            continue;
         }
 
         $format = normalize_format($automation['format'] ?? null);
@@ -229,6 +278,25 @@ function sync_automations(): void
             'nextRunAt' => $nextRunAt,
             'createdAt' => $createdAt,
         ];
+    }
+
+    if (!empty($invalidModules)) {
+        $invalidNames = [];
+        foreach ($invalidModules as $value) {
+            $nameCandidate = trim((string) $value);
+            if ($nameCandidate === '') {
+                continue;
+            }
+            if (!in_array($nameCandidate, $invalidNames, true)) {
+                $invalidNames[] = $nameCandidate;
+            }
+        }
+        $label = count($invalidNames) > 1 ? 'automatizaciones' : 'automatización';
+        $list = implode(', ', $invalidNames);
+        respond_json(400, [
+            'success' => false,
+            'message' => "Selecciona un módulo válido para la {$label}: {$list}.",
+        ]);
     }
 
     try {

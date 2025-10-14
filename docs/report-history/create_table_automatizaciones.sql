@@ -1,10 +1,22 @@
--- Tabla para almacenar automatizaciones de reportes (escenario B)
--- Ejecuta este script en la consola SQL de phpMyAdmin.
-CREATE TABLE IF NOT EXISTS `reportes_automatizados` (
+DROP TABLE IF EXISTS `reportes_automatizados`;
+
+CREATE TABLE `reportes_automatizados` (
   `uuid` varchar(64) NOT NULL,
   `id_empresa` int NOT NULL,
   `nombre` varchar(120) NOT NULL,
-  `modulo` varchar(120) DEFAULT NULL,
+  -- Módulo origen del reporte. Se limita a los apartados que existen en la página.
+  `modulo` enum(
+    'inventario',
+    'usuarios',
+    'areas_zonas',
+    'historial_movimientos',
+    'ingresos/egresos',
+    'ingresos',
+    'egresos',
+    'registro_actividades',
+    'solicitudes',
+    'accesos'
+  ) DEFAULT NULL,
   `formato` enum('pdf','excel') NOT NULL DEFAULT 'pdf',
   `frecuencia` enum('daily','weekly','biweekly','monthly') NOT NULL DEFAULT 'daily',
   `hora_ejecucion` time NOT NULL DEFAULT '08:00:00',
