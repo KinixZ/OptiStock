@@ -1886,7 +1886,7 @@
             }
 
             try {
-                const result = exporter.exportTableToPdf({
+                const result = await exporter.exportTableToPdf({
                     table,
                     data: dataset,
                     title: 'Historial de actividades',

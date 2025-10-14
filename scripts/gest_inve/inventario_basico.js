@@ -1385,7 +1385,7 @@ async function fetchAPI(url, method = 'GET', data) {
 
     try {
       if (formato === 'pdf') {
-        const result = exporter.exportTableToPdf({
+        const result = await exporter.exportTableToPdf({
           table: tablaResumenElemento,
           data: dataset,
           title: meta.title || 'Reporte',

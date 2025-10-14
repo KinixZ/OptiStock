@@ -484,7 +484,7 @@ let editZoneId = null;
     const subtitle = construirSubtituloZonas(dataset.rowCount);
 
     try {
-      const result = exporter.exportTableToPdf({
+      const result = await exporter.exportTableToPdf({
         data: dataset,
         title: 'Reporte de ocupación de zonas',
         subtitle,
