@@ -124,6 +124,143 @@
     URL.revokeObjectURL(url);
   }
 
+  function safeLocalStorageGet(key) {
+    if (typeof localStorage === 'undefined') {
+      return '';
+    }
+    try {
+      const value = localStorage.getItem(key);
+      return typeof value === 'string' ? value : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function sanitizeLogoPath(path) {
+    if (typeof path !== 'string') {
+      return '';
+    }
+    const trimmed = path.trim();
+    return trimmed || '';
+  }
+
+  function isDataUrl(value) {
+    return typeof value === 'string' && /^data:image\//i.test(value.trim());
+  }
+
+  function resolveLogoUrl(path) {
+    if (!path) {
+      return null;
+    }
+    if (isDataUrl(path)) {
+      return path;
+    }
+    if (/^https?:/i.test(path)) {
+      return path;
+    }
+    try {
+      const base = window.location && window.location.origin ? window.location.origin : '';
+      if (path.startsWith('/')) {
+        return base ? `${base}${path}` : path;
+      }
+      return base ? `${base.replace(/\/$/, '')}/${path}` : path;
+    } catch (error) {
+      return path;
+    }
+  }
+
+  function readBlobAsDataURL(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function fetchLogoDataUrl(path) {
+    const resolved = resolveLogoUrl(path);
+    if (!resolved) {
+      return null;
+    }
+    if (isDataUrl(resolved)) {
+      return resolved;
+    }
+    if (typeof fetch !== 'function') {
+      return null;
+    }
+    try {
+      const response = await fetch(resolved, { credentials: 'same-origin' });
+      if (!response.ok) {
+        return null;
+      }
+      const blob = await response.blob();
+      if (!/^image\//i.test(blob.type || '')) {
+        return null;
+      }
+      const dataUrl = await readBlobAsDataURL(blob);
+      return typeof dataUrl === 'string' ? dataUrl : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const logoCache = {
+    path: null,
+    dataUrl: null
+  };
+
+  function getEmpresaLogoPath() {
+    return sanitizeLogoPath(safeLocalStorageGet('logo_empresa'));
+  }
+
+  async function getEmpresaLogoDataUrl(forceRefresh = false) {
+    const storedPath = getEmpresaLogoPath();
+    if (!storedPath) {
+      logoCache.path = null;
+      logoCache.dataUrl = null;
+      return null;
+    }
+    if (!forceRefresh && logoCache.dataUrl && logoCache.path === storedPath) {
+      return logoCache.dataUrl;
+    }
+    if (isDataUrl(storedPath)) {
+      logoCache.path = storedPath;
+      logoCache.dataUrl = storedPath;
+      return storedPath;
+    }
+    const dataUrl = await fetchLogoDataUrl(storedPath);
+    if (dataUrl) {
+      logoCache.path = storedPath;
+      logoCache.dataUrl = dataUrl;
+      return dataUrl;
+    }
+    logoCache.path = storedPath;
+    logoCache.dataUrl = null;
+    return null;
+  }
+
+  function inferImageFormat(dataUrl) {
+    if (typeof dataUrl !== 'string') {
+      return 'PNG';
+    }
+    const match = /^data:image\/([a-z0-9+.-]+);/i.exec(dataUrl);
+    if (!match) {
+      return 'PNG';
+    }
+    const subtype = match[1].toLowerCase();
+    if (subtype.includes('png')) {
+      return 'PNG';
+    }
+    if (subtype === 'jpg' || subtype === 'jpeg') {
+      return 'JPEG';
+    }
+    if (subtype === 'webp') {
+      return 'WEBP';
+    }
+    return 'PNG';
+  }
+
   function normalizeCellText(text) {
     if (typeof text !== 'string') {
       return '';
@@ -272,7 +409,7 @@
     return 'OptiStock';
   }
 
-  function exportTableToPdf(options = {}) {
+  async function exportTableToPdf(options = {}) {
     const { jsPDF } = (window.jspdf || {});
     if (typeof jsPDF !== 'function') {
       throw new Error('PDF_LIBRARY_MISSING');
@@ -286,6 +423,7 @@
     const orientation = options.orientation || (dataset.columnCount > 5 ? 'landscape' : 'portrait');
     const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
     const palette = getPalette();
+    const logoPromise = getEmpresaLogoDataUrl();
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -306,6 +444,39 @@
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11.5);
       doc.text(String(options.subtitle), 40, 68, { baseline: 'alphabetic' });
+    }
+
+    const logoDataUrl = await logoPromise;
+    if (logoDataUrl) {
+      try {
+        const imageType = inferImageFormat(logoDataUrl);
+        let targetWidth = 120;
+        let targetHeight = 60;
+        if (typeof doc.getImageProperties === 'function') {
+          try {
+            const props = doc.getImageProperties(logoDataUrl);
+            if (props && props.width && props.height) {
+              const ratio = props.width / props.height;
+              targetWidth = 120;
+              targetHeight = targetWidth / ratio;
+              if (targetHeight > 60) {
+                targetHeight = 60;
+                targetWidth = targetHeight * ratio;
+              }
+            }
+          } catch (error) {
+            // ignore, fallback to defaults
+          }
+        }
+        targetWidth = Math.min(Math.max(targetWidth, 48), 140);
+        targetHeight = Math.min(Math.max(targetHeight, 32), 80);
+        const marginX = 40;
+        const logoX = pageWidth - marginX - targetWidth;
+        const logoY = 24;
+        doc.addImage(logoDataUrl, imageType, logoX, logoY, targetWidth, targetHeight, undefined, 'FAST');
+      } catch (error) {
+        // Ignore logo rendering issues to keep the export running
+      }
     }
 
     doc.autoTable({
@@ -360,7 +531,16 @@
     const fileName = options.fileName || 'reporte.pdf';
     let blob = null;
     if (typeof doc.output === 'function') {
-      blob = doc.output('blob');
+      try {
+        blob = doc.output('blob');
+      } catch (error) {
+        try {
+          const arrayBuffer = doc.output('arraybuffer');
+          blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+        } catch (err) {
+          blob = null;
+        }
+      }
     }
     if (options.autoDownload !== false) {
       doc.save(fileName);
@@ -418,6 +598,8 @@
     exportTableToExcel,
     formatTimestamp,
     pluralize,
-    getEmpresaNombre
+    getEmpresaNombre,
+    getEmpresaLogoPath,
+    getEmpresaLogoDataUrl
   };
 })();

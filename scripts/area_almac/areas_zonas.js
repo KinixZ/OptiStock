@@ -177,7 +177,7 @@ async function exportarInventarioAlmacen({ formato, tabla, meta = {} }) {
 
   try {
     if (formato === 'pdf') {
-      const result = exporter.exportTableToPdf({
+      const result = await exporter.exportTableToPdf({
         table: tabla,
         data: dataset,
         title: meta.title || 'Reporte',
