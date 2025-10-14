@@ -170,6 +170,203 @@ body {
   gap: 1rem;
 }
 
+.manual-generator {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 18px 40px -36px rgba(23, 31, 52, 0.55);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.manual-generator__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 680px;
+}
+
+.manual-generator__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 180, 212, 0.12);
+  color: var(--accent-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.manual-generator__title {
+  margin: 0;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.manual-generator__subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted-color);
+}
+
+.manual-generator__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.manual-generator__empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted-color);
+  background: rgba(15, 180, 212, 0.08);
+  border: 1px dashed var(--accent-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+}
+
+.manual-card {
+  position: relative;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.9));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: 0 18px 40px -34px rgba(15, 23, 42, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.manual-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 50px -28px rgba(15, 23, 42, 0.55);
+}
+
+.manual-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.manual-card__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-color);
+}
+
+.manual-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.manual-card__description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted-color);
+}
+
+.manual-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.manual-card__button {
+  flex: 1 1 120px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-color), #1bc6e8);
+  box-shadow: 0 12px 24px -18px rgba(15, 180, 212, 0.8);
+}
+
+.manual-card__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  transform: none;
+}
+
+.manual-card__button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -22px rgba(15, 180, 212, 0.8);
+}
+
+.manual-card__button--secondary {
+  background: rgba(23, 31, 52, 0.85);
+  box-shadow: 0 12px 24px -18px rgba(23, 31, 52, 0.6);
+}
+
+.manual-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted-color);
+}
+
+.manual-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+.manual-card__status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-color);
+  opacity: 0.6;
+}
+
+.manual-card__status--loading::before {
+  background: var(--warning-color, #f97316);
+  animation: manualPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes manualPulse {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+.manual-card__hint {
+  margin-left: auto;
+  color: var(--muted-color);
+  font-size: 0.75rem;
+}
+
 .filters-grid {
   display: grid;
   gap: 0.75rem;
