@@ -333,6 +333,11 @@ $recentResolved = $requests['recentResolved'] ?? [];
       }
     }
   </style>
+  <?php if (!empty($extraCss) && is_string($extraCss)): ?>
+    <style>
+      <?php echo $extraCss; ?>
+    </style>
+  <?php endif; ?>
 </head>
 <body>
   <header class="report-header">
