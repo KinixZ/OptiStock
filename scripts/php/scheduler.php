@@ -5,6 +5,63 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/report_history.php';
 
+const AUTOMATION_MODULE_LABELS = [
+    'inventario' => 'Inventario actual',
+    'usuarios' => 'Usuarios actuales',
+    'areas_zonas' => 'Áreas y zonas',
+    'historial_movimientos' => 'Historial de movimientos',
+    'ingresos/egresos' => 'Ingresos y egresos',
+    'ingresos' => 'Ingresos registrados',
+    'egresos' => 'Egresos registrados',
+    'registro_actividades' => 'Registro de actividades',
+    'solicitudes' => 'Historial de solicitudes',
+    'accesos' => 'Accesos de usuarios',
+];
+
+const LEGACY_AUTOMATION_MODULE_ALIASES = [
+    'gestión de inventario' => 'inventario',
+    'gestion de inventario' => 'inventario',
+    'gestión de usuarios' => 'usuarios',
+    'gestion de usuarios' => 'usuarios',
+    'reportes y análisis' => 'historial_movimientos',
+    'reportes y analisis' => 'historial_movimientos',
+    'ingresos y egresos' => 'ingresos/egresos',
+    'resumen de ingresos y egresos' => 'ingresos/egresos',
+    'recepción y almacenamiento' => 'ingresos',
+    'recepcion y almacenamiento' => 'ingresos',
+    'despacho y distribución' => 'egresos',
+    'despacho y distribucion' => 'egresos',
+    'alertas y monitoreo' => 'registro_actividades',
+    'registro de accesos' => 'accesos',
+    'accesos de usuarios' => 'accesos',
+    'control de accesos' => 'accesos',
+];
+
+function normalize_module_value(?string $value): string
+{
+    $candidate = trim((string) $value);
+    if ($candidate === '') {
+        return '';
+    }
+    if (isset(AUTOMATION_MODULE_LABELS[$candidate])) {
+        return $candidate;
+    }
+    $lower = function_exists('mb_strtolower') ? mb_strtolower($candidate, 'UTF-8') : strtolower($candidate);
+    if (isset(LEGACY_AUTOMATION_MODULE_ALIASES[$lower])) {
+        return LEGACY_AUTOMATION_MODULE_ALIASES[$lower];
+    }
+    return '';
+}
+
+function resolve_module_label(?string $value): string
+{
+    $normalized = normalize_module_value($value);
+    if ($normalized !== '' && isset(AUTOMATION_MODULE_LABELS[$normalized])) {
+        return AUTOMATION_MODULE_LABELS[$normalized];
+    }
+    return trim((string) $value);
+}
+
 function log_msg(string $message): void
 {
     error_log('[scheduler] ' . $message);
@@ -21,6 +78,7 @@ function fetch_due_automations(mysqli $conn): array
     $result = $conn->query($sql);
     $rows = [];
     while ($row = $result->fetch_assoc()) {
+        $row['modulo'] = normalize_module_value($row['modulo'] ?? '');
         $rows[] = $row;
     }
 
@@ -58,6 +116,15 @@ function compute_reporting_window(array $automation, DateTimeImmutable $now): ar
     $frequency = (string) ($automation['frecuencia'] ?? 'daily');
     $end = $now;
     $start = null;
+    $creation = null;
+
+    if (!empty($automation['creado_en'])) {
+        try {
+            $creation = new DateTimeImmutable((string) $automation['creado_en']);
+        } catch (Throwable $exception) {
+            $creation = null;
+        }
+    }
 
     if (!empty($automation['ultimo_ejecutado'])) {
         try {
@@ -65,6 +132,10 @@ function compute_reporting_window(array $automation, DateTimeImmutable $now): ar
         } catch (Throwable $exception) {
             $start = null;
         }
+    }
+
+    if (!$start && $creation instanceof DateTimeImmutable) {
+        $start = $creation;
     }
 
     if (!$start) {
@@ -82,6 +153,10 @@ function compute_reporting_window(array $automation, DateTimeImmutable $now): ar
                 $start = $now->modify('-1 day');
                 break;
         }
+    }
+
+    if ($creation instanceof DateTimeImmutable && $start < $creation) {
+        $start = $creation;
     }
 
     if ($start > $end) {
@@ -599,10 +674,14 @@ foreach ($automations as $automationItem) {
         $now = new DateTimeImmutable('now');
         $payload = build_report_payload($conn, $automationItem, $now);
 
+        $moduleValue = normalize_module_value($automationItem['modulo'] ?? '');
+        $moduleLabel = resolve_module_label($automationItem['modulo'] ?? '');
+
         $automationView = [
             'id' => $automationUuid,
             'name' => (string) ($automationItem['nombre'] ?? 'Reporte automatizado'),
-            'module' => (string) ($automationItem['modulo'] ?? ''),
+            'module' => $moduleLabel,
+            'moduleValue' => $moduleValue,
             'format' => (string) ($automationItem['formato'] ?? 'pdf'),
             'frequency' => (string) ($automationItem['frecuencia'] ?? 'daily'),
             'weekday' => $automationItem['dia_semana'] !== null ? (int) $automationItem['dia_semana'] : null,

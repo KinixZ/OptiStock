@@ -3,6 +3,99 @@
   const AUTOMATION_API_URL = '../../scripts/php/report_automations.php';
   const RETENTION_DAYS_FALLBACK = 60;
   const HISTORY_PAGE_SIZE = 10;
+  const AUTOMATION_MODULES = [
+    { value: 'inventario', label: 'Inventario actual' },
+    { value: 'usuarios', label: 'Usuarios actuales' },
+    { value: 'areas_zonas', label: 'Áreas y zonas' },
+    { value: 'historial_movimientos', label: 'Historial de movimientos' },
+    { value: 'ingresos/egresos', label: 'Ingresos y egresos' },
+    { value: 'ingresos', label: 'Ingresos registrados' },
+    { value: 'egresos', label: 'Egresos registrados' },
+    { value: 'registro_actividades', label: 'Registro de actividades' },
+    { value: 'solicitudes', label: 'Historial de solicitudes' },
+    { value: 'accesos', label: 'Accesos de usuarios' }
+  ];
+  const AUTOMATION_MODULE_VALUE_SET = new Set(AUTOMATION_MODULES.map((item) => item.value));
+  const LEGACY_MODULE_ALIASES = {
+    'gestión de inventario': 'inventario',
+    'gestion de inventario': 'inventario',
+    'gestión de usuarios': 'usuarios',
+    'gestion de usuarios': 'usuarios',
+    'reportes y análisis': 'historial_movimientos',
+    'reportes y analisis': 'historial_movimientos',
+    'ingresos y egresos': 'ingresos/egresos',
+    'ingresos y egreso': 'ingresos/egresos',
+    'resumen de ingresos y egresos': 'ingresos/egresos',
+    'recepción y almacenamiento': 'ingresos',
+    'recepcion y almacenamiento': 'ingresos',
+    'despacho y distribución': 'egresos',
+    'despacho y distribucion': 'egresos',
+    'alertas y monitoreo': 'registro_actividades',
+    'registro de accesos': 'accesos',
+    'accesos de usuarios': 'accesos',
+    'control de accesos': 'accesos'
+  };
+
+  function normalizeAutomationModuleValue(rawValue) {
+    if (!rawValue) {
+      return '';
+    }
+    const trimmed = String(rawValue).trim();
+    if (AUTOMATION_MODULE_VALUE_SET.has(trimmed)) {
+      return trimmed;
+    }
+    const lower = trimmed.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(LEGACY_MODULE_ALIASES, lower)) {
+      return LEGACY_MODULE_ALIASES[lower];
+    }
+    return '';
+  }
+
+  function isAllowedAutomationModule(value) {
+    return AUTOMATION_MODULE_VALUE_SET.has(value);
+  }
+
+  function getAutomationModuleLabel(value) {
+    if (!value) {
+      return '';
+    }
+    const entry = AUTOMATION_MODULES.find((item) => item.value === value);
+    if (entry) {
+      return entry.label;
+    }
+    const lower = String(value).toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(LEGACY_MODULE_ALIASES, lower)) {
+      const normalized = LEGACY_MODULE_ALIASES[lower];
+      const aliasEntry = AUTOMATION_MODULES.find((item) => item.value === normalized);
+      return aliasEntry ? aliasEntry.label : value;
+    }
+    return String(value);
+  }
+
+  function populateAutomationModuleSelect() {
+    if (!elements.automationModuleInput || elements.automationModuleInput.tagName !== 'SELECT') {
+      return;
+    }
+
+    const previousValue = elements.automationModuleInput.value;
+    elements.automationModuleInput.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Selecciona un módulo';
+    elements.automationModuleInput.append(placeholder);
+
+    AUTOMATION_MODULES.forEach((item) => {
+      const option = document.createElement('option');
+      option.value = item.value;
+      option.textContent = item.label;
+      elements.automationModuleInput.append(option);
+    });
+
+    if (previousValue && AUTOMATION_MODULE_VALUE_SET.has(previousValue)) {
+      elements.automationModuleInput.value = previousValue;
+    }
+  }
 
   // Provide a local alias for the optional external history client.
   // Some installations include `scripts/reports/report-history-client.js` which
@@ -178,7 +271,8 @@
     if (!hasOption) {
       const option = document.createElement('option');
       option.value = value;
-      option.textContent = value;
+      const label = getAutomationModuleLabel(value);
+      option.textContent = label || value;
       option.dataset.dynamic = 'true';
       elements.automationModuleInput.append(option);
     }
@@ -674,7 +768,7 @@
     const rawName = (raw && (raw.name || raw.nombre)) || 'Reporte automatizado';
     const name = String(rawName || '').trim() || 'Reporte automatizado';
     const rawModule = (raw && (raw.module || raw.modulo)) || '';
-    const module = String(rawModule || '').trim();
+    const module = normalizeAutomationModuleValue(rawModule);
     const rawFormat = raw && (raw.format || raw.formato);
     const format = rawFormat === 'excel' ? 'excel' : 'pdf';
     const rawFrequency = raw && (raw.frequency || raw.frecuencia);
@@ -1347,8 +1441,9 @@
       })
       .map((automation) => {
         const formatLabel = automation.format === 'excel' ? 'Excel' : 'PDF';
-        const moduleText = automation.module
-          ? `<span class="automatic-item__module">${escapeHtml(automation.module)}</span>`
+        const moduleLabel = getAutomationModuleLabel(automation.module);
+        const moduleText = moduleLabel
+          ? `<span class="automatic-item__module">${escapeHtml(moduleLabel)}</span>`
           : '<span class="automatic-item__module text-muted">Sin módulo asignado</span>';
         const lastRun = formatAutomationLastRun(automation);
         return `
@@ -1396,6 +1491,10 @@
     elements.automationForm.reset();
     if (elements.automationIdInput) {
       elements.automationIdInput.value = '';
+    }
+    if (elements.automationModuleInput) {
+      elements.automationModuleInput.value = '';
+      elements.automationModuleInput.setCustomValidity('');
     }
     if (elements.automationFrequencySelect) {
       elements.automationFrequencySelect.value = 'daily';
@@ -1531,7 +1630,8 @@
 
     const id = elements.automationIdInput && elements.automationIdInput.value ? elements.automationIdInput.value : `auto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const name = elements.automationNameInput ? elements.automationNameInput.value.trim() : '';
-    const module = elements.automationModuleInput ? elements.automationModuleInput.value.trim() : '';
+    const rawModuleValue = elements.automationModuleInput ? elements.automationModuleInput.value.trim() : '';
+    const module = normalizeAutomationModuleValue(rawModuleValue);
     const format = elements.automationFormatSelect ? elements.automationFormatSelect.value : 'pdf';
     const frequency = elements.automationFrequencySelect ? elements.automationFrequencySelect.value : 'daily';
     const time = elements.automationTimeInput ? elements.automationTimeInput.value : '08:00';
@@ -1545,6 +1645,20 @@
     if (!name) {
       elements.automationNameInput.focus();
       return;
+    }
+
+    if (!module || !isAllowedAutomationModule(module)) {
+      if (elements.automationModuleInput) {
+        elements.automationModuleInput.setCustomValidity('Selecciona un módulo válido.');
+        elements.automationModuleInput.reportValidity();
+        elements.automationModuleInput.focus();
+      }
+      return;
+    }
+
+    if (elements.automationModuleInput) {
+      elements.automationModuleInput.setCustomValidity('');
+      elements.automationModuleInput.value = module;
     }
 
     const target = state.automations.find((item) => item.id === id);
@@ -1603,7 +1717,7 @@
     }
     const rows = [
       ['Nombre del reporte', automation.name],
-      ['Módulo', automation.module || 'No especificado'],
+    ['Módulo', getAutomationModuleLabel(automation.module) || 'No especificado'],
       ['Generado automáticamente', generatedAt],
       ['Frecuencia', formatAutomationFrequency(automation)],
       ['Notas', automation.notes || '']
@@ -1627,7 +1741,7 @@
       automation.name,
       '',
       `Generado automáticamente el ${generatedAt}`,
-      automation.module ? `Módulo origen: ${automation.module}` : null,
+      automation.module ? `Módulo origen: ${getAutomationModuleLabel(automation.module)}` : null,
       `Frecuencia: ${formatAutomationFrequency(automation)}`,
       automation.notes ? `Notas: ${automation.notes}` : null
     ].filter(Boolean);
@@ -1695,7 +1809,9 @@
 
     if (state.activeEmpresaId && state.activeEmpresaId !== 'local') {
       const metadata = {
-        source: automation.module ? `Automatización · ${automation.module}` : 'Automatización',
+        source: automation.module
+          ? `Automatización · ${getAutomationModuleLabel(automation.module)}`
+          : 'Automatización',
         notes: automation.notes
           ? `Generado automáticamente · ${automation.notes}`
           : 'Generado automáticamente por OptiStock'
@@ -1749,7 +1865,9 @@
       automationId: automation.id,
       originalName,
       mimeType: file.mimeType,
-      source: automation.module ? `Automatización · ${automation.module}` : 'Automatización',
+      source: automation.module
+        ? `Automatización · ${getAutomationModuleLabel(automation.module)}`
+        : 'Automatización',
       notes: automation.notes ? `Notas: ${automation.notes}` : 'Generado automáticamente',
       createdAt: iso,
       expiresAt: null,
@@ -2008,6 +2126,13 @@
   function bootstrap() {
     const empresaId = getActiveEmpresaId();
     state.activeEmpresaId = empresaId || 'local';
+
+    if (elements.automationModuleInput) {
+      populateAutomationModuleSelect();
+      elements.automationModuleInput.addEventListener('change', () => {
+        elements.automationModuleInput.setCustomValidity('');
+      });
+    }
 
     if (elements.searchInput) {
       elements.searchInput.addEventListener('input', () => applyFilters({ resetPage: true }));
