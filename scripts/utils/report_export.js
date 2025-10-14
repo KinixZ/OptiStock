@@ -136,6 +136,8 @@
     }
   }
 
+  const DEFAULT_COMPANY_LOGO = '/images/optistockLogo.png';
+
   function sanitizeLogoPath(path) {
     if (typeof path !== 'string') {
       return '';
@@ -214,30 +216,44 @@
     return sanitizeLogoPath(safeLocalStorageGet('logo_empresa'));
   }
 
-  async function getEmpresaLogoDataUrl(forceRefresh = false) {
-    const storedPath = getEmpresaLogoPath();
-    if (!storedPath) {
-      logoCache.path = null;
-      logoCache.dataUrl = null;
+  async function resolveLogoDataUrl(path, forceRefresh = false) {
+    const normalized = sanitizeLogoPath(path);
+    if (!normalized) {
+      if (forceRefresh && logoCache.path === normalized) {
+        logoCache.dataUrl = null;
+      }
       return null;
     }
-    if (!forceRefresh && logoCache.dataUrl && logoCache.path === storedPath) {
+    if (!forceRefresh && logoCache.dataUrl && logoCache.path === normalized) {
       return logoCache.dataUrl;
     }
-    if (isDataUrl(storedPath)) {
-      logoCache.path = storedPath;
-      logoCache.dataUrl = storedPath;
-      return storedPath;
+    if (isDataUrl(normalized)) {
+      logoCache.path = normalized;
+      logoCache.dataUrl = normalized;
+      return normalized;
     }
-    const dataUrl = await fetchLogoDataUrl(storedPath);
+    const dataUrl = await fetchLogoDataUrl(normalized);
     if (dataUrl) {
-      logoCache.path = storedPath;
+      logoCache.path = normalized;
       logoCache.dataUrl = dataUrl;
       return dataUrl;
     }
-    logoCache.path = storedPath;
-    logoCache.dataUrl = null;
+    if (logoCache.path === normalized) {
+      logoCache.dataUrl = null;
+    }
     return null;
+  }
+
+  async function getEmpresaLogoDataUrl(forceRefresh = false) {
+    const storedPath = getEmpresaLogoPath();
+    const primary = await resolveLogoDataUrl(storedPath, forceRefresh);
+    if (primary) {
+      return primary;
+    }
+    if (storedPath && storedPath === DEFAULT_COMPANY_LOGO) {
+      return null;
+    }
+    return resolveLogoDataUrl(DEFAULT_COMPANY_LOGO, forceRefresh);
   }
 
   function inferImageFormat(dataUrl) {

@@ -104,7 +104,7 @@ function mainAccountSuscrip() {
 
     localStorage.setItem('empresa_nombre', empresa.nombre_empresa || '');
     localStorage.setItem('empresa_sector', empresa.sector_empresa || '');
-    localStorage.setItem('logo_empresa', empresa.logo_empresa ? sanitizePath(empresa.logo_empresa) : '');
+    localStorage.setItem('logo_empresa', logoPath || DEFAULT_COMPANY_LOGO);
 
     const suscripcion = data.suscripcion || data.subscription || data.plan || {};
     const planName = firstAvailable(

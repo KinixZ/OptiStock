@@ -61,6 +61,16 @@ $module = automation_escape($automation['module'] ?? '');
 $notes = trim((string) ($automation['notes'] ?? ''));
 $companyName = automation_escape($company['name'] ?? 'OptiStock');
 $logoData = isset($company['logo']) && $company['logo'] ? $company['logo'] : null;
+if (!$logoData) {
+    $defaultLogoPath = realpath(__DIR__ . '/../../images/optistockLogo.png');
+    if ($defaultLogoPath && is_file($defaultLogoPath)) {
+        $defaultMime = @mime_content_type($defaultLogoPath) ?: 'image/png';
+        $defaultData = @file_get_contents($defaultLogoPath);
+        if ($defaultData !== false) {
+            $logoData = 'data:' . $defaultMime . ';base64,' . base64_encode($defaultData);
+        }
+    }
+}
 
 $primaryColor = automation_escape($palette['primary'] ?? '#ff6f91');
 $secondaryColor = automation_escape($palette['secondary'] ?? '#0f172a');
