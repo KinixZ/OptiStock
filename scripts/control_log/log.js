@@ -13,6 +13,8 @@
     const historyRequestsNextBtn = document.getElementById('historyRequestsNext');
     const historyRequestsRange = document.getElementById('historyRequestsRange');
     const refreshRequestsBtn = document.getElementById('refreshRequests');
+    const historyExportPdfBtn = document.getElementById('historyExportPdf');
+    const historyExportExcelBtn = document.getElementById('historyExportExcel');
     const requestsBoard = document.getElementById('requestsBoard');
     const exportPdfBtn = document.getElementById('exportPdf');
     const exportExcelBtn = document.getElementById('exportExcel');
@@ -431,6 +433,80 @@
         }
 
         return formatearAccionGenerica(tipoAccion);
+    }
+
+    function obtenerNombreSolicitante(item) {
+        if (!item) {
+            return 'Usuario desconocido';
+        }
+        const nombre = [item.solicitante_nombre, item.solicitante_apellido]
+            .map(parte => (parte || '').trim())
+            .filter(Boolean)
+            .join(' ');
+        return nombre || 'Usuario desconocido';
+    }
+
+    function formatearEstadoSolicitudLabel(estado) {
+        if (!estado) {
+            return '—';
+        }
+
+        const texto = String(estado)
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .trim();
+
+        if (!texto) {
+            return '—';
+        }
+
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    function construirDatasetHistorialSolicitudes() {
+        if (!Array.isArray(historySolicitudes) || !historySolicitudes.length) {
+            return null;
+        }
+
+        const header = [
+            'Resumen',
+            'Solicitante',
+            'Módulo',
+            'Acción',
+            'Estado',
+            'Fecha solicitada',
+            'Fecha resuelta',
+            'Comentario'
+        ];
+
+        const rows = historySolicitudes.map(item => {
+            const resumen = limpiarIdentificadores(item?.resumen || 'Solicitud de cambio');
+            const solicitante = obtenerNombreSolicitante(item);
+            const modulo = item?.modulo ? item.modulo : '—';
+            const accion = formatearAccionSolicitud(item) || '—';
+            const estado = formatearEstadoSolicitudLabel(item?.estado);
+            const fechaSolicitada = formatearFecha(item?.fecha_creacion);
+            const fechaResuelta = formatearFecha(item?.fecha_resolucion || item?.fecha_creacion);
+            const comentario = item?.comentario ? limpiarIdentificadores(item.comentario) : '';
+
+            return [
+                resumen,
+                solicitante,
+                modulo || '—',
+                accion,
+                estado,
+                fechaSolicitada,
+                fechaResuelta,
+                comentario
+            ];
+        });
+
+        return {
+            header,
+            rows,
+            rowCount: rows.length,
+            columnCount: header.length
+        };
     }
 
     function construirSolicitudCard(item, esHistorial = false) {
@@ -1837,6 +1913,92 @@
         }
     } else if (requestsBoard) {
         requestsBoard.classList.add('d-none');
+    }
+
+    if (historyExportPdfBtn) {
+        historyExportPdfBtn.addEventListener('click', async () => {
+            const exporter = window.ReportExporter;
+            if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
+                console.warn('El módulo para exportar reportes no está disponible.');
+                return;
+            }
+
+            const dataset = construirDatasetHistorialSolicitudes();
+            if (!dataset || !dataset.rowCount) {
+                console.warn('No hay solicitudes concluidas para exportar.');
+                return;
+            }
+
+            const subtitleParts = [];
+            const empresa = typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
+            if (empresa) {
+                subtitleParts.push(empresa);
+            }
+
+            if (typeof exporter.pluralize === 'function') {
+                subtitleParts.push(exporter.pluralize(dataset.rowCount, 'solicitud'));
+            } else {
+                subtitleParts.push(`${dataset.rowCount} solicitudes`);
+            }
+
+            if (typeof exporter.formatTimestamp === 'function') {
+                subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
+            }
+
+            try {
+                const result = await exporter.exportTableToPdf({
+                    data: dataset,
+                    title: 'Historial de solicitudes',
+                    subtitle: subtitleParts.join(' • '),
+                    fileName: 'historial_solicitudes.pdf',
+                    orientation: dataset.columnCount > 5 ? 'landscape' : 'portrait'
+                });
+
+                if (result?.blob) {
+                    await guardarReporteHistorial(result.blob, result.fileName, 'Exportación del historial de solicitudes a PDF');
+                }
+            } catch (error) {
+                console.error('No se pudo generar el PDF del historial de solicitudes:', error);
+                if (error && error.message === 'PDF_LIBRARY_MISSING') {
+                    console.warn('La librería para generar PDF no está disponible.');
+                }
+            }
+        });
+    }
+
+    if (historyExportExcelBtn) {
+        historyExportExcelBtn.addEventListener('click', async () => {
+            const exporter = window.ReportExporter;
+            if (!exporter || typeof exporter.exportTableToExcel !== 'function') {
+                console.warn('El módulo para exportar reportes no está disponible.');
+                return;
+            }
+
+            const dataset = construirDatasetHistorialSolicitudes();
+            if (!dataset || !dataset.rowCount) {
+                console.warn('No hay solicitudes concluidas para exportar.');
+                return;
+            }
+
+            let result;
+            try {
+                result = exporter.exportTableToExcel({
+                    data: dataset,
+                    fileName: 'historial_solicitudes.xlsx',
+                    sheetName: 'Solicitudes'
+                });
+            } catch (error) {
+                console.error('No se pudo generar el archivo de Excel del historial de solicitudes:', error);
+                if (error && error.message === 'EXCEL_LIBRARY_MISSING') {
+                    console.warn('La librería para generar Excel no está disponible.');
+                }
+                return;
+            }
+
+            if (result?.blob) {
+                await guardarReporteHistorial(result.blob, result.fileName, 'Exportación del historial de solicitudes a Excel');
+            }
+        });
     }
 
     if (exportPdfBtn) {
