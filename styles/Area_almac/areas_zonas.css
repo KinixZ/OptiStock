@@ -513,6 +513,38 @@ img {
   color: var(--muted-color);
 }
 
+.inventory-safety-note {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 111, 145, 0.25);
+  background: rgba(255, 111, 145, 0.08);
+  color: #1f2538;
+}
+
+.note-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--primary-surface-extra);
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.note-message {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .inventory-controls {
   display: flex;
   flex-wrap: wrap;
