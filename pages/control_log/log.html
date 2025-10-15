@@ -108,6 +108,28 @@
           <p class="requests-description">Revisa y resuelve los cambios solicitados antes de que impacten en el sistema.</p>
         </div>
         <div class="requests-actions">
+          <button type="button" class="btn btn-outline-danger requests-export-btn" id="historyExportPdf">
+            <span class="requests-export-btn__icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 3v14"></path>
+                <polyline points="7 12 12 17 17 12"></polyline>
+                <path d="M5 19h14"></path>
+              </svg>
+            </span>
+            <span class="requests-export-btn__label">PDF</span>
+          </button>
+          <button type="button" class="btn btn-outline-success requests-export-btn" id="historyExportExcel">
+            <span class="requests-export-btn__icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 4h16v16H4z"></path>
+                <path d="M4 9h16"></path>
+                <path d="M9 4v16"></path>
+                <path d="M10 12l4 5"></path>
+                <path d="M14 12l-4 5"></path>
+              </svg>
+            </span>
+            <span class="requests-export-btn__label">Excel</span>
+          </button>
           <button type="button" class="btn btn-outline-secondary" id="refreshRequests">
             <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
           </button>
