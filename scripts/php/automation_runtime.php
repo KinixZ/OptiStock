@@ -458,6 +458,100 @@ if (!function_exists('compute_movement_summary')) {
     }
 }
 
+if (!function_exists('resolve_movement_focus_type')) {
+    function resolve_movement_focus_type(string $moduleValue): string
+    {
+        if ($moduleValue === 'ingresos') {
+            return 'ingreso';
+        }
+        if ($moduleValue === 'egresos') {
+            return 'egreso';
+        }
+        return '';
+    }
+}
+
+if (!function_exists('filter_movement_collections_for_focus')) {
+    function filter_movement_collections_for_focus(
+        string $focusType,
+        array $movementsByUser,
+        array $timeline,
+        array $recentMovements
+    ): array {
+        if ($focusType === '') {
+            return [$movementsByUser, $timeline, $recentMovements];
+        }
+
+        $filteredByUser = [];
+        foreach ($movementsByUser as $entry) {
+            $ingresos = (int) ($entry['ingresos'] ?? 0);
+            $egresos = (int) ($entry['egresos'] ?? 0);
+
+            if ($focusType === 'ingreso') {
+                if ($ingresos <= 0) {
+                    continue;
+                }
+                $entry['movements'] = $ingresos;
+                $entry['ingresos'] = $ingresos;
+                $entry['egresos'] = 0;
+                $entry['net'] = $ingresos;
+            } else {
+                if ($egresos <= 0) {
+                    continue;
+                }
+                $entry['movements'] = $egresos;
+                $entry['ingresos'] = 0;
+                $entry['egresos'] = $egresos;
+                $entry['net'] = -$egresos;
+            }
+
+            $filteredByUser[] = $entry;
+        }
+
+        $filteredTimeline = [];
+        foreach ($timeline as $entry) {
+            $label = $entry['label'] ?? '';
+            $ingresos = (int) ($entry['ingresos'] ?? 0);
+            $egresos = (int) ($entry['egresos'] ?? 0);
+
+            if ($focusType === 'ingreso') {
+                if ($ingresos <= 0) {
+                    continue;
+                }
+                $filteredTimeline[] = [
+                    'label' => $label,
+                    'movements' => $ingresos,
+                    'ingresos' => $ingresos,
+                    'egresos' => 0,
+                    'net' => $ingresos,
+                ];
+            } else {
+                if ($egresos <= 0) {
+                    continue;
+                }
+                $filteredTimeline[] = [
+                    'label' => $label,
+                    'movements' => $egresos,
+                    'ingresos' => 0,
+                    'egresos' => $egresos,
+                    'net' => -$egresos,
+                ];
+            }
+        }
+
+        $filteredRecent = [];
+        foreach ($recentMovements as $movement) {
+            $type = strtolower((string) ($movement['type'] ?? ''));
+            if ($type !== $focusType) {
+                continue;
+            }
+            $filteredRecent[] = $movement;
+        }
+
+        return [$filteredByUser, $filteredTimeline, $filteredRecent];
+    }
+}
+
 if (!function_exists('gather_area_snapshot')) {
     function gather_area_snapshot(mysqli $conn, int $empresaId): array
     {
@@ -1218,6 +1312,16 @@ if (!function_exists('build_report_payload')) {
         $movementsByUser = gather_movements_by_user($conn, $empresaId, $periodStart, $periodEnd);
         $movementTimeline = gather_movement_timeline($conn, $empresaId, $periodStart, $periodEnd);
         $recentMovements = gather_recent_movements($conn, $empresaId, $periodStart, $periodEnd);
+
+        $focusType = resolve_movement_focus_type($moduleValue);
+        if ($focusType !== '') {
+            [$movementsByUser, $movementTimeline, $recentMovements] = filter_movement_collections_for_focus(
+                $focusType,
+                $movementsByUser,
+                $movementTimeline,
+                $recentMovements
+            );
+        }
 
         $payload = [
             'module' => $moduleValue,

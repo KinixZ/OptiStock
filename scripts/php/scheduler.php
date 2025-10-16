@@ -463,6 +463,96 @@ function compute_movement_summary(array $movementsByUser, array $timeline): arra
     return $summary;
 }
 
+function resolve_movement_focus_type(string $moduleValue): string
+{
+    if ($moduleValue === 'ingresos') {
+        return 'ingreso';
+    }
+    if ($moduleValue === 'egresos') {
+        return 'egreso';
+    }
+    return '';
+}
+
+function filter_movement_collections_for_focus(
+    string $focusType,
+    array $movementsByUser,
+    array $timeline,
+    array $recentMovements
+): array {
+    if ($focusType === '') {
+        return [$movementsByUser, $timeline, $recentMovements];
+    }
+
+    $filteredByUser = [];
+    foreach ($movementsByUser as $entry) {
+        $ingresos = (int) ($entry['ingresos'] ?? 0);
+        $egresos = (int) ($entry['egresos'] ?? 0);
+
+        if ($focusType === 'ingreso') {
+            if ($ingresos <= 0) {
+                continue;
+            }
+            $entry['movements'] = $ingresos;
+            $entry['ingresos'] = $ingresos;
+            $entry['egresos'] = 0;
+            $entry['net'] = $ingresos;
+        } else {
+            if ($egresos <= 0) {
+                continue;
+            }
+            $entry['movements'] = $egresos;
+            $entry['ingresos'] = 0;
+            $entry['egresos'] = $egresos;
+            $entry['net'] = -$egresos;
+        }
+
+        $filteredByUser[] = $entry;
+    }
+
+    $filteredTimeline = [];
+    foreach ($timeline as $entry) {
+        $label = $entry['label'] ?? '';
+        $ingresos = (int) ($entry['ingresos'] ?? 0);
+        $egresos = (int) ($entry['egresos'] ?? 0);
+
+        if ($focusType === 'ingreso') {
+            if ($ingresos <= 0) {
+                continue;
+            }
+            $filteredTimeline[] = [
+                'label' => $label,
+                'movements' => $ingresos,
+                'ingresos' => $ingresos,
+                'egresos' => 0,
+                'net' => $ingresos,
+            ];
+        } else {
+            if ($egresos <= 0) {
+                continue;
+            }
+            $filteredTimeline[] = [
+                'label' => $label,
+                'movements' => $egresos,
+                'ingresos' => 0,
+                'egresos' => $egresos,
+                'net' => -$egresos,
+            ];
+        }
+    }
+
+    $filteredRecent = [];
+    foreach ($recentMovements as $movement) {
+        $type = strtolower((string) ($movement['type'] ?? ''));
+        if ($type !== $focusType) {
+            continue;
+        }
+        $filteredRecent[] = $movement;
+    }
+
+    return [$filteredByUser, $filteredTimeline, $filteredRecent];
+}
+
 function gather_area_snapshot(mysqli $conn, int $empresaId): array
 {
     $snapshot = [
@@ -679,11 +769,25 @@ function build_report_payload(mysqli $conn, array $automation, DateTimeImmutable
 {
     [$periodStart, $periodEnd] = compute_reporting_window($automation, $now);
     $empresaId = (int) ($automation['id_empresa'] ?? 0);
+    $moduleValue = normalize_module_value($automation['modulo'] ?? '');
 
     $movementsByUser = gather_movements_by_user($conn, $empresaId, $periodStart, $periodEnd);
     $movementTimeline = gather_movement_timeline($conn, $empresaId, $periodStart, $periodEnd);
+    $recentMovements = gather_recent_movements($conn, $empresaId, $periodStart, $periodEnd);
+
+    $focusType = resolve_movement_focus_type($moduleValue);
+    if ($focusType !== '') {
+        [$movementsByUser, $movementTimeline, $recentMovements] = filter_movement_collections_for_focus(
+            $focusType,
+            $movementsByUser,
+            $movementTimeline,
+            $recentMovements
+        );
+    }
 
     return [
+        'module' => $moduleValue,
+        'moduleValue' => $moduleValue,
         'company' => gather_company_profile($conn, $empresaId),
         'palette' => gather_palette($conn, $empresaId),
         'period' => [
@@ -697,7 +801,7 @@ function build_report_payload(mysqli $conn, array $automation, DateTimeImmutable
         'summary' => compute_movement_summary($movementsByUser, $movementTimeline),
         'movementsByUser' => $movementsByUser,
         'movementTimeline' => $movementTimeline,
-        'recentMovements' => gather_recent_movements($conn, $empresaId, $periodStart, $periodEnd),
+        'recentMovements' => $recentMovements,
         'areas' => gather_area_snapshot($conn, $empresaId),
         'requests' => gather_request_summary($conn, $empresaId, $periodStart, $periodEnd),
     ];
