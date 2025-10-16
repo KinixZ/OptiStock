@@ -951,13 +951,10 @@ function delete_report(): void
         }
         respond_json(500, ['success' => false, 'message' => 'Ocurrió un error al eliminar el reporte.']);
     }
+}
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? '';
-
-if (defined('OPTISTOCK_REPORT_HISTORY_NO_ROUTER') && OPTISTOCK_REPORT_HISTORY_NO_ROUTER) {
-    return;
-}
 
 if ($method === 'OPTIONS') {
     header('Allow: GET, POST, OPTIONS');
