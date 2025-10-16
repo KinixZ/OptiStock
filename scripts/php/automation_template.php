@@ -160,7 +160,7 @@ $requestsRows = [
     }
     .logo-cell {
       width: 120px;
-      vertical-align: top;
+      vertical-align: middle;
       text-align: center;
     }
     .logo-box {
@@ -168,13 +168,15 @@ $requestsRows = [
       background: #ffffff;
       width: 110px;
       height: 110px;
-      display: table-cell;
-      vertical-align: middle;
+      display: inline-block;
+      padding: 8px;
       text-align: center;
     }
     .logo-box img {
       max-width: 100%;
       max-height: 100%;
+      display: block;
+      margin: 0 auto;
     }
     .title-cell {
       padding-left: 12px;
