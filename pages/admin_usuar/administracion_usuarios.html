@@ -71,7 +71,7 @@
       </div>
 
       <div class="users-table-wrapper">
-        <table id="tablaUsuariosEmpresa" class="users-table">
+        <table id="tablaUsuariosEmpresa" class="users-table" data-sortable="true">
           <thead>
             <tr>
               <th scope="col">Nombre</th>
@@ -81,7 +81,7 @@
               <th scope="col">Rol</th>
               <th scope="col">Estado</th>
               <th scope="col">Accesos</th>
-              <th scope="col" class="actions-column">Acciones</th>
+              <th scope="col" class="actions-column" data-sortable="false">Acciones</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -259,6 +259,7 @@
   <script src="../../scripts/reports/report-history-client.js"></script>
   <script src="../../scripts/utils/report_export.js"></script>
   <script src="../../scripts/utils/toast.js"></script>
+  <script src="../../scripts/utils/simple_table_sorter.js"></script>
   <script src="../../scripts/Admin_usuar/administracion_usuarios.js"></script>
 </body>
 </html>

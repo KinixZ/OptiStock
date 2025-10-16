@@ -23,9 +23,12 @@ let editZoneId = null;
   const volumenZona  = document.getElementById('zonaVolumen');
   const zonaAreaSel  = document.getElementById('zonaArea');
   const zonaTipoSel  = document.getElementById('zonaTipo');
-  const tablaAreasBody        = document.querySelector('#tablaAreas tbody');
-  const tablaZonasBody        = document.querySelector('#tablaZonas tbody');
-  const tablaZonasSinAreaBody = document.querySelector('#tablaZonasSinArea tbody');
+  const tablaAreasElement     = document.getElementById('tablaAreas');
+  const tablaZonasElement     = document.getElementById('tablaZonas');
+  const tablaZonasSinAreaElement = document.getElementById('tablaZonasSinArea');
+  const tablaAreasBody        = tablaAreasElement ? tablaAreasElement.querySelector('tbody') : null;
+  const tablaZonasBody        = tablaZonasElement ? tablaZonasElement.querySelector('tbody') : null;
+  const tablaZonasSinAreaBody = tablaZonasSinAreaElement ? tablaZonasSinAreaElement.querySelector('tbody') : null;
   const totalAreasEl          = document.getElementById('totalAreas');
   const totalZonasEl          = document.getElementById('totalZonas');
   const zonasSinAreaEl        = document.getElementById('zonasSinArea');
@@ -40,6 +43,18 @@ let editZoneId = null;
 
   let areasData = [];
   let zonasData = [];
+
+  if (window.SimpleTableSorter) {
+    if (tablaAreasElement) {
+      window.SimpleTableSorter.enhance(tablaAreasElement);
+    }
+    if (tablaZonasElement) {
+      window.SimpleTableSorter.enhance(tablaZonasElement);
+    }
+    if (tablaZonasSinAreaElement) {
+      window.SimpleTableSorter.enhance(tablaZonasSinAreaElement);
+    }
+  }
 
   function formatDecimal(value, decimals = 2) {
     const number = Number(value);
@@ -550,6 +565,11 @@ let editZoneId = null;
   }
 
   function renderAreas() {
+    if (!tablaAreasBody) {
+      return;
+    }
+
+    const tabla = tablaAreasElement;
     tablaAreasBody.innerHTML = '';
 
     if (!areasData.length) {
@@ -557,6 +577,9 @@ let editZoneId = null;
       emptyRow.className = 'empty-row';
       emptyRow.innerHTML = '<td colspan="9">No hay áreas registradas.</td>';
       tablaAreasBody.appendChild(emptyRow);
+      if (window.SimpleTableSorter && tabla) {
+        window.SimpleTableSorter.applyCurrentSort(tabla);
+      }
       return;
     }
 
@@ -575,6 +598,11 @@ let editZoneId = null;
       const porcentaje = Number(area.porcentaje_ocupacion || 0);
       const productos = Number(area.productos_registrados || 0);
       const totalUnidades = Number(area.total_unidades || 0);
+      const volumenSort = Number.isFinite(volumen) ? volumen : 0;
+      const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
+      const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
+      const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
+      const productosSort = productos + (totalUnidades || 0) / 1000;
       const productosDisplay = totalUnidades
         ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
         : `${productos} tipo${productos === 1 ? '' : 's'}`;
@@ -590,11 +618,11 @@ let editZoneId = null;
         </td>
         <td data-label="Descripción">${area.descripcion || ''}</td>
         <td data-label="Dimensiones">${(area.ancho ?? 0)}×${(area.largo ?? 0)}×${(area.alto ?? 0)}</td>
-        <td data-label="Volumen">${volumen.toFixed(2)}</td>
-        <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
-        <td data-label="Disponible">${disponible.toFixed(2)}</td>
-        <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
-        <td data-label="Productos">${productosDisplay}</td>
+        <td data-label="Volumen" data-sort-value="${volumenSort}">${volumen.toFixed(2)}</td>
+        <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
+        <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
+        <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
+        <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
         <td data-label="Acciones">
           <div class="table-actions">
             <button class="table-action table-action--edit" data-action="edit-area" data-id="${area.id}">Editar</button>
@@ -604,6 +632,10 @@ let editZoneId = null;
       `;
       tablaAreasBody.appendChild(tr);
     });
+
+    if (window.SimpleTableSorter && tabla) {
+      window.SimpleTableSorter.applyCurrentSort(tabla);
+    }
   }
 
 
@@ -681,8 +713,15 @@ formArea.addEventListener('submit', async e => {
 
 
   function renderZonas() {
+    if (!tablaZonasBody || !tablaZonasSinAreaBody) {
+      return;
+    }
+
     const resultado = filtrarZonas();
     const areasMap = Object.fromEntries(areasData.map(a => [a.id, a.nombre]));
+
+    const tablaAsignadas = tablaZonasElement;
+    const tablaSinArea = tablaZonasSinAreaElement;
 
     tablaZonasBody.innerHTML = '';
     if (!resultado.asignadas.length) {
@@ -690,6 +729,9 @@ formArea.addEventListener('submit', async e => {
       emptyRow.className = 'empty-row';
       emptyRow.innerHTML = '<td colspan="8">No hay zonas asignadas que coincidan con los filtros.</td>';
       tablaZonasBody.appendChild(emptyRow);
+      if (window.SimpleTableSorter && tablaAsignadas) {
+        window.SimpleTableSorter.applyCurrentSort(tablaAsignadas);
+      }
     } else {
       resultado.asignadas.forEach(zona => {
         const porcentaje = Number(zona.porcentaje_ocupacion || 0);
@@ -699,6 +741,10 @@ formArea.addEventListener('submit', async e => {
           : Math.max(Number(zona.volumen || 0) - capacidad, 0);
         const productos = Number(zona.productos_registrados || 0);
         const totalUnidades = Number(zona.total_unidades || 0);
+        const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
+        const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
+        const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
+        const productosSort = productos + (totalUnidades || 0) / 1000;
         const productosDisplay = totalUnidades
           ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
           : `${productos} tipo${productos === 1 ? '' : 's'}`;
@@ -714,10 +760,10 @@ formArea.addEventListener('submit', async e => {
           </td>
           <td data-label="Área">${areasMap[zona.area_id] || 'Sin área'}</td>
           <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
-          <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
-          <td data-label="Disponible">${disponible.toFixed(2)}</td>
-          <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
-          <td data-label="Productos">${productosDisplay}</td>
+          <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
+          <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
+          <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
+          <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
           <td data-label="Acciones">
             <div class="table-actions">
               <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
@@ -727,6 +773,10 @@ formArea.addEventListener('submit', async e => {
         `;
         tablaZonasBody.appendChild(tr);
       });
+
+      if (window.SimpleTableSorter && tablaAsignadas) {
+        window.SimpleTableSorter.applyCurrentSort(tablaAsignadas);
+      }
     }
 
     tablaZonasSinAreaBody.innerHTML = '';
@@ -735,6 +785,9 @@ formArea.addEventListener('submit', async e => {
       emptyRow.className = 'empty-row';
       emptyRow.innerHTML = '<td colspan="7">No hay zonas sin área que coincidan con los filtros.</td>';
       tablaZonasSinAreaBody.appendChild(emptyRow);
+      if (window.SimpleTableSorter && tablaSinArea) {
+        window.SimpleTableSorter.applyCurrentSort(tablaSinArea);
+      }
     } else {
       resultado.sinArea.forEach(zona => {
         const porcentaje = Number(zona.porcentaje_ocupacion || 0);
@@ -744,6 +797,10 @@ formArea.addEventListener('submit', async e => {
           : Math.max(Number(zona.volumen || 0) - capacidad, 0);
         const productos = Number(zona.productos_registrados || 0);
         const totalUnidades = Number(zona.total_unidades || 0);
+        const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
+        const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
+        const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
+        const productosSort = productos + (totalUnidades || 0) / 1000;
         const productosDisplay = totalUnidades
           ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
           : `${productos} tipo${productos === 1 ? '' : 's'}`;
@@ -758,10 +815,10 @@ formArea.addEventListener('submit', async e => {
             <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
           </td>
           <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
-          <td data-label="Capacidad utilizada">${capacidad.toFixed(2)}</td>
-          <td data-label="Disponible">${disponible.toFixed(2)}</td>
-          <td data-label="Ocupación">${renderBarraOcupacion(porcentaje)}</td>
-          <td data-label="Productos">${productosDisplay}</td>
+          <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
+          <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
+          <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
+          <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
           <td data-label="Acciones">
             <div class="table-actions">
               <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
@@ -771,6 +828,10 @@ formArea.addEventListener('submit', async e => {
         `;
         tablaZonasSinAreaBody.appendChild(tr);
       });
+
+      if (window.SimpleTableSorter && tablaSinArea) {
+        window.SimpleTableSorter.applyCurrentSort(tablaSinArea);
+      }
     }
 
     actualizarAlertas();

@@ -13,6 +13,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js" defer></script>
   <script src="../../scripts/reports/report-history-client.js" defer></script>
   <script src="../../scripts/utils/report_export.js" defer></script>
+  <script src="../../scripts/utils/simple_table_sorter.js" defer></script>
   <script defer src="../../scripts/area_almac_v2/gestion_areas_zonas.js"></script>
 </head>
 <body>
@@ -99,7 +100,7 @@
               <p class="data-card__description">Detalle de dimensiones, volumen calculado y zonas asociadas.</p>
             </header>
             <div class="table-wrapper">
-              <table id="tablaAreas" class="data-table">
+              <table id="tablaAreas" class="data-table" data-sortable="true">
                 <thead>
                   <tr>
                     <th>Área</th>
@@ -110,7 +111,7 @@
                     <th>Disponible (m³)</th>
                     <th>Ocupación</th>
                     <th>Productos (tipos / uds.)</th>
-                    <th>Acciones</th>
+                    <th data-sortable="false">Acciones</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -125,7 +126,7 @@
               <p class="data-card__description">Zonas vinculadas a un área específica y su tipo de almacenamiento.</p>
             </header>
             <div class="table-wrapper">
-              <table id="tablaZonas" class="data-table">
+              <table id="tablaZonas" class="data-table" data-sortable="true">
                 <thead>
                   <tr>
                     <th>Zona</th>
@@ -135,7 +136,7 @@
                     <th>Disponible (m³)</th>
                     <th>Ocupación</th>
                     <th>Productos (tipos / uds.)</th>
-                    <th>Acciones</th>
+                    <th data-sortable="false">Acciones</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -150,7 +151,7 @@
               <p class="data-card__description">Revisa qué zonas necesitan asociarse a un área para mantener el control.</p>
             </header>
             <div class="table-wrapper">
-              <table id="tablaZonasSinArea" class="data-table">
+              <table id="tablaZonasSinArea" class="data-table" data-sortable="true">
                 <thead>
                   <tr>
                     <th>Zona</th>
@@ -159,7 +160,7 @@
                     <th>Disponible (m³)</th>
                     <th>Ocupación</th>
                     <th>Productos (tipos / uds.)</th>
-                    <th>Acciones</th>
+                    <th data-sortable="false">Acciones</th>
                   </tr>
                 </thead>
                 <tbody></tbody>

@@ -25,7 +25,13 @@
   const selectZonaWrapper = selectZona ? selectZona.closest('.form-group, .mb-3, .col-12, .col') : null;
   const formAsignarAcceso = document.getElementById('formAsignarAcceso');
   const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
+  const tablaUsuariosElement = document.getElementById('tablaUsuariosEmpresa');
+  const tablaUsuariosBody = tablaUsuariosElement ? tablaUsuariosElement.querySelector('tbody') : null;
   let modalAsignarInstancia = null;
+
+  if (tablaUsuariosElement && window.SimpleTableSorter) {
+    window.SimpleTableSorter.enhance(tablaUsuariosElement);
+  }
 
   function sincronizarUsuariosEmpresaUI() {
     const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
@@ -524,7 +530,8 @@
   }
 
   function renderTabla(usuarios) {
-    const tbody = document.querySelector('#tablaUsuariosEmpresa tbody');
+    const tabla = tablaUsuariosElement;
+    const tbody = tablaUsuariosBody;
     if (!tbody) return;
 
     tbody.innerHTML = '';
@@ -534,6 +541,9 @@
       tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No se encontraron usuarios con los filtros aplicados.</td></tr>';
       if (contador) {
         contador.textContent = 'Sin usuarios disponibles';
+      }
+      if (window.SimpleTableSorter && tabla) {
+        window.SimpleTableSorter.applyCurrentSort(tabla);
       }
       return;
     }
@@ -675,6 +685,10 @@
 
     if (contador) {
       contador.textContent = usuarios.length === 1 ? '1 usuario encontrado' : `${usuarios.length} usuarios encontrados`;
+    }
+
+    if (window.SimpleTableSorter && tabla) {
+      window.SimpleTableSorter.applyCurrentSort(tabla);
     }
   }
 
