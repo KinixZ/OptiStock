@@ -154,6 +154,52 @@ $requestsRows = [
       color: #1f2937;
       background: #ffffff;
     }
+    :root {
+      --page-bg: <?php echo $neutralColor ?: '#f5f6fb'; ?>;
+      --card-bg: #ffffff;
+      --border-color: #e7e9f5;
+      --text-color: #1f2937;
+      --muted-color: #6b7280;
+      --primary-color: <?php echo $primaryColor ?: '#ff6f91'; ?>;
+      --primary-soft: rgba(255, 111, 145, 0.16);
+      --accent-color: #0fb4d4;
+      --accent-soft: rgba(15, 180, 212, 0.18);
+      --warm-color: #ff9671;
+      --warm-soft: rgba(255, 150, 113, 0.2);
+      --danger-color: #ff6b6b;
+      --warning-color: #f7b500;
+      --success-color: #16a34a;
+      --shadow-soft: 0 18px 40px -28px rgba(23, 31, 52, 0.45);
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --radius-pill: 999px;
+      --font-main: 'Poppins', sans-serif;
+      --sidebar-color: <?php echo $secondaryColor ?: '#171f34'; ?>;
+      --sidebar-text-color: #ffffff;
+      --topbar-color: <?php echo $primaryColor ?: '#ff6f91'; ?>;
+      --topbar-text-color: #ffffff;
+      --sidebar-width: 280px;
+      --topbar-height: 74px;
+      --transition-speed: 0.3s;
+      --header-gradient: <?php echo $primaryColor ?: '#ff6f91'; ?>;
+      --header-radial: transparent;
+      --header-text-color: #ffffff;
+      --header-muted-color: #ffffff;
+      --header-eyebrow-bg: <?php echo $secondaryColor ?: '#171f34'; ?>;
+      --header-eyebrow-text: #ffffff;
+      --primary-border-soft: rgba(255, 111, 145, 0.12);
+      --primary-border-strong: rgba(255, 111, 145, 0.22);
+      --primary-border-heavy: rgba(255, 111, 145, 0.32);
+      --primary-surface-extra: rgba(255, 111, 145, 0.08);
+      --primary-surface: rgba(255, 111, 145, 0.12);
+      --primary-surface-strong: rgba(255, 111, 145, 0.18);
+      --primary-surface-heavy: rgba(255, 111, 145, 0.24);
+      --primary-outline: rgba(255, 111, 145, 0.18);
+      --primary-outline-strong: rgba(255, 111, 145, 0.28);
+      --primary-shadow-soft: rgba(255, 111, 145, 0.35);
+      --primary-shadow-strong: rgba(255, 111, 145, 0.5);
+      --primary-shadow-heavy: rgba(255, 111, 145, 0.65);
+    }
     h1, h2, h3 {
       margin: 0 0 8px;
       color: <?php echo $secondaryColor; ?>;
