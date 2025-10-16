@@ -11,6 +11,7 @@ const REPORT_RETENTION_DAYS = 60; // Se eliminan automáticamente después de ~2
 const REPORT_RETENTION_SECONDS = REPORT_RETENTION_DAYS * 24 * 60 * 60;
 const REPORTS_ROOT = __DIR__ . '/../../docs/report-history';
 const REPORT_FILES_DIR = REPORTS_ROOT . '/files';
+const REPORT_INDEX_FILE = REPORTS_ROOT . '/index.json';
 const AUTOMATION_RUN_TOLERANCE_SECONDS = 120; // Margen para comparar ejecuciones duplicadas.
 
 const DB_SERVER = 'localhost';
@@ -40,6 +41,187 @@ function ensure_storage(): void
     }
     if (!is_dir(REPORT_FILES_DIR)) {
         mkdir(REPORT_FILES_DIR, 0775, true);
+    }
+    if (!is_file(REPORT_INDEX_FILE)) {
+        file_put_contents(REPORT_INDEX_FILE, '[]', LOCK_EX);
+    }
+}
+
+function read_report_index(): array
+{
+    ensure_storage();
+
+    $contents = @file_get_contents(REPORT_INDEX_FILE);
+    if ($contents === false || $contents === '') {
+        return [];
+    }
+
+    $data = json_decode($contents, true);
+    return is_array($data) ? $data : [];
+}
+
+function write_report_index(array $entries): void
+{
+    ensure_storage();
+    $json = json_encode(array_values($entries), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    file_put_contents(REPORT_INDEX_FILE, $json === false ? '[]' : $json, LOCK_EX);
+}
+
+function map_file_entry(array $entry): array
+{
+    return [
+        'id' => (string) ($entry['id'] ?? ''),
+        'empresaId' => isset($entry['empresaId']) ? (int) $entry['empresaId'] : 0,
+        'originalName' => (string) ($entry['originalName'] ?? ''),
+        'storageName' => (string) ($entry['storageName'] ?? ''),
+        'mimeType' => (string) ($entry['mimeType'] ?? ''),
+        'size' => isset($entry['size']) ? (int) $entry['size'] : 0,
+        'createdAt' => (string) ($entry['createdAt'] ?? ''),
+        'expiresAt' => (string) ($entry['expiresAt'] ?? ''),
+        'source' => (string) ($entry['source'] ?? ''),
+        'notes' => (string) ($entry['notes'] ?? ''),
+    ];
+}
+
+function fetch_reports_from_file(?int $empresaId = null): array
+{
+    $entries = read_report_index();
+    $filtered = [];
+
+    foreach ($entries as $entry) {
+        $mapped = map_file_entry($entry);
+        if ($mapped['id'] === '' || $mapped['storageName'] === '') {
+            continue;
+        }
+        if ($empresaId !== null && $empresaId > 0 && $mapped['empresaId'] !== $empresaId) {
+            continue;
+        }
+
+        $filePath = REPORT_FILES_DIR . '/' . basename($mapped['storageName']);
+        if (!is_file($filePath)) {
+            continue;
+        }
+
+        if ($mapped['size'] <= 0) {
+            $filesize = filesize($filePath);
+            if ($filesize !== false) {
+                $mapped['size'] = (int) $filesize;
+            }
+        }
+
+        $filtered[] = $mapped;
+    }
+
+    usort($filtered, static function (array $a, array $b): int {
+        return strcmp($b['createdAt'] ?? '', $a['createdAt'] ?? '');
+    });
+
+    return $filtered;
+}
+
+function upsert_report_index_entry(array $entry): void
+{
+    $entries = read_report_index();
+    $id = (string) ($entry['id'] ?? '');
+    $updated = [];
+
+    foreach ($entries as $existing) {
+        if ((string) ($existing['id'] ?? '') === $id) {
+            continue;
+        }
+        $updated[] = $existing;
+    }
+
+    $updated[] = $entry;
+    write_report_index($updated);
+}
+
+function find_report_in_index(string $uuid, int $empresaId = 0): ?array
+{
+    if ($uuid === '') {
+        return null;
+    }
+
+    $entries = read_report_index();
+    foreach ($entries as $entry) {
+        if ((string) ($entry['id'] ?? '') !== $uuid) {
+            continue;
+        }
+
+        $mapped = map_file_entry($entry);
+        if ($empresaId > 0 && $mapped['empresaId'] !== $empresaId) {
+            return null;
+        }
+
+        return [
+            'uuid' => $mapped['id'],
+            'id_empresa' => $mapped['empresaId'],
+            'original_name' => $mapped['originalName'],
+            'storage_name' => $mapped['storageName'],
+            'mime_type' => $mapped['mimeType'],
+        ];
+    }
+
+    return null;
+}
+
+function remove_report_from_index(string $uuid): void
+{
+    $entries = read_report_index();
+    $uuid = (string) $uuid;
+    $updated = [];
+    $changed = false;
+
+    foreach ($entries as $entry) {
+        if ((string) ($entry['id'] ?? '') === $uuid) {
+            $changed = true;
+            continue;
+        }
+        $updated[] = $entry;
+    }
+
+    if ($changed) {
+        write_report_index($updated);
+    }
+}
+
+function purge_expired_reports_from_file(): void
+{
+    $entries = read_report_index();
+    $now = time();
+    $updated = [];
+    $changed = false;
+
+    foreach ($entries as $entry) {
+        $mapped = map_file_entry($entry);
+        $expiresAt = $mapped['expiresAt'];
+        $expired = false;
+
+        if ($expiresAt !== '') {
+            $timestamp = strtotime($expiresAt);
+            if ($timestamp !== false && $timestamp <= $now) {
+                $expired = true;
+            }
+        }
+
+        $filePath = REPORT_FILES_DIR . '/' . basename($mapped['storageName']);
+        if ($filePath && !is_file($filePath)) {
+            $expired = true;
+        }
+
+        if ($expired) {
+            if ($filePath && is_file($filePath)) {
+                @unlink($filePath);
+            }
+            $changed = true;
+            continue;
+        }
+
+        $updated[] = $entry;
+    }
+
+    if ($changed) {
+        write_report_index($updated);
     }
 }
 
@@ -433,6 +615,7 @@ function fetch_reports_from_database(?int $empresaId = null): array
                 $filePath = REPORT_FILES_DIR . '/' . basename($storageName);
                 if (!is_file($filePath)) {
                     delete_report_reference($row['uuid'] ?? '');
+                    remove_report_from_index($row['uuid'] ?? '');
                     continue;
                 }
             }
@@ -463,6 +646,7 @@ function purge_expired_reports_from_database(): void
 
         while ($stmt->fetch()) {
             remove_report_file($storageName);
+            remove_report_from_index($uuid);
         }
 
         $stmt->close();
@@ -475,19 +659,31 @@ function purge_expired_reports_from_database(): void
     }
 }
 
+function purge_expired_reports(): void
+{
+    purge_expired_reports_from_file();
+    purge_expired_reports_from_database();
+}
+
 function list_reports(): void
 {
     $empresaId = isset($_GET['empresa']) ? (int) $_GET['empresa'] : 0;
 
-    purge_expired_reports_from_database();
+    purge_expired_reports();
 
+    $reports = [];
     try {
         $reports = fetch_reports_from_database($empresaId > 0 ? $empresaId : null);
     } catch (mysqli_sql_exception $exception) {
-        respond_json(500, [
-            'success' => false,
-            'message' => 'No se pudo consultar el historial en la base de datos.',
-        ]);
+        error_log('No se pudo consultar el historial en la base de datos, se usará el índice local: ' . $exception->getMessage());
+        $reports = fetch_reports_from_file($empresaId > 0 ? $empresaId : null);
+    }
+
+    if (empty($reports)) {
+        $fileReports = fetch_reports_from_file($empresaId > 0 ? $empresaId : null);
+        if (!empty($fileReports)) {
+            $reports = $fileReports;
+        }
     }
 
     respond_json(200, [
@@ -545,7 +741,7 @@ function save_report(): void
     }
 
     ensure_storage();
-    purge_expired_reports_from_database();
+    purge_expired_reports();
 
     $safeName = sanitize_file_name($fileName);
     $finalName = ensure_extension($safeName, $mimeType);
@@ -566,157 +762,171 @@ function save_report(): void
         try {
             $conn = db_connect();
         } catch (Throwable $exception) {
-            respond_json(500, [
-                'success' => false,
-                'message' => 'No se pudo conectar a la base de datos para validar la automatización.',
-            ]);
-        }
-
-        try {
-            ensure_automation_run_table($conn);
-            $conn->begin_transaction();
-            $transactionStarted = true;
-
-            $stmt = $conn->prepare('SELECT uuid, id_empresa, activo, proxima_ejecucion, ultimo_ejecutado, frecuencia, hora_ejecucion, dia_semana, dia_mes FROM reportes_automatizados WHERE uuid = ? AND id_empresa = ? FOR UPDATE');
-            $stmt->bind_param('si', $automationId, $empresaId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $automationRow = $result->fetch_assoc() ?: null;
-            $stmt->close();
-
-            if ($automationRow === null) {
-                $conn->rollback();
-                $conn->close();
-                respond_json(404, [
-                    'success' => false,
-                    'code' => 'not_found',
-                    'message' => 'La automatización indicada no existe.',
-                ]);
-            }
-
-            if (empty($automationRow['activo'])) {
-                $automationPayload = [
-                    'id' => $automationId,
-                    'active' => false,
-                    'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
-                    'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
-                ];
-                $conn->rollback();
-                $conn->close();
-                respond_json(409, [
-                    'success' => false,
-                    'code' => 'inactive',
-                    'message' => 'La automatización está desactivada.',
-                    'automation' => $automationPayload,
-                ]);
-            }
-
-            $automationRunAt = resolve_run_datetime($automationRunAtRaw, $automationRow['proxima_ejecucion'] ?? null);
-
-            $lastRunRaw = $automationRow['ultimo_ejecutado'] ?? null;
-            if ($lastRunRaw) {
-                try {
-                    $lastRun = new DateTimeImmutable($lastRunRaw);
-                    if (seconds_between($lastRun, $automationRunAt) <= AUTOMATION_RUN_TOLERANCE_SECONDS) {
-                $automationPayload = [
-                    'id' => $automationId,
-                    'active' => !empty($automationRow['activo']),
-                    'lastRunAt' => format_datetime_iso($lastRun),
-                    'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
-                ];
-                        $conn->rollback();
-                        $conn->close();
-                        respond_json(409, [
-                            'success' => false,
-                            'code' => 'duplicate',
-                            'message' => 'El reporte automático ya fue generado para este horario.',
-                            'automation' => $automationPayload,
-                        ]);
-                    }
-                } catch (Exception $exception) {
-                    // Ignorar formato inválido y continuar.
-                }
-            }
-
-            $scheduledRaw = $automationRow['proxima_ejecucion'] ?? null;
-            if ($scheduledRaw) {
-                try {
-                    $scheduledAt = new DateTimeImmutable($scheduledRaw);
-                    if ($automationRunAt < $scheduledAt && seconds_between($automationRunAt, $scheduledAt) > AUTOMATION_RUN_TOLERANCE_SECONDS) {
-                        $automationPayload = [
-                            'id' => $automationId,
-                            'active' => !empty($automationRow['activo']),
-                            'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
-                            'nextRunAt' => format_datetime_iso($scheduledAt),
-                        ];
-                        $conn->rollback();
-                        $conn->close();
-                        respond_json(409, [
-                            'success' => false,
-                            'code' => 'not_due',
-                            'message' => 'Aún no es momento de ejecutar esta automatización.',
-                            'automation' => $automationPayload,
-                        ]);
-                    }
-                } catch (Exception $exception) {
-                    // Continuar si la fecha almacenada es inválida.
-                }
-            }
-
-            $runAtSql = $automationRunAt->format('Y-m-d H:i:s');
-            $runStmt = $conn->prepare('INSERT INTO reportes_automatizados_runs (automation_uuid, empresa_id, run_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE run_at = run_at');
-            $runStmt->bind_param('sis', $automationId, $empresaId, $runAtSql);
-            $runStmt->execute();
-            if ($runStmt->affected_rows === 0) {
-                $runStmt->close();
-                $conn->rollback();
-                $conn->close();
-                $automationPayload = [
-                    'id' => $automationId,
-                    'active' => !empty($automationRow['activo']),
-                    'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
-                    'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
-                ];
-                respond_json(409, [
-                    'success' => false,
-                    'code' => 'duplicate',
-                    'message' => 'El reporte automático ya fue generado para este horario.',
-                    'automation' => $automationPayload,
-                ]);
-            }
-            $runStmt->close();
-
-            $automationRow['ultimo_ejecutado'] = $runAtSql;
-            $automationNextRun = compute_next_run_for_automation($automationRow, $automationRunAt->modify('+1 minute'));
-
+            error_log('No se pudo conectar a la base de datos para validar la automatización: ' . $exception->getMessage());
             $automationResponse = [
                 'id' => $automationId,
-                'lastRunAt' => format_datetime_iso($automationRunAt),
-                'nextRunAt' => format_datetime_iso($automationNextRun),
                 'active' => true,
+                'warning' => 'La base de datos no está disponible, se guardará únicamente en el servidor.',
             ];
-        } catch (Throwable $exception) {
-            if ($transactionStarted) {
-                $conn->rollback();
-            }
-            if ($conn instanceof mysqli) {
+        }
+
+        if ($conn instanceof mysqli) {
+            try {
+                ensure_automation_run_table($conn);
+                $conn->begin_transaction();
+                $transactionStarted = true;
+
+                $stmt = $conn->prepare('SELECT uuid, id_empresa, activo, proxima_ejecucion, ultimo_ejecutado, frecuencia, hora_ejecucion, dia_semana, dia_mes FROM reportes_automatizados WHERE uuid = ? AND id_empresa = ? FOR UPDATE');
+                $stmt->bind_param('si', $automationId, $empresaId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $automationRow = $result->fetch_assoc() ?: null;
+                $stmt->close();
+
+                if ($automationRow === null) {
+                    $conn->rollback();
+                    $conn->close();
+                    respond_json(404, [
+                        'success' => false,
+                        'code' => 'not_found',
+                        'message' => 'La automatización indicada no existe.',
+                    ]);
+                }
+
+                if (empty($automationRow['activo'])) {
+                    $automationPayload = [
+                        'id' => $automationId,
+                        'active' => false,
+                        'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
+                        'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
+                    ];
+                    $conn->rollback();
+                    $conn->close();
+                    respond_json(409, [
+                        'success' => false,
+                        'code' => 'inactive',
+                        'message' => 'La automatización está desactivada.',
+                        'automation' => $automationPayload,
+                    ]);
+                }
+
+                $automationRunAt = resolve_run_datetime($automationRunAtRaw, $automationRow['proxima_ejecucion'] ?? null);
+
+                $lastRunRaw = $automationRow['ultimo_ejecutado'] ?? null;
+                if ($lastRunRaw) {
+                    try {
+                        $lastRun = new DateTimeImmutable($lastRunRaw);
+                        if (seconds_between($lastRun, $automationRunAt) <= AUTOMATION_RUN_TOLERANCE_SECONDS) {
+                            $automationPayload = [
+                                'id' => $automationId,
+                                'active' => !empty($automationRow['activo']),
+                                'lastRunAt' => format_datetime_iso($lastRun),
+                                'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
+                            ];
+                            $conn->rollback();
+                            $conn->close();
+                            respond_json(409, [
+                                'success' => false,
+                                'code' => 'duplicate',
+                                'message' => 'El reporte automático ya fue generado para este horario.',
+                                'automation' => $automationPayload,
+                            ]);
+                        }
+                    } catch (Exception $exception) {
+                        // Ignorar formato inválido y continuar.
+                    }
+                }
+
+                $scheduledRaw = $automationRow['proxima_ejecucion'] ?? null;
+                if ($scheduledRaw) {
+                    try {
+                        $scheduledAt = new DateTimeImmutable($scheduledRaw);
+                        if ($automationRunAt < $scheduledAt && seconds_between($automationRunAt, $scheduledAt) > AUTOMATION_RUN_TOLERANCE_SECONDS) {
+                            $automationPayload = [
+                                'id' => $automationId,
+                                'active' => !empty($automationRow['activo']),
+                                'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
+                                'nextRunAt' => format_datetime_iso($scheduledAt),
+                            ];
+                            $conn->rollback();
+                            $conn->close();
+                            respond_json(409, [
+                                'success' => false,
+                                'code' => 'not_due',
+                                'message' => 'Aún no es momento de ejecutar esta automatización.',
+                                'automation' => $automationPayload,
+                            ]);
+                        }
+                    } catch (Exception $exception) {
+                        // Continuar si la fecha almacenada es inválida.
+                    }
+                }
+
+                $runAtSql = $automationRunAt->format('Y-m-d H:i:s');
+                $runStmt = $conn->prepare('INSERT INTO reportes_automatizados_runs (automation_uuid, empresa_id, run_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE run_at = run_at');
+                $runStmt->bind_param('sis', $automationId, $empresaId, $runAtSql);
+                $runStmt->execute();
+                if ($runStmt->affected_rows === 0) {
+                    $runStmt->close();
+                    $conn->rollback();
+                    $conn->close();
+                    $automationPayload = [
+                        'id' => $automationId,
+                        'active' => !empty($automationRow['activo']),
+                        'lastRunAt' => mysql_datetime_to_iso($automationRow['ultimo_ejecutado'] ?? null),
+                        'nextRunAt' => mysql_datetime_to_iso($automationRow['proxima_ejecucion'] ?? null),
+                    ];
+                    respond_json(409, [
+                        'success' => false,
+                        'code' => 'duplicate',
+                        'message' => 'El reporte automático ya fue generado para este horario.',
+                        'automation' => $automationPayload,
+                    ]);
+                }
+                $runStmt->close();
+
+                $automationRow['ultimo_ejecutado'] = $runAtSql;
+                $automationNextRun = compute_next_run_for_automation($automationRow, $automationRunAt->modify('+1 minute'));
+
+                $automationResponse = [
+                    'id' => $automationId,
+                    'lastRunAt' => format_datetime_iso($automationRunAt),
+                    'nextRunAt' => format_datetime_iso($automationNextRun),
+                    'active' => true,
+                ];
+            } catch (Throwable $exception) {
+                if ($transactionStarted) {
+                    $conn->rollback();
+                    $transactionStarted = false;
+                }
                 $conn->close();
+                $conn = null;
+                error_log('No se pudo validar la automatización antes de guardar el reporte: ' . $exception->getMessage());
+                $automationResponse = [
+                    'id' => $automationId,
+                    'active' => true,
+                    'warning' => 'No se pudo validar la automatización, se registró solo el archivo.',
+                ];
             }
-            respond_json(500, [
-                'success' => false,
-                'message' => 'No se pudo validar la automatización antes de guardar el reporte.',
-            ]);
         }
     }
 
     if (!($conn instanceof mysqli)) {
-        $conn = db_connect();
+        try {
+            $conn = db_connect();
+        } catch (Throwable $exception) {
+            $conn = null;
+            error_log('No se pudo conectar a la base de datos para registrar el reporte: ' . $exception->getMessage());
+        }
     }
 
     $written = file_put_contents($filePath, $binary, LOCK_EX);
     if ($written === false) {
         if ($transactionStarted && $conn instanceof mysqli) {
             $conn->rollback();
+            $transactionStarted = false;
+        }
+        if ($conn instanceof mysqli) {
             $conn->close();
         }
         respond_json(500, [
@@ -730,6 +940,7 @@ function save_report(): void
 
     $entry = [
         'id' => random_id(),
+        'empresaId' => $empresaId,
         'originalName' => $finalName,
         'mimeType' => $mimeType,
         'storageName' => $storageName,
@@ -740,42 +951,39 @@ function save_report(): void
         'notes' => str_limit($notes, 240),
     ];
 
-    try {
-        insert_report_reference($entry, $empresaId, $conn);
-
-        if ($automationId !== '') {
-            $lastRunSql = $automationRunAt->format('Y-m-d H:i:s');
-            if ($automationNextRun instanceof DateTimeImmutable) {
-                $nextRunSql = $automationNextRun->format('Y-m-d H:i:s');
-                $updateStmt = $conn->prepare('UPDATE reportes_automatizados SET ultimo_ejecutado = ?, proxima_ejecucion = ? WHERE uuid = ? AND id_empresa = ?');
-                $updateStmt->bind_param('sssi', $lastRunSql, $nextRunSql, $automationId, $empresaId);
-            } else {
-                $updateStmt = $conn->prepare('UPDATE reportes_automatizados SET ultimo_ejecutado = ?, proxima_ejecucion = NULL WHERE uuid = ? AND id_empresa = ?');
-                $updateStmt->bind_param('ssi', $lastRunSql, $automationId, $empresaId);
-            }
-            $updateStmt->execute();
-            $updateStmt->close();
-        }
-
-        if ($transactionStarted) {
-            $conn->commit();
-        }
-    } catch (Throwable $exception) {
-        if ($transactionStarted) {
-            $conn->rollback();
-        }
-        remove_report_file($storageName);
-        if ($conn instanceof mysqli) {
-            $conn->close();
-        }
-        respond_json(500, [
-            'success' => false,
-            'message' => 'No se pudo registrar el reporte en la base de datos.',
-        ]);
-    }
+    upsert_report_index_entry($entry);
 
     if ($conn instanceof mysqli) {
-        $conn->close();
+        try {
+            insert_report_reference($entry, $empresaId, $conn);
+
+            if ($automationId !== '' && $automationRunAt instanceof DateTimeImmutable) {
+                $lastRunSql = $automationRunAt->format('Y-m-d H:i:s');
+                if ($automationNextRun instanceof DateTimeImmutable) {
+                    $nextRunSql = $automationNextRun->format('Y-m-d H:i:s');
+                    $updateStmt = $conn->prepare('UPDATE reportes_automatizados SET ultimo_ejecutado = ?, proxima_ejecucion = ? WHERE uuid = ? AND id_empresa = ?');
+                    $updateStmt->bind_param('sssi', $lastRunSql, $nextRunSql, $automationId, $empresaId);
+                } else {
+                    $updateStmt = $conn->prepare('UPDATE reportes_automatizados SET ultimo_ejecutado = ?, proxima_ejecucion = NULL WHERE uuid = ? AND id_empresa = ?');
+                    $updateStmt->bind_param('ssi', $lastRunSql, $automationId, $empresaId);
+                }
+                $updateStmt->execute();
+                $updateStmt->close();
+            }
+
+            if ($transactionStarted) {
+                $conn->commit();
+                $transactionStarted = false;
+            }
+        } catch (Throwable $exception) {
+            if ($transactionStarted) {
+                $conn->rollback();
+                $transactionStarted = false;
+            }
+            error_log('No se pudo registrar el reporte en la base de datos: ' . $exception->getMessage());
+        } finally {
+            $conn->close();
+        }
     }
 
     respond_json(201, [
@@ -799,7 +1007,12 @@ function save_report(): void
 
 function find_report_for_download(string $uuid, int $empresaId = 0): ?array
 {
-    $conn = db_connect();
+    try {
+        $conn = db_connect();
+    } catch (mysqli_sql_exception $exception) {
+        error_log('No se pudo conectar a la base de datos para descargar el reporte, se usará el índice local: ' . $exception->getMessage());
+        return find_report_in_index($uuid, $empresaId);
+    }
 
     try {
         $query = 'SELECT uuid, id_empresa, original_name, storage_name, mime_type FROM reportes_historial WHERE uuid = ?';
@@ -819,7 +1032,14 @@ function find_report_for_download(string $uuid, int $empresaId = 0): ?array
         $row = $result->fetch_assoc() ?: null;
         $stmt->close();
 
+        if ($row === null) {
+            return find_report_in_index($uuid, $empresaId);
+        }
+
         return $row;
+    } catch (mysqli_sql_exception $exception) {
+        error_log('Error al buscar el reporte en la base de datos: ' . $exception->getMessage());
+        return find_report_in_index($uuid, $empresaId);
     } finally {
         $conn->close();
     }
@@ -836,7 +1056,7 @@ function download_report(): void
         ]);
     }
 
-    purge_expired_reports_from_database();
+    purge_expired_reports();
 
     $report = find_report_for_download($id, $empresaId);
     if ($report === null) {
@@ -849,6 +1069,7 @@ function download_report(): void
     $storageName = $report['storage_name'] ?? '';
     if ($storageName === '') {
         delete_report_reference($id);
+        remove_report_from_index($id);
         respond_json(410, [
             'success' => false,
             'message' => 'El archivo ya no está disponible.',
@@ -858,6 +1079,7 @@ function download_report(): void
     $filePath = REPORT_FILES_DIR . '/' . basename($storageName);
     if (!is_file($filePath)) {
         delete_report_reference($id);
+        remove_report_from_index($id);
         respond_json(410, [
             'success' => false,
             'message' => 'El archivo ya no está disponible.',
@@ -888,11 +1110,30 @@ function delete_report(): void
         respond_json(400, ['success' => false, 'message' => 'Identificador de reporte inválido.']);
     }
 
+    $conn = null;
     try {
         $conn = db_connect();
     } catch (mysqli_sql_exception $exception) {
-        error_log('delete_report: no se pudo conectar a la BD: ' . $exception->getMessage());
-        respond_json(500, ['success' => false, 'message' => 'No se pudo conectar al servidor.']);
+        error_log('delete_report: no se pudo conectar a la BD, se usará solo el índice local: ' . $exception->getMessage());
+    }
+
+    if (!($conn instanceof mysqli)) {
+        $entry = find_report_in_index($id, $empresaId);
+        if ($entry === null) {
+            respond_json(404, ['success' => false, 'message' => 'Reporte no encontrado.']);
+        }
+
+        if ($empresaId > 0 && (int) ($entry['id_empresa'] ?? 0) !== $empresaId) {
+            respond_json(403, ['success' => false, 'message' => 'No tienes permiso para eliminar este reporte.']);
+        }
+
+        $storageName = $entry['storage_name'] ?? '';
+        if ($storageName !== '') {
+            remove_report_file($storageName);
+        }
+        remove_report_from_index($id);
+
+        respond_json(200, ['success' => true, 'message' => 'Reporte eliminado correctamente.']);
     }
 
     try {
@@ -932,6 +1173,8 @@ function delete_report(): void
             // continue, attempt to log the action anyway
         }
 
+        remove_report_from_index($id);
+
         // Try to register action in log (best-effort)
         try {
             require_once __DIR__ . '/log_utils.php';
@@ -951,10 +1194,16 @@ function delete_report(): void
         }
         respond_json(500, ['success' => false, 'message' => 'Ocurrió un error al eliminar el reporte.']);
     }
+
+    return;
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? '';
+
+if (defined('OPTISTOCK_REPORT_HISTORY_NO_ROUTER') && OPTISTOCK_REPORT_HISTORY_NO_ROUTER) {
+    return;
+}
 
 if ($method === 'OPTIONS') {
     header('Allow: GET, POST, OPTIONS');
