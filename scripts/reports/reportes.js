@@ -1,6 +1,7 @@
 (function () {
   const HISTORY_API_URL = '../../scripts/php/report_history.php';
   const AUTOMATION_API_URL = '../../scripts/php/report_automations.php';
+  const AUTOMATION_RUN_API_URL = '../../scripts/php/run_automation_now.php';
   const RETENTION_DAYS_FALLBACK = 60;
   const HISTORY_PAGE_SIZE = 10;
   const AUTOMATION_MODULES = [
@@ -16,6 +17,18 @@
     { value: 'accesos', label: 'Accesos de usuarios' }
   ];
   const AUTOMATION_MODULE_VALUE_SET = new Set(AUTOMATION_MODULES.map((item) => item.value));
+  const MANUAL_SOURCE_LABELS = {
+    inventario: 'Gestión de inventario',
+    usuarios: 'Administración de usuarios',
+    areas_zonas: 'Áreas y zonas de almacén',
+    historial_movimientos: 'Control de registros',
+    'ingresos/egresos': 'Ingresos y egresos',
+    ingresos: 'Historial de ingresos',
+    egresos: 'Historial de egresos',
+    registro_actividades: 'Registro de actividades',
+    solicitudes: 'Historial de solicitudes',
+    accesos: 'Accesos de usuarios'
+  };
   const LEGACY_MODULE_ALIASES = {
     'gestión de inventario': 'inventario',
     'gestion de inventario': 'inventario',
@@ -70,6 +83,15 @@
       return aliasEntry ? aliasEntry.label : value;
     }
     return String(value);
+  }
+
+  function resolveManualSourceLabel(value) {
+    const normalized = normalizeAutomationModuleValue(value);
+    if (normalized && Object.prototype.hasOwnProperty.call(MANUAL_SOURCE_LABELS, normalized)) {
+      return MANUAL_SOURCE_LABELS[normalized];
+    }
+    const label = getAutomationModuleLabel(value);
+    return label || 'Reportes';
   }
 
   function populateAutomationModuleSelect() {
@@ -2483,43 +2505,111 @@
     return generateAutomationPdf(automation, executedAt);
   }
 
+  async function requestAutomationRunFile(automation) {
+    const empresaId = getActiveEmpresaId();
+    if (!empresaId) {
+      throw new Error('No se encontró una empresa activa para generar el reporte.');
+    }
+
+    const response = await fetch(AUTOMATION_RUN_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ automationId: automation.id, empresaId })
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data || data.success !== true) {
+      const message = data && data.message ? data.message : 'No se pudo generar el reporte desde el servidor.';
+      const error = new Error(message);
+      error.status = response.status;
+      error.details = data;
+      throw error;
+    }
+
+    const bytes = decodeBase64(data.fileContent || '');
+    return {
+      bytes,
+      fileName: data.fileName || '',
+      mimeType: data.mimeType || 'application/octet-stream',
+      sourceLabel: data.sourceLabel || resolveManualSourceLabel(automation.module),
+      notes:
+        typeof data.notes === 'string' && data.notes.trim()
+          ? data.notes.trim()
+          : automation.notes
+          ? `Generado manualmente · ${automation.notes}`
+          : 'Generado manualmente desde automatización',
+      generatedAt: typeof data.generatedAt === 'string' && data.generatedAt ? data.generatedAt : new Date().toISOString(),
+      format: data.format || automation.format || 'pdf'
+    };
+  }
+
   async function registerAutomationReport(automation, executedAt) {
-    const file = createAutomationFile(automation, executedAt);
     const fileNameDate = new Date(executedAt);
     const safeDate = Number.isFinite(fileNameDate.getTime()) ? fileNameDate : new Date();
     const iso = safeDate.toISOString();
+    let serverFile = null;
+
+    if (state.activeEmpresaId && state.activeEmpresaId !== 'local') {
+      try {
+        serverFile = await requestAutomationRunFile(automation);
+      } catch (error) {
+        console.error('No se pudo generar el reporte manual desde el servidor, se usará el generador local:', error);
+      }
+    }
+
+    const file = serverFile
+      ? {
+          bytes: serverFile.bytes,
+          mimeType: serverFile.mimeType,
+          extension: serverFile.format === 'excel' ? 'csv' : 'pdf',
+          originalName: serverFile.fileName
+        }
+      : createAutomationFile(automation, executedAt);
+    const extension = file.extension || (automation.format === 'excel' ? 'csv' : 'pdf');
     const formattedDate = `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}-${String(
       safeDate.getDate()
     ).padStart(2, '0')} ${String(safeDate.getHours()).padStart(2, '0')}-${String(safeDate.getMinutes()).padStart(2, '0')}`;
-    const extension = file.extension || (automation.format === 'excel' ? 'csv' : 'pdf');
-    const originalName = `${automation.name} - ${formattedDate}.${extension}`;
-    const base64Content = encodeBase64(file.bytes);
+    const fallbackName = `${automation.name} - ${formattedDate}.${extension}`;
+    const originalName = serverFile && serverFile.fileName ? serverFile.fileName : fallbackName;
+    const base64Content = encodeBase64(file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array());
 
     if (state.activeEmpresaId && state.activeEmpresaId !== 'local') {
       const metadata = {
-        source: automation.module
+        source: serverFile ? serverFile.sourceLabel : automation.module
           ? `Automatización · ${getAutomationModuleLabel(automation.module)}`
           : 'Automatización',
-        notes: automation.notes
-          ? `Generado automáticamente · ${automation.notes}`
-          : 'Generado automáticamente por OptiStock'
+        notes: (() => {
+          if (serverFile) {
+            const manualNotes = serverFile.notes || '';
+            if (manualNotes.toLowerCase().includes('generado manualmente')) {
+              return manualNotes;
+            }
+            return manualNotes ? `Generado manualmente · ${manualNotes}` : 'Generado manualmente desde automatización';
+          }
+          if (automation.notes) {
+            return `Generado automáticamente · ${automation.notes}`;
+          }
+          return 'Generado automáticamente por OptiStock';
+        })()
       };
       if (automation && automation.id) {
         metadata.automationId = automation.id;
-        metadata.automationRunAt = iso;
+        metadata.automationRunAt = serverFile && serverFile.generatedAt ? serverFile.generatedAt : iso;
       }
 
       let uploadFileObject = null;
       if (typeof window !== 'undefined' && typeof File === 'function') {
         try {
-          uploadFileObject = new File([file.bytes], originalName, { type: file.mimeType });
+          const bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array();
+          uploadFileObject = new File([bytes], originalName, { type: file.mimeType });
         } catch (error) {
           uploadFileObject = null;
         }
       }
 
       if (!uploadFileObject) {
-        uploadFileObject = new Blob([file.bytes], { type: file.mimeType });
+        const bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array();
+        uploadFileObject = new Blob([bytes], { type: file.mimeType });
         try {
           Object.defineProperty(uploadFileObject, 'name', { value: originalName });
         } catch (error) {
@@ -2553,10 +2643,10 @@
       automationId: automation.id,
       originalName,
       mimeType: file.mimeType,
-      source: automation.module
-        ? `Automatización · ${getAutomationModuleLabel(automation.module)}`
-        : 'Automatización',
-      notes: automation.notes ? `Notas: ${automation.notes}` : 'Generado automáticamente',
+      source: resolveManualSourceLabel(automation.module),
+      notes: automation.notes
+        ? `Generado manualmente · ${automation.notes}`
+        : 'Generado manualmente desde automatización',
       createdAt: iso,
       expiresAt: null,
       size: file.bytes.length,
