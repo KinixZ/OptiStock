@@ -6,6 +6,19 @@ declare(strict_types=1);
 define('OPTISTOCK_REPORT_HISTORY_NO_ROUTER', true);
 require_once __DIR__ . '/report_history.php';
 
+// >>> INICIO DE MODIFICACIONES PARA CORRECCIÓN DE RUTAS EN CRON JOB <<<
+// La ruta absoluta de la raíz del proyecto es necesaria para que el cron pueda
+// encontrar archivos como el autoloader de Composer (Dompdf) y el CSS de la plantilla.
+// Esta ruta se obtiene de la configuración de tu cron de Hostinger: /home/u.296155119/domains/optistock.site/public_html
+const PROJECT_ROOT_PATH = '/home/u.296155119/domains/optistock.site/public_html';
+
+function get_project_file_path(string $relativePath): string
+{
+    // $relativePath debe ser relativo a PROJECT_ROOT_PATH (ej: '/vendor/autoload.php')
+    return PROJECT_ROOT_PATH . $relativePath;
+}
+// >>> FIN DE MODIFICACIONES PARA CORRECCIÓN DE RUTAS EN CRON JOB <<<
+
 const AUTOMATION_MODULE_LABELS = [
     'inventario' => 'Inventario actual',
     'usuarios' => 'Usuarios actuales',
@@ -72,7 +85,10 @@ function log_msg(string $message): void
 // Dompdf (y otras dependencias instaladas vía Composer) estén disponibles
 // cuando el script se ejecuta desde cron/CLI.
 try {
-    $vendorAutoload = realpath(__DIR__ . '/../../vendor/autoload.php');
+    // La ruta relativa falla en cron. Usamos la ruta absoluta.
+    // RUTA ANTERIOR: $vendorAutoload = realpath(__DIR__ . '/../../vendor/autoload.php');
+    $vendorAutoload = get_project_file_path('/vendor/autoload.php');
+
     if ($vendorAutoload && is_file($vendorAutoload)) {
         require_once $vendorAutoload;
         error_log('[scheduler] Composer autoload cargado desde: ' . $vendorAutoload);
@@ -214,7 +230,8 @@ function gather_company_profile(mysqli $conn, int $empresaId): array
             $logoPath = null;
             if ($logo) {
                 $relative = ltrim($logo, '/');
-                $basePath = realpath(__DIR__ . '/../../');
+                // La ruta base debe ser la raíz absoluta del proyecto.
+                $basePath = PROJECT_ROOT_PATH;
                 if ($basePath !== false) {
                     $candidate = $basePath . '/' . $relative;
                     if (is_file($candidate)) {
@@ -274,8 +291,8 @@ function gather_movements_by_user(mysqli $conn, int $empresaId, DateTimeImmutabl
 {
     try {
         $sql = 'SELECT u.id_usuario, u.nombre, u.apellido, u.rol, COUNT(*) AS movimientos,
-                       SUM(CASE WHEN m.tipo = \"ingreso\" THEN m.cantidad ELSE 0 END) AS ingresos,
-                       SUM(CASE WHEN m.tipo = \"egreso\" THEN m.cantidad ELSE 0 END) AS egresos
+                       SUM(CASE WHEN m.tipo = "ingreso" THEN m.cantidad ELSE 0 END) AS ingresos,
+                       SUM(CASE WHEN m.tipo = "egreso" THEN m.cantidad ELSE 0 END) AS egresos
                 FROM movimientos m
                 INNER JOIN usuario u ON u.id_usuario = m.id_usuario
                 WHERE m.empresa_id = ? AND m.fecha_movimiento BETWEEN ? AND ?
@@ -315,8 +332,8 @@ function gather_movement_timeline(mysqli $conn, int $empresaId, DateTimeImmutabl
     try {
         $sql = 'SELECT DATE(m.fecha_movimiento) AS fecha,
                        COUNT(*) AS movimientos,
-                       SUM(CASE WHEN m.tipo = \"ingreso\" THEN m.cantidad ELSE 0 END) AS ingresos,
-                       SUM(CASE WHEN m.tipo = \"egreso\" THEN m.cantidad ELSE 0 END) AS egresos
+                       SUM(CASE WHEN m.tipo = "ingreso" THEN m.cantidad ELSE 0 END) AS ingresos,
+                       SUM(CASE WHEN m.tipo = "egreso" THEN m.cantidad ELSE 0 END) AS egresos
                 FROM movimientos m
                 WHERE m.empresa_id = ? AND m.fecha_movimiento BETWEEN ? AND ?
                 GROUP BY fecha
@@ -548,7 +565,7 @@ function gather_request_summary(mysqli $conn, int $empresaId, DateTimeImmutable 
     $endSql = $end->format('Y-m-d H:i:s');
 
     try {
-        $stmt = $conn->prepare('SELECT COUNT(*) FROM solicitudes_cambios WHERE id_empresa = ? AND estado = \"en_proceso\"');
+        $stmt = $conn->prepare('SELECT COUNT(*) FROM solicitudes_cambios WHERE id_empresa = ? AND estado = "en_proceso"');
         $stmt->bind_param('i', $empresaId);
         $stmt->execute();
         $stmt->bind_result($count);
