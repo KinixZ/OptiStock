@@ -2299,6 +2299,7 @@ movGuardar?.addEventListener('click', async () => {
       // Calcular volumen en cm³
       const volumen = x * y * z;
       // Formatear con dos decimales, o vacío si falta algún dato
+      p.volumen_valor = volumen > 0 ? volumen : 0;
       p.volumen = volumen > 0 ? volumen.toFixed(2) + ' cm³' : '';
       productos.push(p);
     });
@@ -2312,6 +2313,26 @@ movGuardar?.addEventListener('click', async () => {
     }
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
+
+    const parseSortNumber = value => {
+      if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : 0;
+      }
+      if (typeof value === 'string') {
+        const normalized = value.trim();
+        if (!normalized) {
+          return 0;
+        }
+        const cleaned = normalized
+          .replace(/[^0-9,.-]/g, '')
+          .replace(/,(?=[0-9]{3}\b)/g, '')
+          .replace(',', '.');
+        const parsed = Number.parseFloat(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
 
     if (tablaDescripcionEl) {
       if (vistaActual === 'producto') {
@@ -2335,7 +2356,7 @@ movGuardar?.addEventListener('click', async () => {
 if (vistaActual === 'producto') {
   tablaHead.innerHTML = `
     <tr>
-      <th>Imagen</th>
+      <th data-sortable="false">Imagen</th>
       <th>Nombre</th>
       <th>Área</th>
       <th>Zona</th>
@@ -2345,7 +2366,7 @@ if (vistaActual === 'producto') {
       <th>Volumen (cm³)</th>
       <th>Stock</th>
       <th>Precio compra</th>
-      <th data-export="skip">Acciones</th>
+      <th data-export="skip" data-sortable="false">Acciones</th>
     </tr>`;
 
   productos.forEach(p => {
@@ -2354,6 +2375,9 @@ const sub = p.subcategoria_nombre || '';
     const zona= p.zona_nombre || '';
     const area= p.area_nombre || '';
     const nombreAlt = (p.nombre || '').replace(/"/g, '&quot;');
+    const volumenSort = parseSortNumber(p.volumen_valor ?? p.volumen);
+    const stockSort = parseSortNumber(p.stock);
+    const precioSort = parseSortNumber(p.precio_compra);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-export-value="${p.imagenBase64 ? 'Disponible' : '—'}">${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail" alt="Vista del producto ${nombreAlt}">` : ''}</td>
@@ -2363,9 +2387,9 @@ const sub = p.subcategoria_nombre || '';
       <td>${p.descripcion}</td>
       <td>${cat}</td>
       <td>${sub}</td>
-      <td>${p.volumen}</td>
-      <td>${p.stock}</td>
-      <td>${p.precio_compra}</td>
+      <td data-sort-value="${volumenSort}">${p.volumen}</td>
+      <td data-sort-value="${stockSort}">${p.stock}</td>
+      <td data-sort-value="${precioSort}">${p.precio_compra}</td>
       <td data-export="skip">
         <div class="table-action-menu">
           <button
@@ -2414,7 +2438,7 @@ const sub = p.subcategoria_nombre || '';
           <th>Nombre</th>
           <th>Descripción</th>
           <th>Subcategorías</th>
-          <th data-export="skip">Acciones</th>
+          <th data-export="skip" data-sortable="false">Acciones</th>
         </tr>`;
       categorias.forEach(c => {
         const subcats = subcategorias
@@ -2438,7 +2462,7 @@ const sub = p.subcategoria_nombre || '';
           <th>Nombre</th>
           <th>Categoría</th>
           <th>Descripción</th>
-          <th data-export="skip">Acciones</th>
+          <th data-export="skip" data-sortable="false">Acciones</th>
         </tr>`;
       subcategorias.forEach(sc => {
         const cat = categorias.find(c => c.id === sc.categoria_id)?.nombre || '';
@@ -2453,6 +2477,11 @@ const sub = p.subcategoria_nombre || '';
           </td>`;
         tablaResumen.appendChild(tr);
       });
+    }
+
+    if (window.SimpleTableSorter && tablaResumenElemento) {
+      window.SimpleTableSorter.enhance(tablaResumenElemento);
+      window.SimpleTableSorter.applyCurrentSort(tablaResumenElemento);
     }
 
     actualizarIndicadores();
