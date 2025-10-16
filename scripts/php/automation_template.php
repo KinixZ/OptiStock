@@ -48,12 +48,32 @@ if (!function_exists('automation_format_percent')) {
     }
 }
 
+if (!function_exists('automation_format_movement_type')) {
+    function automation_format_movement_type($value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        $normalized = strtolower((string) $value);
+        if ($normalized === 'ingreso') {
+            return 'Ingreso';
+        }
+        if ($normalized === 'egreso') {
+            return 'Egreso';
+        }
+
+        return ucfirst($normalized);
+    }
+}
+
 $company = $reportData['company'] ?? [];
 $palette = $reportData['palette'] ?? [];
 $period = $reportData['period'] ?? [];
 $summary = $reportData['summary'] ?? [];
 $movementsByUser = $reportData['movementsByUser'] ?? [];
 $movementTimeline = $reportData['movementTimeline'] ?? [];
+$recentMovements = $reportData['recentMovements'] ?? [];
 $areas = $reportData['areas'] ?? [];
 $requests = $reportData['requests'] ?? [];
 
@@ -160,7 +180,7 @@ $requestsRows = [
     }
     .logo-cell {
       width: 120px;
-      vertical-align: top;
+      vertical-align: middle;
       text-align: center;
     }
     .logo-box {
@@ -168,13 +188,15 @@ $requestsRows = [
       background: #ffffff;
       width: 110px;
       height: 110px;
-      display: table-cell;
-      vertical-align: middle;
+      display: inline-block;
+      padding: 8px;
       text-align: center;
     }
     .logo-box img {
       max-width: 100%;
       max-height: 100%;
+      display: block;
+      margin: 0 auto;
     }
     .title-cell {
       padding-left: 12px;
@@ -247,6 +269,24 @@ $requestsRows = [
     .metric-description {
       color: #475569;
       font-size: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .badge-ingreso {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    .badge-egreso {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
     }
     .list-card {
       border: 1px solid #cbd5f5;
@@ -407,6 +447,60 @@ $requestsRows = [
       </table>
     <?php else: ?>
       <div class="empty-state">No se encontraron movimientos en el historial para el periodo analizado.</div>
+    <?php endif; ?>
+  </section>
+
+  <section>
+    <h2>Movimientos registrados</h2>
+    <?php if (count($recentMovements)): ?>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th style="text-align:right">Cantidad</th>
+            <th>Ubicación</th>
+            <th>Responsable</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($recentMovements as $movement): ?>
+            <tr>
+              <td><?php echo automation_escape($movement['dateLabel'] ?? ''); ?></td>
+              <td>
+                <?php echo automation_escape($movement['product'] ?? ''); ?>
+                <?php if (!empty($movement['productCode'])): ?>
+                  <div class="metric-description">Código: <?php echo automation_escape($movement['productCode']); ?></div>
+                <?php endif; ?>
+              </td>
+              <td>
+                <?php
+                $type = strtolower((string) ($movement['type'] ?? ''));
+                $badgeClass = $type === 'ingreso' ? 'badge badge-ingreso' : ($type === 'egreso' ? 'badge badge-egreso' : 'badge');
+                ?>
+                <span class="<?php echo $badgeClass; ?>"><?php echo automation_escape(automation_format_movement_type($movement['type'] ?? '')); ?></span>
+              </td>
+              <td style="text-align:right"><?php echo automation_format_int($movement['quantity'] ?? 0); ?></td>
+              <td>
+                <?php
+                $areaLabel = isset($movement['area']) ? (string) $movement['area'] : '';
+                $zoneLabel = isset($movement['zone']) ? (string) $movement['zone'] : '';
+                $locationLabel = trim($areaLabel . ($zoneLabel !== '' ? ' · ' . $zoneLabel : ''));
+                ?>
+                <?php if ($locationLabel !== ''): ?>
+                  <?php echo automation_escape($locationLabel); ?>
+                <?php else: ?>
+                  —
+                <?php endif; ?>
+              </td>
+              <td><?php echo automation_escape($movement['user'] ?? ''); ?></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    <?php else: ?>
+      <div class="empty-state">No se registraron movimientos detallados en el periodo analizado. Si acabas de crear la automatización, se tomarán los movimientos del último periodo completo en la siguiente ejecución.</div>
     <?php endif; ?>
   </section>
 

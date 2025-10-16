@@ -135,6 +135,7 @@ function compute_reporting_window(array $automation, DateTimeImmutable $now): ar
     $end = $now;
     $start = null;
     $creation = null;
+    $hasPreviousRun = false;
 
     if (!empty($automation['creado_en'])) {
         try {
@@ -147,13 +148,10 @@ function compute_reporting_window(array $automation, DateTimeImmutable $now): ar
     if (!empty($automation['ultimo_ejecutado'])) {
         try {
             $start = new DateTimeImmutable((string) $automation['ultimo_ejecutado']);
+            $hasPreviousRun = true;
         } catch (Throwable $exception) {
             $start = null;
         }
-    }
-
-    if (!$start && $creation instanceof DateTimeImmutable) {
-        $start = $creation;
     }
 
     if (!$start) {
@@ -173,7 +171,7 @@ function compute_reporting_window(array $automation, DateTimeImmutable $now): ar
         }
     }
 
-    if ($creation instanceof DateTimeImmutable && $start < $creation) {
+    if ($hasPreviousRun && $creation instanceof DateTimeImmutable && $start < $creation) {
         $start = $creation;
     }
 
@@ -352,6 +350,69 @@ function gather_movement_timeline(mysqli $conn, int $empresaId, DateTimeImmutabl
         log_msg('No se pudo generar el historial de movimientos: ' . $exception->getMessage());
         return [];
     }
+}
+
+function gather_recent_movements(
+    mysqli $conn,
+    int $empresaId,
+    DateTimeImmutable $start,
+    DateTimeImmutable $end,
+    int $limit = 40
+): array {
+    $recent = [];
+    $limit = max(1, min($limit, 200));
+
+    try {
+        $sql = 'SELECT m.id, m.tipo, m.cantidad, m.fecha_movimiento,
+                       p.nombre AS producto_nombre,
+                       p.codigo_qr AS producto_codigo,
+                       z.nombre AS zona_nombre,
+                       a.nombre AS area_nombre,
+                       u.nombre AS usuario_nombre,
+                       u.apellido AS usuario_apellido
+                FROM movimientos m
+                LEFT JOIN productos p ON p.id = m.producto_id
+                LEFT JOIN zonas z ON z.id = p.zona_id
+                LEFT JOIN areas a ON a.id = z.area_id
+                LEFT JOIN usuario u ON u.id_usuario = m.id_usuario
+                WHERE m.empresa_id = ? AND m.fecha_movimiento BETWEEN ? AND ?
+                ORDER BY m.fecha_movimiento DESC
+                LIMIT ' . $limit;
+
+        $stmt = $conn->prepare($sql);
+        $startSql = $start->format('Y-m-d H:i:s');
+        $endSql = $end->format('Y-m-d H:i:s');
+        $stmt->bind_param('iss', $empresaId, $startSql, $endSql);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        while ($row = $result->fetch_assoc()) {
+            $timestamp = null;
+            try {
+                $timestamp = new DateTimeImmutable((string) ($row['fecha_movimiento'] ?? ''));
+            } catch (Throwable $exception) {
+                $timestamp = $start;
+            }
+
+            $recent[] = [
+                'id' => (int) ($row['id'] ?? 0),
+                'type' => (string) ($row['tipo'] ?? ''),
+                'quantity' => (int) ($row['cantidad'] ?? 0),
+                'dateLabel' => format_spanish_datetime($timestamp),
+                'product' => $row['producto_nombre'] ?? '',
+                'productCode' => $row['producto_codigo'] ?? '',
+                'area' => $row['area_nombre'] ?? '',
+                'zone' => $row['zona_nombre'] ?? '',
+                'user' => trim((string) ($row['usuario_nombre'] ?? '') . ' ' . ($row['usuario_apellido'] ?? '')),
+            ];
+        }
+
+        $stmt->close();
+    } catch (Throwable $exception) {
+        log_msg('No se pudo obtener el detalle de movimientos recientes: ' . $exception->getMessage());
+    }
+
+    return $recent;
 }
 
 function compute_movement_summary(array $movementsByUser, array $timeline): array
@@ -617,6 +678,7 @@ function build_report_payload(mysqli $conn, array $automation, DateTimeImmutable
         'summary' => compute_movement_summary($movementsByUser, $movementTimeline),
         'movementsByUser' => $movementsByUser,
         'movementTimeline' => $movementTimeline,
+        'recentMovements' => gather_recent_movements($conn, $empresaId, $periodStart, $periodEnd),
         'areas' => gather_area_snapshot($conn, $empresaId),
         'requests' => gather_request_summary($conn, $empresaId, $periodStart, $periodEnd),
     ];
