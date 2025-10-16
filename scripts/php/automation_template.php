@@ -36,7 +36,7 @@ if (!function_exists('automation_format_float')) {
 }
 
 if (!function_exists('automation_format_percent')) {
-    function automation_format_percent($value): string
+    function automation_format_percent($value, int $decimals = 2): string
     {
         if ($value === null || $value === '') {
             return '—';
@@ -44,7 +44,7 @@ if (!function_exists('automation_format_percent')) {
         if (!is_numeric($value)) {
             return (string) $value;
         }
-        return automation_format_float($value, 2) . '%';
+        return number_format((float) $value, $decimals, ',', '.') . '%';
     }
 }
 
@@ -74,11 +74,17 @@ $summary = $reportData['summary'] ?? [];
 $movementsByUser = $reportData['movementsByUser'] ?? [];
 $movementTimeline = $reportData['movementTimeline'] ?? [];
 $recentMovements = $reportData['recentMovements'] ?? [];
-$areas = $reportData['areas'] ?? [];
+$areasReport = $reportData['areas'] ?? [];
 $requests = $reportData['requests'] ?? [];
+$inventoryReport = $reportData['inventory'] ?? [];
+$usersReport = $reportData['users'] ?? [];
+$movementFocus = $reportData['movementFocus'] ?? [];
+$activityLog = $reportData['activityLog'] ?? [];
+$accessLog = $reportData['accessLog'] ?? [];
 
 $title = automation_escape($automation['name'] ?? 'Reporte automatizado');
-$module = automation_escape($automation['module'] ?? '');
+$moduleValue = (string) ($reportData['module'] ?? '');
+$moduleLabel = automation_escape($reportData['moduleLabel'] ?? ($automation['module'] ?? ''));
 $notes = trim((string) ($automation['notes'] ?? ''));
 $companyName = automation_escape($company['name'] ?? 'OptiStock');
 $logoData = isset($company['logo']) && $company['logo'] ? $company['logo'] : null;
@@ -93,49 +99,35 @@ if (!$logoData) {
     }
 }
 
-$primaryColor = automation_escape($palette['primary'] ?? '#0f172a');
-$secondaryColor = automation_escape($palette['secondary'] ?? '#1f2937');
+$primaryColor = automation_escape($palette['primary'] ?? '#ff6f91');
+$secondaryColor = automation_escape($palette['secondary'] ?? '#0f172a');
 $neutralColor = automation_escape($palette['neutral'] ?? '#f8fafc');
 $periodLabel = automation_escape($period['label'] ?? '');
 $frequencyLabel = automation_escape($period['frequencyLabel'] ?? '');
 $generatedAtLabel = automation_escape($reportData['generatedAtLabel'] ?? '');
 $notesEscaped = automation_escape($notes);
 
-$totalAreas = $areas['totals']['areas'] ?? 0;
-$totalZones = $areas['totals']['zones'] ?? 0;
-$avgAreaOcc = $areas['totals']['avgAreaOccupancy'] ?? null;
-$avgZoneOcc = $areas['totals']['avgZoneOccupancy'] ?? null;
-$usedCapacity = $areas['totals']['usedCapacity'] ?? 0;
-$totalVolume = $areas['totals']['volume'] ?? 0;
+$totalMovements = (int) ($summary['totalMovements'] ?? 0);
+$totalIngresos = (int) ($summary['totalIngresos'] ?? 0);
+$totalEgresos = (int) ($summary['totalEgresos'] ?? 0);
+$totalNet = (int) ($summary['net'] ?? ($totalIngresos - $totalEgresos));
+$uniqueUsers = (int) ($summary['uniqueUsers'] ?? count($movementsByUser));
 
-$openRequests = $requests['openTotal'] ?? 0;
-$createdSummary = $requests['periodCreated'] ?? [];
-$resolvedSummary = $requests['periodResolved'] ?? [];
-$recentOpen = $requests['recentOpen'] ?? [];
-$recentResolved = $requests['recentResolved'] ?? [];
+$movementFocusMode = (string) ($movementFocus['mode'] ?? '');
+$movementFocusTotals = $movementFocus['totals'] ?? [];
+$movementFocusTimeline = $movementFocus['timeline'] ?? [];
+$movementFocusRecent = $movementFocus['recent'] ?? [];
 
-$summaryRows = [
-    ['Movimientos registrados', automation_format_int($summary['totalMovements'] ?? 0), 'Entradas y salidas consolidadas'],
-    ['Usuarios activos', automation_format_int($summary['uniqueUsers'] ?? 0), 'Colaboradores que ejecutaron movimientos'],
-    ['Entradas registradas', automation_format_int($summary['totalIngresos'] ?? 0), 'Cantidad total de piezas ingresadas'],
-    ['Salidas registradas', automation_format_int($summary['totalEgresos'] ?? 0), 'Cantidad total de piezas egresadas'],
-    ['Variación neta', automation_format_int($summary['net'] ?? 0), 'Entradas menos salidas en el periodo'],
-];
-
-$areaRows = [
-    ['Áreas activas', automation_format_int($totalAreas), 'Total de áreas registradas'],
-    ['Zonas activas', automation_format_int($totalZones), 'Total de zonas registradas'],
-    ['Ocupación promedio de áreas', automation_format_percent($avgAreaOcc), 'Porcentaje promedio de ocupación'],
-    ['Ocupación promedio de zonas', automation_format_percent($avgZoneOcc), 'Porcentaje promedio de ocupación'],
-    ['Capacidad utilizada (m³)', automation_format_float($usedCapacity, 2), 'Volumen ocupado en áreas'],
-    ['Volumen total (m³)', automation_format_float($totalVolume, 2), 'Volumen disponible registrado'],
-];
-
-$requestsRows = [
-    ['Solicitudes abiertas', automation_format_int($openRequests), 'Solicitudes en proceso al momento de generar el reporte'],
-    ['Solicitudes creadas en el periodo', automation_format_int(array_sum(array_column($createdSummary, 'total'))), 'Acumulado del periodo'],
-    ['Solicitudes resueltas en el periodo', automation_format_int(array_sum(array_column($resolvedSummary, 'total'))), 'Historial de cierres en el periodo'],
-];
+if (!function_exists('automation_sum_request_totals')) {
+    function automation_sum_request_totals(array $entries): int
+    {
+        $total = 0;
+        foreach ($entries as $entry) {
+            $total += (int) ($entry['total'] ?? 0);
+        }
+        return $total;
+    }
+}
 
 ?>
 <!doctype html>
@@ -145,183 +137,203 @@ $requestsRows = [
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?php echo $title; ?></title>
   <style>
+    @page {
+      margin: 24px 28px;
+    }
     body {
       margin: 0;
-      padding: 24px 28px;
-      font-family: 'DejaVu Sans', 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
       font-size: 12px;
       line-height: 1.55;
       color: #1f2937;
       background: #ffffff;
     }
     :root {
-      --page-bg: <?php echo $neutralColor ?: '#f5f6fb'; ?>;
+      --page-bg: <?php echo $neutralColor ?: '#f6f8fb'; ?>;
       --card-bg: #ffffff;
-      --border-color: #e7e9f5;
+      --border-color: #d8deed;
       --text-color: #1f2937;
-      --muted-color: #6b7280;
-      --primary-color: <?php echo $primaryColor ?: '#ff6f91'; ?>;
-      --primary-soft: rgba(255, 111, 145, 0.16);
-      --accent-color: #0fb4d4;
-      --accent-soft: rgba(15, 180, 212, 0.18);
-      --warm-color: #ff9671;
-      --warm-soft: rgba(255, 150, 113, 0.2);
-      --danger-color: #ff6b6b;
-      --warning-color: #f7b500;
-      --success-color: #16a34a;
-      --shadow-soft: 0 18px 40px -28px rgba(23, 31, 52, 0.45);
-      --radius-md: 16px;
-      --radius-lg: 22px;
-      --radius-pill: 999px;
-      --font-main: 'Poppins', sans-serif;
-      --sidebar-color: <?php echo $secondaryColor ?: '#171f34'; ?>;
-      --sidebar-text-color: #ffffff;
+      --muted-color: #64748b;
       --topbar-color: <?php echo $primaryColor ?: '#ff6f91'; ?>;
       --topbar-text-color: #ffffff;
-      --sidebar-width: 280px;
-      --topbar-height: 74px;
-      --transition-speed: 0.3s;
-      --header-gradient: <?php echo $primaryColor ?: '#ff6f91'; ?>;
-      --header-radial: transparent;
-      --header-text-color: #ffffff;
-      --header-muted-color: #ffffff;
-      --header-eyebrow-bg: <?php echo $secondaryColor ?: '#171f34'; ?>;
-      --header-eyebrow-text: #ffffff;
-      --primary-border-soft: rgba(255, 111, 145, 0.12);
-      --primary-border-strong: rgba(255, 111, 145, 0.22);
-      --primary-border-heavy: rgba(255, 111, 145, 0.32);
-      --primary-surface-extra: rgba(255, 111, 145, 0.08);
-      --primary-surface: rgba(255, 111, 145, 0.12);
-      --primary-surface-strong: rgba(255, 111, 145, 0.18);
-      --primary-surface-heavy: rgba(255, 111, 145, 0.24);
-      --primary-outline: rgba(255, 111, 145, 0.18);
-      --primary-outline-strong: rgba(255, 111, 145, 0.28);
-      --primary-shadow-soft: rgba(255, 111, 145, 0.35);
-      --primary-shadow-strong: rgba(255, 111, 145, 0.5);
-      --primary-shadow-heavy: rgba(255, 111, 145, 0.65);
+      --accent-color: <?php echo $secondaryColor ?: '#0f172a'; ?>;
+      --sidebar-color: <?php echo $secondaryColor ?: '#0f172a'; ?>;
+      --sidebar-text-color: #ffffff;
+      --row-alt: rgba(15, 23, 42, 0.04);
     }
-    h1, h2, h3 {
-      margin: 0 0 8px;
-      color: <?php echo $secondaryColor; ?>;
+    .report-wrapper {
+      background: var(--page-bg);
     }
-    h1 {
-      font-size: 22px;
+    .report-banner {
+      background: var(--topbar-color);
+      color: var(--topbar-text-color);
+      padding: 24px 28px 18px;
     }
-    h2 {
-      font-size: 16px;
-      margin-top: 8px;
-    }
-    h3 {
-      font-size: 13px;
-    }
-    .report-header {
-      border: 1px solid #cbd5f5;
-      background: <?php echo $neutralColor; ?>;
-      padding: 16px;
-      margin-bottom: 24px;
-    }
-    .header-table {
+    .report-banner__header {
       width: 100%;
       border-collapse: collapse;
     }
-    .logo-cell {
+    .report-banner__logo {
       width: 120px;
       vertical-align: middle;
       text-align: center;
     }
-    .logo-box {
-      border: 1px solid #cbd5f5;
-      background: #ffffff;
-      width: 110px;
-      height: 110px;
-      display: inline-block;
-      padding: 8px;
-      text-align: center;
-    }
-    .logo-box img {
-      max-width: 100%;
-      max-height: 100%;
+    .report-banner__logo img {
+      max-width: 110px;
+      max-height: 64px;
       display: block;
       margin: 0 auto;
     }
-    .title-cell {
+    .report-banner__info {
       padding-left: 12px;
-      vertical-align: top;
+      vertical-align: middle;
     }
-    .company-label {
+    .report-banner__company {
       font-size: 11px;
-      text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #475569;
-    }
-    .module-label {
-      font-size: 11px;
-      color: #475569;
+      text-transform: uppercase;
       margin-bottom: 6px;
+      color: rgba(255, 255, 255, 0.82);
+    }
+    .report-banner__title {
+      margin: 0;
+      font-size: 22px;
+    }
+    .report-banner__module {
+      margin-top: 4px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.82);
+    }
+    .report-banner__meta {
+      margin-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      padding-top: 10px;
     }
     .meta-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
     }
     .meta-table td {
-      border: 1px solid #e2e8f0;
-      padding: 8px;
+      padding: 4px 0;
       font-size: 11px;
     }
     .meta-label {
       display: block;
       text-transform: uppercase;
-      font-size: 10px;
       letter-spacing: 0.08em;
-      font-weight: bold;
-      color: #475569;
-      margin-bottom: 4px;
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 2px;
     }
-    section {
-      margin-bottom: 24px;
+    .report-banner__accent {
+      height: 6px;
+      background: var(--accent-color);
+    }
+    .report-content {
+      padding: 24px 28px;
+    }
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+    .section-card h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: var(--accent-color);
+    }
+    .section-card h3 {
+      margin: 12px 0 8px;
+      font-size: 13px;
+      color: var(--accent-color);
+    }
+    .metric-grid {
+      margin-top: 6px;
+    }
+    .metric-card {
+      display: inline-block;
+      min-width: 150px;
+      padding: 10px 12px;
+      margin: 4px 6px 4px 0;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: #ffffff;
+    }
+    .metric-card__label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-color);
+    }
+    .metric-card__value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin-top: 4px;
+    }
+    .metric-card__description {
+      font-size: 10px;
+      color: var(--muted-color);
+      margin-top: 2px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 10px;
     }
     .data-table th {
-      background: #f1f5f9;
-      color: #475569;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      background: var(--sidebar-color);
+      color: var(--sidebar-text-color);
+      padding: 7px 8px;
       font-size: 10px;
-      padding: 8px;
-      border: 1px solid #e2e8f0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: left;
+      border: 1px solid var(--sidebar-color);
     }
     .data-table td {
-      border: 1px solid #e2e8f0;
-      padding: 8px;
+      border: 1px solid var(--border-color);
+      padding: 7px 8px;
       font-size: 11px;
+      color: var(--text-color);
     }
-    .metrics-table td,
-    .metrics-table th {
-      border: 1px solid #e2e8f0;
-      padding: 8px;
+    .data-table tbody tr:nth-child(even) {
+      background: var(--row-alt);
+    }
+    .empty-state {
+      border: 1px dashed var(--border-color);
+      padding: 10px 12px;
+      font-style: italic;
+      color: var(--muted-color);
       font-size: 11px;
+      margin-top: 8px;
     }
-    .metrics-table th {
-      background: <?php echo $primaryColor; ?>;
-      color: #ffffff;
+    .status-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 10px;
     }
-    .metric-description {
-      color: #475569;
-      font-size: 10px;
+    .status-badge--active {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .status-badge--inactive {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
     }
     .badge {
       display: inline-block;
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 10px;
-      font-weight: bold;
+      font-weight: 600;
       text-transform: uppercase;
     }
     .badge-ingreso {
@@ -334,35 +346,18 @@ $requestsRows = [
       color: #b91c1c;
       border: 1px solid #fecaca;
     }
-    .list-card {
-      border: 1px solid #cbd5f5;
+    .list-inline {
+      padding-left: 16px;
+      margin: 6px 0 0;
+      font-size: 11px;
+    }
+    .notes-box {
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 14px;
       background: #ffffff;
-      padding: 12px;
-      margin-top: 8px;
-    }
-    .list-card ul,
-    .list-card ol {
-      margin: 0 0 0 16px;
-      padding: 0;
       font-size: 11px;
-    }
-    .list-card li {
-      margin-bottom: 6px;
-    }
-    .empty-state {
-      border: 1px dashed #cbd5f5;
-      padding: 10px;
-      font-style: italic;
-      color: #64748b;
-      font-size: 11px;
-      margin-top: 6px;
-    }
-    .notes-card {
-      border: 1px solid #cbd5f5;
-      background: #ffffff;
-      padding: 12px;
-      font-size: 11px;
-      color: #475569;
+      color: var(--text-color);
     }
   </style>
   <?php if (!empty($extraCss) && is_string($extraCss)): ?>
@@ -371,324 +366,837 @@ $requestsRows = [
     </style>
   <?php endif; ?>
 </head>
-<body>
-  <header class="report-header">
-    <table class="header-table">
+<body class="report-wrapper">
+  <header class="report-banner">
+    <table class="report-banner__header">
       <tr>
         <?php if ($logoData): ?>
-          <td class="logo-cell">
-            <div class="logo-box">
-              <img src="<?php echo automation_escape($logoData); ?>" alt="Logotipo de la empresa" />
-            </div>
+          <td class="report-banner__logo">
+            <img src="<?php echo automation_escape($logoData); ?>" alt="Logotipo de la empresa" />
           </td>
         <?php endif; ?>
-        <td class="title-cell">
-          <div class="company-label"><?php echo $companyName; ?></div>
-          <h1><?php echo $title; ?></h1>
-          <?php if ($module): ?>
-            <div class="module-label">Módulo origen: <?php echo $module; ?></div>
+        <td class="report-banner__info">
+          <div class="report-banner__company"><?php echo $companyName; ?></div>
+          <h1 class="report-banner__title"><?php echo $title; ?></h1>
+          <?php if ($moduleLabel !== ''): ?>
+            <div class="report-banner__module">Módulo origen: <?php echo $moduleLabel; ?></div>
           <?php endif; ?>
         </td>
       </tr>
     </table>
-    <table class="meta-table">
-      <tbody>
-        <?php if ($periodLabel): ?>
-          <tr>
-            <td><span class="meta-label">Periodo analizado</span><?php echo $periodLabel; ?></td>
-          </tr>
-        <?php endif; ?>
-        <?php if ($frequencyLabel): ?>
-          <tr>
-            <td><span class="meta-label">Frecuencia</span><?php echo $frequencyLabel; ?></td>
-          </tr>
-        <?php endif; ?>
-        <?php if ($generatedAtLabel): ?>
-          <tr>
-            <td><span class="meta-label">Generado</span><?php echo $generatedAtLabel; ?></td>
-          </tr>
-        <?php endif; ?>
-      </tbody>
-    </table>
+    <div class="report-banner__meta">
+      <table class="meta-table">
+        <tbody>
+          <?php if ($periodLabel): ?>
+            <tr>
+              <td><span class="meta-label">Periodo analizado</span><?php echo $periodLabel; ?></td>
+            </tr>
+          <?php endif; ?>
+          <?php if ($frequencyLabel): ?>
+            <tr>
+              <td><span class="meta-label">Frecuencia</span><?php echo $frequencyLabel; ?></td>
+            </tr>
+          <?php endif; ?>
+          <?php if ($generatedAtLabel): ?>
+            <tr>
+              <td><span class="meta-label">Generado</span><?php echo $generatedAtLabel; ?></td>
+            </tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
   </header>
+  <div class="report-banner__accent"></div>
 
-  <section>
-    <h2>Resumen del periodo</h2>
-    <table class="metrics-table">
-      <thead>
-        <tr>
-          <th>Indicador</th>
-          <th>Valor</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($summaryRows as $row): ?>
-          <tr>
-            <td><?php echo automation_escape($row[0]); ?></td>
-            <td><?php echo automation_escape($row[1]); ?></td>
-            <td class="metric-description"><?php echo automation_escape($row[2]); ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  </section>
+  <main class="report-content">
+    <?php if ($moduleValue === 'inventario'): ?>
+      <?php $invTotals = $inventoryReport['totals'] ?? []; ?>
+      <section class="section-card">
+        <h2>Resumen de inventario</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Productos registrados</div>
+            <div class="metric-card__value"><?php echo automation_format_int($invTotals['products'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Unidades en stock</div>
+            <div class="metric-card__value"><?php echo automation_format_int($invTotals['totalStock'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Valor aproximado</div>
+            <div class="metric-card__value">$<?php echo automation_format_float($invTotals['valuation'] ?? 0, 2); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Con ubicación asignada</div>
+            <div class="metric-card__value"><?php echo automation_format_int($invTotals['withLocation'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Sin stock disponible</div>
+            <div class="metric-card__value"><?php echo automation_format_int($invTotals['outOfStock'] ?? 0); ?></div>
+          </div>
+        </div>
+      </section>
 
-  <section>
-    <h2>Movimientos por usuario</h2>
-    <?php if (count($movementsByUser)): ?>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Usuario</th>
-            <th>Rol</th>
-            <th style="text-align:right">Movimientos</th>
-            <th style="text-align:right">Entradas</th>
-            <th style="text-align:right">Salidas</th>
-            <th style="text-align:right">Variación</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($movementsByUser as $item): ?>
-            <tr>
-              <td><?php echo automation_escape($item['user'] ?? ''); ?></td>
-              <td><?php echo automation_escape($item['role'] ?? ''); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['movements'] ?? 0); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['net'] ?? 0); ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    <?php else: ?>
-      <div class="empty-state">No se registraron movimientos por usuario durante el periodo seleccionado.</div>
-    <?php endif; ?>
-  </section>
+      <section class="section-card">
+        <h3>Stock por categoría</h3>
+        <?php if (!empty($inventoryReport['categories'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th style="text-align:right">Productos</th>
+                <th style="text-align:right">Unidades</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($inventoryReport['categories'] as $category): ?>
+                <tr>
+                  <td><?php echo automation_escape($category['name'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($category['products'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($category['stock'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se encontraron categorías con productos registrados.</div>
+        <?php endif; ?>
+      </section>
 
-  <section>
-    <h2>Actividad por fecha</h2>
-    <?php if (count($movementTimeline)): ?>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th style="text-align:right">Movimientos</th>
-            <th style="text-align:right">Entradas</th>
-            <th style="text-align:right">Salidas</th>
-            <th style="text-align:right">Variación</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($movementTimeline as $item): ?>
-            <tr>
-              <td><?php echo automation_escape($item['label'] ?? ''); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['movements'] ?? 0); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
-              <td style="text-align:right"><?php echo automation_format_int($item['net'] ?? 0); ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    <?php else: ?>
-      <div class="empty-state">No se encontraron movimientos en el historial para el periodo analizado.</div>
-    <?php endif; ?>
-  </section>
+      <section class="section-card">
+        <h3>Detalle de productos</h3>
+        <?php if (!empty($inventoryReport['products'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th style="text-align:right">Stock</th>
+                <th>Ubicación</th>
+                <th>Último movimiento</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($inventoryReport['products'] as $product): ?>
+                <tr>
+                  <td>
+                    <?php echo automation_escape($product['name'] ?? ''); ?>
+                    <?php if (!empty($product['code'])): ?>
+                      <div style="font-size:10px;color:var(--muted-color);">Código: <?php echo automation_escape($product['code']); ?></div>
+                    <?php endif; ?>
+                  </td>
+                  <td><?php echo automation_escape($product['category'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($product['stock'] ?? 0); ?></td>
+                  <td><?php echo $product['location'] !== '' ? automation_escape($product['location']) : 'Sin asignar'; ?></td>
+                  <td>
+                    <?php echo $product['lastMovement'] ? automation_escape($product['lastMovement']) : 'Sin registros'; ?>
+                    <?php if (!empty($product['lastType'])): ?>
+                      <div style="font-size:10px;color:var(--muted-color);">Tipo: <?php echo automation_escape(automation_format_movement_type($product['lastType'])); ?></div>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">Aún no se registran productos en el inventario.</div>
+        <?php endif; ?>
+      </section>
+    <?php elseif ($moduleValue === 'usuarios'): ?>
+      <?php $userTotals = $usersReport['totals'] ?? []; ?>
+      <section class="section-card">
+        <h2>Indicadores de personal</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Colaboradores registrados</div>
+            <div class="metric-card__value"><?php echo automation_format_int($userTotals['users'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Activos</div>
+            <div class="metric-card__value"><?php echo automation_format_int($userTotals['active'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Inactivos</div>
+            <div class="metric-card__value"><?php echo automation_format_int($userTotals['inactive'] ?? 0); ?></div>
+          </div>
+        </div>
+        <?php if (!empty($usersReport['roles'])): ?>
+          <h3>Distribución por rol</h3>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Rol</th>
+                <th style="text-align:right">Colaboradores</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($usersReport['roles'] as $role): ?>
+                <tr>
+                  <td><?php echo automation_escape($role['role'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($role['total'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php endif; ?>
+      </section>
 
-  <section>
-    <h2>Movimientos registrados</h2>
-    <?php if (count($recentMovements)): ?>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Producto</th>
-            <th>Tipo</th>
-            <th style="text-align:right">Cantidad</th>
-            <th>Ubicación</th>
-            <th>Responsable</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($recentMovements as $movement): ?>
-            <tr>
-              <td><?php echo automation_escape($movement['dateLabel'] ?? ''); ?></td>
-              <td>
-                <?php echo automation_escape($movement['product'] ?? ''); ?>
-                <?php if (!empty($movement['productCode'])): ?>
-                  <div class="metric-description">Código: <?php echo automation_escape($movement['productCode']); ?></div>
-                <?php endif; ?>
-              </td>
-              <td>
-                <?php
-                $type = strtolower((string) ($movement['type'] ?? ''));
-                $badgeClass = $type === 'ingreso' ? 'badge badge-ingreso' : ($type === 'egreso' ? 'badge badge-egreso' : 'badge');
-                ?>
-                <span class="<?php echo $badgeClass; ?>"><?php echo automation_escape(automation_format_movement_type($movement['type'] ?? '')); ?></span>
-              </td>
-              <td style="text-align:right"><?php echo automation_format_int($movement['quantity'] ?? 0); ?></td>
-              <td>
-                <?php
-                $areaLabel = isset($movement['area']) ? (string) $movement['area'] : '';
-                $zoneLabel = isset($movement['zone']) ? (string) $movement['zone'] : '';
-                $locationLabel = trim($areaLabel . ($zoneLabel !== '' ? ' · ' . $zoneLabel : ''));
-                ?>
-                <?php if ($locationLabel !== ''): ?>
-                  <?php echo automation_escape($locationLabel); ?>
+      <section class="section-card">
+        <h3>Directorio de usuarios</h3>
+        <?php if (!empty($usersReport['people'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Registro</th>
+                <th>Accesos asignados</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($usersReport['people'] as $person): ?>
+                <tr>
+                  <td><?php echo automation_escape($person['name'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($person['email'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($person['phone'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($person['role'] ?? ''); ?></td>
+                  <td>
+                    <?php $active = !empty($person['active']); ?>
+                    <span class="status-badge <?php echo $active ? 'status-badge--active' : 'status-badge--inactive'; ?>">
+                      <?php echo $active ? 'Activo' : 'Inactivo'; ?>
+                    </span>
+                  </td>
+                  <td><?php echo automation_escape($person['registered'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($person['accessSummary'] ?? ''); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se encontraron usuarios vinculados a la empresa.</div>
+        <?php endif; ?>
+      </section>
+    <?php elseif ($moduleValue === 'areas_zonas'): ?>
+      <?php $areaTotals = $areasReport['totals'] ?? []; ?>
+      <section class="section-card">
+        <h2>Estado de áreas y zonas</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Áreas registradas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($areaTotals['areas'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Zonas registradas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($areaTotals['zones'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Ocupación promedio de áreas</div>
+            <div class="metric-card__value"><?php echo automation_format_percent($areaTotals['avgAreaOccupancy'] ?? null); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Ocupación promedio de zonas</div>
+            <div class="metric-card__value"><?php echo automation_format_percent($areaTotals['avgZoneOccupancy'] ?? null); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Capacidad utilizada (m³)</div>
+            <div class="metric-card__value"><?php echo automation_format_float($areaTotals['usedCapacity'] ?? 0.0, 2); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Volumen total (m³)</div>
+            <div class="metric-card__value"><?php echo automation_format_float($areaTotals['volume'] ?? 0.0, 2); ?></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h3>Detalle de áreas</h3>
+        <?php if (!empty($areasReport['areas'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Área</th>
+                <th>Descripción</th>
+                <th style="text-align:right">Volumen (m³)</th>
+                <th style="text-align:right">Capacidad usada (m³)</th>
+                <th style="text-align:right">Ocupación</th>
+                <th style="text-align:right">Productos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($areasReport['areas'] as $area): ?>
+                <tr>
+                  <td><?php echo automation_escape($area['name'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($area['description'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_float($area['volume'] ?? 0, 2); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_float($area['usedCapacity'] ?? 0, 2); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_percent($area['occupancy'] ?? null); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($area['products'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se encontraron áreas registradas en la empresa.</div>
+        <?php endif; ?>
+      </section>
+
+      <section class="section-card">
+        <h3>Detalle de zonas</h3>
+        <?php if (!empty($areasReport['zones'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Zona</th>
+                <th>Área</th>
+                <th>Tipo</th>
+                <th style="text-align:right">Ocupación</th>
+                <th style="text-align:right">Capacidad usada (m³)</th>
+                <th style="text-align:right">Productos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($areasReport['zones'] as $zone): ?>
+                <tr>
+                  <td><?php echo automation_escape($zone['name'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($zone['area'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($zone['storageType'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_percent($zone['occupancy'] ?? null); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_float($zone['capacity'] ?? 0, 2); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($zone['products'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se encontraron zonas registradas.</div>
+        <?php endif; ?>
+      </section>
+    <?php elseif (in_array($moduleValue, ['historial_movimientos', 'ingresos/egresos', 'ingresos', 'egresos'], true)): ?>
+      <?php $focusTotals = $movementFocusTotals; ?>
+      <section class="section-card">
+        <h2>Resumen de movimientos</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">
+              <?php echo $movementFocusMode === 'ingresos' ? 'Total de ingresos' : ($movementFocusMode === 'egresos' ? 'Total de egresos' : 'Movimientos registrados'); ?>
+            </div>
+            <div class="metric-card__value"><?php echo automation_format_int($focusTotals['movements'] ?? $totalMovements); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Entradas registradas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($focusTotals['ingresos'] ?? $totalIngresos); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Salidas registradas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($focusTotals['egresos'] ?? $totalEgresos); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Variación neta</div>
+            <div class="metric-card__value"><?php echo automation_format_int(($focusTotals['net'] ?? $totalNet)); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Colaboradores involucrados</div>
+            <div class="metric-card__value"><?php echo automation_format_int($uniqueUsers); ?></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h3>Movimientos por usuario</h3>
+        <?php if (!empty($movementsByUser)): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th style="text-align:right">Movimientos</th>
+                <th style="text-align:right">Entradas</th>
+                <th style="text-align:right">Salidas</th>
+                <th style="text-align:right">Variación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($movementsByUser as $item): ?>
+                <tr>
+                  <td><?php echo automation_escape($item['user'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($item['role'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['movements'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['net'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se registraron movimientos por usuario durante el periodo analizado.</div>
+        <?php endif; ?>
+      </section>
+
+      <section class="section-card">
+        <h3>Evolución en el periodo</h3>
+        <?php if (!empty($movementFocusTimeline)): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <?php if ($movementFocusMode === 'ingresos'): ?>
+                  <th style="text-align:right">Entradas</th>
+                <?php elseif ($movementFocusMode === 'egresos'): ?>
+                  <th style="text-align:right">Salidas</th>
                 <?php else: ?>
-                  —
+                  <th style="text-align:right">Movimientos</th>
+                  <th style="text-align:right">Entradas</th>
+                  <th style="text-align:right">Salidas</th>
+                  <th style="text-align:right">Variación</th>
                 <?php endif; ?>
-              </td>
-              <td><?php echo automation_escape($movement['user'] ?? ''); ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($movementFocusTimeline as $item): ?>
+                <tr>
+                  <td><?php echo automation_escape($item['label'] ?? ''); ?></td>
+                  <?php if ($movementFocusMode === 'ingresos'): ?>
+                    <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
+                  <?php elseif ($movementFocusMode === 'egresos'): ?>
+                    <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
+                  <?php else: ?>
+                    <td style="text-align:right"><?php echo automation_format_int($item['movements'] ?? 0); ?></td>
+                    <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
+                    <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
+                    <td style="text-align:right"><?php echo automation_format_int($item['net'] ?? 0); ?></td>
+                  <?php endif; ?>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se encontraron movimientos en el historial del periodo.</div>
+        <?php endif; ?>
+      </section>
+
+      <section class="section-card">
+        <h3>Movimientos recientes</h3>
+        <?php if (!empty($movementFocusRecent)): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Tipo</th>
+                <th style="text-align:right">Cantidad</th>
+                <th>Ubicación</th>
+                <th>Responsable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($movementFocusRecent as $movement): ?>
+                <tr>
+                  <td><?php echo automation_escape($movement['dateLabel'] ?? ''); ?></td>
+                  <td>
+                    <?php echo automation_escape($movement['product'] ?? ''); ?>
+                    <?php if (!empty($movement['productCode'])): ?>
+                      <div style="font-size:10px;color:var(--muted-color);">Código: <?php echo automation_escape($movement['productCode']); ?></div>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php
+                    $type = strtolower((string) ($movement['type'] ?? ''));
+                    $badgeClass = $type === 'ingreso' ? 'badge badge-ingreso' : ($type === 'egreso' ? 'badge badge-egreso' : 'badge');
+                    ?>
+                    <span class="<?php echo $badgeClass; ?>"><?php echo automation_escape(automation_format_movement_type($movement['type'] ?? '')); ?></span>
+                  </td>
+                  <td style="text-align:right"><?php echo automation_format_int($movement['quantity'] ?? 0); ?></td>
+                  <td>
+                    <?php
+                    $areaLabel = isset($movement['area']) ? (string) $movement['area'] : '';
+                    $zoneLabel = isset($movement['zone']) ? (string) $movement['zone'] : '';
+                    $locationLabel = trim($areaLabel . ($zoneLabel !== '' ? ' · ' . $zoneLabel : ''));
+                    ?>
+                    <?php echo $locationLabel !== '' ? automation_escape($locationLabel) : '—'; ?>
+                  </td>
+                  <td><?php echo automation_escape($movement['user'] ?? ''); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se registraron movimientos en el periodo. En la siguiente ejecución se incluirán los más recientes.</div>
+        <?php endif; ?>
+      </section>
+    <?php elseif ($moduleValue === 'solicitudes'): ?>
+      <?php $openTotal = (int) ($requests['openTotal'] ?? 0); ?>
+      <?php $createdTotal = automation_sum_request_totals($requests['periodCreated'] ?? []); ?>
+      <?php $resolvedTotal = automation_sum_request_totals($requests['periodResolved'] ?? []); ?>
+      <section class="section-card">
+        <h2>Resumen de solicitudes</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Solicitudes abiertas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($openTotal); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Creadas en el periodo</div>
+            <div class="metric-card__value"><?php echo automation_format_int($createdTotal); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Resueltas en el periodo</div>
+            <div class="metric-card__value"><?php echo automation_format_int($resolvedTotal); ?></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h3>Detalle por estado</h3>
+        <?php if (!empty($requests['periodCreated']) || !empty($requests['periodResolved'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Estado</th>
+                <th style="text-align:right">Creadas</th>
+                <th style="text-align:right">Resueltas</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              $createdMap = [];
+              foreach (($requests['periodCreated'] ?? []) as $row) {
+                  $createdMap[$row['estado'] ?? ''] = (int) ($row['total'] ?? 0);
+              }
+              $resolvedMap = [];
+              foreach (($requests['periodResolved'] ?? []) as $row) {
+                  $resolvedMap[$row['estado'] ?? ''] = (int) ($row['total'] ?? 0);
+              }
+              $allStates = array_unique(array_merge(array_keys($createdMap), array_keys($resolvedMap)));
+              foreach ($allStates as $state):
+              ?>
+                <tr>
+                  <td><?php echo automation_escape($state ?: 'Sin estado'); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($createdMap[$state] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($resolvedMap[$state] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No hay solicitudes registradas durante el periodo.</div>
+        <?php endif; ?>
+      </section>
+
+      <section class="section-card">
+        <h3>Solicitudes recientes</h3>
+        <h4 style="margin:8px 0 6px;font-size:12px;color:var(--muted-color);">Pendientes</h4>
+        <?php if (!empty($requests['recentOpen'])): ?>
+          <ul class="list-inline">
+            <?php foreach ($requests['recentOpen'] as $item): ?>
+              <li>
+                <strong><?php echo automation_escape($item['module'] ?? ''); ?></strong> ·
+                <?php echo automation_escape($item['summary'] ?? ''); ?> ·
+                Estado: <?php echo automation_escape($item['estado'] ?? ''); ?> ·
+                <?php echo automation_escape($item['dateLabel'] ?? ''); ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php else: ?>
+          <div class="empty-state">No hay solicitudes abiertas en el periodo.</div>
+        <?php endif; ?>
+
+        <h4 style="margin:12px 0 6px;font-size:12px;color:var(--muted-color);">Cerradas</h4>
+        <?php if (!empty($requests['recentResolved'])): ?>
+          <ul class="list-inline">
+            <?php foreach ($requests['recentResolved'] as $item): ?>
+              <li>
+                <strong><?php echo automation_escape($item['module'] ?? ''); ?></strong> ·
+                <?php echo automation_escape($item['summary'] ?? ''); ?> ·
+                Resultado: <?php echo automation_escape($item['estado'] ?? ''); ?> ·
+                <?php echo automation_escape($item['dateLabel'] ?? ''); ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php else: ?>
+          <div class="empty-state">No se cerraron solicitudes durante el periodo.</div>
+        <?php endif; ?>
+      </section>
+    <?php elseif ($moduleValue === 'accesos'): ?>
+      <?php $actionCounts = $accessLog['actionCounts'] ?? []; ?>
+      <?php $lastByUser = $accessLog['lastAccessByUser'] ?? []; ?>
+      <section class="section-card">
+        <h2>Actividad de accesos</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Registros en el periodo</div>
+            <div class="metric-card__value"><?php echo automation_format_int($accessLog['total'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Inicios de sesión</div>
+            <div class="metric-card__value"><?php echo automation_format_int($actionCounts['Inicio'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Cierres de sesión</div>
+            <div class="metric-card__value"><?php echo automation_format_int($actionCounts['Cierre'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Usuarios activos</div>
+            <div class="metric-card__value"><?php echo automation_format_int(count($lastByUser)); ?></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h3>Historial de accesos</h3>
+        <?php if (!empty($accessLog['entries'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($accessLog['entries'] as $entry): ?>
+                <tr>
+                  <td><?php echo automation_escape($entry['date'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($entry['time'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($entry['user'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($entry['role'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($entry['action'] ?? ''); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se registraron accesos en el periodo seleccionado.</div>
+        <?php endif; ?>
+      </section>
+
+      <?php if (!empty($lastByUser)): ?>
+        <section class="section-card">
+          <h3>Último acceso por usuario</h3>
+          <ul class="list-inline">
+            <?php foreach ($lastByUser as $entry): ?>
+              <li>
+                <strong><?php echo automation_escape($entry['user'] ?? ''); ?></strong> ·
+                <?php echo automation_escape($entry['action'] ?? ''); ?> ·
+                <?php echo automation_escape($entry['date'] ?? ''); ?> ·
+                <?php echo automation_escape($entry['time'] ?? ''); ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        </section>
+      <?php endif; ?>
+    <?php elseif ($moduleValue === 'registro_actividades'): ?>
+      <?php $moduleCounts = $activityLog['moduleCounts'] ?? []; ?>
+      <?php $topModule = '';
+      $topCount = 0;
+      foreach ($moduleCounts as $moduleName => $count) {
+          if ($count > $topCount) {
+              $topCount = (int) $count;
+              $topModule = (string) $moduleName;
+          }
+      }
+      ?>
+      <section class="section-card">
+        <h2>Registro de actividades</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Eventos registrados</div>
+            <div class="metric-card__value"><?php echo automation_format_int($activityLog['total'] ?? 0); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Módulos con actividad</div>
+            <div class="metric-card__value"><?php echo automation_format_int(count($moduleCounts)); ?></div>
+          </div>
+          <?php if ($topModule !== ''): ?>
+            <div class="metric-card">
+              <div class="metric-card__label">Módulo con más acciones</div>
+              <div class="metric-card__value"><?php echo automation_escape($topModule); ?></div>
+              <div class="metric-card__description"><?php echo automation_format_int($topCount); ?> eventos</div>
+            </div>
+          <?php endif; ?>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h3>Detalle de eventos</h3>
+        <?php if (!empty($activityLog['logs'])): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Módulo</th>
+                <th>Acción</th>
+                <th>Responsable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($activityLog['logs'] as $log): ?>
+                <tr>
+                  <td><?php echo automation_escape($log['date'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($log['time'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($log['module'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($log['action'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($log['user'] ?? ''); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se encontraron registros de actividad para el periodo.</div>
+        <?php endif; ?>
+      </section>
     <?php else: ?>
-      <div class="empty-state">No se registraron movimientos detallados en el periodo analizado. Si acabas de crear la automatización, se tomarán los movimientos del último periodo completo en la siguiente ejecución.</div>
+      <section class="section-card">
+        <h2>Resumen del periodo</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Movimientos registrados</div>
+            <div class="metric-card__value"><?php echo automation_format_int($totalMovements); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Entradas registradas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($totalIngresos); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Salidas registradas</div>
+            <div class="metric-card__value"><?php echo automation_format_int($totalEgresos); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Variación neta</div>
+            <div class="metric-card__value"><?php echo automation_format_int($totalNet); ?></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Colaboradores involucrados</div>
+            <div class="metric-card__value"><?php echo automation_format_int($uniqueUsers); ?></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h3>Movimientos por usuario</h3>
+        <?php if (!empty($movementsByUser)): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th style="text-align:right">Movimientos</th>
+                <th style="text-align:right">Entradas</th>
+                <th style="text-align:right">Salidas</th>
+                <th style="text-align:right">Variación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($movementsByUser as $item): ?>
+                <tr>
+                  <td><?php echo automation_escape($item['user'] ?? ''); ?></td>
+                  <td><?php echo automation_escape($item['role'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['movements'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['net'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se registraron movimientos por usuario en el periodo.</div>
+        <?php endif; ?>
+      </section>
+
+      <section class="section-card">
+        <h3>Historial cronológico</h3>
+        <?php if (!empty($movementTimeline)): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th style="text-align:right">Movimientos</th>
+                <th style="text-align:right">Entradas</th>
+                <th style="text-align:right">Salidas</th>
+                <th style="text-align:right">Variación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($movementTimeline as $item): ?>
+                <tr>
+                  <td><?php echo automation_escape($item['label'] ?? ''); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['movements'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['ingresos'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['egresos'] ?? 0); ?></td>
+                  <td style="text-align:right"><?php echo automation_format_int($item['net'] ?? 0); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No se registraron movimientos durante el periodo de análisis.</div>
+        <?php endif; ?>
+      </section>
+
+      <section class="section-card">
+        <h3>Movimientos recientes</h3>
+        <?php if (!empty($recentMovements)): ?>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Tipo</th>
+                <th style="text-align:right">Cantidad</th>
+                <th>Ubicación</th>
+                <th>Responsable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($recentMovements as $movement): ?>
+                <tr>
+                  <td><?php echo automation_escape($movement['dateLabel'] ?? ''); ?></td>
+                  <td>
+                    <?php echo automation_escape($movement['product'] ?? ''); ?>
+                    <?php if (!empty($movement['productCode'])): ?>
+                      <div style="font-size:10px;color:var(--muted-color);">Código: <?php echo automation_escape($movement['productCode']); ?></div>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php
+                    $type = strtolower((string) ($movement['type'] ?? ''));
+                    $badgeClass = $type === 'ingreso' ? 'badge badge-ingreso' : ($type === 'egreso' ? 'badge badge-egreso' : 'badge');
+                    ?>
+                    <span class="<?php echo $badgeClass; ?>"><?php echo automation_escape(automation_format_movement_type($movement['type'] ?? '')); ?></span>
+                  </td>
+                  <td style="text-align:right"><?php echo automation_format_int($movement['quantity'] ?? 0); ?></td>
+                  <td>
+                    <?php
+                    $areaLabel = isset($movement['area']) ? (string) $movement['area'] : '';
+                    $zoneLabel = isset($movement['zone']) ? (string) $movement['zone'] : '';
+                    $locationLabel = trim($areaLabel . ($zoneLabel !== '' ? ' · ' . $zoneLabel : ''));
+                    ?>
+                    <?php echo $locationLabel !== '' ? automation_escape($locationLabel) : '—'; ?>
+                  </td>
+                  <td><?php echo automation_escape($movement['user'] ?? ''); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <div class="empty-state">No hay movimientos recientes registrados.</div>
+        <?php endif; ?>
+      </section>
     <?php endif; ?>
-  </section>
 
-  <section>
-    <h2>Estado de áreas y zonas</h2>
-    <table class="metrics-table">
-      <thead>
-        <tr>
-          <th>Indicador</th>
-          <th>Valor</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($areaRows as $row): ?>
-          <tr>
-            <td><?php echo automation_escape($row[0]); ?></td>
-            <td><?php echo automation_escape($row[1]); ?></td>
-            <td class="metric-description"><?php echo automation_escape($row[2]); ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-    <div class="list-card">
-      <h3>Áreas con mayor ocupación</h3>
-      <?php if (!empty($areas['topAreas'])): ?>
-        <ol>
-          <?php foreach ($areas['topAreas'] as $area): ?>
-            <li>
-              <strong><?php echo automation_escape($area['name'] ?? 'Área'); ?></strong><br />
-              Ocupación: <?php echo automation_format_percent($area['occupancy'] ?? null); ?> · Productos: <?php echo automation_format_int($area['products'] ?? 0); ?>
-            </li>
-          <?php endforeach; ?>
-        </ol>
-      <?php else: ?>
-        <div class="empty-state">Sin información registrada de áreas para este periodo.</div>
-      <?php endif; ?>
-    </div>
-    <div class="list-card">
-      <h3>Zonas con mayor ocupación</h3>
-      <?php if (!empty($areas['topZones'])): ?>
-        <ol>
-          <?php foreach ($areas['topZones'] as $zone): ?>
-            <li>
-              <strong><?php echo automation_escape($zone['name'] ?? 'Zona'); ?></strong><br />
-              Ocupación: <?php echo automation_format_percent($zone['occupancy'] ?? null); ?> · Productos: <?php echo automation_format_int($zone['products'] ?? 0); ?>
-            </li>
-          <?php endforeach; ?>
-        </ol>
-      <?php else: ?>
-        <div class="empty-state">Sin información registrada de zonas para este periodo.</div>
-      <?php endif; ?>
-    </div>
-  </section>
-
-  <section>
-    <h2>Solicitudes y cambios</h2>
-    <table class="metrics-table">
-      <thead>
-        <tr>
-          <th>Indicador</th>
-          <th>Valor</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($requestsRows as $row): ?>
-          <tr>
-            <td><?php echo automation_escape($row[0]); ?></td>
-            <td><?php echo automation_escape($row[1]); ?></td>
-            <td class="metric-description"><?php echo automation_escape($row[2]); ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-
-    <div class="list-card">
-      <h3>Detalle de solicitudes registradas</h3>
-      <?php if (!empty($createdSummary)): ?>
-        <ul>
-          <?php foreach ($createdSummary as $item): ?>
-            <li><?php echo automation_escape(ucfirst($item['estado'] ?? '')); ?>: <?php echo automation_format_int($item['total'] ?? 0); ?></li>
-          <?php endforeach; ?>
-        </ul>
-      <?php else: ?>
-        <div class="empty-state">No se generaron solicitudes nuevas en el periodo.</div>
-      <?php endif; ?>
-    </div>
-
-    <div class="list-card">
-      <h3>Solicitudes resueltas</h3>
-      <?php if (!empty($resolvedSummary)): ?>
-        <ul>
-          <?php foreach ($resolvedSummary as $item): ?>
-            <li><?php echo automation_escape(ucfirst($item['estado'] ?? '')); ?>: <?php echo automation_format_int($item['total'] ?? 0); ?></li>
-          <?php endforeach; ?>
-        </ul>
-      <?php else: ?>
-        <div class="empty-state">No se resolvieron solicitudes durante el periodo.</div>
-      <?php endif; ?>
-    </div>
-
-    <div class="list-card">
-      <h3>Solicitudes pendientes más recientes</h3>
-      <?php if (!empty($recentOpen)): ?>
-        <ul>
-          <?php foreach ($recentOpen as $item): ?>
-            <li>
-              <strong><?php echo automation_escape($item['module'] ?? ''); ?></strong><br />
-              <?php echo automation_escape($item['summary'] ?? ''); ?><br />
-              Estado: <?php echo automation_escape($item['estado'] ?? ''); ?> · <?php echo automation_escape($item['dateLabel'] ?? ''); ?>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      <?php else: ?>
-        <div class="empty-state">No hay solicitudes pendientes registradas en este periodo.</div>
-      <?php endif; ?>
-    </div>
-
-    <div class="list-card">
-      <h3>Solicitudes cerradas más recientes</h3>
-      <?php if (!empty($recentResolved)): ?>
-        <ul>
-          <?php foreach ($recentResolved as $item): ?>
-            <li>
-              <strong><?php echo automation_escape($item['module'] ?? ''); ?></strong><br />
-              <?php echo automation_escape($item['summary'] ?? ''); ?><br />
-              Resultado: <?php echo automation_escape($item['estado'] ?? ''); ?> · <?php echo automation_escape($item['dateLabel'] ?? ''); ?>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      <?php else: ?>
-        <div class="empty-state">No se registran solicitudes cerradas durante el periodo.</div>
-      <?php endif; ?>
-    </div>
-  </section>
-
-  <?php if ($notesEscaped): ?>
-    <section>
-      <h2>Notas de la automatización</h2>
-      <div class="notes-card"><?php echo $notesEscaped; ?></div>
-    </section>
-  <?php endif; ?>
+    <?php if ($notesEscaped): ?>
+      <section class="section-card">
+        <h2>Notas de la automatización</h2>
+        <div class="notes-box"><?php echo $notesEscaped; ?></div>
+      </section>
+    <?php endif; ?>
+  </main>
 </body>
 </html>

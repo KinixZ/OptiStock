@@ -461,32 +461,146 @@ if (!function_exists('compute_movement_summary')) {
 if (!function_exists('gather_area_snapshot')) {
     function gather_area_snapshot(mysqli $conn, int $empresaId): array
     {
-        $areas = [];
+        $snapshot = [
+            'totals' => [
+                'areas' => 0,
+                'zones' => 0,
+                'avgAreaOccupancy' => null,
+                'avgZoneOccupancy' => null,
+                'usedCapacity' => 0.0,
+                'volume' => 0.0,
+            ],
+            'areas' => [],
+            'zones' => [],
+            'topAreas' => [],
+            'topZones' => [],
+        ];
+
         try {
-            $sql = 'SELECT a.nombre AS area_nombre, COUNT(z.id) AS zonas_total,
-                           SUM(CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END) AS productos_total
-                    FROM areas a
-                    LEFT JOIN zonas z ON z.area_id = a.id
-                    LEFT JOIN productos p ON p.zona_id = z.id
-                    WHERE a.empresa_id = ?
-                    GROUP BY a.id, a.nombre
-                    ORDER BY a.nombre ASC';
-            $stmt = $conn->prepare($sql);
+            $stmt = $conn->prepare('SELECT COUNT(*) AS total, AVG(porcentaje_ocupacion) AS avg_occ,
+                    SUM(capacidad_utilizada) AS used_capacity, SUM(volumen) AS volume
+                FROM areas WHERE id_empresa = ?');
             $stmt->bind_param('i', $empresaId);
             $stmt->execute();
-            $result = $stmt->get_result();
-            while ($row = $result->fetch_assoc()) {
-                $areas[] = [
-                    'name' => $row['area_nombre'] ?? '',
-                    'zones' => (int) ($row['zonas_total'] ?? 0),
-                    'products' => (int) ($row['productos_total'] ?? 0),
-                ];
+            $stmt->bind_result($total, $avg, $used, $volume);
+            if ($stmt->fetch()) {
+                $snapshot['totals']['areas'] = (int) $total;
+                $snapshot['totals']['avgAreaOccupancy'] = $avg !== null ? (float) $avg : null;
+                $snapshot['totals']['usedCapacity'] = $used !== null ? (float) $used : 0.0;
+                $snapshot['totals']['volume'] = $volume !== null ? (float) $volume : 0.0;
             }
             $stmt->close();
         } catch (Throwable $exception) {
             error_log('[automation] No se pudo obtener el resumen de áreas: ' . $exception->getMessage());
         }
-        return $areas;
+
+        try {
+            $stmt = $conn->prepare('SELECT COUNT(*) AS total, AVG(porcentaje_ocupacion) AS avg_occ
+                FROM zonas WHERE id_empresa = ?');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $stmt->bind_result($total, $avg);
+            if ($stmt->fetch()) {
+                $snapshot['totals']['zones'] = (int) $total;
+                $snapshot['totals']['avgZoneOccupancy'] = $avg !== null ? (float) $avg : null;
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo obtener el resumen de zonas: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT nombre, descripcion, volumen, capacidad_utilizada,
+                    porcentaje_ocupacion, productos_registrados
+                FROM areas WHERE id_empresa = ? ORDER BY nombre ASC');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $snapshot['areas'][] = [
+                    'name' => $row['nombre'] ?? 'Área',
+                    'description' => $row['descripcion'] ?? '',
+                    'volume' => $row['volumen'] !== null ? (float) $row['volumen'] : 0.0,
+                    'usedCapacity' => $row['capacidad_utilizada'] !== null ? (float) $row['capacidad_utilizada'] : 0.0,
+                    'occupancy' => $row['porcentaje_ocupacion'] !== null ? (float) $row['porcentaje_ocupacion'] : 0.0,
+                    'products' => (int) ($row['productos_registrados'] ?? 0),
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo listar las áreas de la empresa: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT nombre, porcentaje_ocupacion, capacidad_utilizada,
+                    volumen, productos_registrados
+                FROM areas WHERE id_empresa = ? ORDER BY porcentaje_ocupacion DESC LIMIT 5');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $snapshot['topAreas'][] = [
+                    'name' => $row['nombre'] ?? 'Área',
+                    'occupancy' => $row['porcentaje_ocupacion'] !== null ? (float) $row['porcentaje_ocupacion'] : 0.0,
+                    'capacity' => $row['capacidad_utilizada'] !== null ? (float) $row['capacidad_utilizada'] : 0.0,
+                    'volume' => $row['volumen'] !== null ? (float) $row['volumen'] : 0.0,
+                    'products' => (int) ($row['productos_registrados'] ?? 0),
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo listar las áreas destacadas: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT z.nombre, z.descripcion, z.productos_registrados,
+                    z.porcentaje_ocupacion, z.capacidad_utilizada, z.volumen,
+                    z.tipo_almacenamiento, a.nombre AS area_nombre
+                FROM zonas z
+                LEFT JOIN areas a ON a.id = z.area_id
+                WHERE z.id_empresa = ?
+                ORDER BY a.nombre ASC, z.nombre ASC');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $snapshot['zones'][] = [
+                    'name' => $row['nombre'] ?? 'Zona',
+                    'description' => $row['descripcion'] ?? '',
+                    'area' => $row['area_nombre'] ?? '',
+                    'storageType' => $row['tipo_almacenamiento'] ?? '',
+                    'occupancy' => $row['porcentaje_ocupacion'] !== null ? (float) $row['porcentaje_ocupacion'] : 0.0,
+                    'capacity' => $row['capacidad_utilizada'] !== null ? (float) $row['capacidad_utilizada'] : 0.0,
+                    'volume' => $row['volumen'] !== null ? (float) $row['volumen'] : 0.0,
+                    'products' => (int) ($row['productos_registrados'] ?? 0),
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo obtener la información de zonas: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT nombre, porcentaje_ocupacion, capacidad_utilizada,
+                    productos_registrados
+                FROM zonas WHERE id_empresa = ? ORDER BY porcentaje_ocupacion DESC LIMIT 5');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $snapshot['topZones'][] = [
+                    'name' => $row['nombre'] ?? 'Zona',
+                    'occupancy' => $row['porcentaje_ocupacion'] !== null ? (float) $row['porcentaje_ocupacion'] : 0.0,
+                    'capacity' => $row['capacidad_utilizada'] !== null ? (float) $row['capacidad_utilizada'] : 0.0,
+                    'products' => (int) ($row['productos_registrados'] ?? 0),
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo listar las zonas destacadas: ' . $exception->getMessage());
+        }
+
+        return $snapshot;
     }
 }
 
@@ -615,16 +729,499 @@ if (!function_exists('gather_request_summary')) {
     }
 }
 
+if (!function_exists('gather_inventory_report')) {
+    function gather_inventory_report(mysqli $conn, int $empresaId): array
+    {
+        $report = [
+            'totals' => [
+                'products' => 0,
+                'totalStock' => 0,
+                'valuation' => 0.0,
+                'outOfStock' => 0,
+                'withLocation' => 0,
+            ],
+            'categories' => [],
+            'products' => [],
+        ];
+
+        try {
+            $stmt = $conn->prepare('SELECT COUNT(*) AS total_products,
+                    SUM(stock) AS total_stock,
+                    SUM(CASE WHEN stock <= 0 THEN 1 ELSE 0 END) AS out_of_stock,
+                    SUM(CASE WHEN zona_id IS NOT NULL THEN 1 ELSE 0 END) AS with_location,
+                    SUM(stock * precio_compra) AS valuation
+                FROM productos WHERE empresa_id = ?');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $stmt->bind_result($totalProducts, $totalStock, $outOfStock, $withLocation, $valuation);
+            if ($stmt->fetch()) {
+                $report['totals']['products'] = (int) $totalProducts;
+                $report['totals']['totalStock'] = (int) ($totalStock ?? 0);
+                $report['totals']['outOfStock'] = (int) ($outOfStock ?? 0);
+                $report['totals']['withLocation'] = (int) ($withLocation ?? 0);
+                $report['totals']['valuation'] = $valuation !== null ? (float) $valuation : 0.0;
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo calcular el resumen de inventario: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT COALESCE(c.nombre, "Sin categoría") AS categoria,
+                    COUNT(*) AS productos,
+                    SUM(p.stock) AS total_stock
+                FROM productos p
+                LEFT JOIN categorias c ON c.id = p.categoria_id
+                WHERE p.empresa_id = ?
+                GROUP BY categoria
+                ORDER BY total_stock DESC, categoria ASC
+                LIMIT 15');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $report['categories'][] = [
+                    'name' => $row['categoria'] ?? 'Sin categoría',
+                    'products' => (int) ($row['productos'] ?? 0),
+                    'stock' => (int) ($row['total_stock'] ?? 0),
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo obtener el stock por categoría: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT p.nombre, p.codigo_qr, p.stock, p.last_movimiento, p.last_tipo,
+                    c.nombre AS categoria, sc.nombre AS subcategoria,
+                    a.nombre AS area_nombre, z.nombre AS zona_nombre
+                FROM productos p
+                LEFT JOIN categorias c ON c.id = p.categoria_id
+                LEFT JOIN subcategorias sc ON sc.id = p.subcategoria_id
+                LEFT JOIN zonas z ON z.id = p.zona_id
+                LEFT JOIN areas a ON a.id = z.area_id
+                WHERE p.empresa_id = ?
+                ORDER BY p.stock DESC, p.nombre ASC
+                LIMIT 60');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $lastMovementLabel = '';
+                if (!empty($row['last_movimiento'])) {
+                    try {
+                        $lastMovement = new DateTimeImmutable((string) $row['last_movimiento']);
+                        $lastMovementLabel = format_spanish_datetime($lastMovement);
+                    } catch (Throwable $exception) {
+                        $lastMovementLabel = (string) $row['last_movimiento'];
+                    }
+                }
+
+                $category = $row['categoria'] ?? '';
+                $subcategory = $row['subcategoria'] ?? '';
+                $categoryLabel = $category;
+                if ($subcategory !== '') {
+                    $categoryLabel = $category !== '' ? $category . ' · ' . $subcategory : $subcategory;
+                }
+
+                $areaLabel = $row['area_nombre'] ?? '';
+                $zoneLabel = $row['zona_nombre'] ?? '';
+                $locationLabel = trim($areaLabel . ($zoneLabel !== '' ? ' · ' . $zoneLabel : ''));
+
+                $report['products'][] = [
+                    'name' => $row['nombre'] ?? 'Producto',
+                    'category' => $categoryLabel !== '' ? $categoryLabel : 'Sin categoría',
+                    'stock' => (int) ($row['stock'] ?? 0),
+                    'code' => $row['codigo_qr'] ?? '',
+                    'location' => $locationLabel,
+                    'lastMovement' => $lastMovementLabel,
+                    'lastType' => $row['last_tipo'] ?? '',
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo listar el detalle de productos: ' . $exception->getMessage());
+        }
+
+        return $report;
+    }
+}
+
+if (!function_exists('gather_users_report')) {
+    function gather_users_report(mysqli $conn, int $empresaId): array
+    {
+        $report = [
+            'totals' => [
+                'users' => 0,
+                'active' => 0,
+                'inactive' => 0,
+            ],
+            'roles' => [],
+            'people' => [],
+        ];
+
+        try {
+            $stmt = $conn->prepare('SELECT COUNT(*) AS total_users,
+                    SUM(CASE WHEN u.activo = 1 THEN 1 ELSE 0 END) AS activos,
+                    SUM(CASE WHEN u.activo = 0 THEN 1 ELSE 0 END) AS inactivos
+                FROM usuario u
+                INNER JOIN usuario_empresa ue ON ue.id_usuario = u.id_usuario
+                WHERE ue.id_empresa = ?');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $stmt->bind_result($totalUsers, $activeUsers, $inactiveUsers);
+            if ($stmt->fetch()) {
+                $report['totals']['users'] = (int) $totalUsers;
+                $report['totals']['active'] = (int) ($activeUsers ?? 0);
+                $report['totals']['inactive'] = (int) ($inactiveUsers ?? 0);
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo calcular el total de usuarios: ' . $exception->getMessage());
+        }
+
+        try {
+            $stmt = $conn->prepare('SELECT COALESCE(u.rol, "Sin rol") AS rol, COUNT(*) AS total
+                FROM usuario u
+                INNER JOIN usuario_empresa ue ON ue.id_usuario = u.id_usuario
+                WHERE ue.id_empresa = ?
+                GROUP BY rol
+                ORDER BY total DESC, rol ASC');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $report['roles'][] = [
+                    'role' => $row['rol'] ?? 'Sin rol',
+                    'total' => (int) ($row['total'] ?? 0),
+                ];
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo obtener el resumen por rol: ' . $exception->getMessage());
+        }
+
+        $userIndex = [];
+        try {
+            $stmt = $conn->prepare('SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+                    u.rol, u.activo, u.fecha_registro
+                FROM usuario u
+                INNER JOIN usuario_empresa ue ON ue.id_usuario = u.id_usuario
+                WHERE ue.id_empresa = ?
+                ORDER BY u.nombre ASC, u.apellido ASC
+                LIMIT 120');
+            $stmt->bind_param('i', $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $userId = (int) ($row['id_usuario'] ?? 0);
+                $registeredLabel = '';
+                if (!empty($row['fecha_registro'])) {
+                    try {
+                        $registeredDate = new DateTimeImmutable((string) $row['fecha_registro']);
+                        $registeredLabel = format_spanish_datetime($registeredDate);
+                    } catch (Throwable $exception) {
+                        $registeredLabel = (string) $row['fecha_registro'];
+                    }
+                }
+
+                $report['people'][] = [
+                    'id' => $userId,
+                    'name' => trim(($row['nombre'] ?? '') . ' ' . ($row['apellido'] ?? '')),
+                    'email' => $row['correo'] ?? '',
+                    'phone' => $row['telefono'] ?? '',
+                    'role' => $row['rol'] ?? '',
+                    'active' => (int) ($row['activo'] ?? 0) === 1,
+                    'registered' => $registeredLabel,
+                    'accesses' => [],
+                ];
+
+                if ($userId > 0) {
+                    $userIndex[$userId] = count($report['people']) - 1;
+                }
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo listar a los usuarios de la empresa: ' . $exception->getMessage());
+        }
+
+        if (!empty($userIndex)) {
+            $idList = implode(',', array_map('intval', array_keys($userIndex)));
+            if ($idList !== '') {
+                try {
+                    $sql = 'SELECT uaz.id_usuario, a.nombre AS area_nombre, z.nombre AS zona_nombre
+                        FROM usuario_area_zona uaz
+                        LEFT JOIN areas a ON a.id = uaz.id_area
+                        LEFT JOIN zonas z ON z.id = uaz.id_zona
+                        WHERE uaz.id_usuario IN (' . $idList . ')
+                        ORDER BY a.nombre ASC, z.nombre ASC';
+                    $result = $conn->query($sql);
+                    if ($result instanceof mysqli_result) {
+                        while ($row = $result->fetch_assoc()) {
+                            $userId = (int) ($row['id_usuario'] ?? 0);
+                            if (!isset($userIndex[$userId])) {
+                                continue;
+                            }
+                            $labelParts = [];
+                            if (!empty($row['area_nombre'])) {
+                                $labelParts[] = 'Área: ' . $row['area_nombre'];
+                            }
+                            if (!empty($row['zona_nombre'])) {
+                                $labelParts[] = 'Zona: ' . $row['zona_nombre'];
+                            }
+                            $label = $labelParts ? implode(' · ', $labelParts) : 'Área asignada';
+                            $report['people'][$userIndex[$userId]]['accesses'][] = $label;
+                        }
+                    }
+                } catch (Throwable $exception) {
+                    error_log('[automation] No se pudieron obtener los accesos de usuarios: ' . $exception->getMessage());
+                }
+            }
+        }
+
+        foreach ($report['people'] as &$person) {
+            $person['accessSummary'] = $person['accesses'] ? implode(', ', $person['accesses']) : 'Sin asignaciones';
+            unset($person['accesses']);
+        }
+        unset($person);
+
+        return $report;
+    }
+}
+
+if (!function_exists('gather_activity_log_report')) {
+    function gather_activity_log_report(mysqli $conn, int $empresaId, DateTimeImmutable $start, DateTimeImmutable $end): array
+    {
+        $report = [
+            'total' => 0,
+            'logs' => [],
+            'moduleCounts' => [],
+        ];
+
+        $startSql = $start->format('Y-m-d');
+        $endSql = $end->format('Y-m-d');
+
+        try {
+            $stmt = $conn->prepare('SELECT lc.modulo, lc.accion, lc.fecha, lc.hora, u.nombre, u.apellido
+                FROM log_control lc
+                INNER JOIN usuario u ON u.id_usuario = lc.id_usuario
+                LEFT JOIN usuario_empresa ue ON ue.id_usuario = u.id_usuario
+                WHERE lc.fecha BETWEEN ? AND ?
+                  AND (ue.id_empresa = ? OR u.id_usuario = (SELECT usuario_creador FROM empresa WHERE id_empresa = ? LIMIT 1))
+                ORDER BY lc.fecha DESC, lc.hora DESC
+                LIMIT 60');
+            $stmt->bind_param('ssii', $startSql, $endSql, $empresaId, $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $timestamp = null;
+                if (!empty($row['fecha'])) {
+                    $candidate = trim((string) $row['fecha']);
+                    $timePart = trim((string) ($row['hora'] ?? '00:00:00'));
+                    try {
+                        $timestamp = new DateTimeImmutable($candidate . ' ' . $timePart);
+                    } catch (Throwable $exception) {
+                        $timestamp = null;
+                    }
+                }
+
+                $dateLabel = $timestamp ? format_spanish_datetime($timestamp, false) : (string) ($row['fecha'] ?? '');
+                $timeLabel = $timestamp ? $timestamp->format('H:i') : (string) ($row['hora'] ?? '');
+                $module = $row['modulo'] ?? 'Registro';
+
+                $report['logs'][] = [
+                    'module' => $module,
+                    'action' => $row['accion'] ?? '',
+                    'date' => $dateLabel,
+                    'time' => $timeLabel,
+                    'user' => trim(($row['nombre'] ?? '') . ' ' . ($row['apellido'] ?? '')),
+                ];
+
+                $report['moduleCounts'][$module] = ($report['moduleCounts'][$module] ?? 0) + 1;
+                $report['total'] += 1;
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudieron obtener los registros de actividad: ' . $exception->getMessage());
+        }
+
+        return $report;
+    }
+}
+
+if (!function_exists('gather_access_log_report')) {
+    function gather_access_log_report(mysqli $conn, int $empresaId, DateTimeImmutable $start, DateTimeImmutable $end): array
+    {
+        $report = [
+            'total' => 0,
+            'entries' => [],
+            'actionCounts' => [],
+            'lastAccessByUser' => [],
+        ];
+
+        $startSql = $start->format('Y-m-d H:i:s');
+        $endSql = $end->format('Y-m-d H:i:s');
+
+        try {
+            $stmt = $conn->prepare('SELECT ra.accion, ra.fecha, u.nombre, u.apellido, u.rol, u.id_usuario
+                FROM registro_accesos ra
+                INNER JOIN usuario u ON u.id_usuario = ra.id_usuario
+                LEFT JOIN usuario_empresa ue ON ue.id_usuario = u.id_usuario
+                WHERE ra.fecha BETWEEN ? AND ?
+                  AND (ue.id_empresa = ? OR u.id_usuario = (SELECT usuario_creador FROM empresa WHERE id_empresa = ? LIMIT 1))
+                ORDER BY ra.fecha DESC
+                LIMIT 60');
+            $stmt->bind_param('ssii', $startSql, $endSql, $empresaId, $empresaId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $timestamp = null;
+                if (!empty($row['fecha'])) {
+                    try {
+                        $timestamp = new DateTimeImmutable((string) $row['fecha']);
+                    } catch (Throwable $exception) {
+                        $timestamp = null;
+                    }
+                }
+
+                $dateLabel = $timestamp ? format_spanish_datetime($timestamp, false) : '';
+                $timeLabel = $timestamp ? $timestamp->format('H:i') : '';
+                $action = $row['accion'] ?? '';
+                $userName = trim(($row['nombre'] ?? '') . ' ' . ($row['apellido'] ?? ''));
+                $userId = (int) ($row['id_usuario'] ?? 0);
+
+                $report['entries'][] = [
+                    'action' => $action,
+                    'date' => $dateLabel,
+                    'time' => $timeLabel,
+                    'user' => $userName,
+                    'role' => $row['rol'] ?? '',
+                ];
+
+                $report['actionCounts'][$action] = ($report['actionCounts'][$action] ?? 0) + 1;
+                $report['total'] += 1;
+
+                if ($userId > 0 && !isset($report['lastAccessByUser'][$userId])) {
+                    $report['lastAccessByUser'][$userId] = [
+                        'user' => $userName,
+                        'action' => $action,
+                        'date' => $dateLabel,
+                        'time' => $timeLabel,
+                    ];
+                }
+            }
+            $stmt->close();
+        } catch (Throwable $exception) {
+            error_log('[automation] No se pudo obtener el registro de accesos: ' . $exception->getMessage());
+        }
+
+        $report['lastAccessByUser'] = array_values($report['lastAccessByUser']);
+        return $report;
+    }
+}
+
+if (!function_exists('build_movement_focus')) {
+    function build_movement_focus(array $timeline, array $recentMovements, string $mode): array
+    {
+        $normalizedMode = $mode !== '' ? $mode : 'historial_movimientos';
+        $filterType = '';
+        if ($normalizedMode === 'ingresos') {
+            $filterType = 'ingreso';
+        } elseif ($normalizedMode === 'egresos') {
+            $filterType = 'egreso';
+        }
+
+        $totals = [
+            'movements' => 0,
+            'ingresos' => 0,
+            'egresos' => 0,
+            'net' => 0,
+        ];
+
+        $focusTimeline = [];
+        foreach ($timeline as $entry) {
+            $label = $entry['label'] ?? '';
+            $ingresos = (int) ($entry['ingresos'] ?? 0);
+            $egresos = (int) ($entry['egresos'] ?? 0);
+            $movements = (int) ($entry['movements'] ?? ($ingresos + $egresos));
+
+            if ($filterType === 'ingreso') {
+                if ($ingresos <= 0) {
+                    continue;
+                }
+                $focusTimeline[] = [
+                    'label' => $label,
+                    'ingresos' => $ingresos,
+                ];
+                $totals['ingresos'] += $ingresos;
+                $totals['movements'] += $ingresos;
+                continue;
+            }
+
+            if ($filterType === 'egreso') {
+                if ($egresos <= 0) {
+                    continue;
+                }
+                $focusTimeline[] = [
+                    'label' => $label,
+                    'egresos' => $egresos,
+                ];
+                $totals['egresos'] += $egresos;
+                $totals['movements'] += $egresos;
+                continue;
+            }
+
+            $focusTimeline[] = [
+                'label' => $label,
+                'movements' => $movements,
+                'ingresos' => $ingresos,
+                'egresos' => $egresos,
+                'net' => $ingresos - $egresos,
+            ];
+            $totals['movements'] += $movements;
+            $totals['ingresos'] += $ingresos;
+            $totals['egresos'] += $egresos;
+        }
+
+        $filteredRecent = [];
+        foreach ($recentMovements as $movement) {
+            $type = strtolower((string) ($movement['type'] ?? ''));
+            if ($filterType !== '' && $type !== $filterType) {
+                continue;
+            }
+            $filteredRecent[] = $movement;
+        }
+
+        if ($filterType === '') {
+            $totals['net'] = $totals['ingresos'] - $totals['egresos'];
+        } else {
+            $totals['net'] = $totals['ingresos'] - $totals['egresos'];
+        }
+
+        return [
+            'mode' => $normalizedMode,
+            'totals' => $totals,
+            'timeline' => $focusTimeline,
+            'recent' => array_slice($filteredRecent, 0, 40),
+        ];
+    }
+}
+
 if (!function_exists('build_report_payload')) {
     function build_report_payload(mysqli $conn, array $automation, DateTimeImmutable $now): array
     {
         [$periodStart, $periodEnd] = compute_reporting_window($automation, $now);
         $empresaId = (int) ($automation['id_empresa'] ?? 0);
+        $moduleValue = normalize_module_value($automation['modulo'] ?? '');
+        $moduleLabel = resolve_module_label($automation['modulo'] ?? '');
 
         $movementsByUser = gather_movements_by_user($conn, $empresaId, $periodStart, $periodEnd);
         $movementTimeline = gather_movement_timeline($conn, $empresaId, $periodStart, $periodEnd);
+        $recentMovements = gather_recent_movements($conn, $empresaId, $periodStart, $periodEnd);
 
-        return [
+        $payload = [
+            'module' => $moduleValue,
+            'moduleLabel' => $moduleLabel,
             'company' => gather_company_profile($conn, $empresaId),
             'palette' => gather_palette($conn, $empresaId),
             'period' => [
@@ -638,10 +1235,35 @@ if (!function_exists('build_report_payload')) {
             'summary' => compute_movement_summary($movementsByUser, $movementTimeline),
             'movementsByUser' => $movementsByUser,
             'movementTimeline' => $movementTimeline,
-            'recentMovements' => gather_recent_movements($conn, $empresaId, $periodStart, $periodEnd),
+            'recentMovements' => $recentMovements,
             'areas' => gather_area_snapshot($conn, $empresaId),
             'requests' => gather_request_summary($conn, $empresaId, $periodStart, $periodEnd),
         ];
+
+        switch ($moduleValue) {
+            case 'inventario':
+                $payload['inventory'] = gather_inventory_report($conn, $empresaId);
+                break;
+            case 'usuarios':
+                $payload['users'] = gather_users_report($conn, $empresaId);
+                break;
+            case 'registro_actividades':
+                $payload['activityLog'] = gather_activity_log_report($conn, $empresaId, $periodStart, $periodEnd);
+                break;
+            case 'accesos':
+                $payload['accessLog'] = gather_access_log_report($conn, $empresaId, $periodStart, $periodEnd);
+                break;
+            default:
+                // otros módulos reutilizan datos base
+                break;
+        }
+
+        $focusMode = in_array($moduleValue, ['historial_movimientos', 'ingresos/egresos', 'ingresos', 'egresos'], true)
+            ? $moduleValue
+            : '';
+        $payload['movementFocus'] = build_movement_focus($movementTimeline, $recentMovements, $focusMode);
+
+        return $payload;
     }
 }
 
