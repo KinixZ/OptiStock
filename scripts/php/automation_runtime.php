@@ -9,7 +9,6 @@ if (!defined('AUTOMATION_MODULE_LABELS')) {
         'inventario' => 'Inventario actual',
         'usuarios' => 'Usuarios actuales',
         'areas_zonas' => 'Áreas y zonas',
-        'historial_movimientos' => 'Historial de movimientos',
         'ingresos/egresos' => 'Ingresos y egresos',
         'ingresos' => 'Ingresos registrados',
         'egresos' => 'Egresos registrados',
@@ -25,8 +24,10 @@ if (!defined('LEGACY_AUTOMATION_MODULE_ALIASES')) {
         'gestion de inventario' => 'inventario',
         'gestión de usuarios' => 'usuarios',
         'gestion de usuarios' => 'usuarios',
-        'reportes y análisis' => 'historial_movimientos',
-        'reportes y analisis' => 'historial_movimientos',
+        'reportes y análisis' => 'ingresos/egresos',
+        'reportes y analisis' => 'ingresos/egresos',
+        'historial de movimientos' => 'ingresos/egresos',
+        'historial_movimientos' => 'ingresos/egresos',
         'ingresos y egresos' => 'ingresos/egresos',
         'resumen de ingresos y egresos' => 'ingresos/egresos',
         'recepción y almacenamiento' => 'ingresos',
@@ -76,10 +77,9 @@ if (!function_exists('resolve_manual_source_label')) {
             'inventario' => 'Gestión de inventario',
             'usuarios' => 'Administración de usuarios',
             'areas_zonas' => 'Áreas y zonas de almacén',
-            'historial_movimientos' => 'Control de registros',
             'ingresos/egresos' => 'Ingresos y egresos',
-            'ingresos' => 'Historial de ingresos',
-            'egresos' => 'Historial de egresos',
+            'ingresos' => 'Ingresos registrados',
+            'egresos' => 'Egresos registrados',
             'registro_actividades' => 'Registro de actividades',
             'solicitudes' => 'Historial de solicitudes',
             'accesos' => 'Accesos de usuarios',
@@ -1123,7 +1123,7 @@ if (!function_exists('gather_access_log_report')) {
 if (!function_exists('build_movement_focus')) {
     function build_movement_focus(array $timeline, array $recentMovements, string $mode): array
     {
-        $normalizedMode = $mode !== '' ? $mode : 'historial_movimientos';
+        $normalizedMode = $mode !== '' ? $mode : 'ingresos/egresos';
         $filterType = '';
         if ($normalizedMode === 'ingresos') {
             $filterType = 'ingreso';
@@ -1258,7 +1258,7 @@ if (!function_exists('build_report_payload')) {
                 break;
         }
 
-        $focusMode = in_array($moduleValue, ['historial_movimientos', 'ingresos/egresos', 'ingresos', 'egresos'], true)
+        $focusMode = in_array($moduleValue, ['ingresos/egresos', 'ingresos', 'egresos'], true)
             ? $moduleValue
             : '';
         $payload['movementFocus'] = build_movement_focus($movementTimeline, $recentMovements, $focusMode);

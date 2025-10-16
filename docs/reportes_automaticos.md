@@ -44,7 +44,7 @@ Este documento detalla la organización y las funciones sugeridas para la págin
 - **Programación**:
   - Formulario para seleccionar: tipo de reporte, periodo, área/zona, destinatarios internos y formato de entrega (descarga, correo interno).
   - Guardar la configuración en la base de datos local para que el proceso programado la ejecute.
-  - Módulos permitidos para automatización: Inventario actual, Usuarios actuales, Áreas y zonas, Historial de movimientos, Ingresos y egresos, Ingresos registrados, Egresos registrados, Registro de actividades, Accesos de usuarios e Historial de solicitudes. Solo se aceptan opciones que ya existen en la interfaz.
+  - Módulos permitidos para automatización: Inventario actual, Usuarios actuales, Áreas y zonas, Ingresos y egresos, Ingresos registrados, Egresos registrados, Registro de actividades, Accesos de usuarios e Historial de solicitudes. El módulo de “Historial de movimientos” se consolidó dentro de “Ingresos y egresos” para simplificar la configuración y evitar duplicados. Solo se aceptan opciones que ya existen en la interfaz.
 
 ### 3.1 Cómo verificar qué datos se cargan en cada ejecución automática
 

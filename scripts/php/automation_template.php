@@ -249,6 +249,11 @@ if (!function_exists('automation_sum_request_totals')) {
       font-size: 13px;
       color: var(--accent-color);
     }
+    .section-card__note {
+      margin: 4px 0 0;
+      font-size: 11px;
+      color: var(--muted-color);
+    }
     .metric-grid {
       margin-top: 6px;
     }
@@ -674,10 +679,17 @@ if (!function_exists('automation_sum_request_totals')) {
           <div class="empty-state">No se encontraron zonas registradas.</div>
         <?php endif; ?>
       </section>
-    <?php elseif (in_array($moduleValue, ['historial_movimientos', 'ingresos/egresos', 'ingresos', 'egresos'], true)): ?>
+    <?php elseif (in_array($moduleValue, ['ingresos/egresos', 'ingresos', 'egresos'], true)): ?>
       <?php $focusTotals = $movementFocusTotals; ?>
       <section class="section-card">
         <h2>Resumen de movimientos</h2>
+        <?php if ($moduleValue === 'ingresos/egresos'): ?>
+          <p class="section-card__note">En este reporte se registran tanto ingresos como egresos.</p>
+        <?php elseif ($moduleValue === 'ingresos'): ?>
+          <p class="section-card__note">En este reporte solo se incluyen los ingresos registrados.</p>
+        <?php elseif ($moduleValue === 'egresos'): ?>
+          <p class="section-card__note">En este reporte solo se incluyen los egresos registrados.</p>
+        <?php endif; ?>
         <div class="metric-grid">
           <div class="metric-card">
             <div class="metric-card__label">

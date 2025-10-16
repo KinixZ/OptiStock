@@ -8,7 +8,6 @@
     { value: 'inventario', label: 'Inventario actual' },
     { value: 'usuarios', label: 'Usuarios actuales' },
     { value: 'areas_zonas', label: 'Áreas y zonas' },
-    { value: 'historial_movimientos', label: 'Historial de movimientos' },
     { value: 'ingresos/egresos', label: 'Ingresos y egresos' },
     { value: 'ingresos', label: 'Ingresos registrados' },
     { value: 'egresos', label: 'Egresos registrados' },
@@ -21,21 +20,27 @@
     inventario: 'Gestión de inventario',
     usuarios: 'Administración de usuarios',
     areas_zonas: 'Áreas y zonas de almacén',
-    historial_movimientos: 'Control de registros',
     'ingresos/egresos': 'Ingresos y egresos',
-    ingresos: 'Historial de ingresos',
-    egresos: 'Historial de egresos',
+    ingresos: 'Ingresos registrados',
+    egresos: 'Egresos registrados',
     registro_actividades: 'Registro de actividades',
     solicitudes: 'Historial de solicitudes',
     accesos: 'Accesos de usuarios'
+  };
+  const AUTOMATION_MODULE_HINTS = {
+    'ingresos/egresos': 'En este módulo se registran tanto ingresos como egresos.',
+    ingresos: 'En este módulo solo se registran ingresos.',
+    egresos: 'En este módulo solo se registran egresos.'
   };
   const LEGACY_MODULE_ALIASES = {
     'gestión de inventario': 'inventario',
     'gestion de inventario': 'inventario',
     'gestión de usuarios': 'usuarios',
     'gestion de usuarios': 'usuarios',
-    'reportes y análisis': 'historial_movimientos',
-    'reportes y analisis': 'historial_movimientos',
+    'reportes y análisis': 'ingresos/egresos',
+    'reportes y analisis': 'ingresos/egresos',
+    'historial de movimientos': 'ingresos/egresos',
+    'historial_movimientos': 'ingresos/egresos',
     'ingresos y egresos': 'ingresos/egresos',
     'ingresos y egreso': 'ingresos/egresos',
     'resumen de ingresos y egresos': 'ingresos/egresos',
@@ -83,6 +88,23 @@
       return aliasEntry ? aliasEntry.label : value;
     }
     return String(value);
+  }
+
+  function getAutomationModuleHint(value) {
+    if (!value) {
+      return '';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(AUTOMATION_MODULE_HINTS, value)) {
+      return AUTOMATION_MODULE_HINTS[value];
+    }
+
+    const normalized = normalizeAutomationModuleValue(value);
+    if (normalized && Object.prototype.hasOwnProperty.call(AUTOMATION_MODULE_HINTS, normalized)) {
+      return AUTOMATION_MODULE_HINTS[normalized];
+    }
+
+    return '';
   }
 
   function resolveManualSourceLabel(value) {
@@ -2155,12 +2177,15 @@
         const moduleText = moduleLabel
           ? `<span class="automatic-item__module">${escapeHtml(moduleLabel)}</span>`
           : '<span class="automatic-item__module text-muted">Sin módulo asignado</span>';
+        const moduleHint = getAutomationModuleHint(automation.module);
+        const moduleHintHtml = moduleHint ? `<span class="automatic-item__hint">${escapeHtml(moduleHint)}</span>` : '';
         const lastRun = formatAutomationLastRun(automation);
         return `
           <li class="automatic-item" data-automation-id="${escapeHtml(automation.id)}">
             <div class="automatic-item__main">
               <span class="automatic-item__name">${escapeHtml(automation.name)}</span>
               ${moduleText}
+              ${moduleHintHtml}
             </div>
             <div class="automatic-item__meta">
               <span class="automatic-item__badge">${formatLabel}</span>
