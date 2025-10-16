@@ -9,7 +9,6 @@ CREATE TABLE `reportes_automatizados` (
     'inventario',
     'usuarios',
     'areas_zonas',
-    'historial_movimientos',
     'ingresos/egresos',
     'ingresos',
     'egresos',
