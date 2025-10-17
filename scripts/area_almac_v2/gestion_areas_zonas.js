@@ -503,7 +503,6 @@ let editZoneId = null;
         data: dataset,
         title: 'Reporte de ocupación de zonas',
         subtitle,
-        moduleLabel: 'Áreas y zonas de almacén',
         fileName: 'ocupacion_zonas.pdf',
         orientation: 'landscape'
       });
