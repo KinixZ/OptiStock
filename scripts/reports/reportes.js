@@ -1244,6 +1244,7 @@
           data: datasetInfo.dataset,
           title: datasetInfo.title || report.title,
           subtitle: datasetInfo.subtitle || '',
+          moduleLabel: datasetInfo.source || report.historySource || '',
           fileName: `${datasetInfo.fileNameBase || 'reporte'}.pdf`
         });
       } else {
