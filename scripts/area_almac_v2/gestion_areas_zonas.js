@@ -504,7 +504,7 @@ let editZoneId = null;
         title: 'Reporte de ocupación de zonas',
         subtitle,
         fileName: 'ocupacion_zonas.pdf',
-        orientation: 'landscape'
+        orientation: 'portrait'
       });
 
       if (result?.blob) {
