@@ -2011,9 +2011,8 @@
                     data: dataset,
                     title: 'Historial de solicitudes',
                     subtitle: subtitleParts.join(' • '),
-                    moduleLabel: 'Historial de solicitudes',
                     fileName: 'historial_solicitudes.pdf',
-                    orientation: 'portrait'
+                    orientation: dataset.columnCount > 5 ? 'landscape' : 'portrait'
                 });
 
                 if (result?.blob) {
@@ -2115,7 +2114,6 @@
                     data: dataset,
                     title: 'Historial de actividades',
                     subtitle: subtitleParts.join(' • '),
-                    moduleLabel: 'Registro de actividades',
                     fileName: 'logs.pdf'
                 });
 
