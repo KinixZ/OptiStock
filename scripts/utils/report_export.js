@@ -436,14 +436,124 @@
       throw new Error('EMPTY_TABLE');
     }
 
-    const orientation = options.orientation || (dataset.columnCount > 5 ? 'landscape' : 'portrait');
+    const orientation = 'portrait';
     const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
     const palette = getPalette();
     const logoPromise = getEmpresaLogoDataUrl();
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const headerHeight = 90;
+    const condensedLayout = dataset.columnCount > 6;
+
+    const rawTitle = typeof options.title === 'string' ? options.title.trim() : '';
+    const title = rawTitle || 'Reporte';
+    const rawModule = typeof options.module === 'string' ? options.module : options.moduleLabel;
+    const moduleLabel = typeof rawModule === 'string' && rawModule.trim() ? rawModule.trim() : title;
+    const rawCompany = typeof options.companyName === 'string' ? options.companyName.trim() : '';
+    const companyName = rawCompany || getEmpresaNombre();
+
+    const providedMetadata = Array.isArray(options.metadata) ? options.metadata : [];
+    const metadataEntries = [];
+    const metadataLabels = new Set();
+
+    const addMetadata = (label, value) => {
+      const normalizedValue = value === null || value === undefined ? '' : String(value).trim();
+      const normalizedLabel = label === null || label === undefined ? '' : String(label).trim();
+      if (!normalizedValue) {
+        return;
+      }
+      if (normalizedLabel) {
+        const key = normalizedLabel.toLowerCase();
+        if (metadataLabels.has(key)) {
+          return;
+        }
+        metadataEntries.push({ label: normalizedLabel, value: normalizedValue });
+        metadataLabels.add(key);
+        return;
+      }
+      metadataEntries.push({ label: '', value: normalizedValue });
+    };
+
+    providedMetadata.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
+      addMetadata(entry.label, entry.value);
+    });
+
+    const subtitle = typeof options.subtitle === 'string' ? options.subtitle : '';
+    if (subtitle.trim()) {
+      const parts = subtitle
+        .split(/[\u2022\u00b7]/) // split on • or ·
+        .map((part) => part.trim())
+        .filter(Boolean);
+      parts.forEach((part) => {
+        const colonIndex = part.indexOf(':');
+        if (colonIndex > -1) {
+          const label = part.slice(0, colonIndex).trim();
+          const value = part.slice(colonIndex + 1).trim();
+          addMetadata(label, value);
+        } else {
+          addMetadata('', part);
+        }
+      });
+    }
+
+    addMetadata('Empresa', companyName);
+
+    const includeRowCount = options.includeRowCount !== false;
+    if (includeRowCount) {
+      let countText = '';
+      if (typeof options.countLabel === 'function') {
+        countText = options.countLabel(dataset.rowCount);
+      } else if (typeof options.countLabel === 'string') {
+        countText = options.countLabel;
+      } else {
+        countText = pluralize(dataset.rowCount, 'registro');
+      }
+      addMetadata('Registros exportados', countText);
+    }
+
+    let generatedAt = '';
+    if (options.generatedAt instanceof Date) {
+      generatedAt = formatTimestamp(options.generatedAt);
+    } else if (typeof options.generatedAt === 'string') {
+      generatedAt = options.generatedAt.trim();
+    }
+    if (!generatedAt) {
+      generatedAt = formatTimestamp();
+    }
+    addMetadata('Generado', generatedAt);
+
+    const marginX = 48;
+    const topMargin = 36;
+
+    let simulatedY = topMargin;
+    if (companyName) {
+      simulatedY += 18;
+    }
+    if (title) {
+      simulatedY += 26;
+    }
+    if (moduleLabel) {
+      simulatedY += 20;
+    }
+    if (metadataEntries.length) {
+      simulatedY += 6;
+      metadataEntries.forEach((entry) => {
+        if (entry.label) {
+          simulatedY += 12;
+          simulatedY += 16;
+        } else {
+          simulatedY += 16;
+        }
+      });
+    }
+    simulatedY += 18;
+    const headerHeight = Math.max(simulatedY, 150);
+
+    doc.setFillColor(...rgbToArray(palette.bodyBgRgb));
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
     doc.setFillColor(...rgbToArray(palette.topbarRgb));
     doc.rect(0, 0, pageWidth, headerHeight, 'F');
@@ -451,15 +561,56 @@
     doc.setFillColor(...rgbToArray(palette.accentRgb));
     doc.rect(0, headerHeight - 12, pageWidth, 12, 'F');
 
-    doc.setTextColor(...rgbToArray(palette.topbarTextRgb));
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text(options.title || 'Reporte', 40, 48, { baseline: 'alphabetic' });
+    const topbarText = rgbToArray(palette.topbarTextRgb);
+    const metaLabelColor = rgbToArray(hexToRgb(mixHexColors(palette.topbarText, palette.topbar, 0.68)));
 
-    if (options.subtitle) {
+    doc.setTextColor(...topbarText);
+    let cursorY = topMargin;
+
+    if (companyName) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...metaLabelColor);
+      doc.text(companyName.toUpperCase(), marginX, cursorY, { baseline: 'alphabetic' });
+      cursorY += 18;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(...topbarText);
+    doc.text(title, marginX, cursorY, { baseline: 'alphabetic' });
+    cursorY += 26;
+
+    if (moduleLabel) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11.5);
-      doc.text(String(options.subtitle), 40, 68, { baseline: 'alphabetic' });
+      doc.setTextColor(...metaLabelColor);
+      doc.text(`Módulo origen: ${moduleLabel}`, marginX, cursorY, { baseline: 'alphabetic' });
+      cursorY += 20;
+    }
+
+    if (metadataEntries.length) {
+      cursorY += 6;
+      metadataEntries.forEach((entry) => {
+        if (entry.label) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(...metaLabelColor);
+          doc.text(entry.label.toUpperCase(), marginX, cursorY, { baseline: 'alphabetic' });
+          cursorY += 12;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(...topbarText);
+          doc.text(entry.value, marginX, cursorY, { baseline: 'alphabetic' });
+          cursorY += 16;
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(...topbarText);
+          doc.text(entry.value, marginX, cursorY, { baseline: 'alphabetic' });
+          cursorY += 16;
+        }
+      });
     }
 
     const logoDataUrl = await logoPromise;
@@ -486,7 +637,6 @@
         }
         targetWidth = Math.min(Math.max(targetWidth, 48), 140);
         targetHeight = Math.min(Math.max(targetHeight, 32), 80);
-        const marginX = 40;
         const logoX = pageWidth - marginX - targetWidth;
         const logoY = 24;
         doc.addImage(logoDataUrl, imageType, logoX, logoY, targetWidth, targetHeight, undefined, 'FAST');
@@ -498,26 +648,27 @@
     doc.autoTable({
       head: [dataset.header],
       body: dataset.rows,
-      startY: headerHeight + 16,
-      margin: { left: 40, right: 40 },
+      startY: headerHeight + 24,
+      margin: { left: marginX, right: marginX },
       theme: 'striped',
       styles: {
         font: 'helvetica',
-        fontSize: 10,
+        fontSize: condensedLayout ? 8 : 10,
         textColor: rgbToArray(palette.textRgb),
         cellPadding: { top: 6, bottom: 6, left: 6, right: 6 },
         lineColor: rgbToArray(palette.gridRgb),
-        lineWidth: 0.3
+        lineWidth: 0.3,
+        fillColor: rgbToArray(palette.cardBgRgb)
       },
       headStyles: {
         fontStyle: 'bold',
-        fontSize: 11,
+        fontSize: condensedLayout ? 9 : 11,
         fillColor: rgbToArray(palette.sidebarRgb),
         textColor: rgbToArray(palette.sidebarTextRgb),
         lineWidth: 0
       },
       bodyStyles: {
-        fillColor: rgbToArray(palette.bodyBgRgb),
+        fillColor: rgbToArray(palette.cardBgRgb),
         textColor: rgbToArray(palette.textRgb)
       },
       alternateRowStyles: {
@@ -533,7 +684,6 @@
     doc.setFontSize(10);
     doc.setTextColor(...rgbToArray(palette.mutedRgb));
 
-    const marginX = 40;
     const pageTotal = doc.internal.getNumberOfPages();
     for (let page = 1; page <= pageTotal; page += 1) {
       doc.setPage(page);
