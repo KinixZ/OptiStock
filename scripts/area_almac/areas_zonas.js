@@ -182,6 +182,7 @@ async function exportarInventarioAlmacen({ formato, tabla, meta = {} }) {
         data: dataset,
         title: meta.title || 'Reporte',
         subtitle,
+        moduleLabel: 'Áreas y zonas de almacén',
         fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
         orientation: meta.orientation || 'landscape'
       });
