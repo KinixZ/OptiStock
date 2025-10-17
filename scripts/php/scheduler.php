@@ -256,60 +256,6 @@ function gather_company_profile(mysqli $conn, int $empresaId): array
     }
 }
 
-function scheduler_palette_normalize_hex($value, string $fallback = '#000000'): string
-{
-    $raw = is_string($value) ? trim($value) : '';
-    if ($raw === '') {
-        return strtolower($fallback);
-    }
-    if (preg_match('/^#[0-9a-fA-F]{6}$/', $raw)) {
-        return strtolower($raw);
-    }
-    if (preg_match('/^#[0-9a-fA-F]{3}$/', $raw)) {
-        $chars = substr($raw, 1);
-        $expanded = '#' . $chars[0] . $chars[0] . $chars[1] . $chars[1] . $chars[2] . $chars[2];
-        return strtolower($expanded);
-    }
-    return strtolower($fallback);
-}
-
-function scheduler_palette_hex_to_rgb(string $hex): array
-{
-    $normalized = scheduler_palette_normalize_hex($hex, '#000000');
-    $value = substr($normalized, 1);
-    $int = (int) hexdec($value);
-    return [
-        ($int >> 16) & 255,
-        ($int >> 8) & 255,
-        $int & 255,
-    ];
-}
-
-function scheduler_palette_rgb_to_hex(int $r, int $g, int $b): string
-{
-    $clamp = static function ($component): int {
-        if (!is_numeric($component)) {
-            return 0;
-        }
-        return (int) max(0, min(255, round((float) $component)));
-    };
-
-    return sprintf('#%02x%02x%02x', $clamp($r), $clamp($g), $clamp($b));
-}
-
-function scheduler_palette_mix_hex(string $colorA, string $colorB, float $ratio = 0.5): string
-{
-    $amount = max(0.0, min(1.0, $ratio));
-    [$ar, $ag, $ab] = scheduler_palette_hex_to_rgb($colorA);
-    [$br, $bg, $bb] = scheduler_palette_hex_to_rgb($colorB);
-
-    $r = $ar + ($br - $ar) * $amount;
-    $g = $ag + ($bg - $ag) * $amount;
-    $b = $ab + ($bb - $ab) * $amount;
-
-    return scheduler_palette_rgb_to_hex($r, $g, $b);
-}
-
 function gather_palette(mysqli $conn, int $empresaId): array
 {
     try {
@@ -319,7 +265,8 @@ function gather_palette(mysqli $conn, int $empresaId): array
         $stmt->bind_result($sidebar, $topbar);
         $palette = [
             'primary' => '#ff6f91',
-            'secondary' => '#171f34',
+            'secondary' => '#0f172a',
+            'neutral' => '#f8fafc',
         ];
         if ($stmt->fetch()) {
             if ($topbar) {
@@ -330,25 +277,13 @@ function gather_palette(mysqli $conn, int $empresaId): array
             }
         }
         $stmt->close();
-
-        $primary = scheduler_palette_normalize_hex($palette['primary'] ?? '#ff6f91', '#ff6f91');
-        $secondary = scheduler_palette_normalize_hex($palette['secondary'] ?? '#171f34', '#171f34');
-        $neutral = scheduler_palette_mix_hex($secondary, '#ffffff', 0.92);
-        $accent = scheduler_palette_mix_hex($primary, '#ffffff', 0.35);
-
-        return [
-            'primary' => $primary,
-            'secondary' => $secondary,
-            'neutral' => $neutral,
-            'accent' => $accent,
-        ];
+        return $palette;
     } catch (Throwable $exception) {
         log_msg('No se pudo obtener la paleta de colores: ' . $exception->getMessage());
         return [
             'primary' => '#ff6f91',
-            'secondary' => '#171f34',
-            'neutral' => '#f5f6fb',
-            'accent' => '#0fb4d4',
+            'secondary' => '#0f172a',
+            'neutral' => '#f8fafc',
         ];
     }
 }
