@@ -117,21 +117,21 @@
     }
 
     trendRangeButtons.forEach(button => {
-    if (button.classList.contains('is-active')) {
-        trendRange = button.dataset.trendRange || trendRange;
-    }
-    button.addEventListener('click', () => {
-        const nuevoRango = button.dataset.trendRange || 'all';
-        if (nuevoRango === trendRange) {
-            return;
+        if (button.classList.contains('is-active')) {
+            trendRange = button.dataset.trendRange || trendRange;
         }
-        trendRange = nuevoRango;
-        trendRangeButtons.forEach(btn => {
-            btn.classList.toggle('is-active', btn === button);
+        button.addEventListener('click', () => {
+            const nuevoRango = button.dataset.trendRange || 'all';
+            if (nuevoRango === trendRange) {
+                return;
+            }
+            trendRange = nuevoRango;
+            trendRangeButtons.forEach(btn => {
+                btn.classList.toggle('is-active', btn === button);
+            });
+            actualizarCharts(ultimoConjuntoFiltrado);
         });
-        renderTrendChart();
     });
-});
 
     if (!filtroModulo || !filtroUsuario || !filtroRol || !tablaBody) {
         console.warn('La vista del log de control no está disponible. Se omite la inicialización.');
@@ -152,6 +152,7 @@
     let trendChart = null;
     let moduleActivityChart = null;
     let topUsersChart = null;
+    let ultimoConjuntoFiltrado = [];
     let trendLabelsISO = [];
     let trendSeries = [];
     let notificationHistoryData = [];
@@ -1268,6 +1269,62 @@
         return resultado;
     }
 
+    function normalizarFechaISO(valor) {
+        if (!valor) {
+            return '';
+        }
+
+        const texto = String(valor).trim();
+        if (!texto) {
+            return '';
+        }
+
+        const isoMatch = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+            return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        }
+
+        const partes = texto.split('/');
+        if (partes.length === 3) {
+            const [dia, mes, anio] = partes;
+            if (dia && mes && anio) {
+                return `${anio.padStart(4, '0')}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+            }
+        }
+
+        return '';
+    }
+
+    function filtrarDatosPorRangoTemporal(datos = []) {
+        if (!Array.isArray(datos)) {
+            return [];
+        }
+
+        if (trendRange === 'all' || !TREND_RANGE_DAYS[trendRange]) {
+            return datos.slice();
+        }
+
+        const serieFiltrada = obtenerSerieFiltradaPorRango();
+        if (!Array.isArray(serieFiltrada) || serieFiltrada.length === 0) {
+            return [];
+        }
+
+        const inicio = serieFiltrada[0]?.iso;
+        const fin = serieFiltrada[serieFiltrada.length - 1]?.iso;
+
+        if (!inicio || !fin) {
+            return [];
+        }
+
+        return datos.filter(registro => {
+            const fechaISO = normalizarFechaISO(registro?.fecha);
+            if (!fechaISO) {
+                return false;
+            }
+            return fechaISO >= inicio && fechaISO <= fin;
+        });
+    }
+
     function renderTrendChart() {
         if (!activityTrendCanvas || !window.Chart) {
             return;
@@ -1509,18 +1566,19 @@
         }
 
         const Chart = window.Chart;
+        const fuente = Array.isArray(datos) ? datos : [];
 
-        // Gráfico de tendencias
         if (activityTrendCanvas) {
-            trendSeries = construirSerieDiaria(datos);
+            trendSeries = construirSerieDiaria(fuente);
             renderTrendChart();
         }
 
-        // Gráfico de módulos
+        const datosFiltradosPorRango = filtrarDatosPorRangoTemporal(fuente);
+
         if (moduleActivityCanvas) {
             const modulesMap = new Map();
 
-            datos.forEach(reg => {
+            datosFiltradosPorRango.forEach(reg => {
                 const modulo = reg?.modulo ? String(reg.modulo) : 'Sin módulo';
                 modulesMap.set(modulo, (modulesMap.get(modulo) || 0) + 1);
             });
@@ -1572,7 +1630,7 @@
         if (topUsersCanvas) {
             const usersMap = new Map();
 
-            datos.forEach(reg => {
+            datosFiltradosPorRango.forEach(reg => {
                 const nombre = reg?.usuario ? String(reg.usuario) : 'Sin usuario';
                 usersMap.set(nombre, (usersMap.get(nombre) || 0) + 1);
             });
@@ -1690,6 +1748,7 @@
 
             actualizarResumen(filtrados);
             actualizarControlesPaginacion(0);
+            ultimoConjuntoFiltrado = [];
             actualizarCharts([]);
             return;
         }
@@ -1699,6 +1758,8 @@
         paginaActual = Math.min(Math.max(paginaActual, 1), totalPaginas);
         const inicio = (paginaActual - 1) * PAGE_SIZE;
         const paginaDatos = filtrados.slice(inicio, inicio + PAGE_SIZE);
+
+        ultimoConjuntoFiltrado = filtrados.slice();
 
         paginaDatos.forEach(reg => {
             let fechaTexto = reg?.fecha || '';
