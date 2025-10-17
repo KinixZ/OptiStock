@@ -2012,7 +2012,7 @@
                     title: 'Historial de solicitudes',
                     subtitle: subtitleParts.join(' • '),
                     fileName: 'historial_solicitudes.pdf',
-                    orientation: 'portrait'
+                    orientation: dataset.columnCount > 5 ? 'landscape' : 'portrait'
                 });
 
                 if (result?.blob) {

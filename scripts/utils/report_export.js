@@ -436,7 +436,7 @@
       throw new Error('EMPTY_TABLE');
     }
 
-    const orientation = 'portrait';
+    const orientation = options.orientation || (dataset.columnCount > 5 ? 'landscape' : 'portrait');
     const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
     const palette = getPalette();
     const logoPromise = getEmpresaLogoDataUrl();
@@ -444,7 +444,6 @@
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const headerHeight = 90;
-    const condensedLayout = dataset.columnCount > 6;
 
     doc.setFillColor(...rgbToArray(palette.topbarRgb));
     doc.rect(0, 0, pageWidth, headerHeight, 'F');
@@ -504,7 +503,7 @@
       theme: 'striped',
       styles: {
         font: 'helvetica',
-        fontSize: condensedLayout ? 8 : 10,
+        fontSize: 10,
         textColor: rgbToArray(palette.textRgb),
         cellPadding: { top: 6, bottom: 6, left: 6, right: 6 },
         lineColor: rgbToArray(palette.gridRgb),
@@ -512,7 +511,7 @@
       },
       headStyles: {
         fontStyle: 'bold',
-        fontSize: condensedLayout ? 9 : 11,
+        fontSize: 11,
         fillColor: rgbToArray(palette.sidebarRgb),
         textColor: rgbToArray(palette.sidebarTextRgb),
         lineWidth: 0

@@ -1445,27 +1445,6 @@ function hexToRgb(hexColor) {
     };
 }
 
-function mixWithWhite(rgb, ratio = 0.35) {
-    const amount = Math.min(Math.max(Number(ratio) || 0, 0), 1);
-    const mix = channel => {
-        const value = Number.isFinite(channel) ? channel : 0;
-        return Math.round(value + (255 - value) * amount);
-    };
-    return {
-        r: mix(rgb?.r),
-        g: mix(rgb?.g),
-        b: mix(rgb?.b)
-    };
-}
-
-function rgbToHex(rgb) {
-    const toHex = value => {
-        const channel = Number.isFinite(value) ? value : 0;
-        return Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, '0');
-    };
-    return `#${toHex(rgb?.r)}${toHex(rgb?.g)}${toHex(rgb?.b)}`;
-}
-
 function updatePrimaryPalette(baseColor) {
     const rgb = hexToRgb(baseColor);
     if (!rgb) return;
@@ -1486,10 +1465,6 @@ function updatePrimaryPalette(baseColor) {
     rootStyle.setProperty('--primary-shadow-strong', `rgba(${r}, ${g}, ${b}, 0.5)`);
     rootStyle.setProperty('--primary-shadow-heavy', `rgba(${r}, ${g}, ${b}, 0.65)`);
     rootStyle.setProperty('--header-gradient', baseColor);
-    const accent = mixWithWhite(rgb, 0.35);
-    const accentHex = rgbToHex(accent);
-    rootStyle.setProperty('--accent-color', accentHex);
-    rootStyle.setProperty('--accent-soft', `rgba(${accent.r}, ${accent.g}, ${accent.b}, 0.18)`);
 }
 
 function applySidebarColor(color) {
