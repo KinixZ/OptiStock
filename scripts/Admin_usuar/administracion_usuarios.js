@@ -1001,7 +1001,6 @@
         data: dataset,
         title: 'Usuarios de la Empresa',
         subtitle: subtitleParts.join(' • '),
-        moduleLabel: 'Administración de usuarios',
         fileName: 'usuarios_empresa.pdf'
       });
 
