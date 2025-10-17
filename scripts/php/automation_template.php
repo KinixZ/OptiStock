@@ -15,6 +15,65 @@ if (!function_exists('automation_escape')) {
     }
 }
 
+if (!function_exists('automation_normalize_hex')) {
+    function automation_normalize_hex($value, string $fallback = '#000000'): string
+    {
+        $raw = is_string($value) ? trim($value) : '';
+        if ($raw === '') {
+            return strtolower($fallback);
+        }
+        if (preg_match('/^#[0-9a-fA-F]{6}$/', $raw)) {
+            return strtolower($raw);
+        }
+        if (preg_match('/^#[0-9a-fA-F]{3}$/', $raw)) {
+            $chars = substr($raw, 1);
+            $expanded = '#' . $chars[0] . $chars[0] . $chars[1] . $chars[1] . $chars[2] . $chars[2];
+            return strtolower($expanded);
+        }
+        return strtolower($fallback);
+    }
+}
+
+if (!function_exists('automation_rgb_to_hex')) {
+    function automation_rgb_to_hex($r, $g, $b): string
+    {
+        $clamp = static function ($component): int {
+            if (!is_numeric($component)) {
+                return 0;
+            }
+            return (int) max(0, min(255, round((float) $component)));
+        };
+        return sprintf('#%02x%02x%02x', $clamp($r), $clamp($g), $clamp($b));
+    }
+}
+
+if (!function_exists('automation_hex_to_rgb')) {
+    function automation_hex_to_rgb(string $hex): array
+    {
+        $normalized = automation_normalize_hex($hex, '#000000');
+        $value = substr($normalized, 1);
+        $int = (int) hexdec($value);
+        return [
+            ($int >> 16) & 255,
+            ($int >> 8) & 255,
+            $int & 255,
+        ];
+    }
+}
+
+if (!function_exists('automation_mix_hex_colors')) {
+    function automation_mix_hex_colors(string $colorA, string $colorB, float $ratio = 0.5): string
+    {
+        $amount = max(0.0, min(1.0, $ratio));
+        [$ar, $ag, $ab] = automation_hex_to_rgb($colorA);
+        [$br, $bg, $bb] = automation_hex_to_rgb($colorB);
+        $r = $ar + ($br - $ar) * $amount;
+        $g = $ag + ($bg - $ag) * $amount;
+        $b = $ab + ($bb - $ab) * $amount;
+        return automation_rgb_to_hex($r, $g, $b);
+    }
+}
+
 if (!function_exists('automation_format_int')) {
     function automation_format_int($value): string
     {
@@ -99,9 +158,31 @@ if (!$logoData) {
     }
 }
 
-$primaryColor = automation_escape($palette['primary'] ?? '#ff6f91');
-$secondaryColor = automation_escape($palette['secondary'] ?? '#0f172a');
-$neutralColor = automation_escape($palette['neutral'] ?? '#f8fafc');
+$primaryHex = automation_normalize_hex($palette['primary'] ?? '#ff6f91', '#ff6f91');
+$secondaryHex = automation_normalize_hex($palette['secondary'] ?? '#171f34', '#171f34');
+$neutralHex = automation_normalize_hex($palette['neutral'] ?? '#f5f6fb', '#f5f6fb');
+$accentHex = automation_normalize_hex($palette['accent'] ?? '#0fb4d4', '#0fb4d4');
+$topbarTextHex = '#ffffff';
+$sidebarTextHex = '#ffffff';
+$textHex = '#1f2937';
+$mutedHex = '#64748b';
+$cardBgHex = '#ffffff';
+$gridHex = automation_mix_hex_colors($secondaryHex, '#ffffff', 0.86);
+$altRowHex = automation_mix_hex_colors($accentHex, '#ffffff', 0.92);
+$pageBgHex = automation_mix_hex_colors($cardBgHex, $neutralHex, 0.72);
+
+$primaryColor = automation_escape($primaryHex);
+$secondaryColor = automation_escape($secondaryHex);
+$neutralColor = automation_escape($neutralHex);
+$accentColor = automation_escape($accentHex);
+$topbarTextColor = automation_escape($topbarTextHex);
+$sidebarTextColor = automation_escape($sidebarTextHex);
+$textColor = automation_escape($textHex);
+$mutedColor = automation_escape($mutedHex);
+$cardBgColor = automation_escape($cardBgHex);
+$gridColor = automation_escape($gridHex);
+$altRowColor = automation_escape($altRowHex);
+$pageBgColor = automation_escape($pageBgHex);
 $periodLabel = automation_escape($period['label'] ?? '');
 $frequencyLabel = automation_escape($period['frequencyLabel'] ?? '');
 $generatedAtLabel = automation_escape($reportData['generatedAtLabel'] ?? '');
@@ -145,21 +226,21 @@ if (!function_exists('automation_sum_request_totals')) {
       font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
       font-size: 12px;
       line-height: 1.55;
-      color: #1f2937;
-      background: #ffffff;
+      color: var(--text-color);
+      background: var(--page-bg);
     }
     :root {
-      --page-bg: <?php echo $neutralColor ?: '#f6f8fb'; ?>;
-      --card-bg: #ffffff;
-      --border-color: #d8deed;
-      --text-color: #1f2937;
-      --muted-color: #64748b;
-      --topbar-color: <?php echo $primaryColor ?: '#ff6f91'; ?>;
-      --topbar-text-color: #ffffff;
-      --accent-color: <?php echo $secondaryColor ?: '#0f172a'; ?>;
-      --sidebar-color: <?php echo $secondaryColor ?: '#0f172a'; ?>;
-      --sidebar-text-color: #ffffff;
-      --row-alt: rgba(15, 23, 42, 0.04);
+      --page-bg: <?php echo $pageBgColor; ?>;
+      --card-bg: <?php echo $cardBgColor; ?>;
+      --border-color: <?php echo $gridColor; ?>;
+      --text-color: <?php echo $textColor; ?>;
+      --muted-color: <?php echo $mutedColor; ?>;
+      --topbar-color: <?php echo $primaryColor; ?>;
+      --topbar-text-color: <?php echo $topbarTextColor; ?>;
+      --accent-color: <?php echo $accentColor; ?>;
+      --sidebar-color: <?php echo $secondaryColor; ?>;
+      --sidebar-text-color: <?php echo $sidebarTextColor; ?>;
+      --row-alt: <?php echo $altRowColor; ?>;
     }
     .report-wrapper {
       background: var(--page-bg);
@@ -238,6 +319,7 @@ if (!function_exists('automation_sum_request_totals')) {
       border-radius: 12px;
       padding: 18px 20px;
       margin-bottom: 18px;
+      box-shadow: 0 18px 40px -28px rgba(23, 31, 52, 0.45);
     }
     .section-card h2 {
       margin: 0 0 10px;
@@ -264,7 +346,7 @@ if (!function_exists('automation_sum_request_totals')) {
       margin: 4px 6px 4px 0;
       border: 1px solid var(--border-color);
       border-radius: 10px;
-      background: #ffffff;
+      background: var(--card-bg);
     }
     .metric-card__label {
       font-size: 9px;
