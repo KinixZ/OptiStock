@@ -425,6 +425,205 @@
     return 'OptiStock';
   }
 
+  function normalizeLabelKey(label) {
+    if (!label) {
+      return '';
+    }
+    return String(label)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function parseMetadataString(value) {
+    if (typeof value !== 'string') {
+      return { label: '', value: '' };
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { label: '', value: '' };
+    }
+    const colonIndex = trimmed.indexOf(':');
+    if (colonIndex >= 0) {
+      return {
+        label: trimmed.slice(0, colonIndex).trim(),
+        value: trimmed.slice(colonIndex + 1).trim()
+      };
+    }
+    return { label: '', value: trimmed };
+  }
+
+  function splitSubtitleParts(subtitle) {
+    if (typeof subtitle !== 'string') {
+      return [];
+    }
+    const cleaned = subtitle.replace(/\s{2,}/g, ' ').trim();
+    if (!cleaned) {
+      return [];
+    }
+    return cleaned
+      .split(/(?:\s[•·]\s|\s\|\s|\n|;)/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map(parseMetadataString);
+  }
+
+  function coerceDate(value) {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+    if (typeof value === 'number') {
+      const fromNumber = new Date(value);
+      if (!Number.isNaN(fromNumber.getTime())) {
+        return fromNumber;
+      }
+    }
+    if (typeof value === 'string' && value.trim()) {
+      const fromString = new Date(value);
+      if (!Number.isNaN(fromString.getTime())) {
+        return fromString;
+      }
+    }
+    return new Date();
+  }
+
+  function buildMetadataEntries(options = {}, context = {}) {
+    const entries = [];
+    const seen = new Set();
+    const includeModuleEntry = Boolean(context.includeModuleEntry);
+
+    function addEntry(label, value, placeAtStart = false) {
+      const rawValue = value === undefined || value === null ? '' : String(value);
+      const safeValue = rawValue.trim();
+      if (!safeValue) {
+        return;
+      }
+      const safeLabel = typeof label === 'string' ? label.trim() : '';
+      const key = `${normalizeLabelKey(safeLabel)}|${safeValue}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      const entry = { label: safeLabel, value: safeValue };
+      if (placeAtStart) {
+        entries.unshift(entry);
+      } else {
+        entries.push(entry);
+      }
+    }
+
+    if (Array.isArray(options.metadata)) {
+      options.metadata.forEach((item) => {
+        if (!item) {
+          return;
+        }
+        if (typeof item === 'string') {
+          const parsed = parseMetadataString(item);
+          if (parsed.value) {
+            addEntry(parsed.label, parsed.value);
+          }
+          return;
+        }
+        if (typeof item === 'object') {
+          const label = Object.prototype.hasOwnProperty.call(item, 'label') ? item.label : item.title;
+          const value = Object.prototype.hasOwnProperty.call(item, 'value') ? item.value : item.text;
+          addEntry(label, value);
+        }
+      });
+    }
+
+    splitSubtitleParts(options.subtitle).forEach((part) => {
+      if (part.value) {
+        addEntry(part.label, part.value);
+      }
+    });
+
+    const moduleLabel = context.moduleLabel ? String(context.moduleLabel).trim() : '';
+    if (moduleLabel && includeModuleEntry) {
+      const hasModuleEntry = entries.some((entry) => {
+        const normalized = normalizeLabelKey(entry.label);
+        return normalized === 'origen' || normalized === 'modulo' || normalized === 'modulo origen';
+      });
+      if (!hasModuleEntry) {
+        addEntry('Origen', moduleLabel, true);
+      }
+    }
+
+    const companyName = context.companyName ? String(context.companyName).trim() : '';
+    if (companyName) {
+      const hasCompanyEntry = entries.some((entry) => normalizeLabelKey(entry.label) === 'empresa');
+      if (!hasCompanyEntry) {
+        addEntry('Empresa', companyName, true);
+      }
+    }
+
+    const generatedAtLabel = context.generatedAtLabel ? String(context.generatedAtLabel).trim() : '';
+    if (generatedAtLabel) {
+      const hasGeneratedEntry = entries.some((entry) => {
+        const normalized = normalizeLabelKey(entry.label);
+        return normalized === 'generado' || normalized === 'generado el' || normalized === 'generado en';
+      });
+      if (!hasGeneratedEntry) {
+        addEntry('Generado', generatedAtLabel);
+      }
+    }
+
+    return entries;
+  }
+
+  function buildHeaderMetaLayout(doc, entries, textWidth) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return null;
+    }
+
+    const spacingTop = 16;
+    const paddingTop = 10;
+    const paddingBottom = 6;
+    const rowPadding = 4;
+    const rowSpacing = 4;
+    const labelFontSize = 9;
+    const labelLineHeight = 11;
+    const valueLineHeight = 14;
+
+    const effectiveWidth = Math.max(textWidth, 80);
+
+    let height = spacingTop + paddingTop;
+
+    const computed = entries.map((entry) => {
+      const label = entry.label ? String(entry.label).trim() : '';
+      const value = entry.value ? String(entry.value).trim() : '—';
+      const lines = doc.splitTextToSize(value, effectiveWidth);
+      const safeLines = Array.isArray(lines) && lines.length ? lines : [value];
+      const blockHeight = rowPadding + labelLineHeight + 6 + safeLines.length * valueLineHeight + rowPadding;
+      height += blockHeight;
+      return {
+        label,
+        lines: safeLines,
+        blockHeight
+      };
+    });
+
+    height += paddingBottom;
+    if (computed.length > 1) {
+      height += rowSpacing * (computed.length - 1);
+    }
+
+    return {
+      entries: computed,
+      spacingTop,
+      paddingTop,
+      paddingBottom,
+      rowPadding,
+      rowSpacing,
+      labelFontSize,
+      labelLineHeight,
+      valueFontSize: 11,
+      valueLineHeight,
+      height
+    };
+  }
+
   async function exportTableToPdf(options = {}) {
     const { jsPDF } = (window.jspdf || {});
     if (typeof jsPDF !== 'function') {
@@ -439,75 +638,203 @@
     const orientation = options.orientation || (dataset.columnCount > 5 ? 'landscape' : 'portrait');
     const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
     const palette = getPalette();
-    const logoPromise = getEmpresaLogoDataUrl();
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const headerHeight = 90;
+    const marginX = 46;
+    const reservedLogoWidth = 140;
 
-    doc.setFillColor(...rgbToArray(palette.topbarRgb));
-    doc.rect(0, 0, pageWidth, headerHeight, 'F');
+    const companyName = options.companyName && String(options.companyName).trim()
+      ? String(options.companyName).trim()
+      : getEmpresaNombre();
 
-    doc.setFillColor(...rgbToArray(palette.accentRgb));
-    doc.rect(0, headerHeight - 12, pageWidth, 12, 'F');
+    const moduleSource = options.moduleLabel || options.module || options.source || '';
+    const moduleLabel = moduleSource ? String(moduleSource).trim() : '';
 
-    doc.setTextColor(...rgbToArray(palette.topbarTextRgb));
+    const generatedAtDate = coerceDate(options.generatedAt);
+    const generatedAtLabel = options.generatedAtLabel || formatTimestamp(generatedAtDate);
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text(options.title || 'Reporte', 40, 48, { baseline: 'alphabetic' });
+    doc.setFontSize(22);
+    const textAreaWidth = Math.max(pageWidth - marginX * 2 - reservedLogoWidth, 180);
+    const titleText = options.title ? String(options.title) : 'Reporte';
+    const titleLines = doc.splitTextToSize(titleText, textAreaWidth);
 
-    if (options.subtitle) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11.5);
-      doc.text(String(options.subtitle), 40, 68, { baseline: 'alphabetic' });
+    const headerPaddingTop = 28;
+    const headerPaddingBottom = 26;
+    const companyLineHeight = 16;
+    const titleLineHeight = 24;
+    const moduleLineHeight = moduleLabel ? 18 : 0;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+
+    const metadataEntries = buildMetadataEntries(options, {
+      companyName,
+      moduleLabel,
+      generatedAtLabel,
+      includeModuleEntry: options.includeModuleInMetadata === true
+    });
+
+    const headerMetaLayout = buildHeaderMetaLayout(doc, metadataEntries, textAreaWidth);
+
+    let headerBodyHeight = headerPaddingTop + companyLineHeight + titleLines.length * titleLineHeight + moduleLineHeight + headerPaddingBottom;
+    if (headerMetaLayout) {
+      headerBodyHeight += headerMetaLayout.height;
+    }
+    if (headerBodyHeight < 160) {
+      headerBodyHeight = 160;
     }
 
-    const logoDataUrl = await logoPromise;
-    if (logoDataUrl) {
-      try {
-        const imageType = inferImageFormat(logoDataUrl);
-        let targetWidth = 120;
-        let targetHeight = 60;
-        if (typeof doc.getImageProperties === 'function') {
-          try {
-            const props = doc.getImageProperties(logoDataUrl);
-            if (props && props.width && props.height) {
-              const ratio = props.width / props.height;
-              targetWidth = 120;
-              targetHeight = targetWidth / ratio;
-              if (targetHeight > 60) {
-                targetHeight = 60;
-                targetWidth = targetHeight * ratio;
-              }
-            }
-          } catch (error) {
-            // ignore, fallback to defaults
-          }
-        }
-        targetWidth = Math.min(Math.max(targetWidth, 48), 140);
-        targetHeight = Math.min(Math.max(targetHeight, 32), 80);
-        const marginX = 40;
-        const logoX = pageWidth - marginX - targetWidth;
-        const logoY = 24;
-        doc.addImage(logoDataUrl, imageType, logoX, logoY, targetWidth, targetHeight, undefined, 'FAST');
-      } catch (error) {
-        // Ignore logo rendering issues to keep the export running
+    const headerAccentHeight = 6;
+    const headerTotalHeight = headerBodyHeight + headerAccentHeight;
+    const tableStartY = headerTotalHeight + 24;
+    const marginTop = headerTotalHeight + 18;
+
+    const logoDataUrl = await getEmpresaLogoDataUrl();
+
+    const headerTitleColor = rgbToArray(palette.topbarTextRgb);
+    const headerMutedRgb = hexToRgb(mixHexColors(palette.topbarText, palette.topbar, 0.2));
+    const headerMutedColor = rgbToArray(headerMutedRgb);
+    const headerLabelRgb = hexToRgb(mixHexColors(palette.topbarText, palette.topbar, 0.34));
+    const headerLabelColor = rgbToArray(headerLabelRgb);
+    const headerDividerRgb = hexToRgb(mixHexColors(palette.topbarText, palette.topbar, 0.6));
+    const headerDividerColor = rgbToArray(headerDividerRgb);
+
+    const headerCompanyText = companyName ? companyName.toUpperCase() : '';
+
+    function drawHeader(pageNumber) {
+      doc.setFillColor(...rgbToArray(palette.topbarRgb));
+      doc.rect(0, 0, pageWidth, headerBodyHeight, 'F');
+
+      doc.setFillColor(...rgbToArray(palette.accentRgb));
+      doc.rect(0, headerBodyHeight, pageWidth, headerAccentHeight, 'F');
+
+      let cursorY = headerPaddingTop + 12;
+
+      if (headerCompanyText) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(...headerMutedColor);
+        doc.text(headerCompanyText, marginX, cursorY, { baseline: 'alphabetic' });
+        cursorY += companyLineHeight;
+      } else {
+        cursorY = headerPaddingTop + companyLineHeight;
       }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.setTextColor(...headerTitleColor);
+      titleLines.forEach((line) => {
+        doc.text(line, marginX, cursorY, { baseline: 'alphabetic' });
+        cursorY += titleLineHeight;
+      });
+
+      if (moduleLabel) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        doc.setTextColor(...headerMutedColor);
+        doc.text(`Módulo origen: ${moduleLabel}`, marginX, cursorY, { baseline: 'alphabetic' });
+        cursorY += moduleLineHeight;
+      }
+
+      if (pageNumber === 1 && headerMetaLayout) {
+        const metaTop = cursorY + headerMetaLayout.spacingTop;
+
+        doc.setDrawColor(...headerDividerColor);
+        doc.setLineWidth(0.6);
+        doc.line(marginX, metaTop, pageWidth - marginX, metaTop);
+
+        let metaCursor = metaTop + headerMetaLayout.paddingTop;
+
+        headerMetaLayout.entries.forEach((entry, index) => {
+          const entryStart = metaCursor;
+          const labelBaseline = entryStart + headerMetaLayout.rowPadding + headerMetaLayout.labelFontSize;
+
+          if (entry.label) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(headerMetaLayout.labelFontSize);
+            doc.setTextColor(...headerLabelColor);
+            doc.text(entry.label.toUpperCase(), marginX, labelBaseline, { baseline: 'alphabetic' });
+          }
+
+          let valueY = labelBaseline + 6;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(headerMetaLayout.valueFontSize);
+          doc.setTextColor(...headerTitleColor);
+          entry.lines.forEach((line) => {
+            doc.text(line, marginX, valueY, { baseline: 'alphabetic' });
+            valueY += headerMetaLayout.valueLineHeight;
+          });
+
+          metaCursor = entryStart + entry.blockHeight;
+          if (index < headerMetaLayout.entries.length - 1) {
+            metaCursor += headerMetaLayout.rowSpacing;
+          }
+        });
+
+        doc.setDrawColor(0);
+      }
+
+      if (logoDataUrl) {
+        try {
+          const imageType = inferImageFormat(logoDataUrl);
+          let targetWidth = 120;
+          let targetHeight = 60;
+
+          if (typeof doc.getImageProperties === 'function') {
+            try {
+              const props = doc.getImageProperties(logoDataUrl);
+              if (props && props.width && props.height) {
+                const ratio = props.width / props.height;
+                targetWidth = 120;
+                targetHeight = targetWidth / ratio;
+                if (targetHeight > 60) {
+                  targetHeight = 60;
+                  targetWidth = targetHeight * ratio;
+                }
+              }
+            } catch (error) {
+              // ignore sizing issues
+            }
+          }
+
+          targetWidth = Math.min(Math.max(targetWidth, 48), 140);
+          targetHeight = Math.min(Math.max(targetHeight, 32), 80);
+
+          const logoX = pageWidth - marginX - targetWidth;
+          const logoY = headerPaddingTop;
+          doc.addImage(logoDataUrl, imageType, logoX, logoY, targetWidth, targetHeight, undefined, 'FAST');
+        } catch (error) {
+          // ignore image rendering issues
+        }
+      }
+
+      doc.setTextColor(...rgbToArray(palette.textRgb));
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
     }
+
+    const headerRow = dataset.header.map((value) => {
+      if (typeof value !== 'string') {
+        return String(value || '');
+      }
+      return value.trim().toUpperCase();
+    });
 
     doc.autoTable({
-      head: [dataset.header],
+      head: [headerRow],
       body: dataset.rows,
-      startY: headerHeight + 16,
-      margin: { left: 40, right: 40 },
+      startY: tableStartY,
+      margin: { left: marginX, right: marginX, top: marginTop },
       theme: 'striped',
       styles: {
         font: 'helvetica',
         fontSize: 10,
         textColor: rgbToArray(palette.textRgb),
-        cellPadding: { top: 6, bottom: 6, left: 6, right: 6 },
+        cellPadding: { top: 7, bottom: 7, left: 6, right: 6 },
         lineColor: rgbToArray(palette.gridRgb),
-        lineWidth: 0.3
+        lineWidth: 0.4
       },
       headStyles: {
         fontStyle: 'bold',
@@ -517,26 +844,29 @@
         lineWidth: 0
       },
       bodyStyles: {
-        fillColor: rgbToArray(palette.bodyBgRgb),
+        fillColor: rgbToArray(palette.cardBgRgb),
         textColor: rgbToArray(palette.textRgb)
       },
       alternateRowStyles: {
         fillColor: rgbToArray(palette.altRowBgRgb)
       },
       tableLineColor: rgbToArray(palette.gridRgb),
-      tableLineWidth: 0.3
+      tableLineWidth: 0.4,
+      didDrawPage: (data) => {
+        drawHeader(data.pageNumber);
+      }
     });
 
-    const footerY = pageHeight - 30;
-    const footerText = options.footerText || `Generado ${formatTimestamp()}`;
+    const footerText = options.footerText || `Generado ${generatedAtLabel}`;
+    const pageTotal = doc.internal.getNumberOfPages();
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(...rgbToArray(palette.mutedRgb));
 
-    const marginX = 40;
-    const pageTotal = doc.internal.getNumberOfPages();
     for (let page = 1; page <= pageTotal; page += 1) {
       doc.setPage(page);
+      const footerY = pageHeight - 30;
       doc.text(String(footerText), marginX, footerY, { baseline: 'alphabetic' });
       doc.text(`Página ${page} de ${pageTotal}`, pageWidth - marginX, footerY, {
         baseline: 'alphabetic',
@@ -546,6 +876,7 @@
 
     const fileName = options.fileName || 'reporte.pdf';
     let blob = null;
+
     if (typeof doc.output === 'function') {
       try {
         blob = doc.output('blob');
@@ -558,6 +889,7 @@
         }
       }
     }
+
     if (options.autoDownload !== false) {
       doc.save(fileName);
     }
