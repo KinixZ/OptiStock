@@ -460,8 +460,8 @@ body {
   gap: 0.35rem;
   padding: 0.3rem 0.75rem;
   border-radius: var(--radius-pill);
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
+  background: var(--primary-surface);
+  color: var(--primary-color);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -485,9 +485,9 @@ body {
   align-self: center;
   padding: 0.55rem 1.1rem;
   border-radius: 12px;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  background: rgba(59, 130, 246, 0.08);
-  color: #1d4ed8;
+  border: 1px solid var(--primary-border-strong);
+  background: var(--primary-surface);
+  color: var(--primary-color);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--transition-speed), color var(--transition-speed), transform var(--transition-speed);
@@ -495,16 +495,16 @@ body {
 
 .automatic-card__action:hover,
 .automatic-card__action:focus {
-  background: #1d4ed8;
+  background: var(--primary-color);
   color: #fff;
   transform: translateY(-1px);
 }
 
 .automatic-empty {
-  border: 1px dashed rgba(59, 130, 246, 0.35);
+  border: 1px dashed var(--primary-border-strong);
   border-radius: 16px;
   padding: 1.25rem 1.35rem;
-  background: rgba(59, 130, 246, 0.05);
+  background: var(--primary-surface-extra);
   color: var(--muted-color);
 }
 
@@ -589,8 +589,8 @@ body {
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.75rem;
-  background: rgba(59, 130, 246, 0.14);
-  color: #1d4ed8;
+  background: var(--primary-soft);
+  color: var(--primary-color);
 }
 
 .automatic-item__action {
@@ -628,8 +628,8 @@ body {
 .automatic-item__ghost:hover,
 .automatic-item__ghost:focus {
   color: var(--primary-color);
-  border-color: rgba(59, 130, 246, 0.25);
-  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--primary-border-strong);
+  background: var(--primary-surface);
 }
 
 .automatic-item__footer {
