@@ -1286,7 +1286,7 @@ async function fetchAPI(url, method = 'GET', data) {
         historyLabel: 'Categorías del inventario',
         countLabel: total => (total === 1 ? '1 categoría registrada' : `${total} categorías registradas`),
         viewLabel: 'Vista: Categorías',
-        orientation: 'landscape'
+        orientation: 'portrait'
       };
     }
     if (vistaActual === 'subcategoria') {
@@ -1297,7 +1297,7 @@ async function fetchAPI(url, method = 'GET', data) {
         historyLabel: 'Subcategorías del inventario',
         countLabel: total => (total === 1 ? '1 subcategoría registrada' : `${total} subcategorías registradas`),
         viewLabel: 'Vista: Subcategorías',
-        orientation: 'landscape'
+        orientation: 'portrait'
       };
     }
     return {
@@ -1307,7 +1307,7 @@ async function fetchAPI(url, method = 'GET', data) {
       historyLabel: 'Productos del inventario',
       countLabel: total => (total === 1 ? '1 producto registrado' : `${total} productos registrados`),
       viewLabel: 'Vista: Productos',
-      orientation: 'landscape'
+      orientation: 'portrait'
     };
   }
 
@@ -1327,7 +1327,7 @@ async function fetchAPI(url, method = 'GET', data) {
 
     const partes = [
       `Empresa: ${empresaNombre}`,
-      conteo
+      `Registros exportados: ${conteo}`
     ];
 
     if (meta.viewLabel) {
@@ -1335,7 +1335,7 @@ async function fetchAPI(url, method = 'GET', data) {
     }
 
     partes.push(`Generado: ${timestamp}`);
-    return partes.filter(Boolean).join(' · ');
+    return partes.filter(Boolean).join(' • ');
   }
 
   async function guardarReporteInventario(blob, fileName, notes) {
@@ -1385,14 +1385,19 @@ async function fetchAPI(url, method = 'GET', data) {
 
     try {
       if (formato === 'pdf') {
-        const result = await exporter.exportTableToPdf({
+        const pdfOptions = {
           table: tablaResumenElemento,
           data: dataset,
           title: meta.title || 'Reporte',
           subtitle,
           fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
-          orientation: meta.orientation || 'landscape'
-        });
+          orientation: 'portrait',
+          module: meta.moduleLabel || meta.title || 'Gestión de inventario'
+        };
+        if (typeof meta.countLabel === 'function') {
+          pdfOptions.countLabel = (total) => meta.countLabel(total);
+        }
+        const result = await exporter.exportTableToPdf(pdfOptions);
         if (result?.blob) {
           await guardarReporteInventario(result.blob, result.fileName, notes.pdf);
         }

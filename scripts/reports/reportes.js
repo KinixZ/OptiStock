@@ -459,12 +459,16 @@
     const subtitleParts = [];
     const empresaNombre = exporter && typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
     if (empresaNombre) {
-      subtitleParts.push(empresaNombre);
+      subtitleParts.push(`Empresa: ${empresaNombre}`);
     }
-    if (exporter && typeof exporter.pluralize === 'function') {
-      subtitleParts.push(exporter.pluralize(rows.length, 'producto'));
+    const productosLabel = exporter && typeof exporter.pluralize === 'function'
+      ? exporter.pluralize(rows.length, 'producto')
+      : `${rows.length} producto${rows.length === 1 ? '' : 's'}`;
+    subtitleParts.push(`Productos exportados: ${productosLabel}`);
+    if (exporter && typeof exporter.formatTimestamp === 'function') {
+      subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
     } else {
-      subtitleParts.push(`${rows.length} producto${rows.length === 1 ? '' : 's'}`);
+      subtitleParts.push(`Generado: ${new Date().toLocaleString()}`);
     }
 
     return {
@@ -474,6 +478,14 @@
       fileNameBase: 'inventario_productos',
       sheetName: 'Productos',
       historyLabel: 'Inventario actual',
+      module: 'Gestión de inventario',
+      includeRowCount: false,
+      countLabel: (total) => {
+        if (exporter && typeof exporter.pluralize === 'function') {
+          return exporter.pluralize(total, 'producto');
+        }
+        return total === 1 ? '1 producto' : `${total} productos`;
+      },
       notes: {
         pdf: 'Exportación del inventario actual a PDF (generada desde la página de reportes).',
         excel: 'Exportación del inventario actual a Excel (generada desde la página de reportes).'
@@ -564,13 +576,18 @@
     const subtitleParts = [];
     const empresaNombre = exporter && typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
     if (empresaNombre) {
-      subtitleParts.push(empresaNombre);
+      subtitleParts.push(`Empresa: ${empresaNombre}`);
     }
-    subtitleParts.push(`${data.length} área${data.length === 1 ? '' : 's'}`);
-    if (exporter && typeof exporter.pluralize === 'function') {
-      subtitleParts.push(exporter.pluralize(rows.length, 'registro'));
+    const areasLabel = data.length === 1 ? '1 área' : `${data.length} áreas`;
+    subtitleParts.push(`Áreas registradas: ${areasLabel}`);
+    const registrosLabel = exporter && typeof exporter.pluralize === 'function'
+      ? exporter.pluralize(rows.length, 'registro')
+      : `${rows.length} registros`;
+    subtitleParts.push(`Registros exportados: ${registrosLabel}`);
+    if (exporter && typeof exporter.formatTimestamp === 'function') {
+      subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
     } else {
-      subtitleParts.push(`${rows.length} registros`);
+      subtitleParts.push(`Generado: ${new Date().toLocaleString()}`);
     }
 
     return {
@@ -580,6 +597,7 @@
       fileNameBase: 'areas_zonas',
       sheetName: 'AreasZonas',
       historyLabel: 'Áreas y zonas',
+      module: 'Áreas y zonas de almacén',
       notes: {
         pdf: 'Exportación de áreas y zonas a PDF (generada desde la página de reportes).',
         excel: 'Exportación de áreas y zonas a Excel (generada desde la página de reportes).'
@@ -636,12 +654,16 @@
     const subtitleParts = [];
     const empresaNombre = exporter && typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
     if (empresaNombre) {
-      subtitleParts.push(empresaNombre);
+      subtitleParts.push(`Empresa: ${empresaNombre}`);
     }
-    if (exporter && typeof exporter.pluralize === 'function') {
-      subtitleParts.push(exporter.pluralize(rows.length, 'usuario'));
+    const usuariosLabel = exporter && typeof exporter.pluralize === 'function'
+      ? exporter.pluralize(rows.length, 'usuario')
+      : `${rows.length} usuario${rows.length === 1 ? '' : 's'}`;
+    subtitleParts.push(`Usuarios exportados: ${usuariosLabel}`);
+    if (exporter && typeof exporter.formatTimestamp === 'function') {
+      subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
     } else {
-      subtitleParts.push(`${rows.length} usuario${rows.length === 1 ? '' : 's'}`);
+      subtitleParts.push(`Generado: ${new Date().toLocaleString()}`);
     }
 
     return {
@@ -651,6 +673,14 @@
       fileNameBase: 'usuarios_empresa',
       sheetName: 'Usuarios',
       historyLabel: 'Usuarios de la empresa',
+      module: 'Administración de usuarios',
+      includeRowCount: false,
+      countLabel: (total) => {
+        if (exporter && typeof exporter.pluralize === 'function') {
+          return exporter.pluralize(total, 'usuario');
+        }
+        return total === 1 ? '1 usuario' : `${total} usuarios`;
+      },
       notes: {
         pdf: 'Exportación de usuarios a PDF (generada desde la página de reportes).',
         excel: 'Exportación de usuarios a Excel (generada desde la página de reportes).'
@@ -1240,12 +1270,29 @@
 
       let result = null;
       if (normalizedFormat === 'pdf') {
-        result = await exporter.exportTableToPdf({
+        const pdfOptions = {
           data: datasetInfo.dataset,
           title: datasetInfo.title || report.title,
           subtitle: datasetInfo.subtitle || '',
-          fileName: `${datasetInfo.fileNameBase || 'reporte'}.pdf`
-        });
+          fileName: `${datasetInfo.fileNameBase || 'reporte'}.pdf`,
+          module: datasetInfo.module || datasetInfo.moduleLabel || report.title
+        };
+        if (Array.isArray(datasetInfo.metadata)) {
+          pdfOptions.metadata = datasetInfo.metadata;
+        }
+        if (typeof datasetInfo.companyName === 'string' && datasetInfo.companyName.trim()) {
+          pdfOptions.companyName = datasetInfo.companyName.trim();
+        }
+        if (datasetInfo.generatedAt) {
+          pdfOptions.generatedAt = datasetInfo.generatedAt;
+        }
+        if (typeof datasetInfo.countLabel === 'function') {
+          pdfOptions.countLabel = datasetInfo.countLabel;
+        }
+        if (datasetInfo.includeRowCount === false) {
+          pdfOptions.includeRowCount = false;
+        }
+        result = await exporter.exportTableToPdf(pdfOptions);
       } else {
         result = exporter.exportTableToExcel({
           data: datasetInfo.dataset,

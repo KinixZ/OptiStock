@@ -991,9 +991,15 @@
     const empresa = exporter.getEmpresaNombre();
     const subtitleParts = [];
     if (empresa) {
-      subtitleParts.push(empresa);
+      subtitleParts.push(`Empresa: ${empresa}`);
     }
-    subtitleParts.push(exporter.pluralize(dataset.rowCount, 'usuario'));
+    subtitleParts.push(`Usuarios exportados: ${exporter.pluralize(dataset.rowCount, 'usuario')}`);
+
+    if (typeof exporter.formatTimestamp === 'function') {
+      subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
+    } else {
+      subtitleParts.push(`Generado: ${new Date().toLocaleString()}`);
+    }
 
     try {
       const result = await exporter.exportTableToPdf({
@@ -1001,7 +1007,15 @@
         data: dataset,
         title: 'Usuarios de la Empresa',
         subtitle: subtitleParts.join(' • '),
-        fileName: 'usuarios_empresa.pdf'
+        fileName: 'usuarios_empresa.pdf',
+        module: 'Administración de usuarios',
+        includeRowCount: false,
+        countLabel: (total) => {
+          if (typeof exporter.pluralize === 'function') {
+            return exporter.pluralize(total, 'usuario');
+          }
+          return total === 1 ? '1 usuario' : `${total} usuarios`;
+        }
       });
 
       if (result?.blob) {
