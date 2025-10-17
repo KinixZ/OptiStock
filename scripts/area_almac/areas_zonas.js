@@ -182,9 +182,8 @@ async function exportarInventarioAlmacen({ formato, tabla, meta = {} }) {
         data: dataset,
         title: meta.title || 'Reporte',
         subtitle,
-        moduleLabel: 'Áreas y zonas de almacén',
         fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
-        orientation: meta.orientation || 'portrait'
+        orientation: meta.orientation || 'landscape'
       });
       if (result?.blob) {
         await guardarReporteAlmacen(result.blob, result.fileName, notes.pdf);
@@ -850,7 +849,7 @@ if (exportAreasPdfBtn) {
         sheetName: 'Áreas',
         historyLabel: 'Áreas registradas',
         countLabel: total => (total === 1 ? '1 área registrada' : `${total} áreas registradas`),
-        orientation: 'portrait'
+        orientation: 'landscape'
       }
     });
   });
@@ -867,7 +866,7 @@ if (exportAreasExcelBtn) {
         sheetName: 'Áreas',
         historyLabel: 'Áreas registradas',
         countLabel: total => (total === 1 ? '1 área registrada' : `${total} áreas registradas`),
-        orientation: 'portrait'
+        orientation: 'landscape'
       }
     });
   });
@@ -884,7 +883,7 @@ if (exportZonasPdfBtn) {
         sheetName: 'Zonas',
         historyLabel: 'Zonas registradas',
         countLabel: total => (total === 1 ? '1 zona registrada' : `${total} zonas registradas`),
-        orientation: 'portrait'
+        orientation: 'landscape'
       }
     });
   });
@@ -901,7 +900,7 @@ if (exportZonasExcelBtn) {
         sheetName: 'Zonas',
         historyLabel: 'Zonas registradas',
         countLabel: total => (total === 1 ? '1 zona registrada' : `${total} zonas registradas`),
-        orientation: 'portrait'
+        orientation: 'landscape'
       }
     });
   });
