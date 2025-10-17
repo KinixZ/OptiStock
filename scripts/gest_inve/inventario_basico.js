@@ -1390,7 +1390,6 @@ async function fetchAPI(url, method = 'GET', data) {
           data: dataset,
           title: meta.title || 'Reporte',
           subtitle,
-          moduleLabel: 'Gestión de inventario',
           fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
           orientation: meta.orientation || 'landscape'
         });
