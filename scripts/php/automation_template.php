@@ -217,17 +217,15 @@ if (!function_exists('automation_sum_request_totals')) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?php echo $title; ?></title>
+  <?php if (!empty($extraCss) && is_string($extraCss)): ?>
+    <style>
+      <?php echo $extraCss; ?>
+    </style>
+  <?php endif; ?>
   <style>
     @page {
+      size: A4 portrait;
       margin: 24px 28px;
-    }
-    body {
-      margin: 0;
-      font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 12px;
-      line-height: 1.55;
-      color: var(--text-color);
-      background: var(--page-bg);
     }
     :root {
       --page-bg: <?php echo $pageBgColor; ?>;
@@ -241,6 +239,14 @@ if (!function_exists('automation_sum_request_totals')) {
       --sidebar-color: <?php echo $secondaryColor; ?>;
       --sidebar-text-color: <?php echo $sidebarTextColor; ?>;
       --row-alt: <?php echo $altRowColor; ?>;
+    }
+    body {
+      margin: 0;
+      font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text-color);
+      background: var(--page-bg);
     }
     .report-wrapper {
       background: var(--page-bg);
@@ -447,11 +453,6 @@ if (!function_exists('automation_sum_request_totals')) {
       color: var(--text-color);
     }
   </style>
-  <?php if (!empty($extraCss) && is_string($extraCss)): ?>
-    <style>
-      <?php echo $extraCss; ?>
-    </style>
-  <?php endif; ?>
 </head>
 <body class="report-wrapper">
   <header class="report-banner">

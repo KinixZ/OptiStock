@@ -1993,17 +1993,19 @@
             const subtitleParts = [];
             const empresa = typeof exporter.getEmpresaNombre === 'function' ? exporter.getEmpresaNombre() : '';
             if (empresa) {
-                subtitleParts.push(empresa);
+                subtitleParts.push(`Empresa: ${empresa}`);
             }
 
             if (typeof exporter.pluralize === 'function') {
-                subtitleParts.push(exporter.pluralize(dataset.rowCount, 'solicitud'));
+                subtitleParts.push(`Solicitudes concluidas: ${exporter.pluralize(dataset.rowCount, 'solicitud')}`);
             } else {
-                subtitleParts.push(`${dataset.rowCount} solicitudes`);
+                subtitleParts.push(`Solicitudes concluidas: ${dataset.rowCount} solicitudes`);
             }
 
             if (typeof exporter.formatTimestamp === 'function') {
                 subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
+            } else {
+                subtitleParts.push(`Generado: ${new Date().toLocaleString()}`);
             }
 
             try {
@@ -2012,7 +2014,15 @@
                     title: 'Historial de solicitudes',
                     subtitle: subtitleParts.join(' • '),
                     fileName: 'historial_solicitudes.pdf',
-                    orientation: dataset.columnCount > 5 ? 'landscape' : 'portrait'
+                    orientation: 'portrait',
+                    module: 'Control de solicitudes',
+                    includeRowCount: false,
+                    countLabel: (total) => {
+                        if (typeof exporter.pluralize === 'function') {
+                            return exporter.pluralize(total, 'solicitud');
+                        }
+                        return total === 1 ? '1 solicitud' : `${total} solicitudes`;
+                    }
                 });
 
                 if (result?.blob) {
@@ -2085,10 +2095,10 @@
             const subtitleParts = [];
             const empresa = exporter.getEmpresaNombre();
             if (empresa) {
-                subtitleParts.push(empresa);
+                subtitleParts.push(`Empresa: ${empresa}`);
             }
 
-            subtitleParts.push(exporter.pluralize(dataset.rowCount, 'registro'));
+            subtitleParts.push(`Registros exportados: ${exporter.pluralize(dataset.rowCount, 'registro')}`);
 
             const moduloLabel = obtenerTextoSeleccionado(filtroModulo);
             const rolLabel = obtenerTextoSeleccionado(filtroRol);
@@ -2108,13 +2118,27 @@
                 subtitleParts.push(filtrosAplicados.join(' • '));
             }
 
+            if (typeof exporter.formatTimestamp === 'function') {
+                subtitleParts.push(`Generado: ${exporter.formatTimestamp(new Date())}`);
+            } else {
+                subtitleParts.push(`Generado: ${new Date().toLocaleString()}`);
+            }
+
             try {
                 const result = await exporter.exportTableToPdf({
                     table,
                     data: dataset,
                     title: 'Historial de actividades',
                     subtitle: subtitleParts.join(' • '),
-                    fileName: 'logs.pdf'
+                    fileName: 'logs.pdf',
+                    module: 'Control de actividades',
+                    includeRowCount: false,
+                    countLabel: (total) => {
+                        if (typeof exporter.pluralize === 'function') {
+                            return exporter.pluralize(total, 'registro');
+                        }
+                        return total === 1 ? '1 registro' : `${total} registros`;
+                    }
                 });
 
                 if (result?.blob) {

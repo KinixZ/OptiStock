@@ -178,7 +178,7 @@ let editZoneId = null;
       : new Date().toLocaleString();
 
     partes.push(`Empresa: ${empresaNombre}`);
-    partes.push(`${contador} filtrada${rowCount === 1 ? '' : 's'}`);
+    partes.push(`Zonas filtradas: ${contador} filtrada${rowCount === 1 ? '' : 's'}`);
     if (filtros.length) {
       partes.push(filtros.join(' • '));
     }
@@ -499,13 +499,23 @@ let editZoneId = null;
     const subtitle = construirSubtituloZonas(dataset.rowCount);
 
     try {
-      const result = await exporter.exportTableToPdf({
+      const pdfOptions = {
         data: dataset,
         title: 'Reporte de ocupación de zonas',
         subtitle,
         fileName: 'ocupacion_zonas.pdf',
-        orientation: 'landscape'
-      });
+        orientation: 'portrait',
+        module: 'Gestión de áreas y zonas',
+        includeRowCount: false,
+        countLabel: (total) => {
+          const etiqueta = exporter?.pluralize
+            ? exporter.pluralize(total, 'zona')
+            : (total === 1 ? '1 zona' : `${total} zonas`);
+          return `${etiqueta} filtrada${total === 1 ? '' : 's'}`;
+        }
+      };
+
+      const result = await exporter.exportTableToPdf(pdfOptions);
 
       if (result?.blob) {
         await guardarReporteZonas(result.blob, result.fileName, 'Exportación de zonas filtradas a PDF');

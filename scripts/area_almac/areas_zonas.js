@@ -126,9 +126,9 @@ function construirSubtituloExport(dataset, countLabel) {
 
   return [
     `Empresa: ${empresaNombre}`,
-    conteo,
+    `Registros exportados: ${conteo}`,
     `Generado: ${timestamp}`
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(' • ');
 }
 
 async function guardarReporteAlmacen(blob, fileName, notes) {
@@ -177,14 +177,19 @@ async function exportarInventarioAlmacen({ formato, tabla, meta = {} }) {
 
   try {
     if (formato === 'pdf') {
-      const result = await exporter.exportTableToPdf({
+      const pdfOptions = {
         table: tabla,
         data: dataset,
         title: meta.title || 'Reporte',
         subtitle,
         fileName: `${meta.fileNameBase || 'reporte'}.pdf`,
-        orientation: meta.orientation || 'landscape'
-      });
+        orientation: 'portrait',
+        module: meta.moduleLabel || meta.title || 'Áreas y zonas de almacén'
+      };
+      if (typeof meta.countLabel === 'function') {
+        pdfOptions.countLabel = (total) => meta.countLabel(total);
+      }
+      const result = await exporter.exportTableToPdf(pdfOptions);
       if (result?.blob) {
         await guardarReporteAlmacen(result.blob, result.fileName, notes.pdf);
       }
@@ -849,7 +854,7 @@ if (exportAreasPdfBtn) {
         sheetName: 'Áreas',
         historyLabel: 'Áreas registradas',
         countLabel: total => (total === 1 ? '1 área registrada' : `${total} áreas registradas`),
-        orientation: 'landscape'
+        orientation: 'portrait'
       }
     });
   });
@@ -866,7 +871,7 @@ if (exportAreasExcelBtn) {
         sheetName: 'Áreas',
         historyLabel: 'Áreas registradas',
         countLabel: total => (total === 1 ? '1 área registrada' : `${total} áreas registradas`),
-        orientation: 'landscape'
+        orientation: 'portrait'
       }
     });
   });
@@ -883,7 +888,7 @@ if (exportZonasPdfBtn) {
         sheetName: 'Zonas',
         historyLabel: 'Zonas registradas',
         countLabel: total => (total === 1 ? '1 zona registrada' : `${total} zonas registradas`),
-        orientation: 'landscape'
+        orientation: 'portrait'
       }
     });
   });
@@ -900,7 +905,7 @@ if (exportZonasExcelBtn) {
         sheetName: 'Zonas',
         historyLabel: 'Zonas registradas',
         countLabel: total => (total === 1 ? '1 zona registrada' : `${total} zonas registradas`),
-        orientation: 'landscape'
+        orientation: 'portrait'
       }
     });
   });
