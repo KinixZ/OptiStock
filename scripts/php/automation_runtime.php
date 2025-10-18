@@ -1394,6 +1394,11 @@ if (!function_exists('render_report_csv')) {
             return number_format((float) $value, $decimals, '.', '') . '%';
         };
 
+        $moduleValue = (string) ($payload['module'] ?? '');
+        $movementFocusModules = ['ingresos/egresos', 'ingresos', 'egresos'];
+        $moduleSpecificSections = ['inventario', 'usuarios', 'areas_zonas', 'solicitudes', 'accesos', 'registro_actividades'];
+        $showGeneralMovementSections = !in_array($moduleValue, array_merge($movementFocusModules, $moduleSpecificSections), true);
+
         $company = $payload['company'] ?? [];
         if ($company || isset($payload['module']) || isset($payload['period'])) {
             $append('Reporte', 'Empresa', $company['name'] ?? 'OptiStock');
@@ -1414,7 +1419,7 @@ if (!function_exists('render_report_csv')) {
         }
 
         $summary = $payload['summary'] ?? [];
-        if ($summary) {
+        if ($summary && $showGeneralMovementSections) {
             $append('Resumen', 'Total de movimientos', $formatInt($summary['totalMovements'] ?? 0));
             $append('Resumen', 'Usuarios activos', $formatInt($summary['uniqueUsers'] ?? 0));
             $append('Resumen', 'Entradas registradas', $formatInt($summary['totalIngresos'] ?? 0));
@@ -1424,7 +1429,7 @@ if (!function_exists('render_report_csv')) {
         }
 
         $movementsByUser = $payload['movementsByUser'] ?? [];
-        if ($movementsByUser) {
+        if ($movementsByUser && $showGeneralMovementSections) {
             $append('Movimientos por usuario', 'Usuario', 'Movimientos / Entradas / Salidas / Variación');
             foreach ($movementsByUser as $item) {
                 $detail = trim(sprintf('%s (%s)', $item['user'] ?? 'Usuario', $item['role'] ?? ''));
@@ -1442,7 +1447,7 @@ if (!function_exists('render_report_csv')) {
         }
 
         $movementTimeline = $payload['movementTimeline'] ?? [];
-        if ($movementTimeline) {
+        if ($movementTimeline && $showGeneralMovementSections) {
             $append('Historial', 'Fecha', 'Movimientos / Entradas / Salidas / Variación');
             foreach ($movementTimeline as $item) {
                 $value = sprintf(
@@ -1458,7 +1463,7 @@ if (!function_exists('render_report_csv')) {
         }
 
         $recentMovements = $payload['recentMovements'] ?? [];
-        if ($recentMovements) {
+        if ($recentMovements && $showGeneralMovementSections) {
             $append('Movimientos recientes', 'Producto / Código', 'Tipo / Cantidad / Fecha / Usuario / Ubicación');
             foreach ($recentMovements as $movement) {
                 $product = $movement['product'] ?? 'Producto';
@@ -1493,8 +1498,8 @@ if (!function_exists('render_report_csv')) {
             $blank();
         }
 
-        $areas = $payload['areas'] ?? [];
-        if (!empty($areas)) {
+        if ($moduleValue === 'areas_zonas' && !empty($payload['areas'])) {
+            $areas = $payload['areas'];
             $totals = $areas['totals'] ?? [];
             if ($totals) {
                 $append('Áreas y zonas', 'Total de áreas', $formatInt($totals['areas'] ?? 0));
@@ -1505,94 +1510,203 @@ if (!function_exists('render_report_csv')) {
                 $append('Áreas y zonas', 'Volumen total', $formatFloat($totals['volume'] ?? 0));
             }
 
-            foreach ($areas['topAreas'] ?? [] as $item) {
+            foreach ($areas['areas'] ?? [] as $item) {
                 $value = sprintf(
-                    'Ocupación: %s | Capacidad: %s | Volumen: %s | Productos: %s',
-                    $formatPercent($item['occupancy'] ?? null),
-                    $formatFloat($item['capacity'] ?? 0),
+                    'Descripción: %s | Volumen: %s m³ | Capacidad usada: %s m³ | Ocupación: %s | Productos: %s',
+                    $item['description'] ?? '—',
                     $formatFloat($item['volume'] ?? 0),
+                    $formatFloat($item['usedCapacity'] ?? 0),
+                    $formatPercent($item['occupancy'] ?? null),
                     $formatInt($item['products'] ?? 0)
                 );
-                $append('Áreas destacadas', $item['name'] ?? 'Área', $value);
+                $append('Áreas - detalle', $item['name'] ?? 'Área', $value);
             }
 
-            foreach ($areas['topZones'] ?? [] as $item) {
+            foreach ($areas['zones'] ?? [] as $item) {
                 $value = sprintf(
-                    'Ocupación: %s | Capacidad: %s | Productos: %s',
+                    'Área: %s | Tipo: %s | Ocupación: %s | Capacidad usada: %s m³ | Productos: %s',
+                    $item['area'] ?? '—',
+                    $item['storageType'] ?? '—',
                     $formatPercent($item['occupancy'] ?? null),
                     $formatFloat($item['capacity'] ?? 0),
                     $formatInt($item['products'] ?? 0)
                 );
-                $append('Zonas destacadas', $item['name'] ?? 'Zona', $value);
+                $append('Zonas - detalle', $item['name'] ?? 'Zona', $value);
             }
 
             $blank();
         }
 
-        $requests = $payload['requests'] ?? [];
-        if (!empty($requests)) {
-            $append('Solicitudes', 'Abiertas actualmente', $formatInt($requests['openTotal'] ?? 0));
-            foreach ($requests['periodCreated'] ?? [] as $item) {
-                $append('Solicitudes creadas en el periodo', $item['estado'] ?? 'Estado', $formatInt($item['total'] ?? 0));
+        if ($moduleValue === 'solicitudes' && !empty($payload['requests'])) {
+            $requests = $payload['requests'];
+            $append('Resumen de solicitudes', 'Abiertas actualmente', $formatInt($requests['openTotal'] ?? 0));
+
+            $sumTotals = static function (array $rows) use ($formatInt): string {
+                $total = 0;
+                foreach ($rows as $row) {
+                    $total += (int) ($row['total'] ?? 0);
+                }
+                return $formatInt($total);
+            };
+
+            $append('Resumen de solicitudes', 'Creadas en el periodo', $sumTotals($requests['periodCreated'] ?? []));
+            $append('Resumen de solicitudes', 'Resueltas en el periodo', $sumTotals($requests['periodResolved'] ?? []));
+
+            $createdByState = [];
+            foreach ($requests['periodCreated'] ?? [] as $row) {
+                $state = (string) ($row['estado'] ?? '');
+                $createdByState[$state] = ($createdByState[$state] ?? 0) + (int) ($row['total'] ?? 0);
             }
-            foreach ($requests['periodResolved'] ?? [] as $item) {
-                $append('Solicitudes resueltas en el periodo', $item['estado'] ?? 'Estado', $formatInt($item['total'] ?? 0));
+            $resolvedByState = [];
+            foreach ($requests['periodResolved'] ?? [] as $row) {
+                $state = (string) ($row['estado'] ?? '');
+                $resolvedByState[$state] = ($resolvedByState[$state] ?? 0) + (int) ($row['total'] ?? 0);
             }
+            $allStates = array_unique(array_merge(array_keys($createdByState), array_keys($resolvedByState)));
+            sort($allStates);
+            foreach ($allStates as $state) {
+                $label = $state !== '' ? $state : 'Sin estado';
+                $value = sprintf(
+                    'Creadas: %s | Resueltas: %s',
+                    $formatInt($createdByState[$state] ?? 0),
+                    $formatInt($resolvedByState[$state] ?? 0)
+                );
+                $append('Solicitudes por estado', $label, $value);
+            }
+
             foreach ($requests['recentOpen'] ?? [] as $item) {
-                $value = sprintf('%s | Estado: %s | Creada: %s', $item['summary'] ?? '', $item['estado'] ?? '', $item['dateLabel'] ?? '');
-                $append('Solicitudes abiertas recientes', $item['module'] ?? 'Módulo', $value);
+                $value = sprintf(
+                    '%s | Estado: %s | Creada: %s',
+                    $item['summary'] ?? '',
+                    $item['estado'] ?? '',
+                    $item['dateLabel'] ?? ''
+                );
+                $append('Solicitudes recientes (pendientes)', $item['module'] ?? 'Módulo', $value);
             }
             foreach ($requests['recentResolved'] ?? [] as $item) {
-                $value = sprintf('%s | Estado: %s | Resuelta: %s', $item['summary'] ?? '', $item['estado'] ?? '', $item['dateLabel'] ?? '');
-                $append('Solicitudes resueltas recientes', $item['module'] ?? 'Módulo', $value);
+                $value = sprintf(
+                    '%s | Estado: %s | Resuelta: %s',
+                    $item['summary'] ?? '',
+                    $item['estado'] ?? '',
+                    $item['dateLabel'] ?? ''
+                );
+                $append('Solicitudes recientes (cerradas)', $item['module'] ?? 'Módulo', $value);
             }
             $blank();
         }
 
-        $movementFocus = $payload['movementFocus'] ?? [];
-        if (!empty($movementFocus)) {
-            $mode = $movementFocus['mode'] ?? '';
-            if ($mode !== '') {
-                $append('Enfoque de movimientos', 'Modo', $mode);
-            }
+        if (in_array($moduleValue, $movementFocusModules, true)) {
+            $movementFocus = $payload['movementFocus'] ?? [];
+            $summaryForFocus = $payload['summary'] ?? [];
+            $focusMode = (string) ($movementFocus['mode'] ?? $moduleValue);
             $focusTotals = $movementFocus['totals'] ?? [];
-            if ($focusTotals) {
-                $append('Enfoque de movimientos', 'Total movimientos', $formatInt($focusTotals['movements'] ?? 0));
-                $append('Enfoque de movimientos', 'Entradas', $formatInt($focusTotals['ingresos'] ?? 0));
-                $append('Enfoque de movimientos', 'Salidas', $formatInt($focusTotals['egresos'] ?? 0));
-                $append('Enfoque de movimientos', 'Variación', $formatInt($focusTotals['net'] ?? 0));
+
+            if ($moduleValue === 'ingresos/egresos') {
+                $append('Resumen de movimientos', 'Nota', 'Este reporte incluye ingresos y egresos.');
+            } elseif ($moduleValue === 'ingresos') {
+                $append('Resumen de movimientos', 'Nota', 'Este reporte solo incluye ingresos registrados.');
+            } elseif ($moduleValue === 'egresos') {
+                $append('Resumen de movimientos', 'Nota', 'Este reporte solo incluye egresos registrados.');
             }
-            foreach ($movementFocus['timeline'] ?? [] as $entry) {
-                $valueParts = [];
-                if (isset($entry['movements'])) {
-                    $valueParts[] = 'Movimientos: ' . $formatInt($entry['movements']);
-                }
-                if (isset($entry['ingresos'])) {
-                    $valueParts[] = 'Entradas: ' . $formatInt($entry['ingresos']);
-                }
-                if (isset($entry['egresos'])) {
-                    $valueParts[] = 'Salidas: ' . $formatInt($entry['egresos']);
-                }
-                if (isset($entry['net'])) {
-                    $valueParts[] = 'Variación: ' . $formatInt($entry['net']);
-                }
-                $append('Enfoque de movimientos', $entry['label'] ?? '', implode(' | ', $valueParts));
+
+            $primaryLabel = 'Movimientos registrados';
+            if ($focusMode === 'ingresos') {
+                $primaryLabel = 'Total de ingresos';
+            } elseif ($focusMode === 'egresos') {
+                $primaryLabel = 'Total de egresos';
             }
-            foreach ($movementFocus['recent'] ?? [] as $entry) {
-                $valueParts = [
-                    'Tipo: ' . ($entry['type'] ?? ''),
-                    'Cantidad: ' . $formatInt($entry['quantity'] ?? 0),
-                    'Fecha: ' . ($entry['dateLabel'] ?? ''),
-                ];
-                if (!empty($entry['user'])) {
-                    $valueParts[] = 'Usuario: ' . $entry['user'];
+
+            $append('Resumen de movimientos', $primaryLabel, $formatInt($focusTotals['movements'] ?? ($summaryForFocus['totalMovements'] ?? 0)));
+            $append('Resumen de movimientos', 'Entradas registradas', $formatInt($focusTotals['ingresos'] ?? ($summaryForFocus['totalIngresos'] ?? 0)));
+            $append('Resumen de movimientos', 'Salidas registradas', $formatInt($focusTotals['egresos'] ?? ($summaryForFocus['totalEgresos'] ?? 0)));
+            $append('Resumen de movimientos', 'Variación neta', $formatInt($focusTotals['net'] ?? ($summaryForFocus['net'] ?? (($summaryForFocus['totalIngresos'] ?? 0) - ($summaryForFocus['totalEgresos'] ?? 0)))));
+            $append('Resumen de movimientos', 'Colaboradores involucrados', $formatInt($summaryForFocus['uniqueUsers'] ?? count($movementsByUser)));
+            $blank();
+
+            if ($movementsByUser) {
+                $append('Movimientos por usuario', 'Usuario', 'Movimientos / Entradas / Salidas / Variación');
+                foreach ($movementsByUser as $item) {
+                    $detail = trim(sprintf('%s (%s)', $item['user'] ?? 'Usuario', $item['role'] ?? ''));
+                    $detail = trim($detail, ' ()');
+                    $value = sprintf(
+                        '%s / %s / %s / %s',
+                        $formatInt($item['movements'] ?? 0),
+                        $formatInt($item['ingresos'] ?? 0),
+                        $formatInt($item['egresos'] ?? 0),
+                        $formatInt($item['net'] ?? 0)
+                    );
+                    $append('Movimientos por usuario', $detail !== '' ? $detail : 'Usuario', $value);
                 }
-                $append('Enfoque de movimientos recientes', $entry['product'] ?? 'Producto', implode(' | ', $valueParts));
+                $blank();
             }
+
+            $focusTimeline = $movementFocus['timeline'] ?? [];
+            if ($focusTimeline) {
+                if ($focusMode === 'ingresos') {
+                    $append('Evolución en el periodo', 'Fecha', 'Entradas');
+                    foreach ($focusTimeline as $entry) {
+                        $append('Evolución en el periodo', $entry['label'] ?? 'Fecha', 'Entradas: ' . $formatInt($entry['ingresos'] ?? 0));
+                    }
+                } elseif ($focusMode === 'egresos') {
+                    $append('Evolución en el periodo', 'Fecha', 'Salidas');
+                    foreach ($focusTimeline as $entry) {
+                        $append('Evolución en el periodo', $entry['label'] ?? 'Fecha', 'Salidas: ' . $formatInt($entry['egresos'] ?? 0));
+                    }
+                } else {
+                    $append('Evolución en el periodo', 'Fecha', 'Movimientos / Entradas / Salidas / Variación');
+                    foreach ($focusTimeline as $entry) {
+                        $value = sprintf(
+                            '%s / %s / %s / %s',
+                            $formatInt($entry['movements'] ?? 0),
+                            $formatInt($entry['ingresos'] ?? 0),
+                            $formatInt($entry['egresos'] ?? 0),
+                            $formatInt($entry['net'] ?? 0)
+                        );
+                        $append('Evolución en el periodo', $entry['label'] ?? 'Fecha', $value);
+                    }
+                }
+                $blank();
+            }
+
+            $recentFocus = $movementFocus['recent'] ?? [];
+            if ($recentFocus) {
+                $append('Movimientos recientes', 'Producto / Código', 'Tipo / Cantidad / Fecha / Usuario / Ubicación');
+                foreach ($recentFocus as $movement) {
+                    $product = $movement['product'] ?? 'Producto';
+                    $code = $movement['productCode'] ?? '';
+                    $detailParts = [$product];
+                    if ($code !== '') {
+                        $detailParts[] = 'Código: ' . $code;
+                    }
+                    $detail = implode(' · ', $detailParts);
+
+                    $locationParts = [];
+                    if (!empty($movement['area'])) {
+                        $locationParts[] = 'Área: ' . $movement['area'];
+                    }
+                    if (!empty($movement['zone'])) {
+                        $locationParts[] = 'Zona: ' . $movement['zone'];
+                    }
+                    $location = $locationParts ? implode(' / ', $locationParts) : 'Sin ubicación';
+
+                    $valueParts = [
+                        sprintf('Tipo: %s', $movement['type'] ?? ''),
+                        sprintf('Cantidad: %s', $formatInt($movement['quantity'] ?? 0)),
+                        sprintf('Fecha: %s', $movement['dateLabel'] ?? ''),
+                    ];
+                    if (!empty($movement['user'])) {
+                        $valueParts[] = 'Usuario: ' . $movement['user'];
+                    }
+                    $valueParts[] = $location;
+
+                    $append('Movimientos recientes', $detail, implode(' | ', $valueParts));
+                }
+            }
+
             $blank();
         }
 
-        if (($payload['module'] ?? '') === 'inventario' && !empty($payload['inventory'])) {
+        if ($moduleValue === 'inventario' && !empty($payload['inventory'])) {
             $inventory = $payload['inventory'];
             $totals = $inventory['totals'] ?? [];
             if ($totals) {
@@ -1631,7 +1745,7 @@ if (!function_exists('render_report_csv')) {
             $blank();
         }
 
-        if (($payload['module'] ?? '') === 'usuarios' && !empty($payload['users'])) {
+        if ($moduleValue === 'usuarios' && !empty($payload['users'])) {
             $users = $payload['users'];
             $totals = $users['totals'] ?? [];
             if ($totals) {
@@ -1666,7 +1780,7 @@ if (!function_exists('render_report_csv')) {
             $blank();
         }
 
-        if (($payload['module'] ?? '') === 'registro_actividades' && !empty($payload['activityLog'])) {
+        if ($moduleValue === 'registro_actividades' && !empty($payload['activityLog'])) {
             $activity = $payload['activityLog'];
             $append('Registro de actividades', 'Total de eventos', $formatInt($activity['total'] ?? 0));
             foreach ($activity['moduleCounts'] ?? [] as $module => $count) {
@@ -1685,7 +1799,7 @@ if (!function_exists('render_report_csv')) {
             $blank();
         }
 
-        if (($payload['module'] ?? '') === 'accesos' && !empty($payload['accessLog'])) {
+        if ($moduleValue === 'accesos' && !empty($payload['accessLog'])) {
             $access = $payload['accessLog'];
             $append('Registro de accesos', 'Total de eventos', $formatInt($access['total'] ?? 0));
             foreach ($access['actionCounts'] ?? [] as $action => $count) {
