@@ -80,6 +80,7 @@ let cachedNotifications = [];
 let serverNotifications = [];
 let criticalStockNotifications = [];
 let capacityAlertNotifications = [];
+let scheduledReportNotifications = [];
 let criticalStockState = new Map();
 let capacityAlertState = new Map();
 let autoArchiveInProgress = false;
@@ -253,6 +254,133 @@ async function persistNotifications(notifications = []) {
 
 const CAPACITY_ZONE_THRESHOLD = 90;
 const CAPACITY_AREA_THRESHOLD = 90;
+const SCHEDULED_REPORT_ALERTS_PREFIX = 'optistock:scheduledReportAlerts:';
+const SCHEDULED_REPORT_ALERTS_LIMIT = 30;
+
+function getScheduledReportAlertsKey(empresaId) {
+    const resolved = !empresaId || empresaId === 'local' ? 'local' : String(empresaId);
+    return `${SCHEDULED_REPORT_ALERTS_PREFIX}${resolved}`;
+}
+
+function readScheduledReportAlertsFromStorage(empresaId) {
+    if (typeof localStorage === 'undefined') {
+        return [];
+    }
+
+    try {
+        const raw = localStorage.getItem(getScheduledReportAlertsKey(empresaId));
+        if (!raw) {
+            return [];
+        }
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('No se pudieron leer las notificaciones locales de reportes programados.', error);
+        return [];
+    }
+}
+
+function writeScheduledReportAlertsToStorage(alerts, empresaId) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+
+    try {
+        localStorage.setItem(getScheduledReportAlertsKey(empresaId), JSON.stringify(alerts));
+    } catch (error) {
+        console.warn('No se pudieron guardar las notificaciones locales de reportes programados.', error);
+    }
+}
+
+function normalizeScheduledReportAlert(entry) {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const tituloSource = entry.titulo == null ? '' : entry.titulo;
+    const mensajeSource = entry.mensaje == null ? '' : entry.mensaje;
+    const fechaSource = entry.fecha_disponible_desde || entry.creado_en || entry.actualizado_en;
+    const rutaSource = entry.ruta_destino == null ? '' : entry.ruta_destino;
+
+    const titulo = typeof tituloSource === 'string' ? tituloSource.trim() : String(tituloSource).trim();
+    const mensaje = typeof mensajeSource === 'string' ? mensajeSource.trim() : String(mensajeSource).trim();
+    const fecha = normalizeNotificationDateTime(fechaSource) || new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const ruta = typeof rutaSource === 'string' ? rutaSource.trim() : String(rutaSource).trim();
+
+    if (!titulo || !mensaje) {
+        return null;
+    }
+
+    const id = typeof entry.id === 'string' && entry.id.trim()
+        ? entry.id.trim()
+        : `scheduled-report-${Date.now()}`;
+
+    return {
+        id,
+        titulo,
+        mensaje,
+        prioridad: entry.prioridad && typeof entry.prioridad === 'string' ? entry.prioridad : 'Media',
+        estado: entry.estado && typeof entry.estado === 'string' ? entry.estado : 'Enviada',
+        tipo_destinatario: entry.tipo_destinatario && typeof entry.tipo_destinatario === 'string'
+            ? entry.tipo_destinatario
+            : 'Usuario',
+        ruta_destino: ruta || 'reports/reportes.html',
+        fecha_disponible_desde: fecha,
+        es_nueva: entry.es_nueva !== undefined ? !!entry.es_nueva : true,
+        es_local: true,
+        automationId: entry.automationId ?? null
+    };
+}
+
+function persistScheduledReportAlertsState(empresaId, alerts) {
+    if (!alerts) {
+        alerts = scheduledReportNotifications;
+    }
+
+    const normalizedEmpresa = empresaId && empresaId !== 'local'
+        ? empresaId
+        : (activeEmpresaId && activeEmpresaId !== 'local' ? activeEmpresaId : 'local');
+
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+
+    const payload = (Array.isArray(alerts) ? alerts : [])
+        .map(alert => ({
+            id: alert.id,
+            titulo: alert.titulo,
+            mensaje: alert.mensaje,
+            prioridad: alert.prioridad,
+            estado: alert.estado,
+            tipo_destinatario: alert.tipo_destinatario,
+            ruta_destino: alert.ruta_destino,
+            fecha_disponible_desde: alert.fecha_disponible_desde,
+            es_nueva: alert.es_nueva,
+            automationId: alert.automationId ?? null
+        }));
+
+    writeScheduledReportAlertsToStorage(payload, normalizedEmpresa);
+}
+
+function loadScheduledReportAlertsFromStorage(options = {}) {
+    const { refresh = true } = options;
+    const empresaClave = activeEmpresaId && activeEmpresaId !== 'local' ? activeEmpresaId : 'local';
+    const stored = readScheduledReportAlertsFromStorage(empresaClave);
+    const normalized = stored
+        .map(normalizeScheduledReportAlert)
+        .filter(Boolean);
+
+    if (normalized.length > SCHEDULED_REPORT_ALERTS_LIMIT) {
+        normalized.splice(0, normalized.length - SCHEDULED_REPORT_ALERTS_LIMIT);
+    }
+
+    persistScheduledReportAlertsState(empresaClave, normalized);
+    scheduledReportNotifications = normalized;
+
+    if (refresh) {
+        refreshNotificationUI();
+    }
+}
 
 let navegadorTimeZone = null;
 
@@ -943,6 +1071,13 @@ function removeNotificationLocally(notification) {
             changed = true;
         }
 
+        const nextScheduled = filterByIdentity(scheduledReportNotifications);
+        if (nextScheduled.length !== scheduledReportNotifications.length) {
+            scheduledReportNotifications = nextScheduled;
+            persistScheduledReportAlertsState(activeEmpresaId, nextScheduled);
+            changed = true;
+        }
+
         const nextPending = filterByIdentity(pendingRequestNotifications);
         if (nextPending.length !== pendingRequestNotifications.length) {
             pendingRequestNotifications = nextPending;
@@ -996,6 +1131,7 @@ function dismissAllPendingRequests() {
 function clearGeneratedNotifications(options = {}) {
     const { includePending = false } = options;
     let changed = false;
+    let scheduledCleared = false;
 
     if (criticalStockNotifications.length) {
         criticalStockNotifications = [];
@@ -1004,6 +1140,12 @@ function clearGeneratedNotifications(options = {}) {
 
     if (capacityAlertNotifications.length) {
         capacityAlertNotifications = [];
+        changed = true;
+    }
+
+    if (scheduledReportNotifications.length) {
+        scheduledReportNotifications = [];
+        scheduledCleared = true;
         changed = true;
     }
 
@@ -1016,6 +1158,10 @@ function clearGeneratedNotifications(options = {}) {
         if (dismissAllPendingRequests()) {
             changed = true;
         }
+    }
+
+    if (scheduledCleared) {
+        persistScheduledReportAlertsState(activeEmpresaId, []);
     }
 
     return changed;
@@ -1048,7 +1194,11 @@ async function autoArchiveSeenNotifications() {
     }
 
     const hasCached = Array.isArray(cachedNotifications) && cachedNotifications.length > 0;
-    const hasGenerated = criticalStockNotifications.length > 0 || capacityAlertNotifications.length > 0;
+    const hasGenerated = (
+        criticalStockNotifications.length > 0
+        || capacityAlertNotifications.length > 0
+        || scheduledReportNotifications.length > 0
+    );
 
     if (!hasCached && !hasGenerated) {
         return;
@@ -1067,7 +1217,8 @@ async function autoArchiveSeenNotifications() {
     const previousState = {
         server: serverNotifications.slice(),
         critical: criticalStockNotifications.slice(),
-        capacity: capacityAlertNotifications.slice()
+        capacity: capacityAlertNotifications.slice(),
+        scheduled: scheduledReportNotifications.slice()
     };
 
     try {
@@ -1086,6 +1237,8 @@ async function autoArchiveSeenNotifications() {
         serverNotifications = previousState.server;
         criticalStockNotifications = previousState.critical;
         capacityAlertNotifications = previousState.capacity;
+        scheduledReportNotifications = previousState.scheduled;
+        persistScheduledReportAlertsState(activeEmpresaId, scheduledReportNotifications);
         refreshNotificationUI();
         fetchNotifications({ force: true });
     } finally {
@@ -1101,6 +1254,7 @@ function refreshNotificationUI() {
         ...pendingRequestNotifications,
         ...criticalStockNotifications,
         ...capacityAlertNotifications,
+        ...scheduledReportNotifications,
         ...serverNotifications
     ].forEach(notification => {
         if (!notification) {
@@ -1194,6 +1348,7 @@ async function clearNotificationTray() {
         server: serverNotifications.slice(),
         critical: criticalStockNotifications.slice(),
         capacity: capacityAlertNotifications.slice(),
+        scheduled: scheduledReportNotifications.slice(),
         pendingState: new Map(pendingRequestState),
         pending: pendingRequestNotifications.slice()
     };
@@ -1222,6 +1377,8 @@ async function clearNotificationTray() {
         serverNotifications = previousState.server;
         criticalStockNotifications = previousState.critical;
         capacityAlertNotifications = previousState.capacity;
+        scheduledReportNotifications = previousState.scheduled;
+        persistScheduledReportAlertsState(activeEmpresaId, scheduledReportNotifications);
         pendingRequestState = new Map(previousState.pendingState);
         pendingRequestNotifications = previousState.pending;
         refreshNotificationUI();
@@ -4773,6 +4930,30 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     document.addEventListener('movimientoRegistrado', loadMetrics);
 
+    window.addEventListener('scheduled-report-alert-stored', event => {
+        const targetEmpresa = event && event.detail && event.detail.empresaId
+            ? String(event.detail.empresaId)
+            : 'local';
+        const currentEmpresa = activeEmpresaId && activeEmpresaId !== 'local'
+            ? String(activeEmpresaId)
+            : 'local';
+        if (targetEmpresa === currentEmpresa) {
+            loadScheduledReportAlertsFromStorage();
+        }
+    });
+
+    window.addEventListener('storage', event => {
+        if (!event || !event.key) {
+            return;
+        }
+        const currentKey = getScheduledReportAlertsKey(
+            activeEmpresaId && activeEmpresaId !== 'local' ? activeEmpresaId : 'local'
+        );
+        if (event.key === currentKey) {
+            loadScheduledReportAlertsFromStorage();
+        }
+    });
+
     // Mostrar nombre y rol del usuario
     const nombre = localStorage.getItem('usuario_nombre');
     const rol = localStorage.getItem('usuario_rol');
@@ -4844,6 +5025,8 @@ if (userImgEl) {
         console.log("🔍 check_empresa.php:", data);
         if (data.success) {
             activeEmpresaId = data.empresa_id;
+            loadScheduledReportAlertsFromStorage({ refresh: false });
+            refreshNotificationUI();
             fetchNotifications({ force: true });
             fetchPendingRequestNotifications({ force: true });
             startNotificationPolling();
@@ -4947,12 +5130,16 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
                     window.location.href = '../regis_login/regist/regist_empresa.html';
                 });
             }
+            activeEmpresaId = null;
+            loadScheduledReportAlertsFromStorage();
             stopNotificationPolling();
             stopStockAlertAutoRefresh();
         }
     })
     .catch(err => {
         console.error("❌ Error consultando empresa:", err);
+        activeEmpresaId = null;
+        loadScheduledReportAlertsFromStorage();
         stopNotificationPolling();
         stopStockAlertAutoRefresh();
     });
