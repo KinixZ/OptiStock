@@ -247,10 +247,188 @@
   const EXPIRING_THRESHOLD_MS = 10 * 24 * 60 * 60 * 1000;
   const AUTOMATION_STORAGE_PREFIX = 'optistock:automations:';
   const AUTOMATION_REPORTS_PREFIX = 'optistock:automationReports:';
+  const SCHEDULED_REPORT_ALERTS_PREFIX = 'optistock:scheduledReportAlerts:';
+  const SCHEDULED_REPORT_ALERTS_LIMIT = 30;
   const MANUAL_FORMAT_LABELS = {
     pdf: 'PDF',
     excel: 'Excel'
   };
+
+  function getScheduledReportAlertsKey(empresaId) {
+    const resolved = !empresaId || empresaId === 'local' ? 'local' : String(empresaId);
+    return `${SCHEDULED_REPORT_ALERTS_PREFIX}${resolved}`;
+  }
+
+  function getActiveUsuarioId() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = window.localStorage.getItem('usuario_id');
+        const parsed = stored ? parseInt(stored, 10) : NaN;
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn('No se pudo leer el ID de usuario desde localStorage:', error);
+    }
+    return null;
+  }
+
+  function formatAutomationRunForStorage(date) {
+    const target = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, '0');
+    const day = String(target.getDate()).padStart(2, '0');
+    const hours = String(target.getHours()).padStart(2, '0');
+    const minutes = String(target.getMinutes()).padStart(2, '0');
+    const seconds = String(target.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  function formatAutomationRunForDisplay(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      return 'fecha desconocida';
+    }
+    try {
+      return new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+    } catch (error) {
+      return date.toLocaleString();
+    }
+  }
+
+  function readScheduledReportAlertsFromStorage(empresaId) {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return [];
+    }
+    try {
+      const raw = window.localStorage.getItem(getScheduledReportAlertsKey(empresaId));
+      if (!raw) {
+        return [];
+      }
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('No se pudieron leer las alertas de reportes programados guardadas localmente.', error);
+      return [];
+    }
+  }
+
+  function writeScheduledReportAlertsToStorage(alerts, empresaId) {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    const key = getScheduledReportAlertsKey(empresaId);
+    try {
+      window.localStorage.setItem(key, JSON.stringify(alerts));
+      window.dispatchEvent(
+        new CustomEvent('scheduled-report-alert-stored', {
+          detail: { empresaId: empresaId || 'local' }
+        })
+      );
+    } catch (error) {
+      console.warn('No se pudieron guardar las alertas locales de reportes programados.', error);
+    }
+  }
+
+  function appendScheduledReportAlertLocally(notification, empresaId) {
+    if (!notification) {
+      return;
+    }
+    const empresaKey = empresaId && empresaId !== 'local' ? empresaId : 'local';
+    const stored = readScheduledReportAlertsFromStorage(empresaKey);
+    const nextAlerts = Array.isArray(stored) ? stored.slice() : [];
+    nextAlerts.push(notification);
+    if (nextAlerts.length > SCHEDULED_REPORT_ALERTS_LIMIT) {
+      nextAlerts.splice(0, nextAlerts.length - SCHEDULED_REPORT_ALERTS_LIMIT);
+    }
+    writeScheduledReportAlertsToStorage(nextAlerts, empresaKey);
+  }
+
+  async function persistScheduledReportAlert(notification, empresaId) {
+    if (!notification) {
+      return;
+    }
+
+    const payload = {
+      id_empresa: empresaId,
+      id_usuario: getActiveUsuarioId() || 0,
+      notifications: [
+        {
+          titulo: notification.titulo,
+          mensaje: notification.mensaje,
+          prioridad: notification.prioridad,
+          estado: notification.estado,
+          tipo_destinatario: notification.tipo_destinatario,
+          ruta_destino: notification.ruta_destino,
+          fecha_disponible_desde: notification.fecha_disponible_desde
+        }
+      ]
+    };
+
+    try {
+      const response = await fetch('../../scripts/php/save_notifications.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result || result.success !== true) {
+        throw new Error(result && result.message ? result.message : 'No se pudo guardar la notificación.');
+      }
+    } catch (error) {
+      console.error('No se pudo sincronizar la notificación de reporte programado con el servidor:', error);
+    }
+  }
+
+  async function notifyScheduledReportGenerated(automation, runDate) {
+    const empresaId = state.activeEmpresaId && state.activeEmpresaId !== 'local'
+      ? state.activeEmpresaId
+      : getActiveEmpresaId() || 'local';
+
+    const executedAt = runDate instanceof Date && !Number.isNaN(runDate.getTime()) ? runDate : new Date();
+    const storedTimestamp = formatAutomationRunForStorage(executedAt);
+    const displayTimestamp = formatAutomationRunForDisplay(executedAt);
+    const moduleLabel = getAutomationModuleLabel(automation && automation.module);
+    const formatLabel = automation && automation.format ? String(automation.format).toUpperCase() : '';
+
+    const details = [];
+    if (moduleLabel) {
+      details.push(`Módulo: ${moduleLabel}.`);
+    }
+    if (formatLabel) {
+      details.push(`Formato: ${formatLabel}.`);
+    }
+    details.push(`Generado el ${displayTimestamp}.`);
+
+    const titulo = automation && automation.name
+      ? `Reporte programado generado: ${automation.name}`
+      : 'Reporte programado generado';
+    const mensaje = details.join(' ');
+    const localNotification = {
+      id: `scheduled-report-${automation && automation.id ? automation.id : 'local'}-${Date.now()}`,
+      titulo,
+      mensaje,
+      prioridad: 'Media',
+      estado: 'Enviada',
+      tipo_destinatario: 'Usuario',
+      ruta_destino: 'reports/reportes.html',
+      fecha_disponible_desde: storedTimestamp,
+      es_nueva: true,
+      es_local: true,
+      automationId: automation ? automation.id : null
+    };
+
+    appendScheduledReportAlertLocally(localNotification, empresaId);
+
+    if (empresaId && empresaId !== 'local') {
+      await persistScheduledReportAlert(localNotification, empresaId);
+    }
+  }
 
   function normalizeNumber(value) {
     if (value === null || value === undefined || value === '') {
@@ -2791,6 +2969,12 @@
               automation.active = automationUpdate.active;
             }
           }
+          const runTimestampForNotification = automationUpdate && automationUpdate.lastRunAt
+            ? new Date(automationUpdate.lastRunAt)
+            : nextRun;
+          notifyScheduledReportGenerated(automation, runTimestampForNotification).catch((error) => {
+            console.error('No se pudo registrar la notificación del reporte programado:', error);
+          });
           showAlert(`Se generó el reporte automático "${automation.name}".`, 'success');
         } catch (error) {
           console.error('No se pudo generar el reporte automático programado:', error);
