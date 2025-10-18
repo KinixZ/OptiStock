@@ -436,10 +436,23 @@ img {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.area-actions button:disabled,
+.zona-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
 .area-actions button:hover,
 .zona-actions button:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 30px -22px rgba(255, 111, 145, 0.75);
+}
+
+.area-actions button:disabled:hover,
+.zona-actions button:disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .zonas-list {
