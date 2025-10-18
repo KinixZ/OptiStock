@@ -884,15 +884,6 @@ foreach ($automations as $automationItem) {
                 }
             }
 
-            $sharedCssPath = realpath(__DIR__ . '/../../styles/reports/reportes-shared.css');
-            if ($sharedCssPath && is_file($sharedCssPath)) {
-                $sharedCss = @file_get_contents($sharedCssPath);
-                if ($sharedCss !== false) {
-                    $sharedCss = preg_replace('/@import[^;]+;\s*/i', '', $sharedCss);
-                    $cssFragments[] = trim($sharedCss);
-                }
-            }
-
             $cssPath = realpath(__DIR__ . '/../../styles/reports/reportes.css');
             if ($cssPath && is_file($cssPath)) {
                 $cssContent = @file_get_contents($cssPath);
