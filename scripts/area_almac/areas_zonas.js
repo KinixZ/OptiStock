@@ -9,6 +9,11 @@ const API_ENDPOINTS = {
 };
 const empresaId = localStorage.getItem('id_empresa');
 
+function esUsuarioAdmin() {
+  const rol = (localStorage.getItem('usuario_rol') || '').trim().toLowerCase();
+  return rol === 'administrador';
+}
+
 // Elementos del DOM
 const sublevelsCountInput = document.getElementById('sublevelsCount');
 const sublevelsContainer = document.getElementById('sublevelsContainer');
@@ -339,11 +344,44 @@ async function fetchAPI(endpoint, method = 'GET', data = null) {
     const response = await fetch(endpoint, options);
 
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Error ${response.status}: ${text}`);
+      const contentType = response.headers.get('Content-Type') || '';
+      let message = `Error ${response.status}`;
+
+      if (contentType.includes('application/json')) {
+        try {
+          const payload = await response.json();
+          if (payload && typeof payload === 'object') {
+            message = payload.error || payload.message || message;
+          }
+        } catch (parseError) {
+          console.warn('No se pudo interpretar el error JSON:', parseError);
+          message = `${message}: ${parseError.message}`;
+        }
+      } else {
+        const text = await response.text();
+        if (text) {
+          try {
+            const payload = JSON.parse(text);
+            if (payload && typeof payload === 'object') {
+              message = payload.error || payload.message || text;
+            } else {
+              message = text;
+            }
+          } catch (_) {
+            message = text;
+          }
+        }
+      }
+
+      throw new Error(message);
     }
 
-    return await response.json();
+    const responseContentType = response.headers.get('Content-Type') || '';
+    if (responseContentType.includes('application/json')) {
+      return await response.json();
+    }
+
+    return await response.text();
   } catch (error) {
     console.error('Error en fetchAPI:', error);
     mostrarError(error.message || 'Error de conexión con el servidor');
@@ -528,6 +566,7 @@ async function cargarYMostrarRegistros() {
 function mostrarResumen(data) {
   const areas = Array.isArray(data?.areas) ? data.areas : [];
   const zonas = Array.isArray(data?.zonas) ? data.zonas : [];
+  const puedeGestionarAreas = esUsuarioAdmin();
 
   datosActuales = {
     areas: [...areas],
@@ -562,6 +601,10 @@ function mostrarResumen(data) {
     const zonasArea = zonas.filter(z => z.area_id == area.id);
     const productosArea = contarProductosArea(area, zonas);
 
+    const accionesArea = puedeGestionarAreas
+      ? `<button onclick="editarArea(${area.id})">✏️</button><button onclick="eliminarArea(${area.id})">🗑️</button>`
+      : `<button onclick="editarArea(${area.id})">✏️</button><button type="button" disabled title="Solo un administrador puede eliminar áreas">🗑️</button>`;
+
     html += `
       <div class="area-card">
         <div class="area-header">
@@ -570,8 +613,7 @@ function mostrarResumen(data) {
             <span class="area-products">${formatearProductosActivos(productosArea)} activos</span>
           </div>
           <div class="area-actions">
-            <button onclick="editarArea(${area.id})">✏️</button>
-            <button onclick="eliminarArea(${area.id})">🗑️</button>
+            ${accionesArea}
           </div>
         </div>
 
@@ -751,27 +793,97 @@ async function editarArea(id) {
 }
 
 async function eliminarArea(id) {
-  const area = datosActuales.areas.find(a => `${a.id}` === `${id}`);
-  if (area) {
-    const productosActivos = contarProductosArea(area);
-    if (productosActivos > 0) {
-      mostrarError('No es posible eliminar esta área porque tiene productos activos en sus zonas. Reasigna o vacía las ubicaciones antes de continuar.');
-      return;
-    }
-  }
-
-  if (!confirm('¿Está seguro de eliminar esta área?') || !confirm('Esta acción es irreversible, confirme de nuevo.')) {
+  if (!esUsuarioAdmin()) {
+    mostrarError('Solo un administrador puede eliminar áreas.');
     return;
   }
 
+  if (!empresaId) {
+    mostrarError('No se pudo identificar la empresa asociada. Inicia sesión nuevamente e inténtalo otra vez.');
+    return;
+  }
+
+  const area = datosActuales.areas.find(a => `${a.id}` === `${id}`);
+  if (!area) {
+    mostrarError('No se pudo encontrar el registro del área seleccionada. Actualiza la vista e inténtalo nuevamente.');
+    return;
+  }
+
+  const zonasArea = datosActuales.zonas.filter(zona => `${zona.area_id}` === `${id}`);
+  const totalZonas = zonasArea.length;
+  const productosActivos = contarProductosArea(area);
+  const nombreArea = area.nombre || 'esta área';
+
+  const detalleProductos = productosActivos > 0
+    ? ` Actualmente tiene ${formatearProductosActivos(productosActivos)} registrados.`
+    : '';
+
+  if (!confirm(`Vas a eliminar el área "${nombreArea}".${detalleProductos} ¿Deseas continuar?`)) {
+    return;
+  }
+
+  let manejoZonas = 'ninguno';
+  let eliminarProductos = false;
+  let confirmacionTextual = '';
+
+  if (totalZonas > 0) {
+    const segundaConfirmacion = confirm(`Esta área tiene ${totalZonas} zona${totalZonas === 1 ? '' : 's'} asignada${totalZonas === 1 ? '' : 's'}. Debes confirmar nuevamente para continuar.`);
+    if (!segundaConfirmacion) {
+      return;
+    }
+
+    const deseaEliminarZonas = confirm('¿Deseas eliminar también las zonas asignadas y los productos almacenados en ellas? Si seleccionas "Cancelar", las zonas quedarán pendientes de asignación.');
+
+    if (deseaEliminarZonas) {
+      const confirmacion = prompt('Esta acción eliminará las zonas vinculadas y todos los productos almacenados en ellas. Escribe "Confirmo" para continuar.');
+      if (!confirmacion || confirmacion.trim().toLowerCase() !== 'confirmo') {
+        mostrarError('Debes escribir "Confirmo" para eliminar las zonas y los productos asociados. No se realizaron cambios.');
+        return;
+      }
+      manejoZonas = 'eliminar';
+      eliminarProductos = true;
+      confirmacionTextual = confirmacion.trim();
+    } else {
+      if (!confirm('Las zonas quedarán sin área asignada y deberás reasignarlas manualmente después. ¿Deseas continuar?')) {
+        return;
+      }
+      manejoZonas = 'liberar';
+    }
+  } else if (!confirm('Esta acción es irreversible, confirme de nuevo.')) {
+    return;
+  }
+
+  const params = new URLSearchParams({ id, empresa_id: empresaId });
+  if (manejoZonas !== 'ninguno') {
+    params.set('manejo_zonas', manejoZonas);
+  }
+  if (eliminarProductos) {
+    params.set('eliminar_productos', '1');
+  }
+  if (confirmacionTextual) {
+    params.set('confirmacion_textual', confirmacionTextual);
+  }
+
   try {
-    const respuesta = await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+    const respuesta = await fetchAPI(`${API_ENDPOINTS.areas}?${params.toString()}`, 'DELETE');
+    const mensajeInmediato = typeof respuesta === 'object' && respuesta !== null
+      ? (respuesta.message
+        || (manejoZonas === 'liberar' && totalZonas > 0
+          ? `Área eliminada. ${totalZonas} zona${totalZonas === 1 ? '' : 's'} quedaron sin área asignada.`
+          : (manejoZonas === 'eliminar' && totalZonas > 0
+            ? `Área y zonas asociadas eliminadas correctamente.`
+            : 'Área eliminada correctamente')))
+      : 'Área eliminada correctamente';
+
     manejarRespuestaSolicitud(
       respuesta,
       'Solicitud de eliminación de área enviada para revisión.',
-      'Área eliminada correctamente'
+      mensajeInmediato
     );
-    await cargarYMostrarRegistros();
+
+    if (respuesta && typeof respuesta === 'object' && respuesta.success) {
+      await cargarYMostrarRegistros();
+    }
   } catch (error) {
     console.error('Error eliminando área:', error);
   }
