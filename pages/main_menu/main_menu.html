@@ -356,13 +356,46 @@
 
 <!-- Modal Alert Settings -->
 <div id="alertModal" class="modal-overlay" style="display: none;">
-  <div class="modal-content">
-    <h3>Alertas Personalizadas</h3>
-    <label><input type="checkbox" id="alertMovCriticos"> Movimientos críticos</label><br>
-    <label><input type="checkbox" id="alertFallosInventario"> Fallos de inventario</label>
-    <div style="margin-top:20px;">
-      <button id="saveAlertSettings" class="btn btn-success">Guardar</button>
-      <button id="cancelAlertSettings" class="btn btn-danger">Cancelar</button>
+  <div class="modal-content alert-modal" role="dialog" aria-modal="true" aria-labelledby="alertModalTitle" aria-describedby="alertModalDescription">
+    <header class="alert-modal__header">
+      <span class="alert-modal__eyebrow">Preferencias</span>
+      <h3 class="alert-modal__title" id="alertModalTitle">Alertas personalizadas</h3>
+      <p class="alert-modal__description" id="alertModalDescription">Elige los avisos que deseas mostrar en la bandeja superior del panel.</p>
+    </header>
+
+    <div class="alert-modal__body">
+      <label class="alert-toggle" for="alertMovCriticos">
+        <span class="alert-toggle__icon alert-toggle__icon--critical" aria-hidden="true">
+          <i class="fas fa-exclamation-triangle"></i>
+        </span>
+        <span class="alert-toggle__content">
+          <span class="alert-toggle__title">Movimientos críticos</span>
+          <span class="alert-toggle__text">Recibe alertas cuando se detecten operaciones fuera de los parámetros habituales.</span>
+        </span>
+        <span class="alert-toggle__control">
+          <input type="checkbox" id="alertMovCriticos" class="alert-toggle__checkbox">
+          <span class="alert-toggle__switch" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <label class="alert-toggle" for="alertFallosInventario">
+        <span class="alert-toggle__icon alert-toggle__icon--inventory" aria-hidden="true">
+          <i class="fas fa-clipboard-check"></i>
+        </span>
+        <span class="alert-toggle__content">
+          <span class="alert-toggle__title">Fallos de inventario</span>
+          <span class="alert-toggle__text">Activa avisos ante diferencias de stock, registros incompletos o fallos en sincronización.</span>
+        </span>
+        <span class="alert-toggle__control">
+          <input type="checkbox" id="alertFallosInventario" class="alert-toggle__checkbox">
+          <span class="alert-toggle__switch" aria-hidden="true"></span>
+        </span>
+      </label>
+    </div>
+
+    <div class="alert-modal__footer">
+      <button id="cancelAlertSettings" type="button" class="alert-modal__button alert-modal__button--secondary">Cancelar</button>
+      <button id="saveAlertSettings" type="button" class="alert-modal__button alert-modal__button--primary">Guardar preferencias</button>
     </div>
   </div>
 </div>
