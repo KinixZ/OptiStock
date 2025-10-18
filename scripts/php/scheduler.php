@@ -780,26 +780,363 @@ function render_report_csv(array $payload): string
     $lines = [];
     $lines[] = 'Sección,Detalle,Valor';
 
-    $summary = $payload['summary'] ?? [];
-    $lines[] = implode(',', [csv_escape('Resumen'), csv_escape('Total de movimientos'), csv_escape($summary['totalMovements'] ?? 0)]);
-    $lines[] = implode(',', [csv_escape('Resumen'), csv_escape('Usuarios activos'), csv_escape($summary['uniqueUsers'] ?? 0)]);
-    $lines[] = implode(',', [csv_escape('Resumen'), csv_escape('Entradas registradas'), csv_escape($summary['totalIngresos'] ?? 0)]);
-    $lines[] = implode(',', [csv_escape('Resumen'), csv_escape('Salidas registradas'), csv_escape($summary['totalEgresos'] ?? 0)]);
-    $lines[] = implode(',', [csv_escape('Resumen'), csv_escape('Variación neta'), csv_escape($summary['net'] ?? 0)]);
+    $append = static function (string $section, string $detail, $value) use (&$lines): void {
+        $lines[] = implode(',', [csv_escape($section), csv_escape($detail), csv_escape($value)]);
+    };
 
-    $lines[] = '';
-    $lines[] = implode(',', [csv_escape('Movimientos por usuario'), csv_escape('Usuario'), csv_escape('Movimientos / Entradas / Salidas / Variación')]);
-    foreach ($payload['movementsByUser'] ?? [] as $item) {
-        $detail = sprintf('%s (%s)', $item['user'] ?? 'Usuario', $item['role'] ?? '');
-        $value = sprintf('%s / %s / %s / %s', $item['movements'] ?? 0, $item['ingresos'] ?? 0, $item['egresos'] ?? 0, $item['net'] ?? 0);
-        $lines[] = implode(',', [csv_escape('Movimientos por usuario'), csv_escape($detail), csv_escape($value)]);
+    $blank = static function () use (&$lines): void {
+        if ($lines && end($lines) !== '') {
+            $lines[] = '';
+        }
+    };
+
+    $formatInt = static function ($value): string {
+        if ($value === null || $value === '') {
+            return '0';
+        }
+        if (!is_numeric($value)) {
+            return (string) $value;
+        }
+        return (string) (int) round((float) $value);
+    };
+
+    $formatFloat = static function ($value, int $decimals = 2): string {
+        if ($value === null || $value === '') {
+            return '0';
+        }
+        if (!is_numeric($value)) {
+            return (string) $value;
+        }
+        return number_format((float) $value, $decimals, '.', '');
+    };
+
+    $formatPercent = static function ($value, int $decimals = 2): string {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+        if (!is_numeric($value)) {
+            return (string) $value;
+        }
+        return number_format((float) $value, $decimals, '.', '') . '%';
+    };
+
+    $company = $payload['company'] ?? [];
+    if ($company || isset($payload['module']) || isset($payload['period'])) {
+        $append('Reporte', 'Empresa', $company['name'] ?? 'OptiStock');
+        if (!empty($payload['moduleLabel'])) {
+            $append('Reporte', 'Módulo', $payload['moduleLabel']);
+        }
+        $period = $payload['period'] ?? [];
+        if (!empty($period['label'])) {
+            $append('Reporte', 'Periodo', $period['label']);
+        }
+        if (!empty($period['frequencyLabel'])) {
+            $append('Reporte', 'Frecuencia', $period['frequencyLabel']);
+        }
+        if (!empty($payload['generatedAtLabel'])) {
+            $append('Reporte', 'Generado el', $payload['generatedAtLabel']);
+        }
+        $blank();
     }
 
-    $lines[] = '';
-    $lines[] = implode(',', [csv_escape('Historial'), csv_escape('Fecha'), csv_escape('Movimientos / Entradas / Salidas / Variación')]);
-    foreach ($payload['movementTimeline'] ?? [] as $item) {
-        $value = sprintf('%s / %s / %s / %s', $item['movements'] ?? 0, $item['ingresos'] ?? 0, $item['egresos'] ?? 0, $item['net'] ?? 0);
-        $lines[] = implode(',', [csv_escape('Historial'), csv_escape($item['label'] ?? ''), csv_escape($value)]);
+    $summary = $payload['summary'] ?? [];
+    if ($summary) {
+        $append('Resumen', 'Total de movimientos', $formatInt($summary['totalMovements'] ?? 0));
+        $append('Resumen', 'Usuarios activos', $formatInt($summary['uniqueUsers'] ?? 0));
+        $append('Resumen', 'Entradas registradas', $formatInt($summary['totalIngresos'] ?? 0));
+        $append('Resumen', 'Salidas registradas', $formatInt($summary['totalEgresos'] ?? 0));
+        $append('Resumen', 'Variación neta', $formatInt($summary['net'] ?? 0));
+        $blank();
+    }
+
+    $movementsByUser = $payload['movementsByUser'] ?? [];
+    if ($movementsByUser) {
+        $append('Movimientos por usuario', 'Usuario', 'Movimientos / Entradas / Salidas / Variación');
+        foreach ($movementsByUser as $item) {
+            $detail = trim(sprintf('%s (%s)', $item['user'] ?? 'Usuario', $item['role'] ?? ''));
+            $detail = trim($detail, ' ()');
+            $value = sprintf(
+                '%s / %s / %s / %s',
+                $formatInt($item['movements'] ?? 0),
+                $formatInt($item['ingresos'] ?? 0),
+                $formatInt($item['egresos'] ?? 0),
+                $formatInt($item['net'] ?? 0)
+            );
+            $append('Movimientos por usuario', $detail !== '' ? $detail : 'Usuario', $value);
+        }
+        $blank();
+    }
+
+    $movementTimeline = $payload['movementTimeline'] ?? [];
+    if ($movementTimeline) {
+        $append('Historial', 'Fecha', 'Movimientos / Entradas / Salidas / Variación');
+        foreach ($movementTimeline as $item) {
+            $value = sprintf(
+                '%s / %s / %s / %s',
+                $formatInt($item['movements'] ?? 0),
+                $formatInt($item['ingresos'] ?? 0),
+                $formatInt($item['egresos'] ?? 0),
+                $formatInt($item['net'] ?? 0)
+            );
+            $append('Historial', $item['label'] ?? '', $value);
+        }
+        $blank();
+    }
+
+    $recentMovements = $payload['recentMovements'] ?? [];
+    if ($recentMovements) {
+        $append('Movimientos recientes', 'Producto / Código', 'Tipo / Cantidad / Fecha / Usuario / Ubicación');
+        foreach ($recentMovements as $movement) {
+            $product = $movement['product'] ?? 'Producto';
+            $code = $movement['productCode'] ?? '';
+            $detailParts = [$product];
+            if ($code !== '') {
+                $detailParts[] = 'Código: ' . $code;
+            }
+            $detail = implode(' · ', $detailParts);
+
+            $locationParts = [];
+            if (!empty($movement['area'])) {
+                $locationParts[] = 'Área: ' . $movement['area'];
+            }
+            if (!empty($movement['zone'])) {
+                $locationParts[] = 'Zona: ' . $movement['zone'];
+            }
+            $location = $locationParts ? implode(' / ', $locationParts) : 'Sin ubicación';
+
+            $valueParts = [
+                sprintf('Tipo: %s', $movement['type'] ?? ''),
+                sprintf('Cantidad: %s', $formatInt($movement['quantity'] ?? 0)),
+                sprintf('Fecha: %s', $movement['dateLabel'] ?? ''),
+            ];
+            if (!empty($movement['user'])) {
+                $valueParts[] = 'Usuario: ' . $movement['user'];
+            }
+            $valueParts[] = $location;
+
+            $append('Movimientos recientes', $detail, implode(' | ', $valueParts));
+        }
+        $blank();
+    }
+
+    $areas = $payload['areas'] ?? [];
+    if (!empty($areas)) {
+        $totals = $areas['totals'] ?? [];
+        if ($totals) {
+            $append('Áreas y zonas', 'Total de áreas', $formatInt($totals['areas'] ?? 0));
+            $append('Áreas y zonas', 'Total de zonas', $formatInt($totals['zones'] ?? 0));
+            $append('Áreas y zonas', 'Ocupación promedio (áreas)', $formatPercent($totals['avgAreaOccupancy'] ?? null));
+            $append('Áreas y zonas', 'Ocupación promedio (zonas)', $formatPercent($totals['avgZoneOccupancy'] ?? null));
+            $append('Áreas y zonas', 'Capacidad utilizada', $formatFloat($totals['usedCapacity'] ?? 0));
+            $append('Áreas y zonas', 'Volumen total', $formatFloat($totals['volume'] ?? 0));
+        }
+
+        foreach ($areas['topAreas'] ?? [] as $item) {
+            $value = sprintf(
+                'Ocupación: %s | Capacidad: %s | Volumen: %s | Productos: %s',
+                $formatPercent($item['occupancy'] ?? null),
+                $formatFloat($item['capacity'] ?? 0),
+                $formatFloat($item['volume'] ?? 0),
+                $formatInt($item['products'] ?? 0)
+            );
+            $append('Áreas destacadas', $item['name'] ?? 'Área', $value);
+        }
+
+        foreach ($areas['topZones'] ?? [] as $item) {
+            $value = sprintf(
+                'Ocupación: %s | Capacidad: %s | Productos: %s',
+                $formatPercent($item['occupancy'] ?? null),
+                $formatFloat($item['capacity'] ?? 0),
+                $formatInt($item['products'] ?? 0)
+            );
+            $append('Zonas destacadas', $item['name'] ?? 'Zona', $value);
+        }
+
+        $blank();
+    }
+
+    $requests = $payload['requests'] ?? [];
+    if (!empty($requests)) {
+        $append('Solicitudes', 'Abiertas actualmente', $formatInt($requests['openTotal'] ?? 0));
+        foreach ($requests['periodCreated'] ?? [] as $item) {
+            $append('Solicitudes creadas en el periodo', $item['estado'] ?? 'Estado', $formatInt($item['total'] ?? 0));
+        }
+        foreach ($requests['periodResolved'] ?? [] as $item) {
+            $append('Solicitudes resueltas en el periodo', $item['estado'] ?? 'Estado', $formatInt($item['total'] ?? 0));
+        }
+        foreach ($requests['recentOpen'] ?? [] as $item) {
+            $value = sprintf('%s | Estado: %s | Creada: %s', $item['summary'] ?? '', $item['estado'] ?? '', $item['dateLabel'] ?? '');
+            $append('Solicitudes abiertas recientes', $item['module'] ?? 'Módulo', $value);
+        }
+        foreach ($requests['recentResolved'] ?? [] as $item) {
+            $value = sprintf('%s | Estado: %s | Resuelta: %s', $item['summary'] ?? '', $item['estado'] ?? '', $item['dateLabel'] ?? '');
+            $append('Solicitudes resueltas recientes', $item['module'] ?? 'Módulo', $value);
+        }
+        $blank();
+    }
+
+    $movementFocus = $payload['movementFocus'] ?? [];
+    if (!empty($movementFocus)) {
+        $mode = $movementFocus['mode'] ?? '';
+        if ($mode !== '') {
+            $append('Enfoque de movimientos', 'Modo', $mode);
+        }
+        $focusTotals = $movementFocus['totals'] ?? [];
+        if ($focusTotals) {
+            $append('Enfoque de movimientos', 'Total movimientos', $formatInt($focusTotals['movements'] ?? 0));
+            $append('Enfoque de movimientos', 'Entradas', $formatInt($focusTotals['ingresos'] ?? 0));
+            $append('Enfoque de movimientos', 'Salidas', $formatInt($focusTotals['egresos'] ?? 0));
+            $append('Enfoque de movimientos', 'Variación', $formatInt($focusTotals['net'] ?? 0));
+        }
+        foreach ($movementFocus['timeline'] ?? [] as $entry) {
+            $valueParts = [];
+            if (isset($entry['movements'])) {
+                $valueParts[] = 'Movimientos: ' . $formatInt($entry['movements']);
+            }
+            if (isset($entry['ingresos'])) {
+                $valueParts[] = 'Entradas: ' . $formatInt($entry['ingresos']);
+            }
+            if (isset($entry['egresos'])) {
+                $valueParts[] = 'Salidas: ' . $formatInt($entry['egresos']);
+            }
+            if (isset($entry['net'])) {
+                $valueParts[] = 'Variación: ' . $formatInt($entry['net']);
+            }
+            $append('Enfoque de movimientos', $entry['label'] ?? '', implode(' | ', $valueParts));
+        }
+        foreach ($movementFocus['recent'] ?? [] as $entry) {
+            $valueParts = [
+                'Tipo: ' . ($entry['type'] ?? ''),
+                'Cantidad: ' . $formatInt($entry['quantity'] ?? 0),
+                'Fecha: ' . ($entry['dateLabel'] ?? ''),
+            ];
+            if (!empty($entry['user'])) {
+                $valueParts[] = 'Usuario: ' . $entry['user'];
+            }
+            $append('Enfoque de movimientos recientes', $entry['product'] ?? 'Producto', implode(' | ', $valueParts));
+        }
+        $blank();
+    }
+
+    if (($payload['module'] ?? '') === 'inventario' && !empty($payload['inventory'])) {
+        $inventory = $payload['inventory'];
+        $totals = $inventory['totals'] ?? [];
+        if ($totals) {
+            $append('Inventario', 'Productos registrados', $formatInt($totals['products'] ?? 0));
+            $append('Inventario', 'Stock total', $formatInt($totals['totalStock'] ?? 0));
+            $append('Inventario', 'Sin stock', $formatInt($totals['outOfStock'] ?? 0));
+            $append('Inventario', 'Con ubicación', $formatInt($totals['withLocation'] ?? 0));
+            $append('Inventario', 'Valuación estimada', $formatFloat($totals['valuation'] ?? 0));
+        }
+        foreach ($inventory['categories'] ?? [] as $category) {
+            $value = sprintf('Productos: %s | Stock: %s', $formatInt($category['products'] ?? 0), $formatInt($category['stock'] ?? 0));
+            $append('Inventario por categoría', $category['name'] ?? 'Categoría', $value);
+        }
+        foreach ($inventory['products'] ?? [] as $product) {
+            $detailParts = [$product['name'] ?? 'Producto'];
+            if (!empty($product['category'])) {
+                $detailParts[] = 'Categoría: ' . $product['category'];
+            }
+            if (!empty($product['code'])) {
+                $detailParts[] = 'Código: ' . $product['code'];
+            }
+            $valueParts = [
+                'Stock: ' . $formatInt($product['stock'] ?? 0),
+            ];
+            if (!empty($product['location'])) {
+                $valueParts[] = 'Ubicación: ' . $product['location'];
+            }
+            if (!empty($product['lastMovement'])) {
+                $valueParts[] = 'Último movimiento: ' . $product['lastMovement'];
+            }
+            if (!empty($product['lastType'])) {
+                $valueParts[] = 'Tipo: ' . $product['lastType'];
+            }
+            $append('Inventario - productos', implode(' · ', $detailParts), implode(' | ', $valueParts));
+        }
+        $blank();
+    }
+
+    if (($payload['module'] ?? '') === 'usuarios' && !empty($payload['users'])) {
+        $users = $payload['users'];
+        $totals = $users['totals'] ?? [];
+        if ($totals) {
+            $append('Usuarios', 'Total usuarios', $formatInt($totals['users'] ?? 0));
+            $append('Usuarios', 'Activos', $formatInt($totals['active'] ?? 0));
+            $append('Usuarios', 'Inactivos', $formatInt($totals['inactive'] ?? 0));
+        }
+        foreach ($users['roles'] ?? [] as $role) {
+            $append('Usuarios por rol', $role['role'] ?? 'Rol', $formatInt($role['total'] ?? 0));
+        }
+        foreach ($users['people'] ?? [] as $person) {
+            $detailParts = [$person['name'] ?? 'Usuario'];
+            if (!empty($person['email'])) {
+                $detailParts[] = 'Correo: ' . $person['email'];
+            }
+            if (!empty($person['phone'])) {
+                $detailParts[] = 'Teléfono: ' . $person['phone'];
+            }
+            $valueParts = [];
+            if (isset($person['role'])) {
+                $valueParts[] = 'Rol: ' . $person['role'];
+            }
+            $valueParts[] = 'Estado: ' . ((isset($person['active']) && $person['active']) ? 'Activo' : 'Inactivo');
+            if (!empty($person['registered'])) {
+                $valueParts[] = 'Registro: ' . $person['registered'];
+            }
+            if (!empty($person['accessSummary'])) {
+                $valueParts[] = 'Accesos: ' . $person['accessSummary'];
+            }
+            $append('Usuarios - detalle', implode(' | ', $detailParts), implode(' | ', $valueParts));
+        }
+        $blank();
+    }
+
+    if (($payload['module'] ?? '') === 'registro_actividades' && !empty($payload['activityLog'])) {
+        $activity = $payload['activityLog'];
+        $append('Registro de actividades', 'Total de eventos', $formatInt($activity['total'] ?? 0));
+        foreach ($activity['moduleCounts'] ?? [] as $module => $count) {
+            $append('Registro de actividades', $module, $formatInt($count));
+        }
+        foreach ($activity['logs'] ?? [] as $entry) {
+            $value = sprintf(
+                'Acción: %s | Fecha: %s | Hora: %s | Usuario: %s',
+                $entry['action'] ?? '',
+                $entry['date'] ?? '',
+                $entry['time'] ?? '',
+                $entry['user'] ?? ''
+            );
+            $append('Registro de actividades - detalle', $entry['module'] ?? 'Módulo', $value);
+        }
+        $blank();
+    }
+
+    if (($payload['module'] ?? '') === 'accesos' && !empty($payload['accessLog'])) {
+        $access = $payload['accessLog'];
+        $append('Registro de accesos', 'Total de eventos', $formatInt($access['total'] ?? 0));
+        foreach ($access['actionCounts'] ?? [] as $action => $count) {
+            $append('Registro de accesos', $action, $formatInt($count));
+        }
+        foreach ($access['lastAccessByUser'] ?? [] as $entry) {
+            $value = sprintf(
+                'Acción: %s | Fecha: %s | Hora: %s',
+                $entry['action'] ?? '',
+                $entry['date'] ?? '',
+                $entry['time'] ?? ''
+            );
+            $append('Últimos accesos por usuario', $entry['user'] ?? 'Usuario', $value);
+        }
+        foreach ($access['entries'] ?? [] as $entry) {
+            $value = sprintf(
+                'Acción: %s | Fecha: %s | Hora: %s | Rol: %s',
+                $entry['action'] ?? '',
+                $entry['date'] ?? '',
+                $entry['time'] ?? '',
+                $entry['role'] ?? ''
+            );
+            $append('Registro de accesos - detalle', $entry['user'] ?? 'Usuario', $value);
+        }
+        $blank();
     }
 
     return implode("\n", $lines);
