@@ -240,7 +240,7 @@ if (!function_exists('automation_sum_request_totals')) {
       --sidebar-text-color: <?php echo $sidebarTextColor; ?>;
       --row-alt: <?php echo $altRowColor; ?>;
     }
-    body {
+    body.report-wrapper {
       margin: 0;
       font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
       font-size: 12px;
@@ -248,213 +248,32 @@ if (!function_exists('automation_sum_request_totals')) {
       color: var(--text-color);
       background: var(--page-bg);
     }
-    .report-wrapper {
-      background: var(--page-bg);
+    .report-page {
+      padding: 0 0 32px;
     }
     .report-banner {
-      background: var(--topbar-color);
-      color: var(--topbar-text-color);
-      padding: 24px 28px 18px;
-    }
-    .report-banner__header {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .report-banner__logo {
-      width: 120px;
-      vertical-align: middle;
-      text-align: center;
-    }
-    .report-banner__logo img {
-      max-width: 110px;
-      max-height: 64px;
-      display: block;
-      margin: 0 auto;
-    }
-    .report-banner__info {
-      padding-left: 12px;
-      vertical-align: middle;
-    }
-    .report-banner__company {
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      color: rgba(255, 255, 255, 0.82);
-    }
-    .report-banner__title {
-      margin: 0;
-      font-size: 22px;
-    }
-    .report-banner__module {
-      margin-top: 4px;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.82);
-    }
-    .report-banner__meta {
-      margin-top: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.25);
-      padding-top: 10px;
-    }
-    .meta-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .meta-table td {
-      padding: 4px 0;
-      font-size: 11px;
-    }
-    .meta-label {
-      display: block;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 9px;
-      color: rgba(255, 255, 255, 0.7);
-      margin-bottom: 2px;
+      border-radius: 0;
     }
     .report-banner__accent {
-      height: 6px;
-      background: var(--accent-color);
+      border-radius: 0;
+      margin-bottom: 0;
     }
     .report-content {
       padding: 24px 28px;
     }
-    .section-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 18px;
-      box-shadow: 0 18px 40px -28px rgba(23, 31, 52, 0.45);
+    .section-card,
+    .metric-card,
+    .automatic-item {
+      page-break-inside: avoid;
     }
-    .section-card h2 {
-      margin: 0 0 10px;
-      font-size: 16px;
-      color: var(--accent-color);
-    }
-    .section-card h3 {
-      margin: 12px 0 8px;
-      font-size: 13px;
-      color: var(--accent-color);
-    }
-    .section-card__note {
-      margin: 4px 0 0;
-      font-size: 11px;
-      color: var(--muted-color);
-    }
-    .metric-grid {
-      margin-top: 6px;
-    }
-    .metric-card {
-      display: inline-block;
-      min-width: 150px;
-      padding: 10px 12px;
-      margin: 4px 6px 4px 0;
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      background: var(--card-bg);
-    }
-    .metric-card__label {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted-color);
-    }
-    .metric-card__value {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-color);
-      margin-top: 4px;
-    }
-    .metric-card__description {
-      font-size: 10px;
-      color: var(--muted-color);
-      margin-top: 2px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    .data-table th {
-      background: var(--sidebar-color);
-      color: var(--sidebar-text-color);
-      padding: 7px 8px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      text-align: left;
-      border: 1px solid var(--sidebar-color);
-    }
+    .data-table th,
     .data-table td {
-      border: 1px solid var(--border-color);
-      padding: 7px 8px;
-      font-size: 11px;
-      color: var(--text-color);
-    }
-    .data-table tbody tr:nth-child(even) {
-      background: var(--row-alt);
-    }
-    .empty-state {
-      border: 1px dashed var(--border-color);
-      padding: 10px 12px;
-      font-style: italic;
-      color: var(--muted-color);
-      font-size: 11px;
-      margin-top: 8px;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .status-badge--active {
-      background: #dcfce7;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-    }
-    .status-badge--inactive {
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-    }
-    .badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .badge-ingreso {
-      background: #dcfce7;
-      color: #15803d;
-      border: 1px solid #bbf7d0;
-    }
-    .badge-egreso {
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-    }
-    .list-inline {
-      padding-left: 16px;
-      margin: 6px 0 0;
-      font-size: 11px;
-    }
-    .notes-box {
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 12px 14px;
-      background: #ffffff;
-      font-size: 11px;
-      color: var(--text-color);
+      page-break-inside: avoid;
     }
   </style>
 </head>
 <body class="report-wrapper">
+  <div class="report-page">
   <header class="report-banner">
     <table class="report-banner__header">
       <tr>
@@ -1293,5 +1112,6 @@ if (!function_exists('automation_sum_request_totals')) {
       </section>
     <?php endif; ?>
   </main>
+  </div>
 </body>
 </html>

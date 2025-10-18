@@ -13,45 +13,75 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="../../styles/reports/reportes.css" />
 </head>
-<body>
-  <div class="reports-page container-fluid py-4 px-3 px-md-4">
-    <section class="page-header">
-      <span class="header-eyebrow">Reportes</span>
-      <h1 class="header-title">Reportes</h1>
-      <p class="header-description">
-        Cada PDF o Excel generado desde OptiStock queda almacenado durante dos meses para que puedas volver a descargarlo cuando
-        lo necesites. También puedes subir archivos externos para mantener todo tu historial en un solo lugar.
-      </p>
-      <div class="header-highlights">
-        <article class="highlight-card">
-          <span class="card-label">Archivos almacenados</span>
-          <strong class="card-title" id="summaryTotal">0</strong>
-          <span class="card-subtitle">Disponibles para descarga inmediata</span>
-        </article>
-        <article class="highlight-card">
-          <span class="card-label">Guardados este mes</span>
-          <strong class="card-title" id="summaryMonth">0</strong>
-          <span class="card-subtitle">Generados en los últimos 30 días</span>
-        </article>
-        <article class="highlight-card">
-          <span class="card-label">Por expirar</span>
-          <strong class="card-title" id="summaryExpiring">0</strong>
-          <span class="card-subtitle" id="summaryRetention">Eliminación automática cada 60 días</span>
-        </article>
+<body class="report-wrapper">
+  <div class="report-page">
+    <header class="report-banner">
+      <table class="report-banner__header">
+        <tr>
+          <td class="report-banner__info">
+            <div class="report-banner__company">OptiStock</div>
+            <h1 class="report-banner__title">Reportes</h1>
+            <div class="report-banner__module">Historial manual y automatizaciones programadas</div>
+            <p class="report-banner__description">
+              Cada PDF o Excel generado queda almacenado durante el periodo de retención configurado para tu empresa. Mantén tus
+              reportes sincronizados y listos para descargar en cualquier momento.
+            </p>
+          </td>
+        </tr>
+      </table>
+      <div class="report-banner__meta">
+        <table class="meta-table">
+          <tbody>
+            <tr>
+              <td>
+                <span class="meta-label">Disponibilidad</span>
+                Archivos listos para descarga inmediata
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="meta-label">Retención</span>
+                <span id="summaryRetention">Eliminación automática cada 60 días</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </section>
+    </header>
+    <div class="report-banner__accent"></div>
 
-    <section class="reports-shell">
-      <div class="shell-header">
-        <div class="shell-header__info">
-          <span class="shell-eyebrow">Historial</span>
-          <h2 class="shell-title">Consulta, filtra y descarga reportes sin salir de la página.</h2>
-          <p class="shell-subtitle">
-            Almacenar los reportes evita que tengas que repetir procesos de exportación. Cada archivo guarda su origen para que
-            sepas qué módulo lo generó.
-          </p>
+    <main class="report-content">
+      <section class="section-card summary-section" aria-labelledby="summaryTitle">
+        <div class="section-card__header">
+          <h2 id="summaryTitle">Resumen rápido</h2>
+          <p class="section-card__note">Un vistazo a tus exportaciones más recientes y a los archivos próximos a expirar.</p>
         </div>
-        <div class="shell-header__actions">
+        <div class="metric-grid">
+          <article class="metric-card">
+            <div class="metric-card__label">Archivos almacenados</div>
+            <div class="metric-card__value" id="summaryTotal">0</div>
+            <div class="metric-card__description">Disponibles para descarga inmediata</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-card__label">Guardados este mes</div>
+            <div class="metric-card__value" id="summaryMonth">0</div>
+            <div class="metric-card__description">Generados en los últimos 30 días</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-card__label">Por expirar</div>
+            <div class="metric-card__value" id="summaryExpiring">0</div>
+            <div class="metric-card__description">Se eliminarán según el periodo de retención</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-card" aria-labelledby="historyTitle">
+        <h2 id="historyTitle">Historial de reportes</h2>
+        <p class="section-card__note">
+          Consulta, filtra y descarga reportes sin salir de la página. Cada archivo conserva la referencia del módulo que lo
+          originó.
+        </p>
+        <div class="filter-area">
           <div class="filters-grid">
             <label class="filter-field">
               <span class="filter-label">Buscar</span>
@@ -68,17 +98,13 @@
           </div>
           <button id="refreshHistoryBtn" type="button">Actualizar lista</button>
         </div>
-      </div>
 
-      <div id="historyAlert" class="history-alert alert alert-danger d-none" role="alert"></div>
+        <div id="historyAlert" class="history-alert alert alert-danger d-none" role="alert"></div>
 
-      <div class="history-card">
-        <div class="history-card__header">
-          <h3 class="history-card__title">Archivos almacenados</h3>
-          <span class="history-card__caption" id="historyCaption">Sincronizando historial...</span>
-        </div>
-        <div class="table-responsive">
-          <table class="table history-table">
+        <div class="section-card__note" id="historyCaption" aria-live="polite">Sincronizando historial...</div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
             <thead>
               <tr>
                 <th scope="col">Nombre</th>
@@ -109,19 +135,18 @@
           <p class="mb-1 fw-semibold">Aún no hay reportes guardados.</p>
           <p class="mb-0">Cuando generes un PDF o Excel desde cualquier módulo aparecerá automáticamente aquí.</p>
         </div>
-      </div>
+      </section>
 
-      <section class="automatic-card" aria-labelledby="automaticReportsTitle">
-        <div class="automatic-card__header">
+      <section class="section-card" aria-labelledby="automaticReportsTitle">
+        <div class="automatic-controls">
           <div>
-            <span class="automatic-card__eyebrow">Automatización</span>
-            <h3 class="automatic-card__title" id="automaticReportsTitle">Reportes automáticos</h3>
-            <p class="automatic-card__subtitle">
+            <h2 id="automaticReportsTitle">Reportes automáticos</h2>
+            <p class="section-card__note">
               Configura reportes programados y OptiStock se encargará de generarlos automáticamente siguiendo la frecuencia que
               definas.
             </p>
           </div>
-          <button id="automationConfigBtn" class="automatic-card__action" type="button">Configurar automatizaciones</button>
+          <button id="automationConfigBtn" class="report-action-btn" type="button">Configurar automatizaciones</button>
         </div>
 
         <div id="automaticEmpty" class="automatic-empty d-none">
@@ -133,8 +158,7 @@
 
         <ul id="automaticList" class="automatic-list" aria-label="Lista de reportes automáticos"></ul>
       </section>
-
-    </section>
+    </main>
   </div>
 
   <div class="modal fade" id="automationModal" tabindex="-1" aria-labelledby="automationModalTitle" aria-hidden="true">
