@@ -154,7 +154,7 @@
     summaryRetention: document.getElementById('summaryRetention'),
     historyCaption: document.getElementById('historyCaption'),
     historyTableBody: document.getElementById('historyTableBody'),
-    historyTableWrapper: document.querySelector('.table-wrapper'),
+    historyTableWrapper: document.querySelector('.history-card .table-responsive'),
     historyLoading: document.getElementById('historyLoading'),
     historyEmpty: document.getElementById('historyEmpty'),
     historyAlert: document.getElementById('historyAlert'),
