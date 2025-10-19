@@ -313,6 +313,12 @@ if ($method === 'DELETE') {
 
     $nombreArea = trim((string) ($areaDatos['nombre'] ?? ''));
 
+    if (!opti_usuario_actual_es_admin()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Solo un administrador puede eliminar áreas.']);
+        exit;
+    }
+
     $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
@@ -320,10 +326,43 @@ if ($method === 'DELETE') {
     $stmt->fetch();
     $stmt->close();
 
+    $manejoZonas = isset($_GET['manejo_zonas']) ? strtolower(trim($_GET['manejo_zonas'])) : '';
+    $eliminarProductos = false;
+    if (isset($_GET['eliminar_productos'])) {
+        $eliminarProductos = filter_var($_GET['eliminar_productos'], FILTER_VALIDATE_BOOLEAN);
+    }
+    $confirmacionTextual = isset($_GET['confirmacion_textual']) ? trim((string) $_GET['confirmacion_textual']) : '';
+
     if ($zonasAsociadas > 0) {
-        http_response_code(409);
-        echo json_encode(['error' => 'No se puede eliminar el área porque existen zonas asociadas. Reasigna o elimina las zonas primero.']);
-        exit;
+        if ($manejoZonas === '') {
+            http_response_code(409);
+            echo json_encode(['error' => 'Debes indicar si las zonas asociadas se liberarán o eliminarán antes de eliminar el área.']);
+            exit;
+        }
+
+        if ($manejoZonas === 'liberar') {
+            $eliminarProductos = false;
+            $confirmacionTextual = '';
+        } elseif ($manejoZonas === 'eliminar') {
+            if (!$eliminarProductos) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Debes confirmar la eliminación de las zonas y sus productos para continuar.']);
+                exit;
+            }
+            if (strcasecmp($confirmacionTextual, 'Confirmo') !== 0) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Escribe "Confirmo" para autorizar la eliminación de las zonas y los productos asociados.']);
+                exit;
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Opción de manejo de zonas no válida.']);
+            exit;
+        }
+    } else {
+        $manejoZonas = 'ninguno';
+        $eliminarProductos = false;
+        $confirmacionTextual = '';
     }
 
     $empresaDestino = $empresaId > 0 ? $empresaId : (int) ($areaDatos['id_empresa'] ?? 0);
@@ -331,31 +370,19 @@ if ($method === 'DELETE') {
     $payloadEliminar = [
         'area_id' => $id,
         'empresa_id' => $empresaDestino,
-        'nombre_area' => $nombreArea
+        'nombre_area' => $nombreArea,
+        'manejo_zonas' => $manejoZonas,
+        'eliminar_productos' => $eliminarProductos,
+        'confirmacion_textual' => $confirmacionTextual,
+        'zonas_asociadas' => (int) $zonasAsociadas
     ];
 
-    if (opti_usuario_actual_es_admin()) {
-        $resultado = opti_aplicar_area_eliminar($conn, $payloadEliminar, $usuarioId);
-        if (!headers_sent()) {
-            header('Content-Type: application/json');
-        }
-        echo json_encode($resultado);
-        exit;
+    $resultado = opti_aplicar_area_eliminar($conn, $payloadEliminar, $usuarioId);
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
     }
-
-    $resultadoSolicitud = opti_registrar_solicitud($conn, [
-        'id_empresa' => $empresaDestino,
-        'id_solicitante' => $usuarioId,
-        'modulo' => 'Áreas',
-        'tipo_accion' => 'area_eliminar',
-        'resumen' => $nombreArea !== ''
-            ? 'Eliminación del área "' . $nombreArea . '" (ID #' . $id . ')'
-            : 'Eliminación del área ID #' . $id,
-        'descripcion' => 'Solicitud de eliminación de área.',
-        'payload' => $payloadEliminar
-    ]);
-
-    opti_responder_solicitud_creada($resultadoSolicitud);
+    echo json_encode($resultado);
+    exit;
 }
 
 http_response_code(405);

@@ -1173,46 +1173,135 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
 {
     $areaId = (int)($payload['area_id'] ?? 0);
     $empresaId = (int)($payload['empresa_id'] ?? 0);
+    $manejoZonas = strtolower(trim($payload['manejo_zonas'] ?? ''));
+    $eliminarProductos = !empty($payload['eliminar_productos']);
+    $confirmacionTextual = trim((string)($payload['confirmacion_textual'] ?? ''));
+
     if ($areaId <= 0 || $empresaId <= 0) {
         return ['success' => false, 'message' => 'Datos insuficientes para eliminar el área.'];
     }
 
-    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
-    if (!$stmt) {
-        return ['success' => false, 'message' => 'No se pudo validar las zonas asociadas.'];
-    }
-    $stmt->bind_param('i', $areaId);
-    $stmt->execute();
-    $stmt->bind_result($zonasAsociadas);
-    $stmt->fetch();
-    $stmt->close();
-
-    if ($zonasAsociadas > 0) {
-        return ['success' => false, 'message' => 'No se puede eliminar el área porque existen zonas asociadas.'];
-    }
-
-    $stmtDel = $conn->prepare('DELETE FROM areas WHERE id = ? AND id_empresa = ?');
-    if (!$stmtDel) {
-        return ['success' => false, 'message' => 'No se pudo preparar la eliminación del área.'];
-    }
-    $stmtDel->bind_param('ii', $areaId, $empresaId);
+    $zonasAfectadas = 0;
+    $productosEliminados = 0;
 
     try {
+        $conn->begin_transaction();
+
+        $zonasIds = [];
+        $stmtZonas = $conn->prepare('SELECT id FROM zonas WHERE area_id = ?');
+        if (!$stmtZonas) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'No se pudo identificar las zonas asociadas.'];
+        }
+        $stmtZonas->bind_param('i', $areaId);
+        $stmtZonas->execute();
+        $resultadoZonas = $stmtZonas->get_result();
+        while ($row = $resultadoZonas->fetch_assoc()) {
+            $zonasIds[] = (int)($row['id'] ?? 0);
+        }
+        $stmtZonas->close();
+
+        $zonasCount = count($zonasIds);
+
+        if ($zonasCount > 0) {
+            if ($manejoZonas === 'liberar') {
+                $eliminarProductos = false;
+                $confirmacionTextual = '';
+                $stmtLiberar = $conn->prepare('UPDATE zonas SET area_id = NULL WHERE area_id = ?');
+                if (!$stmtLiberar) {
+                    $conn->rollback();
+                    return ['success' => false, 'message' => 'No se pudo liberar las zonas asociadas.'];
+                }
+                $stmtLiberar->bind_param('i', $areaId);
+                $stmtLiberar->execute();
+                $stmtLiberar->close();
+                $zonasAfectadas = $zonasCount;
+            } elseif ($manejoZonas === 'eliminar') {
+                if (!$eliminarProductos || strcasecmp($confirmacionTextual, 'Confirmo') !== 0) {
+                    $conn->rollback();
+                    return ['success' => false, 'message' => 'No se autorizó la eliminación de las zonas y sus productos.'];
+                }
+
+                $zonasAfectadas = $zonasCount;
+                $idsListado = implode(',', $zonasIds);
+                if ($idsListado !== '') {
+                    $conteoProductos = $conn->query("SELECT COUNT(*) AS total FROM productos WHERE zona_id IN ($idsListado)");
+                    if ($conteoProductos) {
+                        $datosConteo = $conteoProductos->fetch_assoc();
+                        $productosEliminados = (int)($datosConteo['total'] ?? 0);
+                        $conteoProductos->free();
+                    }
+
+                    $conn->query("DELETE FROM productos WHERE zona_id IN ($idsListado)");
+                }
+
+                $stmtEliminarZonas = $conn->prepare('DELETE FROM zonas WHERE area_id = ?');
+                if (!$stmtEliminarZonas) {
+                    $conn->rollback();
+                    return ['success' => false, 'message' => 'No se pudo eliminar las zonas asociadas.'];
+                }
+                $stmtEliminarZonas->bind_param('i', $areaId);
+                $stmtEliminarZonas->execute();
+                $stmtEliminarZonas->close();
+            } else {
+                $conn->rollback();
+                return ['success' => false, 'message' => 'No se especificó cómo manejar las zonas asociadas al área.'];
+            }
+        } else {
+            $manejoZonas = 'ninguno';
+            $eliminarProductos = false;
+            $confirmacionTextual = '';
+        }
+
+        $stmtDel = $conn->prepare('DELETE FROM areas WHERE id = ? AND id_empresa = ?');
+        if (!$stmtDel) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'No se pudo preparar la eliminación del área.'];
+        }
+        $stmtDel->bind_param('ii', $areaId, $empresaId);
         $stmtDel->execute();
         $eliminadas = $stmtDel->affected_rows;
         $stmtDel->close();
-    } catch (mysqli_sql_exception $e) {
-        $stmtDel->close();
+
+        if ($eliminadas <= 0) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'El área indicada ya no existe.'];
+        }
+
+        $mensaje = 'Área eliminada correctamente.';
+        if ($manejoZonas === 'liberar' && $zonasAfectadas > 0) {
+            $mensaje = sprintf('Área eliminada. %d zona%s quedaron sin área asignada.', $zonasAfectadas, $zonasAfectadas === 1 ? '' : 's');
+        } elseif ($manejoZonas === 'eliminar' && $zonasAfectadas > 0) {
+            $mensaje = sprintf(
+                'Área y %d zona%s eliminadas. %d producto%s removidos.',
+                $zonasAfectadas,
+                $zonasAfectadas === 1 ? '' : 's',
+                $productosEliminados,
+                $productosEliminados === 1 ? '' : 's'
+            );
+        }
+
+        $logMensaje = 'Eliminación aprobada del área ID ' . $areaId;
+        if ($zonasAfectadas > 0) {
+            $logMensaje .= $manejoZonas === 'eliminar'
+                ? sprintf(' con eliminación de %d zona%s.', $zonasAfectadas, $zonasAfectadas === 1 ? '' : 's')
+                : sprintf(' liberando %d zona%s.', $zonasAfectadas, $zonasAfectadas === 1 ? '' : 's');
+        }
+
+        registrarLog($conn, $idRevisor, 'Áreas', $logMensaje);
+        $conn->commit();
+
+        return [
+            'success' => true,
+            'message' => $mensaje,
+            'manejo_zonas' => $manejoZonas,
+            'zonas_afectadas' => $zonasAfectadas,
+            'productos_eliminados' => $productosEliminados
+        ];
+    } catch (Throwable $e) {
+        $conn->rollback();
         return ['success' => false, 'message' => 'No se pudo eliminar el área: ' . $e->getMessage()];
     }
-
-    if ($eliminadas <= 0) {
-        return ['success' => false, 'message' => 'El área indicada ya no existe.'];
-    }
-
-    registrarLog($conn, $idRevisor, 'Áreas', 'Eliminación aprobada del área ID ' . $areaId);
-
-    return ['success' => true];
 }
 
 function opti_aplicar_zona_crear(mysqli $conn, array $payload, int $idRevisor)
