@@ -150,8 +150,10 @@ body {
 .header-cta {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
+  gap: 0.75rem;
 }
 
 .header-cta .cta-button {
@@ -193,6 +195,20 @@ body {
   box-shadow: 0 24px 40px -28px rgba(255, 111, 145, 0.9);
   color: #fff;
   filter: brightness(1.05);
+}
+
+.cta-button--secondary {
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-border-soft);
+  box-shadow: 0 14px 30px -26px rgba(23, 31, 52, 0.45);
+}
+
+.cta-button--secondary:hover {
+  color: var(--primary-color);
+  filter: none;
+  box-shadow: 0 22px 42px -30px rgba(23, 31, 52, 0.5);
+  background: #fff;
 }
 
 .cta-button__icon {
