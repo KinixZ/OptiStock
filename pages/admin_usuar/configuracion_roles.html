@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Configurar roles y permisos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="../../styles/Admin_usuar/configuracion_roles.css" />
+  </head>
+  <body>
+    <div class="roles-page container-fluid py-4 px-3 px-md-4">
+      <header class="page-header">
+        <a href="./administracion_usuarios.html" class="back-link">
+          <span aria-hidden="true">&#8592;</span>
+          Regresar a gestión de usuarios
+        </a>
+        <h1 class="header-title">Roles y permisos</h1>
+        <p class="header-description">
+          Define qué acciones puede realizar cada perfil dentro de la plataforma. Usa la lista para revisar los permisos
+          actuales y ajustarlos según las necesidades de tu organización.
+        </p>
+
+        <div class="header-meta">
+          <article class="meta-card">
+            <span class="meta-label">Roles configurados</span>
+            <span class="meta-value" id="rolesCount">0</span>
+          </article>
+          <article class="meta-card">
+            <span class="meta-label">Última actualización</span>
+            <span class="meta-value" id="lastUpdated">—</span>
+          </article>
+        </div>
+      </header>
+
+      <main class="roles-main">
+        <section class="roles-card">
+          <div class="roles-card__header">
+            <div>
+              <span class="card-eyebrow">Formulario de configuración</span>
+              <h2 class="card-title">Selecciona los permisos por rol</h2>
+              <p class="card-description">
+                Expande cada rol para visualizar sus permisos actuales. Marca o desmarca los accesos que necesites y guarda los
+                cambios para mantener la configuración sincronizada con tu equipo.
+              </p>
+            </div>
+          </div>
+
+          <div class="permissions-guide">
+            <h3 class="guide-title">Permisos disponibles</h3>
+            <ul class="guide-list" id="permissionsReference"></ul>
+          </div>
+
+          <div id="feedbackMessage" class="alert alert-success d-none" role="status"></div>
+
+          <div class="roles-list" id="rolesList" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../scripts/Admin_usuar/configuracion_roles.js"></script>
+  </body>
+</html>
