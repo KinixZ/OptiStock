@@ -100,6 +100,7 @@
         event.preventDefault();
         event.stopPropagation();
       }
+    addListener(toggleRolesButton, 'click', () => {
       const shouldOpen = rolesPanel.hasAttribute('hidden');
       initializeRolesPanel();
       setRolesPanelVisibility(shouldOpen);
