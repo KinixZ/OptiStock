@@ -95,6 +95,11 @@
   }
 
   if (toggleRolesButton && rolesPanel) {
+    addListener(toggleRolesButton, 'click', event => {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
     addListener(toggleRolesButton, 'click', () => {
       const shouldOpen = rolesPanel.hasAttribute('hidden');
       initializeRolesPanel();
