@@ -147,76 +147,104 @@
   const tablaUsuariosBody = tablaUsuariosElement ? tablaUsuariosElement.querySelector('tbody') : null;
   let modalAsignarInstancia = null;
 
-  const rolesModalElement = document.getElementById('rolesConfigModal');
-  const toggleRolesButton = document.getElementById('toggleRolesPanel');
-  const rolesListElement = document.getElementById('rolesList');
-  const permissionsReferenceElement = document.getElementById('permissionsReference');
-  const rolesFeedbackElement = document.getElementById('feedbackMessage');
-  const rolesCountElement = document.getElementById('rolesCount');
-  const rolesLastUpdatedElement = document.getElementById('lastUpdated');
-  const rolesButtonLabel = toggleRolesButton ? toggleRolesButton.querySelector('.cta-button__label') : null;
+  let rolesModalElement = null;
+  let toggleRolesButton = null;
+  let rolesListElement = null;
+  let permissionsReferenceElement = null;
+  let rolesFeedbackElement = null;
+  let rolesCountElement = null;
+  let rolesLastUpdatedElement = null;
+  let rolesButtonLabel = null;
   let rolesModalInstance = null;
+  let rolesDomReadyHandler = null;
+
+  function resolveRolesElements() {
+    rolesModalElement = document.getElementById('rolesConfigModal');
+    toggleRolesButton = document.getElementById('toggleRolesPanel');
+    rolesListElement = document.getElementById('rolesList');
+    permissionsReferenceElement = document.getElementById('permissionsReference');
+    rolesFeedbackElement = document.getElementById('feedbackMessage');
+    rolesCountElement = document.getElementById('rolesCount');
+    rolesLastUpdatedElement = document.getElementById('lastUpdated');
+    rolesButtonLabel = toggleRolesButton ? toggleRolesButton.querySelector('.cta-button__label') : null;
+  }
+
+  function setupRolesModalInteractions() {
+    resolveRolesElements();
+
+    if (toggleRolesButton && rolesModalElement) {
+      addListener(toggleRolesButton, 'click', event => {
+        if (event) {
+          event.preventDefault();
+          if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation();
+          }
+          event.stopPropagation();
+        }
+
+        if (!puedeAdministrarRoles()) {
+          reportarIntentoNoAutorizado(
+            'acceder a la configuración de roles y permisos',
+            'Solo un administrador puede gestionar los roles y permisos. Se notificó al responsable.'
+          );
+          return;
+        }
+
+        initializeRolesPanel();
+        const modal = obtenerInstanciaModalRoles();
+        if (modal) {
+          modal.show();
+        }
+      });
+    }
+
+    if (rolesModalElement) {
+      addListener(rolesModalElement, 'show.bs.modal', () => {
+        if (toggleRolesButton) {
+          toggleRolesButton.setAttribute('aria-expanded', 'true');
+        }
+
+        if (rolesButtonLabel) {
+          rolesButtonLabel.textContent = 'Roles y permisos';
+        }
+      });
+
+      addListener(rolesModalElement, 'hidden.bs.modal', () => {
+        if (toggleRolesButton) {
+          toggleRolesButton.setAttribute('aria-expanded', 'false');
+          toggleRolesButton.focus();
+        }
+
+        if (rolesButtonLabel) {
+          rolesButtonLabel.textContent = 'Roles y permisos';
+        }
+
+        if (rolesModalInstance && typeof rolesModalInstance.dispose === 'function') {
+          rolesModalInstance.dispose();
+        }
+
+        rolesModalInstance = null;
+      });
+    }
+  }
 
   if (tablaUsuariosElement && window.SimpleTableSorter) {
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
   }
 
-  if (toggleRolesButton && rolesModalElement) {
-    addListener(toggleRolesButton, 'click', event => {
-      if (event) {
-        event.preventDefault();
-        if (typeof event.stopImmediatePropagation === 'function') {
-          event.stopImmediatePropagation();
-        }
-        event.stopPropagation();
-      }
+  resolveRolesElements();
 
-      if (!puedeAdministrarRoles()) {
-        reportarIntentoNoAutorizado(
-          'acceder a la configuración de roles y permisos',
-          'Solo un administrador puede gestionar los roles y permisos. Se notificó al responsable.'
-        );
-        return;
-      }
-
+  if (document.readyState === 'loading') {
+    rolesDomReadyHandler = () => {
+      setupRolesModalInteractions();
       initializeRolesPanel();
-      const modal = obtenerInstanciaModalRoles();
-      if (modal) {
-        modal.show();
-      }
-    });
+      rolesDomReadyHandler = null;
+    };
+    document.addEventListener('DOMContentLoaded', rolesDomReadyHandler, { once: true });
+  } else {
+    setupRolesModalInteractions();
+    initializeRolesPanel();
   }
-
-  if (rolesModalElement) {
-    rolesModalElement.addEventListener('show.bs.modal', () => {
-      if (toggleRolesButton) {
-        toggleRolesButton.setAttribute('aria-expanded', 'true');
-      }
-
-      if (rolesButtonLabel) {
-        rolesButtonLabel.textContent = 'Roles y permisos';
-      }
-    });
-
-    rolesModalElement.addEventListener('hidden.bs.modal', () => {
-      if (toggleRolesButton) {
-        toggleRolesButton.setAttribute('aria-expanded', 'false');
-        toggleRolesButton.focus();
-      }
-
-      if (rolesButtonLabel) {
-        rolesButtonLabel.textContent = 'Roles y permisos';
-      }
-
-      if (rolesModalInstance && typeof rolesModalInstance.dispose === 'function') {
-        rolesModalInstance.dispose();
-      }
-
-      rolesModalInstance = null;
-    });
-  }
-
-  initializeRolesPanel();
 
   function sincronizarUsuariosEmpresaUI() {
     const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
@@ -280,6 +308,13 @@
   function initializeRolesPanel() {
     if (rolesConfiguratorInitialized) {
       updateRolesSummary();
+      return;
+    }
+
+    resolveRolesElements();
+
+    if (!rolesListElement || !permissionsReferenceElement) {
+      rolesConfiguratorInitialized = false;
       return;
     }
 
@@ -1481,6 +1516,11 @@
       element.removeEventListener(event, handler);
     });
     listeners.length = 0;
+
+    if (rolesDomReadyHandler) {
+      document.removeEventListener('DOMContentLoaded', rolesDomReadyHandler);
+      rolesDomReadyHandler = null;
+    }
 
     if (domReadyHandler) {
       document.removeEventListener('DOMContentLoaded', domReadyHandler);
