@@ -22,37 +22,41 @@
     {
       id: 'administrador',
       name: 'Administrador',
-      description: 'Acceso completo al sistema y capacidad de aprobar cambios críticos.',
-      permissions: [
-        'Gestionar usuarios',
-        'Configurar inventario',
-        'Ver reportes analíticos',
-        'Aprobar ajustes de stock',
-        'Monitorear indicadores'
-      ]
+      description: 'Supervisa todo el sistema y define la configuración estratégica.',
+      permissions: [...availablePermissions]
     },
     {
       id: 'supervisor',
       name: 'Supervisor',
-      description: 'Supervisa las operaciones diarias y autoriza tareas de alto impacto.',
-      permissions: [
-        'Configurar inventario',
-        'Ver reportes analíticos',
-        'Monitorear indicadores',
-        'Registrar entradas de almacén'
-      ]
+      description: 'Coordina al equipo y asegura el cumplimiento de los procesos diarios.',
+      permissions: [...availablePermissions]
     },
     {
       id: 'almacenista',
       name: 'Almacenista',
-      description: 'Gestiona la recepción y salida de mercancías en el almacén.',
-      permissions: ['Registrar entradas de almacén', 'Administrar catálogos de productos']
+      description: 'Gestiona la recepción, almacenamiento y surtido del inventario.',
+      permissions: [
+        'Configurar inventario',
+        'Registrar entradas de almacén',
+        'Generar órdenes de compra',
+        'Administrar catálogos de productos'
+      ]
     },
     {
-      id: 'analista',
-      name: 'Analista',
-      description: 'Evalúa el desempeño y genera reportes de inventario y ventas.',
-      permissions: ['Ver reportes analíticos', 'Monitorear indicadores']
+      id: 'mantenimiento',
+      name: 'Mantenimiento',
+      description: 'Mantiene operativos los equipos y supervisa ajustes críticos.',
+      permissions: [
+        'Aprobar ajustes de stock',
+        'Registrar entradas de almacén',
+        'Monitorear indicadores'
+      ]
+    },
+    {
+      id: 'etiquetador',
+      name: 'Etiquetador',
+      description: 'Asegura el etiquetado correcto y la actualización del catálogo.',
+      permissions: ['Registrar entradas de almacén', 'Administrar catálogos de productos']
     }
   ];
 
@@ -92,7 +96,6 @@
   const rolesDialogElement = rolesPanel ? rolesPanel.querySelector('.roles-config__card') : null;
   let rolesPanelListenersBound = false;
 
-
   if (tablaUsuariosElement && window.SimpleTableSorter) {
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
   }
@@ -101,23 +104,14 @@
     addListener(toggleRolesButton, 'click', event => {
       if (event) {
         event.preventDefault();
+        if (typeof event.stopImmediatePropagation === 'function') {
+          event.stopImmediatePropagation();
+        }
         event.stopPropagation();
       }
       const shouldOpen = rolesPanel.hasAttribute('hidden');
       initializeRolesPanel();
       setRolesPanelVisibility(shouldOpen);
-    addListener(toggleRolesButton, 'click', () => {
-      const shouldOpen = rolesPanel.hasAttribute('hidden');
-      initializeRolesPanel();
-      setRolesPanelVisibility(shouldOpen);
-
-      if (shouldOpen) {
-        window.requestAnimationFrame(() => {
-          if (rolesPanel) {
-            rolesPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        });
-      }
     });
   }
 
@@ -215,8 +209,6 @@
       rolesPanel.setAttribute('hidden', 'hidden');
       rolesPanel.classList.remove('is-open');
       unbindRolesPanelDismissListeners();
-    } else {
-      rolesPanel.setAttribute('hidden', 'hidden');
     }
 
     toggleRolesButton.setAttribute('aria-expanded', String(show));
@@ -225,6 +217,7 @@
       rolesButtonLabel.textContent = show ? 'Ocultar roles y permisos' : 'Roles y permisos';
     }
   }
+
   function bindRolesPanelDismissListeners() {
     if (rolesPanelListenersBound) return;
     document.addEventListener('mousedown', handleRolesPanelOutsideClick);
@@ -259,6 +252,7 @@
       toggleRolesButton.focus();
     }
   }
+
   function renderPermissionReference() {
     if (!permissionsReferenceElement) return;
 
