@@ -63,6 +63,68 @@
   let rolesFeedbackTimeout = null;
   let rolesPanelInitialized = false;
 
+  function obtenerDatosUsuarioActivo() {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return { id: null, nombre: '', rol: '' };
+    }
+
+    let id = null;
+    let nombre = '';
+    let rol = '';
+
+    try {
+      const storage = window.localStorage;
+      const rawId = storage.getItem('usuario_id');
+      if (rawId) {
+        const parsedId = Number.parseInt(rawId, 10);
+        if (Number.isFinite(parsedId) && parsedId > 0) {
+          id = parsedId;
+        }
+      }
+
+      nombre = storage.getItem('usuario_nombre') || '';
+      rol = storage.getItem('usuario_rol') || '';
+    } catch (error) {
+      console.warn('No se pudieron obtener los datos del usuario activo.', error);
+    }
+
+    return { id, nombre, rol };
+  }
+
+  function esUsuarioAdministrador(rol) {
+    if (!rol) return false;
+    return rol.toString().trim().toLowerCase() === 'administrador';
+  }
+
+  function puedeAdministrarRoles() {
+    const datos = obtenerDatosUsuarioActivo();
+    return esUsuarioAdministrador(datos.rol);
+  }
+
+  function reportarIntentoNoAutorizado(descripcion, mensajeUsuario) {
+    const datos = obtenerDatosUsuarioActivo();
+    const mensaje = mensajeUsuario
+      || 'No tienes permisos para realizar esta acción. El administrador ha sido notificado.';
+
+    notificar('error', mensaje);
+
+    const actorNombre = datos.nombre || 'Usuario desconocido';
+    const actorRol = datos.rol || 'Sin rol asignado';
+    const detalle = {
+      actorName: actorNombre,
+      actorRole: actorRol,
+      actorId: datos.id,
+      action: descripcion,
+      timestamp: new Date().toISOString(),
+      message: `${actorNombre} (${actorRol}) intentó ${descripcion} sin permisos.`,
+      showImmediateAlert: false
+    };
+
+    if (typeof document !== 'undefined' && typeof document.dispatchEvent === 'function') {
+      document.dispatchEvent(new CustomEvent('movimientoNoAutorizado', { detail: detalle }));
+    }
+  }
+
   function addListener(element, event, handler) {
     if (!element) return;
     element.addEventListener(event, handler);
@@ -109,6 +171,15 @@
         }
         event.stopPropagation();
       }
+
+      if (!puedeAdministrarRoles()) {
+        reportarIntentoNoAutorizado(
+          'acceder a la configuración de roles y permisos',
+          'Solo un administrador puede gestionar los roles y permisos. Se notificó al responsable.'
+        );
+        return;
+      }
+
       const shouldOpen = rolesPanel.hasAttribute('hidden');
       initializeRolesPanel();
       setRolesPanelVisibility(shouldOpen);
@@ -334,6 +405,15 @@
         checkbox.checked = role.permissions.includes(permission);
 
         checkbox.addEventListener('change', () => {
+          if (!puedeAdministrarRoles()) {
+            checkbox.checked = role.permissions.includes(permission);
+            reportarIntentoNoAutorizado(
+              `modificar el permiso «${permission}» del rol «${role.name}»`,
+              'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
+            );
+            return;
+          }
+
           if (checkbox.checked) {
             if (!role.permissions.includes(permission)) {
               role.permissions.push(permission);
@@ -363,6 +443,14 @@
       saveButton.textContent = 'Guardar cambios';
 
       saveButton.addEventListener('click', () => {
+        if (!puedeAdministrarRoles()) {
+          reportarIntentoNoAutorizado(
+            `guardar los cambios del rol «${role.name}»`,
+            'Solo un administrador puede guardar cambios en los roles. Se notificó al responsable.'
+          );
+          return;
+        }
+
         card.classList.remove('role-card--dirty');
         const message = `Los permisos del rol «${role.name}» se actualizaron correctamente.`;
         showRolesFeedback(message);

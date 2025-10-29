@@ -81,9 +81,12 @@ let serverNotifications = [];
 let criticalStockNotifications = [];
 let capacityAlertNotifications = [];
 let scheduledReportNotifications = [];
+let securityIncidentNotifications = [];
 let criticalStockState = new Map();
 let capacityAlertState = new Map();
 let autoArchiveInProgress = false;
+
+const SECURITY_INCIDENT_LIMIT = 10;
 
 const NOTIFICATION_PRIORITIES = ['Alta', 'Media', 'Baja'];
 const NOTIFICATION_STATES = ['Pendiente', 'Enviada', 'Leida', 'Archivada'];
@@ -1078,6 +1081,12 @@ function removeNotificationLocally(notification) {
             changed = true;
         }
 
+        const nextSecurity = filterByIdentity(securityIncidentNotifications);
+        if (nextSecurity.length !== securityIncidentNotifications.length) {
+            securityIncidentNotifications = nextSecurity;
+            changed = true;
+        }
+
         const nextPending = filterByIdentity(pendingRequestNotifications);
         if (nextPending.length !== pendingRequestNotifications.length) {
             pendingRequestNotifications = nextPending;
@@ -1149,6 +1158,11 @@ function clearGeneratedNotifications(options = {}) {
         changed = true;
     }
 
+    if (securityIncidentNotifications.length) {
+        securityIncidentNotifications = [];
+        changed = true;
+    }
+
     if (includePending) {
         if (pendingRequestNotifications.length) {
             pendingRequestNotifications = [];
@@ -1198,6 +1212,7 @@ async function autoArchiveSeenNotifications() {
         criticalStockNotifications.length > 0
         || capacityAlertNotifications.length > 0
         || scheduledReportNotifications.length > 0
+        || securityIncidentNotifications.length > 0
     );
 
     if (!hasCached && !hasGenerated) {
@@ -1218,7 +1233,8 @@ async function autoArchiveSeenNotifications() {
         server: serverNotifications.slice(),
         critical: criticalStockNotifications.slice(),
         capacity: capacityAlertNotifications.slice(),
-        scheduled: scheduledReportNotifications.slice()
+        scheduled: scheduledReportNotifications.slice(),
+        security: securityIncidentNotifications.slice()
     };
 
     try {
@@ -1238,6 +1254,7 @@ async function autoArchiveSeenNotifications() {
         criticalStockNotifications = previousState.critical;
         capacityAlertNotifications = previousState.capacity;
         scheduledReportNotifications = previousState.scheduled;
+        securityIncidentNotifications = previousState.security;
         persistScheduledReportAlertsState(activeEmpresaId, scheduledReportNotifications);
         refreshNotificationUI();
         fetchNotifications({ force: true });
@@ -1252,6 +1269,7 @@ function refreshNotificationUI() {
 
     [
         ...pendingRequestNotifications,
+        ...securityIncidentNotifications,
         ...criticalStockNotifications,
         ...capacityAlertNotifications,
         ...scheduledReportNotifications,
@@ -4642,15 +4660,134 @@ document.addEventListener('keydown', event => {
     }
 });
 
-function notifyUnauthorizedMovement(msg) {
-    if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
-        alert(msg);
+function normalizeUnauthorizedAttemptPayload(payload) {
+    if (payload && typeof payload === 'object') {
+        const actorName = typeof payload.actorName === 'string' && payload.actorName.trim()
+            ? payload.actorName.trim()
+            : (typeof payload.nombre === 'string' && payload.nombre.trim() ? payload.nombre.trim() : '');
 
+        const actorRole = typeof payload.actorRole === 'string' && payload.actorRole.trim()
+            ? payload.actorRole.trim()
+            : (typeof payload.rol === 'string' && payload.rol.trim() ? payload.rol.trim() : '');
+
+        const actorIdRaw = payload.actorId ?? payload.usuarioId ?? payload.idUsuario ?? null;
+        let actorId = null;
+        if (actorIdRaw !== null && actorIdRaw !== undefined) {
+            const parsedId = Number.parseInt(actorIdRaw, 10);
+            if (Number.isFinite(parsedId) && parsedId > 0) {
+                actorId = parsedId;
+            }
+        }
+
+        const actionSource = payload.action ?? payload.accion ?? '';
+        const actionDescription = typeof actionSource === 'string'
+            ? actionSource.trim()
+            : String(actionSource || '').trim();
+
+        let timestamp = null;
+        if (payload.timestamp) {
+            timestamp = normalizeNotificationDateTime(payload.timestamp);
+        }
+        if (!timestamp) {
+            timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        }
+
+        let message = '';
+        if (typeof payload.message === 'string' && payload.message.trim()) {
+            message = payload.message.trim();
+        } else {
+            const baseName = actorName || 'Un usuario';
+            const roleSuffix = actorRole ? ` (${actorRole})` : '';
+            const actionSuffix = actionDescription
+                ? ` intentó ${actionDescription}`
+                : ' intentó realizar una acción no permitida';
+            message = `${baseName}${roleSuffix}${actionSuffix} sin permisos.`;
+        }
+
+        const showImmediateAlert = payload.showImmediateAlert === true;
+
+        return {
+            actorName,
+            actorRole,
+            actorId,
+            actionDescription,
+            timestamp,
+            message,
+            showImmediateAlert
+        };
     }
+
+    const fallbackMessage = typeof payload === 'string' && payload.trim()
+        ? payload.trim()
+        : 'Movimiento no autorizado detectado';
+
+    return {
+        actorName: '',
+        actorRole: '',
+        actorId: null,
+        actionDescription: '',
+        timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        message: fallbackMessage,
+        showImmediateAlert: true
+    };
+}
+
+function buildUnauthorizedAttemptNotification(detail) {
+    const uniqueSuffix = Math.floor(Math.random() * 1000000);
+
+    return {
+        id: `unauthorized-${Date.now()}-${uniqueSuffix}`,
+        titulo: 'Intento no autorizado detectado',
+        mensaje: detail.message,
+        prioridad: 'Alta',
+        estado: 'Pendiente',
+        tipo_destinatario: 'Rol',
+        rol_destinatario: 'Administrador',
+        ruta_destino: 'admin_usuar/administracion_usuarios.html',
+        fecha_disponible_desde: detail.timestamp,
+        es_nueva: true,
+        es_local: true,
+        meta: {
+            actorName: detail.actorName,
+            actorRole: detail.actorRole,
+            actorId: detail.actorId,
+            actionDescription: detail.actionDescription
+        }
+    };
+}
+
+function notifyUnauthorizedMovement(payload) {
+    const detail = normalizeUnauthorizedAttemptPayload(payload);
+
+    let shouldAlertActor = true;
+    try {
+        shouldAlertActor = JSON.parse(localStorage.getItem('alertMovCriticos') || 'true');
+    } catch (error) {
+        shouldAlertActor = true;
+    }
+
+    if (detail.showImmediateAlert && shouldAlertActor && typeof alert === 'function') {
+        alert(detail.message);
+    }
+
+    const actorRoleLower = detail.actorRole ? detail.actorRole.trim().toLowerCase() : '';
+    if (actorRoleLower === 'administrador') {
+        return;
+    }
+
+    const notification = buildUnauthorizedAttemptNotification(detail);
+
+    securityIncidentNotifications.unshift(notification);
+    if (securityIncidentNotifications.length > SECURITY_INCIDENT_LIMIT) {
+        securityIncidentNotifications.length = SECURITY_INCIDENT_LIMIT;
+    }
+
+    refreshNotificationUI();
+    persistNotifications([notification]);
 }
 
 document.addEventListener('movimientoNoAutorizado', e => {
-    notifyUnauthorizedMovement(e.detail || 'Movimiento no autorizado detectado');
+    notifyUnauthorizedMovement(e && e.detail ? e.detail : 'Movimiento no autorizado detectado');
 });
 
 document.addEventListener("DOMContentLoaded", function () {
