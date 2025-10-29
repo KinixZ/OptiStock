@@ -320,10 +320,15 @@ if ($method === 'DELETE') {
     $stmt->fetch();
     $stmt->close();
 
+    $zonaStrategy = isset($_GET['zona_strategy']) ? strtolower(trim((string) $_GET['zona_strategy'])) : '';
     if ($zonasAsociadas > 0) {
-        http_response_code(409);
-        echo json_encode(['error' => 'No se puede eliminar el área porque existen zonas asociadas. Reasigna o elimina las zonas primero.']);
-        exit;
+        if ($zonaStrategy !== 'liberar' && $zonaStrategy !== 'eliminar') {
+            http_response_code(409);
+            echo json_encode(['error' => 'El área tiene zonas asociadas. Indica si deseas liberarlas o eliminarlas.']);
+            exit;
+        }
+    } else {
+        $zonaStrategy = '';
     }
 
     $empresaDestino = $empresaId > 0 ? $empresaId : (int) ($areaDatos['id_empresa'] ?? 0);
@@ -331,7 +336,9 @@ if ($method === 'DELETE') {
     $payloadEliminar = [
         'area_id' => $id,
         'empresa_id' => $empresaDestino,
-        'nombre_area' => $nombreArea
+        'nombre_area' => $nombreArea,
+        'zona_strategy' => $zonaStrategy,
+        'zonas_asociadas' => (int) $zonasAsociadas
     ];
 
     if (opti_usuario_actual_es_admin()) {

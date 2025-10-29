@@ -66,6 +66,45 @@
             </span>
             <span class="cta-button__label">Crear nuevo usuario</span>
           </a>
+
+          <div class="roles-config-dropdown" id="rolesConfigPanel" hidden>
+            <div class="roles-config__card" role="dialog" aria-modal="false" aria-labelledby="rolesConfigTitle" tabindex="-1">
+              <header class="roles-config__header">
+                <div>
+                  <span class="roles-config__eyebrow">Roles y permisos</span>
+                  <h2 class="roles-config__title" id="rolesConfigTitle">Configura los permisos de cada rol</h2>
+                  <p class="roles-config__description">
+                    Ajusta los permisos disponibles por rol sin abandonar el panel de usuarios. Expande cada tarjeta para activar o desactivar permisos específicos.
+                  </p>
+                </div>
+                <div class="roles-config__meta">
+                  <div class="roles-meta-card">
+                    <span class="roles-meta-label">Roles disponibles</span>
+                    <span class="roles-meta-value" id="rolesCount">0</span>
+                  </div>
+                  <div class="roles-meta-card">
+                    <span class="roles-meta-label">Última actualización</span>
+                    <span class="roles-meta-value" id="lastUpdated">—</span>
+                  </div>
+                </div>
+              </header>
+
+              <div class="roles-config__content">
+                <aside class="roles-guide">
+                  <h3 class="roles-guide__title">Guía de permisos disponibles</h3>
+                  <p class="roles-guide__description">
+                    Estos permisos determinan las acciones que cada rol puede realizar dentro del sistema.
+                  </p>
+                  <ul class="roles-guide__list" id="permissionsReference"></ul>
+                </aside>
+
+                <div class="roles-list-wrapper">
+                  <div class="alert alert-success d-none roles-feedback" role="status" id="feedbackMessage"></div>
+                  <div class="roles-list" id="rolesList"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

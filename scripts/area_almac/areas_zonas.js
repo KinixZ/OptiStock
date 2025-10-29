@@ -36,9 +36,18 @@ const reasignacionSelect = document.getElementById('reasignacionSelect');
 const reasignacionError = document.getElementById('reasignacionError');
 const confirmarReasignacionBtn = document.getElementById('confirmarReasignacion');
 const cancelarReasignacionBtn = document.getElementById('cancelarReasignacion');
+const areaDecisionOverlay = document.getElementById('areaDecisionOverlay');
+const areaDecisionForm = document.getElementById('areaDecisionForm');
+const areaDecisionMensaje = document.getElementById('areaDecisionMensaje');
+const areaDecisionProductos = document.getElementById('areaDecisionProductos');
+const areaDecisionError = document.getElementById('areaDecisionError');
+const areaDecisionConfirmGroup = document.getElementById('areaDecisionConfirmGroup');
+const areaDecisionConfirmInput = document.getElementById('areaDecisionConfirmInput');
+const cancelarAreaDecisionBtn = document.getElementById('cancelarAreaDecision');
 
 let datosActuales = { areas: [], zonas: [] };
 let zonaPendienteReasignacion = null;
+let areaPendienteEliminacion = null;
 
 // Utilidades de caché en localStorage
 function getCache(key) {
@@ -289,6 +298,85 @@ function cerrarReasignacionZona() {
   if (reasignacionError) {
     reasignacionError.textContent = '';
   }
+}
+
+function cerrarDialogoEliminacionArea() {
+  if (areaDecisionOverlay) {
+    areaDecisionOverlay.hidden = true;
+  }
+  areaPendienteEliminacion = null;
+  if (areaDecisionForm) {
+    areaDecisionForm.reset();
+  }
+  if (areaDecisionConfirmGroup) {
+    areaDecisionConfirmGroup.hidden = true;
+  }
+  if (areaDecisionConfirmInput) {
+    areaDecisionConfirmInput.value = '';
+  }
+  if (areaDecisionError) {
+    areaDecisionError.textContent = '';
+  }
+  if (areaDecisionMensaje) {
+    areaDecisionMensaje.textContent = '';
+  }
+  if (areaDecisionProductos) {
+    areaDecisionProductos.textContent = '';
+  }
+}
+
+function actualizarEstadoDecisionArea() {
+  if (!areaDecisionForm) {
+    return;
+  }
+  const seleccion = areaDecisionForm.querySelector('input[name="areaDecisionMode"]:checked');
+  const mostrarConfirmacion = seleccion && seleccion.value === 'eliminar';
+
+  if (areaDecisionConfirmGroup) {
+    areaDecisionConfirmGroup.hidden = !mostrarConfirmacion;
+  }
+  if (!mostrarConfirmacion && areaDecisionConfirmInput) {
+    areaDecisionConfirmInput.value = '';
+  }
+  if (areaDecisionError) {
+    areaDecisionError.textContent = '';
+  }
+}
+
+function abrirDialogoEliminacionArea(contexto) {
+  if (!areaDecisionOverlay || !areaDecisionForm) {
+    return false;
+  }
+
+  areaPendienteEliminacion = contexto;
+  areaDecisionForm.reset();
+
+  const opcionLiberar = areaDecisionForm.querySelector('input[name="areaDecisionMode"][value="liberar"]');
+  if (opcionLiberar) {
+    opcionLiberar.checked = true;
+  }
+
+  const { areaNombre, totalZonas, totalProductosZonas } = contexto;
+  const areaLabel = areaNombre ? `el área "${areaNombre}"` : 'esta área';
+  if (areaDecisionMensaje) {
+    areaDecisionMensaje.textContent = `El área ${areaLabel} tiene ${totalZonas} zona${totalZonas === 1 ? '' : 's'} asignada${totalZonas === 1 ? '' : 's'}. Elige qué hacer con ellas antes de continuar.`;
+  }
+  if (areaDecisionProductos) {
+    areaDecisionProductos.textContent = totalProductosZonas > 0
+      ? `Estas zonas concentran ${formatearProductosActivos(totalProductosZonas)}. Si decides eliminarlas, también se eliminarán esos productos.`
+      : 'Las zonas actualmente no tienen productos registrados.';
+  }
+
+  actualizarEstadoDecisionArea();
+
+  areaDecisionOverlay.hidden = false;
+
+  const primeraOpcion = areaDecisionForm.querySelector('input[name="areaDecisionMode"]');
+  if (primeraOpcion) {
+    primeraOpcion.focus();
+  }
+
+  return true;
 }
 
 function abrirReasignacionZona(zona) {
@@ -755,22 +843,65 @@ async function editarArea(id) {
   }
 }
 
+async function ejecutarEliminacionArea(id, zonaStrategy = '') {
+  const params = new URLSearchParams({ id: `${id}`, empresa_id: `${empresaId}` });
+  if (zonaStrategy) {
+    params.set('zona_strategy', zonaStrategy);
 async function eliminarArea(id) {
   const area = datosActuales.areas.find(a => `${a.id}` === `${id}`);
-  if (area) {
-    const productosActivos = contarProductosArea(area);
-    if (productosActivos > 0) {
-      mostrarError('No es posible eliminar esta área porque tiene productos activos en sus zonas. Reasigna o vacía las ubicaciones antes de continuar.');
-      return;
-    }
-  }
+  const zonasAsociadas = datosActuales.zonas.filter(z => `${z.area_id}` === `${id}`);
+  const totalZonas = zonasAsociadas.length;
+  const productosActivos = area ? contarProductosArea(area) : 0;
+  const nombreArea = area && area.nombre ? ` "${area.nombre}"` : '';
 
-  if (!confirm('¿Está seguro de eliminar esta área?') || !confirm('Esta acción es irreversible, confirme de nuevo.')) {
+  if (totalZonas === 0 && productosActivos > 0) {
+    mostrarError('No es posible eliminar esta área porque tiene productos activos registrados. Reasigna o vacía las ubicaciones antes de continuar.');
     return;
   }
 
+  if (!confirm(`¿Deseas eliminar el área${nombreArea}?`)) {
+    return;
+  }
+
+  let zonaStrategy = '';
+  if (totalZonas > 0) {
+    const eliminarZonas = confirm(`El área${nombreArea} tiene ${totalZonas} zona${totalZonas === 1 ? '' : 's'} asignada${totalZonas === 1 ? '' : 's'}.
+Presiona "Aceptar" para eliminar también las zonas o "Cancelar" para conservarlas sin área asignada.`);
+
+    if (eliminarZonas) {
+      const totalProductosZonas = zonasAsociadas.reduce((acc, zona) => acc + contarProductosZona(zona), 0);
+      const advertencia = [
+        `Eliminarás ${totalZonas} zona${totalZonas === 1 ? '' : 's'} junto con el área.`,
+        totalProductosZonas > 0
+          ? `Esto también eliminará ${formatearProductosActivos(totalProductosZonas)} relacionados con esas zonas.`
+          : 'Esto también eliminará cualquier registro asociado a esas zonas.'
+      ];
+      advertencia.push('Para continuar escribe CONFIRMO en mayúsculas.');
+      const confirmacion = prompt(advertencia.join('\n\n')) || '';
+      if (confirmacion.trim() !== 'CONFIRMO') {
+        alert('Operación cancelada. Debes escribir CONFIRMO exactamente para eliminar el área junto con sus zonas.');
+        return;
+      }
+      zonaStrategy = 'eliminar';
+    } else {
+      zonaStrategy = 'liberar';
+      if (!confirm('Las zonas quedarán pendientes de asignarles un área. ¿Deseas continuar?')) {
+        return;
+      }
+    }
+  }
+
+  if (!confirm('Esta acción es irreversible, confirme de nuevo.')) {
+    return;
+  }
+
+  const params = new URLSearchParams({ id: `${id}`, empresa_id: `${empresaId}` });
+  if (zonaStrategy) {
+    params.set('zona_strategy', zonaStrategy);
+  }
+
   try {
-    const respuesta = await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'DELETE');
+    const respuesta = await fetchAPI(`${API_ENDPOINTS.areas}?${params.toString()}`, 'DELETE');
     manejarRespuestaSolicitud(
       respuesta,
       'Solicitud de eliminación de área enviada para revisión.',
@@ -780,6 +911,79 @@ async function eliminarArea(id) {
   } catch (error) {
     console.error('Error eliminando área:', error);
   }
+}
+
+async function eliminarArea(id) {
+  const area = datosActuales.areas.find(a => `${a.id}` === `${id}`);
+  const zonasAsociadas = datosActuales.zonas.filter(z => `${z.area_id}` === `${id}`);
+  const totalZonas = zonasAsociadas.length;
+  const productosActivos = area ? contarProductosArea(area) : 0;
+  const nombreArea = area && area.nombre ? ` "${area.nombre}"` : '';
+
+  if (totalZonas === 0 && productosActivos > 0) {
+    mostrarError('No es posible eliminar esta área porque tiene productos activos registrados. Reasigna o vacía las ubicaciones antes de continuar.');
+    return;
+  }
+
+  if (!confirm(`¿Deseas eliminar el área${nombreArea}?`)) {
+    return;
+  }
+
+  if (totalZonas > 0) {
+    const totalProductosZonas = zonasAsociadas.reduce((acc, zona) => acc + contarProductosZona(zona), 0);
+    const contextoDialogo = {
+      id,
+      areaNombre: area?.nombre || '',
+      totalZonas,
+      totalProductosZonas
+    };
+
+    const dialogoDisponible = abrirDialogoEliminacionArea(contextoDialogo);
+    if (dialogoDisponible) {
+      return;
+    }
+
+    const eliminarZonas = confirm(`El área${nombreArea} tiene ${totalZonas} zona${totalZonas === 1 ? '' : 's'} asignada${totalZonas === 1 ? '' : 's'}.\nPresiona "Aceptar" para eliminar también las zonas o "Cancelar" para conservarlas sin área asignada.`);
+
+    if (eliminarZonas) {
+      const advertencia = [
+        `Eliminarás ${totalZonas} zona${totalZonas === 1 ? '' : 's'} junto con el área.`,
+        totalProductosZonas > 0
+          ? `Esto también eliminará ${formatearProductosActivos(totalProductosZonas)} relacionados con esas zonas.`
+          : 'Esto también eliminará cualquier registro asociado a esas zonas.'
+      ];
+      advertencia.push('Para continuar escribe CONFIRMO en mayúsculas.');
+      const confirmacion = prompt(advertencia.join('\n\n')) || '';
+      if (confirmacion.trim() !== 'CONFIRMO') {
+        alert('Operación cancelada. Debes escribir CONFIRMO exactamente para eliminar el área junto con sus zonas.');
+        return;
+      }
+
+      if (!confirm('Esta acción es irreversible, confirme de nuevo.')) {
+        return;
+      }
+
+      await ejecutarEliminacionArea(id, 'eliminar');
+      return;
+    }
+
+    if (!confirm('Las zonas quedarán pendientes de asignarles un área. ¿Deseas continuar?')) {
+      return;
+    }
+
+    if (!confirm('Esta acción es irreversible, confirme de nuevo.')) {
+      return;
+    }
+
+    await ejecutarEliminacionArea(id, 'liberar');
+    return;
+  }
+
+  if (!confirm('Esta acción es irreversible, confirme de nuevo.')) {
+    return;
+  }
+
+  await ejecutarEliminacionArea(id);
 }
 
 async function editarZona(id) {
@@ -908,6 +1112,93 @@ if (exportZonasExcelBtn) {
         orientation: 'portrait'
       }
     });
+  });
+}
+
+if (areaDecisionForm) {
+  areaDecisionForm.addEventListener('change', (event) => {
+    if (event.target && event.target.name === 'areaDecisionMode') {
+      actualizarEstadoDecisionArea();
+    }
+  });
+
+  areaDecisionForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    if (!areaPendienteEliminacion) {
+      cerrarDialogoEliminacionArea();
+      return;
+    }
+
+    const seleccion = areaDecisionForm.querySelector('input[name="areaDecisionMode"]:checked');
+    if (!seleccion) {
+      if (areaDecisionError) {
+        areaDecisionError.textContent = 'Selecciona una opción para continuar.';
+      }
+      return;
+    }
+
+    const decision = seleccion.value;
+
+    if (decision === 'eliminar') {
+      const confirmacion = areaDecisionConfirmInput ? areaDecisionConfirmInput.value.trim() : '';
+      if (confirmacion !== 'CONFIRMO') {
+        if (areaDecisionError) {
+          areaDecisionError.textContent = 'Debes escribir CONFIRMO en mayúsculas para eliminar las zonas junto con el área.';
+        }
+        if (areaDecisionConfirmInput) {
+          areaDecisionConfirmInput.focus();
+        }
+        return;
+      }
+    }
+
+    let mensajeConfirmacion = 'Esta acción es irreversible, confirme de nuevo.';
+    if (decision === 'liberar') {
+      mensajeConfirmacion = 'Las zonas quedarán sin área asignada y deberás reasignarlas después. ¿Deseas continuar?';
+    } else if (decision === 'eliminar') {
+      const { totalZonas, totalProductosZonas } = areaPendienteEliminacion;
+      const partes = [`Se eliminarán ${totalZonas} zona${totalZonas === 1 ? '' : 's'} junto con el área.`];
+      if (totalProductosZonas > 0) {
+        partes.push(`También se eliminarán ${formatearProductosActivos(totalProductosZonas)} asociados a esas zonas.`);
+      }
+      partes.push('Esta acción es irreversible. ¿Deseas continuar?');
+      mensajeConfirmacion = partes.join(' ');
+    }
+
+    if (!confirm(mensajeConfirmacion)) {
+      return;
+    }
+
+    const { id } = areaPendienteEliminacion;
+    const estrategia = decision === 'eliminar' ? 'eliminar' : 'liberar';
+
+    cerrarDialogoEliminacionArea();
+
+    await ejecutarEliminacionArea(id, estrategia);
+  });
+}
+
+if (cancelarAreaDecisionBtn) {
+  cancelarAreaDecisionBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    cerrarDialogoEliminacionArea();
+  });
+}
+
+if (areaDecisionOverlay) {
+  areaDecisionOverlay.addEventListener('click', (event) => {
+    if (event.target === areaDecisionOverlay) {
+      cerrarDialogoEliminacionArea();
+    }
+  });
+}
+
+if (areaDecisionConfirmInput) {
+  areaDecisionConfirmInput.addEventListener('input', () => {
+    if (areaDecisionError) {
+      areaDecisionError.textContent = '';
+    }
   });
 }
 
