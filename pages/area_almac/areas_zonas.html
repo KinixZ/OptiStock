@@ -229,6 +229,43 @@
     </section>
   </div>
 
+  <div id="areaDecisionOverlay" class="reasignacion-overlay" hidden>
+    <div class="reasignacion-dialog area-decision-dialog" role="dialog" aria-modal="true" aria-labelledby="areaDecisionTitulo">
+      <form id="areaDecisionForm">
+        <h3 id="areaDecisionTitulo">Eliminar área con zonas asignadas</h3>
+        <p id="areaDecisionMensaje"></p>
+        <p id="areaDecisionProductos" class="area-decision-products"></p>
+        <fieldset class="area-decision-options">
+          <legend class="visually-hidden">Elige qué hacer con las zonas actuales</legend>
+          <label class="area-decision-option">
+            <input type="radio" name="areaDecisionMode" value="liberar">
+            <div>
+              <span class="area-decision-option__title">Liberar zonas</span>
+              <p>Conserva las zonas sin área asignada para reasignarlas más adelante.</p>
+            </div>
+          </label>
+          <label class="area-decision-option">
+            <input type="radio" name="areaDecisionMode" value="eliminar">
+            <div>
+              <span class="area-decision-option__title">Eliminar zonas y productos</span>
+              <p>Eliminarás las zonas junto con sus productos y movimientos asociados.</p>
+            </div>
+          </label>
+        </fieldset>
+        <div id="areaDecisionConfirmGroup" class="area-decision-confirm" hidden>
+          <label for="areaDecisionConfirmInput">Para confirmar escribe CONFIRMO en mayúsculas</label>
+          <input id="areaDecisionConfirmInput" type="text" autocomplete="off" placeholder="CONFIRMO">
+          <p class="area-decision-hint">Esta acción no se puede deshacer.</p>
+        </div>
+        <p id="areaDecisionError" class="reasignacion-error" role="alert"></p>
+        <div class="reasignacion-actions area-decision-actions">
+          <button class="shell-action shell-action--primary" type="submit">Continuar</button>
+          <button id="cancelarAreaDecision" class="shell-action" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="reasignacionOverlay" class="reasignacion-overlay" hidden>
     <div class="reasignacion-dialog" role="dialog" aria-modal="true" aria-labelledby="reasignacionTitulo">
       <h3 id="reasignacionTitulo">Reasignar productos de la zona</h3>

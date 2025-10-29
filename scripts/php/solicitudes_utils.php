@@ -1177,42 +1177,114 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
         return ['success' => false, 'message' => 'Datos insuficientes para eliminar el área.'];
     }
 
-    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
-    if (!$stmt) {
+    $zonaStrategy = strtolower(trim((string)($payload['zona_strategy'] ?? '')));
+    $zonasAsociadas = [];
+
+    $stmtZonas = $conn->prepare('SELECT id FROM zonas WHERE area_id = ?');
+    if (!$stmtZonas) {
         return ['success' => false, 'message' => 'No se pudo validar las zonas asociadas.'];
     }
-    $stmt->bind_param('i', $areaId);
-    $stmt->execute();
-    $stmt->bind_result($zonasAsociadas);
-    $stmt->fetch();
-    $stmt->close();
+    $stmtZonas->bind_param('i', $areaId);
+    $stmtZonas->execute();
+    $resultZonas = $stmtZonas->get_result();
+    while ($row = $resultZonas->fetch_assoc()) {
+        $zonasAsociadas[] = (int)($row['id'] ?? 0);
+    }
+    $stmtZonas->close();
 
-    if ($zonasAsociadas > 0) {
+    if ($zonasAsociadas && $zonaStrategy !== 'liberar' && $zonaStrategy !== 'eliminar') {
         return ['success' => false, 'message' => 'No se puede eliminar el área porque existen zonas asociadas.'];
     }
 
-    $stmtDel = $conn->prepare('DELETE FROM areas WHERE id = ? AND id_empresa = ?');
-    if (!$stmtDel) {
-        return ['success' => false, 'message' => 'No se pudo preparar la eliminación del área.'];
-    }
-    $stmtDel->bind_param('ii', $areaId, $empresaId);
-
     try {
+        $conn->begin_transaction();
+
+        if ($zonasAsociadas) {
+            if ($zonaStrategy === 'liberar') {
+                $stmtLiberar = $conn->prepare('UPDATE zonas SET area_id = NULL WHERE area_id = ?');
+                if (!$stmtLiberar) {
+                    $conn->rollback();
+                    return ['success' => false, 'message' => 'No se pudo liberar las zonas asociadas al área.'];
+                }
+                $stmtLiberar->bind_param('i', $areaId);
+                $stmtLiberar->execute();
+                $stmtLiberar->close();
+            } elseif ($zonaStrategy === 'eliminar') {
+                $placeholdersZonas = implode(',', array_fill(0, count($zonasAsociadas), '?'));
+                $typesZonas = str_repeat('i', count($zonasAsociadas));
+
+                $productosIds = [];
+                $stmtProductos = $conn->prepare("SELECT id FROM productos WHERE zona_id IN ($placeholdersZonas)");
+                if (!$stmtProductos) {
+                    $conn->rollback();
+                    return ['success' => false, 'message' => 'No se pudo obtener los productos asociados a las zonas.'];
+                }
+                $stmtProductos->bind_param($typesZonas, ...$zonasAsociadas);
+                $stmtProductos->execute();
+                $resultProductos = $stmtProductos->get_result();
+                while ($row = $resultProductos->fetch_assoc()) {
+                    $productosIds[] = (int)($row['id'] ?? 0);
+                }
+                $stmtProductos->close();
+
+                if ($productosIds) {
+                    $placeholdersProd = implode(',', array_fill(0, count($productosIds), '?'));
+                    $typesProd = str_repeat('i', count($productosIds));
+
+                    $stmtDelMov = $conn->prepare("DELETE FROM movimientos WHERE producto_id IN ($placeholdersProd)");
+                    if (!$stmtDelMov) {
+                        $conn->rollback();
+                        return ['success' => false, 'message' => 'No se pudieron eliminar los movimientos relacionados con los productos.'];
+                    }
+                    $stmtDelMov->bind_param($typesProd, ...$productosIds);
+                    $stmtDelMov->execute();
+                    $stmtDelMov->close();
+
+                    $stmtDelProd = $conn->prepare("DELETE FROM productos WHERE id IN ($placeholdersProd)");
+                    if (!$stmtDelProd) {
+                        $conn->rollback();
+                        return ['success' => false, 'message' => 'No se pudieron eliminar los productos asociados a las zonas.'];
+                    }
+                    $stmtDelProd->bind_param($typesProd, ...$productosIds);
+                    $stmtDelProd->execute();
+                    $stmtDelProd->close();
+                }
+
+                $stmtDelZonas = $conn->prepare("DELETE FROM zonas WHERE id IN ($placeholdersZonas)");
+                if (!$stmtDelZonas) {
+                    $conn->rollback();
+                    return ['success' => false, 'message' => 'No se pudieron eliminar las zonas asociadas.'];
+                }
+                $stmtDelZonas->bind_param($typesZonas, ...$zonasAsociadas);
+                $stmtDelZonas->execute();
+                $stmtDelZonas->close();
+            }
+        }
+
+        $stmtDel = $conn->prepare('DELETE FROM areas WHERE id = ? AND id_empresa = ?');
+        if (!$stmtDel) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'No se pudo preparar la eliminación del área.'];
+        }
+        $stmtDel->bind_param('ii', $areaId, $empresaId);
         $stmtDel->execute();
         $eliminadas = $stmtDel->affected_rows;
         $stmtDel->close();
+
+        if ($eliminadas <= 0) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'El área indicada ya no existe.'];
+        }
+
+        $conn->commit();
+
+        registrarLog($conn, $idRevisor, 'Áreas', 'Eliminación aprobada del área ID ' . $areaId);
+
+        return ['success' => true];
     } catch (mysqli_sql_exception $e) {
-        $stmtDel->close();
+        $conn->rollback();
         return ['success' => false, 'message' => 'No se pudo eliminar el área: ' . $e->getMessage()];
     }
-
-    if ($eliminadas <= 0) {
-        return ['success' => false, 'message' => 'El área indicada ya no existe.'];
-    }
-
-    registrarLog($conn, $idRevisor, 'Áreas', 'Eliminación aprobada del área ID ' . $areaId);
-
-    return ['success' => true];
 }
 
 function opti_aplicar_zona_crear(mysqli $conn, array $payload, int $idRevisor)
