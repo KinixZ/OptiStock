@@ -89,6 +89,9 @@
   const rolesCountElement = document.getElementById('rolesCount');
   const rolesLastUpdatedElement = document.getElementById('lastUpdated');
   const rolesButtonLabel = toggleRolesButton ? toggleRolesButton.querySelector('.cta-button__label') : null;
+  const rolesDialogElement = rolesPanel ? rolesPanel.querySelector('.roles-config__card') : null;
+  let rolesPanelListenersBound = false;
+
 
   if (tablaUsuariosElement && window.SimpleTableSorter) {
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
@@ -100,6 +103,9 @@
         event.preventDefault();
         event.stopPropagation();
       }
+      const shouldOpen = rolesPanel.hasAttribute('hidden');
+      initializeRolesPanel();
+      setRolesPanelVisibility(shouldOpen);
     addListener(toggleRolesButton, 'click', () => {
       const shouldOpen = rolesPanel.hasAttribute('hidden');
       initializeRolesPanel();
@@ -198,6 +204,17 @@
 
     if (show) {
       rolesPanel.removeAttribute('hidden');
+      rolesPanel.classList.add('is-open');
+      bindRolesPanelDismissListeners();
+      if (rolesDialogElement) {
+        window.requestAnimationFrame(() => {
+          rolesDialogElement.focus();
+        });
+      }
+    } else {
+      rolesPanel.setAttribute('hidden', 'hidden');
+      rolesPanel.classList.remove('is-open');
+      unbindRolesPanelDismissListeners();
     } else {
       rolesPanel.setAttribute('hidden', 'hidden');
     }
@@ -208,7 +225,40 @@
       rolesButtonLabel.textContent = show ? 'Ocultar roles y permisos' : 'Roles y permisos';
     }
   }
+  function bindRolesPanelDismissListeners() {
+    if (rolesPanelListenersBound) return;
+    document.addEventListener('mousedown', handleRolesPanelOutsideClick);
+    document.addEventListener('touchstart', handleRolesPanelOutsideClick);
+    document.addEventListener('keydown', handleRolesPanelKeydown);
+    rolesPanelListenersBound = true;
+  }
 
+  function unbindRolesPanelDismissListeners() {
+    if (!rolesPanelListenersBound) return;
+    document.removeEventListener('mousedown', handleRolesPanelOutsideClick);
+    document.removeEventListener('touchstart', handleRolesPanelOutsideClick);
+    document.removeEventListener('keydown', handleRolesPanelKeydown);
+    rolesPanelListenersBound = false;
+  }
+
+  function handleRolesPanelOutsideClick(event) {
+    if (!rolesPanel || rolesPanel.hasAttribute('hidden')) return;
+    const target = event?.target;
+    if (!target) return;
+    if (rolesPanel.contains(target)) return;
+    if (toggleRolesButton && toggleRolesButton.contains(target)) return;
+    setRolesPanelVisibility(false);
+  }
+
+  function handleRolesPanelKeydown(event) {
+    if (!event) return;
+    if (event.key !== 'Escape') return;
+    if (!rolesPanel || rolesPanel.hasAttribute('hidden')) return;
+    setRolesPanelVisibility(false);
+    if (toggleRolesButton) {
+      toggleRolesButton.focus();
+    }
+  }
   function renderPermissionReference() {
     if (!permissionsReferenceElement) return;
 
