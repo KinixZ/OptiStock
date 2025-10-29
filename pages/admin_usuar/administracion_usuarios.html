@@ -48,6 +48,9 @@
             aria-controls="rolesConfigPanel"
             aria-haspopup="dialog"
           >
+          >
+
+          <a href="../admin_usuar/configuracion_roles.html" class="cta-button cta-button--secondary">
             <span class="cta-button__icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -56,6 +59,8 @@
             </span>
             <span class="cta-button__label">Roles y permisos</span>
           </button>
+          </button>
+          </a>
 
           <a href="../admin_usuar/registro_usuario_empresa.html" class="cta-button">
             <span class="cta-button__icon" aria-hidden="true">
@@ -104,6 +109,45 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="roles-config" id="rolesConfigPanel" hidden>
+      <div class="roles-config__card">
+        <header class="roles-config__header">
+          <div>
+            <span class="roles-config__eyebrow">Roles y permisos</span>
+            <h2 class="roles-config__title">Configura los permisos de cada rol</h2>
+            <p class="roles-config__description">
+              Ajusta los permisos disponibles por rol sin abandonar el panel de usuarios. Expande cada tarjeta para activar o desactivar permisos específicos.
+            </p>
+          </div>
+          <div class="roles-config__meta">
+            <div class="roles-meta-card">
+              <span class="roles-meta-label">Roles disponibles</span>
+              <span class="roles-meta-value" id="rolesCount">0</span>
+            </div>
+            <div class="roles-meta-card">
+              <span class="roles-meta-label">Última actualización</span>
+              <span class="roles-meta-value" id="lastUpdated">—</span>
+            </div>
+          </div>
+        </header>
+
+        <div class="roles-config__content">
+          <aside class="roles-guide">
+            <h3 class="roles-guide__title">Guía de permisos disponibles</h3>
+            <p class="roles-guide__description">
+              Estos permisos determinan las acciones que cada rol puede realizar dentro del sistema.
+            </p>
+            <ul class="roles-guide__list" id="permissionsReference"></ul>
+          </aside>
+
+          <div class="roles-list-wrapper">
+            <div class="alert alert-success d-none roles-feedback" role="status" id="feedbackMessage"></div>
+            <div class="roles-list" id="rolesList"></div>
           </div>
         </div>
       </div>

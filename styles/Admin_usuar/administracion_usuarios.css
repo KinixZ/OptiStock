@@ -225,8 +225,6 @@ body {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
 }
-
-
 .roles-config-dropdown {
   position: absolute;
   top: calc(100% + 0.75rem);
@@ -257,6 +255,16 @@ body {
   z-index: 2;
 }
 
+
+.roles-config {
+  display: block;
+}
+
+.roles-config[hidden] {
+  display: none !important;
+}
+
+
 .roles-config__card {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
@@ -270,6 +278,7 @@ body {
   overflow: auto;
   position: relative;
   z-index: 1;
+
 }
 
 .roles-config__header {
@@ -364,7 +373,6 @@ body {
     max-height: none;
   }
 }
-
 .roles-guide {
   flex: 1 1 260px;
   background: var(--primary-surface-soft);

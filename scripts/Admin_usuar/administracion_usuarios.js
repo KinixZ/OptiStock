@@ -92,6 +92,7 @@
   const rolesDialogElement = rolesPanel ? rolesPanel.querySelector('.roles-config__card') : null;
   let rolesPanelListenersBound = false;
 
+
   if (tablaUsuariosElement && window.SimpleTableSorter) {
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
   }
@@ -105,6 +106,18 @@
       const shouldOpen = rolesPanel.hasAttribute('hidden');
       initializeRolesPanel();
       setRolesPanelVisibility(shouldOpen);
+    addListener(toggleRolesButton, 'click', () => {
+      const shouldOpen = rolesPanel.hasAttribute('hidden');
+      initializeRolesPanel();
+      setRolesPanelVisibility(shouldOpen);
+
+      if (shouldOpen) {
+        window.requestAnimationFrame(() => {
+          if (rolesPanel) {
+            rolesPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }
     });
   }
 
@@ -202,6 +215,8 @@
       rolesPanel.setAttribute('hidden', 'hidden');
       rolesPanel.classList.remove('is-open');
       unbindRolesPanelDismissListeners();
+    } else {
+      rolesPanel.setAttribute('hidden', 'hidden');
     }
 
     toggleRolesButton.setAttribute('aria-expanded', String(show));
@@ -210,7 +225,6 @@
       rolesButtonLabel.textContent = show ? 'Ocultar roles y permisos' : 'Roles y permisos';
     }
   }
-
   function bindRolesPanelDismissListeners() {
     if (rolesPanelListenersBound) return;
     document.addEventListener('mousedown', handleRolesPanelOutsideClick);
@@ -245,7 +259,6 @@
       toggleRolesButton.focus();
     }
   }
-
   function renderPermissionReference() {
     if (!permissionsReferenceElement) return;
 
