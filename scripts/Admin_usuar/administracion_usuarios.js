@@ -7,6 +7,58 @@
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
 
+  const availablePermissions = [
+    'Gestionar usuarios',
+    'Configurar inventario',
+    'Ver reportes analíticos',
+    'Aprobar ajustes de stock',
+    'Registrar entradas de almacén',
+    'Generar órdenes de compra',
+    'Monitorear indicadores',
+    'Administrar catálogos de productos'
+  ];
+
+  const rolesData = [
+    {
+      id: 'administrador',
+      name: 'Administrador',
+      description: 'Acceso completo al sistema y capacidad de aprobar cambios críticos.',
+      permissions: [
+        'Gestionar usuarios',
+        'Configurar inventario',
+        'Ver reportes analíticos',
+        'Aprobar ajustes de stock',
+        'Monitorear indicadores'
+      ]
+    },
+    {
+      id: 'supervisor',
+      name: 'Supervisor',
+      description: 'Supervisa las operaciones diarias y autoriza tareas de alto impacto.',
+      permissions: [
+        'Configurar inventario',
+        'Ver reportes analíticos',
+        'Monitorear indicadores',
+        'Registrar entradas de almacén'
+      ]
+    },
+    {
+      id: 'almacenista',
+      name: 'Almacenista',
+      description: 'Gestiona la recepción y salida de mercancías en el almacén.',
+      permissions: ['Registrar entradas de almacén', 'Administrar catálogos de productos']
+    },
+    {
+      id: 'analista',
+      name: 'Analista',
+      description: 'Evalúa el desempeño y genera reportes de inventario y ventas.',
+      permissions: ['Ver reportes analíticos', 'Monitorear indicadores']
+    }
+  ];
+
+  let rolesFeedbackTimeout = null;
+  let rolesPanelInitialized = false;
+
   function addListener(element, event, handler) {
     if (!element) return;
     element.addEventListener(event, handler);
@@ -29,9 +81,51 @@
   const tablaUsuariosBody = tablaUsuariosElement ? tablaUsuariosElement.querySelector('tbody') : null;
   let modalAsignarInstancia = null;
 
+  const rolesPanel = document.getElementById('rolesConfigPanel');
+  const toggleRolesButton = document.getElementById('toggleRolesPanel');
+  const rolesListElement = document.getElementById('rolesList');
+  const permissionsReferenceElement = document.getElementById('permissionsReference');
+  const rolesFeedbackElement = document.getElementById('feedbackMessage');
+  const rolesCountElement = document.getElementById('rolesCount');
+  const rolesLastUpdatedElement = document.getElementById('lastUpdated');
+  const rolesButtonLabel = toggleRolesButton ? toggleRolesButton.querySelector('.cta-button__label') : null;
+  const rolesDialogElement = rolesPanel ? rolesPanel.querySelector('.roles-config__card') : null;
+  let rolesPanelListenersBound = false;
+
+
   if (tablaUsuariosElement && window.SimpleTableSorter) {
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
   }
+
+  if (toggleRolesButton && rolesPanel) {
+    addListener(toggleRolesButton, 'click', event => {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const shouldOpen = rolesPanel.hasAttribute('hidden');
+      initializeRolesPanel();
+      setRolesPanelVisibility(shouldOpen);
+    addListener(toggleRolesButton, 'click', () => {
+      const shouldOpen = rolesPanel.hasAttribute('hidden');
+      initializeRolesPanel();
+      setRolesPanelVisibility(shouldOpen);
+
+      if (shouldOpen) {
+        window.requestAnimationFrame(() => {
+          if (rolesPanel) {
+            rolesPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }
+    });
+  }
+
+  if (rolesPanel && toggleRolesButton) {
+    setRolesPanelVisibility(false);
+  }
+
+  initializeRolesPanel();
 
   function sincronizarUsuariosEmpresaUI() {
     const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
@@ -92,6 +186,254 @@
     }
   }
 
+  function initializeRolesPanel() {
+    if (rolesPanelInitialized) {
+      updateRolesSummary();
+      return;
+    }
+
+    rolesPanelInitialized = true;
+    renderPermissionReference();
+    renderRoles();
+    updateRolesSummary();
+    updateRolesLastUpdated();
+  }
+
+  function setRolesPanelVisibility(show) {
+    if (!rolesPanel || !toggleRolesButton) return;
+
+    if (show) {
+      rolesPanel.removeAttribute('hidden');
+      rolesPanel.classList.add('is-open');
+      bindRolesPanelDismissListeners();
+      if (rolesDialogElement) {
+        window.requestAnimationFrame(() => {
+          rolesDialogElement.focus();
+        });
+      }
+    } else {
+      rolesPanel.setAttribute('hidden', 'hidden');
+      rolesPanel.classList.remove('is-open');
+      unbindRolesPanelDismissListeners();
+    } else {
+      rolesPanel.setAttribute('hidden', 'hidden');
+    }
+
+    toggleRolesButton.setAttribute('aria-expanded', String(show));
+
+    if (rolesButtonLabel) {
+      rolesButtonLabel.textContent = show ? 'Ocultar roles y permisos' : 'Roles y permisos';
+    }
+  }
+  function bindRolesPanelDismissListeners() {
+    if (rolesPanelListenersBound) return;
+    document.addEventListener('mousedown', handleRolesPanelOutsideClick);
+    document.addEventListener('touchstart', handleRolesPanelOutsideClick);
+    document.addEventListener('keydown', handleRolesPanelKeydown);
+    rolesPanelListenersBound = true;
+  }
+
+  function unbindRolesPanelDismissListeners() {
+    if (!rolesPanelListenersBound) return;
+    document.removeEventListener('mousedown', handleRolesPanelOutsideClick);
+    document.removeEventListener('touchstart', handleRolesPanelOutsideClick);
+    document.removeEventListener('keydown', handleRolesPanelKeydown);
+    rolesPanelListenersBound = false;
+  }
+
+  function handleRolesPanelOutsideClick(event) {
+    if (!rolesPanel || rolesPanel.hasAttribute('hidden')) return;
+    const target = event?.target;
+    if (!target) return;
+    if (rolesPanel.contains(target)) return;
+    if (toggleRolesButton && toggleRolesButton.contains(target)) return;
+    setRolesPanelVisibility(false);
+  }
+
+  function handleRolesPanelKeydown(event) {
+    if (!event) return;
+    if (event.key !== 'Escape') return;
+    if (!rolesPanel || rolesPanel.hasAttribute('hidden')) return;
+    setRolesPanelVisibility(false);
+    if (toggleRolesButton) {
+      toggleRolesButton.focus();
+    }
+  }
+  function renderPermissionReference() {
+    if (!permissionsReferenceElement) return;
+
+    permissionsReferenceElement.innerHTML = '';
+    availablePermissions.forEach(permission => {
+      const item = document.createElement('li');
+      item.textContent = permission;
+      permissionsReferenceElement.appendChild(item);
+    });
+  }
+
+  function renderRoles() {
+    if (!rolesListElement) return;
+
+    rolesListElement.innerHTML = '';
+
+    rolesData.forEach(role => {
+      const card = document.createElement('article');
+      card.className = 'role-card';
+
+      const header = document.createElement('div');
+      header.className = 'role-header';
+
+      const headerMain = document.createElement('div');
+      headerMain.className = 'role-header-main';
+
+      const title = document.createElement('h3');
+      title.className = 'role-name';
+      title.textContent = role.name;
+
+      const description = document.createElement('p');
+      description.className = 'role-description';
+      description.textContent = role.description;
+
+      const counter = document.createElement('span');
+      counter.className = 'role-count';
+      counter.textContent = formatPermissionCount(role.permissions.length);
+
+      headerMain.append(title, description, counter);
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'role-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+
+      const body = document.createElement('div');
+      body.className = 'role-body';
+      body.hidden = true;
+      const bodyId = `role-permissions-${role.id}`;
+      body.id = bodyId;
+      toggle.setAttribute('aria-controls', bodyId);
+
+      const toggleText = document.createElement('span');
+      toggleText.textContent = 'Ver permisos';
+      toggle.appendChild(toggleText);
+
+      toggle.addEventListener('click', () => {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        toggleText.textContent = expanded ? 'Ver permisos' : 'Ocultar permisos';
+        body.hidden = expanded;
+      });
+
+      header.append(headerMain, toggle);
+
+      const permissionsGrid = document.createElement('div');
+      permissionsGrid.className = 'permissions-grid';
+
+      availablePermissions.forEach((permission, index) => {
+        const permissionId = `${role.id}-perm-${index}`;
+        const wrapper = document.createElement('label');
+        wrapper.className = 'permission-item';
+        wrapper.setAttribute('for', permissionId);
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = permissionId;
+        checkbox.value = permission;
+        checkbox.checked = role.permissions.includes(permission);
+
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) {
+            if (!role.permissions.includes(permission)) {
+              role.permissions.push(permission);
+            }
+          } else {
+            role.permissions = role.permissions.filter(perm => perm !== permission);
+          }
+
+          counter.textContent = formatPermissionCount(role.permissions.length);
+          markRoleCardAsPending(card);
+        });
+
+        const labelText = document.createElement('span');
+        labelText.className = 'permission-label';
+        labelText.textContent = permission;
+
+        wrapper.append(checkbox, labelText);
+        permissionsGrid.appendChild(wrapper);
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'role-actions';
+
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.className = 'role-save';
+      saveButton.textContent = 'Guardar cambios';
+
+      saveButton.addEventListener('click', () => {
+        card.classList.remove('role-card--dirty');
+        const message = `Los permisos del rol «${role.name}» se actualizaron correctamente.`;
+        showRolesFeedback(message);
+        updateRolesLastUpdated();
+      });
+
+      actions.appendChild(saveButton);
+
+      body.append(permissionsGrid, actions);
+      card.append(header, body);
+      rolesListElement.appendChild(card);
+    });
+  }
+
+  function markRoleCardAsPending(card) {
+    if (!card) return;
+    card.classList.add('role-card--dirty');
+  }
+
+  function showRolesFeedback(message) {
+    if (rolesFeedbackElement) {
+      rolesFeedbackElement.textContent = message;
+      rolesFeedbackElement.classList.remove('d-none', 'alert-danger', 'alert-warning', 'alert-info');
+      rolesFeedbackElement.classList.add('alert-success');
+
+      window.clearTimeout(rolesFeedbackTimeout);
+      rolesFeedbackTimeout = window.setTimeout(() => {
+        if (rolesFeedbackElement) {
+          rolesFeedbackElement.classList.add('d-none');
+        }
+      }, 4000);
+    }
+
+    notificar('success', message);
+  }
+
+  function updateRolesSummary() {
+    if (rolesCountElement) {
+      rolesCountElement.textContent = rolesData.length.toString();
+    }
+
+    const totalRolesEl = document.getElementById('totalRoles');
+    if (totalRolesEl) {
+      const current = Number.parseInt(totalRolesEl.textContent, 10);
+      const safeCurrent = Number.isNaN(current) ? 0 : current;
+      const total = Math.max(safeCurrent, rolesData.length);
+      totalRolesEl.textContent = total.toString();
+    }
+  }
+
+  function updateRolesLastUpdated(date = new Date()) {
+    if (!rolesLastUpdatedElement) return;
+
+    const formatter = new Intl.DateTimeFormat('es-PE', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+
+    rolesLastUpdatedElement.textContent = formatter.format(date);
+  }
+
+  function formatPermissionCount(count) {
+    return count === 1 ? '1 permiso' : `${count} permisos`;
+  }
+
   function poblarFiltroRoles(roles) {
     const filtroRol = document.getElementById('filtroRol');
     if (!filtroRol) return;
@@ -123,7 +465,9 @@
     }
 
     if (totalRolesEl) {
-      totalRolesEl.textContent = Object.keys(conteoPorRol || {}).length;
+      const totalActivos = Object.keys(conteoPorRol || {}).length;
+      const total = Math.max(totalActivos, rolesData.length);
+      totalRolesEl.textContent = total.toString();
     }
 
     if (ultimaActualizacionEl) {

@@ -847,6 +847,57 @@ async function ejecutarEliminacionArea(id, zonaStrategy = '') {
   const params = new URLSearchParams({ id: `${id}`, empresa_id: `${empresaId}` });
   if (zonaStrategy) {
     params.set('zona_strategy', zonaStrategy);
+async function eliminarArea(id) {
+  const area = datosActuales.areas.find(a => `${a.id}` === `${id}`);
+  const zonasAsociadas = datosActuales.zonas.filter(z => `${z.area_id}` === `${id}`);
+  const totalZonas = zonasAsociadas.length;
+  const productosActivos = area ? contarProductosArea(area) : 0;
+  const nombreArea = area && area.nombre ? ` "${area.nombre}"` : '';
+
+  if (totalZonas === 0 && productosActivos > 0) {
+    mostrarError('No es posible eliminar esta área porque tiene productos activos registrados. Reasigna o vacía las ubicaciones antes de continuar.');
+    return;
+  }
+
+  if (!confirm(`¿Deseas eliminar el área${nombreArea}?`)) {
+    return;
+  }
+
+  let zonaStrategy = '';
+  if (totalZonas > 0) {
+    const eliminarZonas = confirm(`El área${nombreArea} tiene ${totalZonas} zona${totalZonas === 1 ? '' : 's'} asignada${totalZonas === 1 ? '' : 's'}.
+Presiona "Aceptar" para eliminar también las zonas o "Cancelar" para conservarlas sin área asignada.`);
+
+    if (eliminarZonas) {
+      const totalProductosZonas = zonasAsociadas.reduce((acc, zona) => acc + contarProductosZona(zona), 0);
+      const advertencia = [
+        `Eliminarás ${totalZonas} zona${totalZonas === 1 ? '' : 's'} junto con el área.`,
+        totalProductosZonas > 0
+          ? `Esto también eliminará ${formatearProductosActivos(totalProductosZonas)} relacionados con esas zonas.`
+          : 'Esto también eliminará cualquier registro asociado a esas zonas.'
+      ];
+      advertencia.push('Para continuar escribe CONFIRMO en mayúsculas.');
+      const confirmacion = prompt(advertencia.join('\n\n')) || '';
+      if (confirmacion.trim() !== 'CONFIRMO') {
+        alert('Operación cancelada. Debes escribir CONFIRMO exactamente para eliminar el área junto con sus zonas.');
+        return;
+      }
+      zonaStrategy = 'eliminar';
+    } else {
+      zonaStrategy = 'liberar';
+      if (!confirm('Las zonas quedarán pendientes de asignarles un área. ¿Deseas continuar?')) {
+        return;
+      }
+    }
+  }
+
+  if (!confirm('Esta acción es irreversible, confirme de nuevo.')) {
+    return;
+  }
+
+  const params = new URLSearchParams({ id: `${id}`, empresa_id: `${empresaId}` });
+  if (zonaStrategy) {
+    params.set('zona_strategy', zonaStrategy);
   }
 
   try {
