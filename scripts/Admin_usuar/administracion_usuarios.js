@@ -7,6 +7,124 @@
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
 
+  const availablePermissions = [
+    'Gestionar usuarios',
+    'Configurar inventario',
+    'Ver reportes analíticos',
+    'Aprobar ajustes de stock',
+    'Registrar entradas de almacén',
+    'Generar órdenes de compra',
+    'Monitorear indicadores',
+    'Administrar catálogos de productos'
+  ];
+
+  const rolesData = [
+    {
+      id: 'administrador',
+      name: 'Administrador',
+      description: 'Supervisa todo el sistema y define la configuración estratégica.',
+      permissions: [...availablePermissions]
+    },
+    {
+      id: 'supervisor',
+      name: 'Supervisor',
+      description: 'Coordina al equipo y asegura el cumplimiento de los procesos diarios.',
+      permissions: [...availablePermissions]
+    },
+    {
+      id: 'almacenista',
+      name: 'Almacenista',
+      description: 'Gestiona la recepción, almacenamiento y surtido del inventario.',
+      permissions: [
+        'Configurar inventario',
+        'Registrar entradas de almacén',
+        'Generar órdenes de compra',
+        'Administrar catálogos de productos'
+      ]
+    },
+    {
+      id: 'mantenimiento',
+      name: 'Mantenimiento',
+      description: 'Mantiene operativos los equipos y supervisa ajustes críticos.',
+      permissions: [
+        'Aprobar ajustes de stock',
+        'Registrar entradas de almacén',
+        'Monitorear indicadores'
+      ]
+    },
+    {
+      id: 'etiquetador',
+      name: 'Etiquetador',
+      description: 'Asegura el etiquetado correcto y la actualización del catálogo.',
+      permissions: ['Registrar entradas de almacén', 'Administrar catálogos de productos']
+    }
+  ];
+
+  let rolesFeedbackTimeout = null;
+  let rolesConfiguratorInitialized = false;
+
+  function obtenerDatosUsuarioActivo() {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return { id: null, nombre: '', rol: '' };
+    }
+
+    let id = null;
+    let nombre = '';
+    let rol = '';
+
+    try {
+      const storage = window.localStorage;
+      const rawId = storage.getItem('usuario_id');
+      if (rawId) {
+        const parsedId = Number.parseInt(rawId, 10);
+        if (Number.isFinite(parsedId) && parsedId > 0) {
+          id = parsedId;
+        }
+      }
+
+      nombre = storage.getItem('usuario_nombre') || '';
+      rol = storage.getItem('usuario_rol') || '';
+    } catch (error) {
+      console.warn('No se pudieron obtener los datos del usuario activo.', error);
+    }
+
+    return { id, nombre, rol };
+  }
+
+  function esUsuarioAdministrador(rol) {
+    if (!rol) return false;
+    return rol.toString().trim().toLowerCase() === 'administrador';
+  }
+
+  function puedeAdministrarRoles() {
+    const datos = obtenerDatosUsuarioActivo();
+    return esUsuarioAdministrador(datos.rol);
+  }
+
+  function reportarIntentoNoAutorizado(descripcion, mensajeUsuario) {
+    const datos = obtenerDatosUsuarioActivo();
+    const mensaje = mensajeUsuario
+      || 'No tienes permisos para realizar esta acción. El administrador ha sido notificado.';
+
+    notificar('error', mensaje);
+
+    const actorNombre = datos.nombre || 'Usuario desconocido';
+    const actorRol = datos.rol || 'Sin rol asignado';
+    const detalle = {
+      actorName: actorNombre,
+      actorRole: actorRol,
+      actorId: datos.id,
+      action: descripcion,
+      timestamp: new Date().toISOString(),
+      message: `${actorNombre} (${actorRol}) intentó ${descripcion} sin permisos.`,
+      showImmediateAlert: false
+    };
+
+    if (typeof document !== 'undefined' && typeof document.dispatchEvent === 'function') {
+      document.dispatchEvent(new CustomEvent('movimientoNoAutorizado', { detail: detalle }));
+    }
+  }
+
   function addListener(element, event, handler) {
     if (!element) return;
     element.addEventListener(event, handler);
@@ -29,9 +147,76 @@
   const tablaUsuariosBody = tablaUsuariosElement ? tablaUsuariosElement.querySelector('tbody') : null;
   let modalAsignarInstancia = null;
 
+  const rolesModalElement = document.getElementById('rolesConfigModal');
+  const toggleRolesButton = document.getElementById('toggleRolesPanel');
+  const rolesListElement = document.getElementById('rolesList');
+  const permissionsReferenceElement = document.getElementById('permissionsReference');
+  const rolesFeedbackElement = document.getElementById('feedbackMessage');
+  const rolesCountElement = document.getElementById('rolesCount');
+  const rolesLastUpdatedElement = document.getElementById('lastUpdated');
+  const rolesButtonLabel = toggleRolesButton ? toggleRolesButton.querySelector('.cta-button__label') : null;
+  let rolesModalInstance = null;
+
   if (tablaUsuariosElement && window.SimpleTableSorter) {
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
   }
+
+  if (toggleRolesButton && rolesModalElement) {
+    addListener(toggleRolesButton, 'click', event => {
+      if (event) {
+        event.preventDefault();
+        if (typeof event.stopImmediatePropagation === 'function') {
+          event.stopImmediatePropagation();
+        }
+        event.stopPropagation();
+      }
+
+      if (!puedeAdministrarRoles()) {
+        reportarIntentoNoAutorizado(
+          'acceder a la configuración de roles y permisos',
+          'Solo un administrador puede gestionar los roles y permisos. Se notificó al responsable.'
+        );
+        return;
+      }
+
+      initializeRolesPanel();
+      const modal = obtenerInstanciaModalRoles();
+      if (modal) {
+        modal.show();
+      }
+    });
+  }
+
+  if (rolesModalElement) {
+    rolesModalElement.addEventListener('show.bs.modal', () => {
+      if (toggleRolesButton) {
+        toggleRolesButton.setAttribute('aria-expanded', 'true');
+      }
+
+      if (rolesButtonLabel) {
+        rolesButtonLabel.textContent = 'Roles y permisos';
+      }
+    });
+
+    rolesModalElement.addEventListener('hidden.bs.modal', () => {
+      if (toggleRolesButton) {
+        toggleRolesButton.setAttribute('aria-expanded', 'false');
+        toggleRolesButton.focus();
+      }
+
+      if (rolesButtonLabel) {
+        rolesButtonLabel.textContent = 'Roles y permisos';
+      }
+
+      if (rolesModalInstance && typeof rolesModalInstance.dispose === 'function') {
+        rolesModalInstance.dispose();
+      }
+
+      rolesModalInstance = null;
+    });
+  }
+
+  initializeRolesPanel();
 
   function sincronizarUsuariosEmpresaUI() {
     const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
@@ -92,6 +277,224 @@
     }
   }
 
+  function initializeRolesPanel() {
+    if (rolesConfiguratorInitialized) {
+      updateRolesSummary();
+      return;
+    }
+
+    rolesConfiguratorInitialized = true;
+    renderPermissionReference();
+    renderRoles();
+    updateRolesSummary();
+    updateRolesLastUpdated();
+  }
+
+  function obtenerInstanciaModalRoles() {
+    if (!rolesModalElement || typeof bootstrap === 'undefined' || !bootstrap?.Modal) {
+      return null;
+    }
+
+    if (rolesModalInstance) {
+      return rolesModalInstance;
+    }
+
+    rolesModalInstance = bootstrap.Modal.getOrCreateInstance(rolesModalElement);
+    return rolesModalInstance;
+  }
+
+  function renderPermissionReference() {
+    if (!permissionsReferenceElement) return;
+
+    permissionsReferenceElement.innerHTML = '';
+    availablePermissions.forEach(permission => {
+      const item = document.createElement('li');
+      item.textContent = permission;
+      permissionsReferenceElement.appendChild(item);
+    });
+  }
+
+  function renderRoles() {
+    if (!rolesListElement) return;
+
+    rolesListElement.innerHTML = '';
+
+    rolesData.forEach(role => {
+      const card = document.createElement('article');
+      card.className = 'role-card';
+
+      const header = document.createElement('div');
+      header.className = 'role-header';
+
+      const headerMain = document.createElement('div');
+      headerMain.className = 'role-header-main';
+
+      const title = document.createElement('h3');
+      title.className = 'role-name';
+      title.textContent = role.name;
+
+      const description = document.createElement('p');
+      description.className = 'role-description';
+      description.textContent = role.description;
+
+      const counter = document.createElement('span');
+      counter.className = 'role-count';
+      counter.textContent = formatPermissionCount(role.permissions.length);
+
+      headerMain.append(title, description, counter);
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'role-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+
+      const body = document.createElement('div');
+      body.className = 'role-body';
+      body.hidden = true;
+      const bodyId = `role-permissions-${role.id}`;
+      body.id = bodyId;
+      toggle.setAttribute('aria-controls', bodyId);
+
+      const toggleText = document.createElement('span');
+      toggleText.textContent = 'Ver permisos';
+      toggle.appendChild(toggleText);
+
+      toggle.addEventListener('click', () => {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        toggleText.textContent = expanded ? 'Ver permisos' : 'Ocultar permisos';
+        body.hidden = expanded;
+      });
+
+      header.append(headerMain, toggle);
+
+      const permissionsGrid = document.createElement('div');
+      permissionsGrid.className = 'permissions-grid';
+
+      availablePermissions.forEach((permission, index) => {
+        const permissionId = `${role.id}-perm-${index}`;
+        const wrapper = document.createElement('label');
+        wrapper.className = 'permission-item';
+        wrapper.setAttribute('for', permissionId);
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = permissionId;
+        checkbox.value = permission;
+        checkbox.checked = role.permissions.includes(permission);
+
+        checkbox.addEventListener('change', () => {
+          if (!puedeAdministrarRoles()) {
+            checkbox.checked = role.permissions.includes(permission);
+            reportarIntentoNoAutorizado(
+              `modificar el permiso «${permission}» del rol «${role.name}»`,
+              'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
+            );
+            return;
+          }
+
+          if (checkbox.checked) {
+            if (!role.permissions.includes(permission)) {
+              role.permissions.push(permission);
+            }
+          } else {
+            role.permissions = role.permissions.filter(perm => perm !== permission);
+          }
+
+          counter.textContent = formatPermissionCount(role.permissions.length);
+          markRoleCardAsPending(card);
+        });
+
+        const labelText = document.createElement('span');
+        labelText.className = 'permission-label';
+        labelText.textContent = permission;
+
+        wrapper.append(checkbox, labelText);
+        permissionsGrid.appendChild(wrapper);
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'role-actions';
+
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.className = 'role-save';
+      saveButton.textContent = 'Guardar cambios';
+
+      saveButton.addEventListener('click', () => {
+        if (!puedeAdministrarRoles()) {
+          reportarIntentoNoAutorizado(
+            `guardar los cambios del rol «${role.name}»`,
+            'Solo un administrador puede guardar cambios en los roles. Se notificó al responsable.'
+          );
+          return;
+        }
+
+        card.classList.remove('role-card--dirty');
+        const message = `Los permisos del rol «${role.name}» se actualizaron correctamente.`;
+        showRolesFeedback(message);
+        updateRolesLastUpdated();
+      });
+
+      actions.appendChild(saveButton);
+
+      body.append(permissionsGrid, actions);
+      card.append(header, body);
+      rolesListElement.appendChild(card);
+    });
+  }
+
+  function markRoleCardAsPending(card) {
+    if (!card) return;
+    card.classList.add('role-card--dirty');
+  }
+
+  function showRolesFeedback(message) {
+    if (rolesFeedbackElement) {
+      rolesFeedbackElement.textContent = message;
+      rolesFeedbackElement.classList.remove('d-none', 'alert-danger', 'alert-warning', 'alert-info');
+      rolesFeedbackElement.classList.add('alert-success');
+
+      window.clearTimeout(rolesFeedbackTimeout);
+      rolesFeedbackTimeout = window.setTimeout(() => {
+        if (rolesFeedbackElement) {
+          rolesFeedbackElement.classList.add('d-none');
+        }
+      }, 4000);
+    }
+
+    notificar('success', message);
+  }
+
+  function updateRolesSummary() {
+    if (rolesCountElement) {
+      rolesCountElement.textContent = rolesData.length.toString();
+    }
+
+    const totalRolesEl = document.getElementById('totalRoles');
+    if (totalRolesEl) {
+      const current = Number.parseInt(totalRolesEl.textContent, 10);
+      const safeCurrent = Number.isNaN(current) ? 0 : current;
+      const total = Math.max(safeCurrent, rolesData.length);
+      totalRolesEl.textContent = total.toString();
+    }
+  }
+
+  function updateRolesLastUpdated(date = new Date()) {
+    if (!rolesLastUpdatedElement) return;
+
+    const formatter = new Intl.DateTimeFormat('es-PE', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+
+    rolesLastUpdatedElement.textContent = formatter.format(date);
+  }
+
+  function formatPermissionCount(count) {
+    return count === 1 ? '1 permiso' : `${count} permisos`;
+  }
+
   function poblarFiltroRoles(roles) {
     const filtroRol = document.getElementById('filtroRol');
     if (!filtroRol) return;
@@ -123,7 +526,9 @@
     }
 
     if (totalRolesEl) {
-      totalRolesEl.textContent = Object.keys(conteoPorRol || {}).length;
+      const totalActivos = Object.keys(conteoPorRol || {}).length;
+      const total = Math.max(totalActivos, rolesData.length);
+      totalRolesEl.textContent = total.toString();
     }
 
     if (ultimaActualizacionEl) {
