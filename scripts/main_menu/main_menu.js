@@ -5180,11 +5180,7 @@ if (userImgEl) {
 
     const msg = document.getElementById('message');
     if (msg) msg.style.display = 'none';
-
-    // 🟢 LLAMAMOS A CONFIGURACIÓN VISUAL
     cargarConfiguracionVisual(data.empresa_id);
-
-    // 🟢 ACTIVAMOS LA OPCIÓN PARA PERSONALIZAR
 
 let colorSidebarSeleccionado = null;
 let colorTopbarSeleccionado = null;
