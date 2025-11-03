@@ -1243,6 +1243,24 @@
             notificar('warning', `⚠️ ${baseMensaje} (${detallePendientes}).`);
             return;
           }
+          if (data?.error_code === 'usuario_movimientos_dependientes') {
+            const dependencias = data.dependencias || {};
+            const movimientos = Number(dependencias.movimientos) || 0;
+            const empresas = Number(dependencias.empresas_creadas) || 0;
+            const partes = [];
+            if (movimientos > 0) {
+              const etiqueta = movimientos === 1 ? '1 movimiento de inventario' : `${movimientos} movimientos de inventario`;
+              partes.push(etiqueta);
+            }
+            if (empresas > 0) {
+              const etiqueta = empresas === 1 ? '1 empresa creada' : `${empresas} empresas creadas`;
+              partes.push(etiqueta);
+            }
+            const detalle = partes.length > 0 ? ` (${partes.join(', ')}).` : '.';
+            const mensaje = data.message || 'El usuario tiene datos asociados que impiden su eliminación.';
+            notificar('warning', `⚠️ ${mensaje}${detalle}`);
+            return;
+          }
           notificar('error', '❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
           return;
         }
