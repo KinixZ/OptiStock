@@ -1234,6 +1234,15 @@
           return;
         }
         if (!data?.success) {
+          if (data?.error_code === 'usuario_solicitudes_pendientes') {
+            const pendientes = Number(data.solicitudes_pendientes) || 0;
+            const detallePendientes = pendientes === 1
+              ? '1 solicitud pendiente'
+              : `${pendientes} solicitudes pendientes`;
+            const baseMensaje = data.message || 'El usuario tiene solicitudes pendientes.';
+            notificar('warning', `⚠️ ${baseMensaje} (${detallePendientes}).`);
+            return;
+          }
           notificar('error', '❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
           return;
         }
