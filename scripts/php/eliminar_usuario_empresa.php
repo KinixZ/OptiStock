@@ -51,6 +51,27 @@ $payload = [
     'id_empresa' => $idEmpresa
 ];
 
+$solicitudesPendientes = opti_contar_solicitudes_pendientes_usuario($conn, $usuarioId, $correo);
+if ($solicitudesPendientes === null) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'No se pudo verificar el estado de solicitudes pendientes para el usuario.'
+    ]);
+    exit;
+}
+
+if ($solicitudesPendientes > 0) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'No se puede eliminar al usuario porque tiene solicitudes pendientes en revisión.',
+        'error_code' => 'usuario_solicitudes_pendientes',
+        'solicitudes_pendientes' => $solicitudesPendientes
+    ]);
+    exit;
+}
+
+$payload['solicitudes_pendientes'] = $solicitudesPendientes;
+
 $idSolicitante = opti_resolver_id_solicitante($data, $payload);
 $idEmpresa = $idEmpresa > 0 ? $idEmpresa : opti_resolver_id_empresa($conn, $idSolicitante, $data, $payload);
 
