@@ -914,11 +914,34 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
             $stmtLogs->close();
         }
 
+        $registrosActividades = 0;
+        $stmtLogs = $conn->prepare('SELECT COUNT(*) FROM log_control WHERE id_usuario = ?');
+        if ($stmtLogs) {
+            $stmtLogs->bind_param('i', $idUsuario);
+            $stmtLogs->execute();
+            $stmtLogs->bind_result($registrosActividades);
+            $stmtLogs->fetch();
+            $stmtLogs->close();
+        }
+
         $stmtDelRel = $conn->prepare('DELETE FROM usuario_empresa WHERE id_usuario = ?');
         if ($stmtDelRel) {
             $stmtDelRel->bind_param('i', $idUsuario);
             $stmtDelRel->execute();
             $stmtDelRel->close();
+        }
+
+        if ($registrosActividades > 0) {
+            $stmtDelLogs = $conn->prepare('DELETE FROM log_control WHERE id_usuario = ?');
+            if (!$stmtDelLogs) {
+                $conn->rollback();
+                return ['success' => false, 'message' => 'No se pudieron eliminar los registros de actividades del usuario.'];
+            }
+
+            $stmtDelLogs->bind_param('i', $idUsuario);
+            $stmtDelLogs->execute();
+            $registrosActividades = $stmtDelLogs->affected_rows >= 0 ? $stmtDelLogs->affected_rows : $registrosActividades;
+            $stmtDelLogs->close();
         }
 
         if ($registrosActividades > 0) {
