@@ -170,7 +170,7 @@ $topbarTextHex = '#1f2937';
 $sidebarTextHex = '#1f2937';
 $textHex = '#1f2937';
 $mutedHex = '#4b5563';
-$cardBgHex = '#ffffffff';
+$cardBgHex = '#ffffff';
 $gridHex = '#d1d5db';
 $altRowHex = '#f9fafb';
 $pageBgHex = '#ffffff';
@@ -284,7 +284,8 @@ if (!function_exists('automation_sum_request_totals')) {
       letter-spacing: 0.08em;
       text-transform: uppercase;
       margin-bottom: 6px;
-      color: rgba(255, 255, 255, 0.82);
+      color: var(--topbar-text-color);
+      opacity: 0.82;
     }
     .report-banner__title {
       margin: 0;
@@ -293,11 +294,12 @@ if (!function_exists('automation_sum_request_totals')) {
     .report-banner__module {
       margin-top: 4px;
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.82);
+      color: var(--topbar-text-color);
+      opacity: 0.72;
     }
     .report-banner__meta {
       margin-top: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      border-top: 1px solid rgba(31, 41, 55, 0.2);
       padding-top: 10px;
     }
     .meta-table {
@@ -313,7 +315,7 @@ if (!function_exists('automation_sum_request_totals')) {
       text-transform: uppercase;
       letter-spacing: 0.08em;
       font-size: 9px;
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--muted-color);
       margin-bottom: 2px;
     }
     .report-banner__accent {
