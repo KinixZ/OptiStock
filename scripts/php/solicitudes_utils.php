@@ -650,6 +650,106 @@ function opti_aplicar_usuario_asignar_area(mysqli $conn, array $payload, int $id
     return ['success' => true, 'message' => 'Asignación realizada.'];
 }
 
+function opti_contar_solicitudes_pendientes_usuario(mysqli $conn, int $idUsuario, string $correo)
+{
+    if (!opti_solicitudes_habilitadas($conn)) {
+        return 0;
+    }
+
+    $correo = trim($correo);
+    if ($correo === '') {
+        return 0;
+    }
+
+    $correoLower = strtolower($correo);
+    $idUsuarioValido = $idUsuario > 0 ? (string)$idUsuario : null;
+    $solicitudesPendientes = 0;
+
+    if ($idUsuarioValido !== null) {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*)
+             FROM solicitudes_cambios
+             WHERE estado = 'en_proceso'
+               AND modulo = 'Usuarios'
+               AND (JSON_UNQUOTE(JSON_EXTRACT(payload, '$.id_usuario')) = ?
+                    OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.correo'))) = ?)"
+        );
+
+        if ($stmt) {
+            $stmt->bind_param('ss', $idUsuarioValido, $correoLower);
+
+            try {
+                $stmt->execute();
+                $stmt->bind_result($solicitudesPendientes);
+                $stmt->fetch();
+                $stmt->close();
+                return (int)$solicitudesPendientes;
+            } catch (mysqli_sql_exception $e) {
+                $stmt->close();
+            }
+        }
+    } else {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*)
+             FROM solicitudes_cambios
+             WHERE estado = 'en_proceso'
+               AND modulo = 'Usuarios'
+               AND LOWER(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.correo'))) = ?"
+        );
+
+        if ($stmt) {
+            $stmt->bind_param('s', $correoLower);
+
+            try {
+                $stmt->execute();
+                $stmt->bind_result($solicitudesPendientes);
+                $stmt->fetch();
+                $stmt->close();
+                return (int)$solicitudesPendientes;
+            } catch (mysqli_sql_exception $e) {
+                $stmt->close();
+            }
+        }
+    }
+
+    $patrones = [];
+    if ($idUsuarioValido !== null) {
+        $patrones[] = '\\"id_usuario\\"[[:space:]]*:[[:space:]]*' . $idUsuarioValido . '([^0-9]|$)';
+    }
+
+    $correoPattern = '\\"correo\\"[[:space:]]*:[[:space:]]*\\"' . preg_quote($correo, '/') . '\\"';
+    $patrones[] = $correoPattern;
+
+    $regex = implode('|', $patrones);
+
+    $stmt = $conn->prepare(
+        "SELECT COUNT(*)
+         FROM solicitudes_cambios
+         WHERE estado = 'en_proceso'
+           AND modulo = 'Usuarios'
+           AND payload REGEXP ?"
+    );
+
+    if (!$stmt) {
+        error_log('No se pudo preparar la verificación de solicitudes pendientes para el usuario.');
+        return null;
+    }
+
+    $stmt->bind_param('s', $regex);
+
+    try {
+        $stmt->execute();
+        $stmt->bind_result($solicitudesPendientes);
+        $stmt->fetch();
+        $stmt->close();
+        return (int)$solicitudesPendientes;
+    } catch (mysqli_sql_exception $e) {
+        $stmt->close();
+        error_log('No se pudo ejecutar la verificación de solicitudes pendientes para el usuario: ' . $e->getMessage());
+        return null;
+    }
+}
+
 function opti_aplicar_usuario_eliminar_acceso(mysqli $conn, array $payload, int $idRevisor)
 {
     $idUsuario = (int)($payload['id_usuario'] ?? 0);
@@ -690,6 +790,48 @@ function opti_aplicar_usuario_eliminar_acceso(mysqli $conn, array $payload, int 
     return ['success' => true, 'message' => 'Asignación eliminada.'];
 }
 
+function opti_obtener_dependencias_usuario(mysqli $conn, int $idUsuario)
+{
+    $resumen = [
+        'movimientos' => 0,
+        'empresas_creadas' => 0,
+        'tokens_recuperacion' => 0,
+    ];
+
+    if ($idUsuario <= 0) {
+        return $resumen;
+    }
+
+    $stmtMovimientos = $conn->prepare('SELECT COUNT(*) FROM movimientos WHERE id_usuario = ?');
+    if ($stmtMovimientos) {
+        $stmtMovimientos->bind_param('i', $idUsuario);
+        $stmtMovimientos->execute();
+        $stmtMovimientos->bind_result($resumen['movimientos']);
+        $stmtMovimientos->fetch();
+        $stmtMovimientos->close();
+    }
+
+    $stmtEmpresas = $conn->prepare('SELECT COUNT(*) FROM empresa WHERE usuario_creador = ?');
+    if ($stmtEmpresas) {
+        $stmtEmpresas->bind_param('i', $idUsuario);
+        $stmtEmpresas->execute();
+        $stmtEmpresas->bind_result($resumen['empresas_creadas']);
+        $stmtEmpresas->fetch();
+        $stmtEmpresas->close();
+    }
+
+    $stmtTokens = $conn->prepare('SELECT COUNT(*) FROM pass_resets WHERE id_usuario = ?');
+    if ($stmtTokens) {
+        $stmtTokens->bind_param('i', $idUsuario);
+        $stmtTokens->execute();
+        $stmtTokens->bind_result($resumen['tokens_recuperacion']);
+        $stmtTokens->fetch();
+        $stmtTokens->close();
+    }
+
+    return array_map('intval', $resumen);
+}
+
 function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevisor)
 {
     $correo = trim($payload['correo'] ?? '');
@@ -697,28 +839,114 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
         return ['success' => false, 'message' => 'No se proporcionó el correo del usuario a eliminar.'];
     }
 
+    $solicitudesPendientes = isset($payload['solicitudes_pendientes']) && is_numeric($payload['solicitudes_pendientes'])
+        ? (int)$payload['solicitudes_pendientes']
+        : opti_contar_solicitudes_pendientes_usuario($conn, (int)($payload['id_usuario'] ?? 0), $correo);
+
+    if ($solicitudesPendientes === null) {
+        return ['success' => false, 'message' => 'No se pudo verificar si el usuario tiene solicitudes pendientes.'];
+    }
+
+    if ($solicitudesPendientes > 0) {
+        return [
+            'success' => false,
+            'message' => 'No se puede eliminar el usuario porque tiene solicitudes pendientes en revisión.',
+            'error_code' => 'usuario_solicitudes_pendientes',
+            'solicitudes_pendientes' => $solicitudesPendientes
+        ];
+    }
+
+    $stmtUsuario = $conn->prepare('SELECT id_usuario FROM usuario WHERE correo = ? LIMIT 1');
+    if (!$stmtUsuario) {
+        return ['success' => false, 'message' => 'No se pudo localizar al usuario indicado.'];
+    }
+
+    $stmtUsuario->bind_param('s', $correo);
+    $stmtUsuario->execute();
+    $resultado = $stmtUsuario->get_result()->fetch_assoc();
+    $stmtUsuario->close();
+
+    if (!$resultado) {
+        return ['success' => false, 'message' => 'El usuario indicado no existe.'];
+    }
+
+    $idUsuario = (int)$resultado['id_usuario'];
+    $dependencias = opti_obtener_dependencias_usuario($conn, $idUsuario);
+
     $conn->begin_transaction();
 
-    try {
-        $stmtUsuario = $conn->prepare('SELECT id_usuario FROM usuario WHERE correo = ? LIMIT 1');
-        $stmtUsuario->bind_param('s', $correo);
-        $stmtUsuario->execute();
-        $resultado = $stmtUsuario->get_result()->fetch_assoc();
-        $stmtUsuario->close();
+    $registrosActividades = 0;
+    $movimientosEliminados = 0;
 
-        if (!$resultado) {
-            $conn->rollback();
-            return ['success' => false, 'message' => 'El usuario indicado no existe.'];
+    try {
+        if (($dependencias['movimientos'] ?? 0) > 0) {
+            $stmtDelMov = $conn->prepare('DELETE FROM movimientos WHERE id_usuario = ?');
+            if (!$stmtDelMov) {
+                $conn->rollback();
+                return ['success' => false, 'message' => 'No se pudieron eliminar los movimientos del usuario.'];
+            }
+
+            $stmtDelMov->bind_param('i', $idUsuario);
+            $stmtDelMov->execute();
+            $movimientosEliminados = $stmtDelMov->affected_rows >= 0
+                ? $stmtDelMov->affected_rows
+                : (int) ($dependencias['movimientos'] ?? 0);
+            $stmtDelMov->close();
         }
 
-        $idUsuario = (int)$resultado['id_usuario'];
+        if (($dependencias['empresas_creadas'] ?? 0) > 0) {
+            $stmtActualizaEmpresa = $conn->prepare('UPDATE empresa SET usuario_creador = NULL WHERE usuario_creador = ?');
+            if ($stmtActualizaEmpresa) {
+                $stmtActualizaEmpresa->bind_param('i', $idUsuario);
+                $stmtActualizaEmpresa->execute();
+                $stmtActualizaEmpresa->close();
+            }
+        }
+
+        if (($dependencias['tokens_recuperacion'] ?? 0) > 0) {
+            $stmtDelTokens = $conn->prepare('DELETE FROM pass_resets WHERE id_usuario = ?');
+            if ($stmtDelTokens) {
+                $stmtDelTokens->bind_param('i', $idUsuario);
+                $stmtDelTokens->execute();
+                $stmtDelTokens->close();
+            }
+        }
+
+        $stmtLogs = $conn->prepare('SELECT COUNT(*) FROM log_control WHERE id_usuario = ?');
+        if ($stmtLogs) {
+            $stmtLogs->bind_param('i', $idUsuario);
+            $stmtLogs->execute();
+            $stmtLogs->bind_result($registrosActividades);
+            $stmtLogs->fetch();
+            $stmtLogs->close();
+        }
 
         $stmtDelRel = $conn->prepare('DELETE FROM usuario_empresa WHERE id_usuario = ?');
-        $stmtDelRel->bind_param('i', $idUsuario);
-        $stmtDelRel->execute();
-        $stmtDelRel->close();
+        if ($stmtDelRel) {
+            $stmtDelRel->bind_param('i', $idUsuario);
+            $stmtDelRel->execute();
+            $stmtDelRel->close();
+        }
+
+        if ($registrosActividades > 0) {
+            $stmtDelLogs = $conn->prepare('DELETE FROM log_control WHERE id_usuario = ?');
+            if (!$stmtDelLogs) {
+                $conn->rollback();
+                return ['success' => false, 'message' => 'No se pudieron eliminar los registros de actividades del usuario.'];
+            }
+
+            $stmtDelLogs->bind_param('i', $idUsuario);
+            $stmtDelLogs->execute();
+            $registrosActividades = $stmtDelLogs->affected_rows >= 0 ? $stmtDelLogs->affected_rows : $registrosActividades;
+            $stmtDelLogs->close();
+        }
 
         $stmtDel = $conn->prepare('DELETE FROM usuario WHERE id_usuario = ?');
+        if (!$stmtDel) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'No se pudo preparar la eliminación del usuario.'];
+        }
+
         $stmtDel->bind_param('i', $idUsuario);
         $stmtDel->execute();
         $stmtDel->close();
@@ -726,12 +954,36 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
         $conn->commit();
     } catch (mysqli_sql_exception $e) {
         $conn->rollback();
-        return ['success' => false, 'message' => 'No se pudo eliminar el usuario.'];
+        return ['success' => false, 'message' => 'No se pudo eliminar el usuario.', 'dependencias' => $dependencias];
     }
 
     registrarLog($conn, $idRevisor, 'Usuarios', 'Eliminación de usuario aprobada: ' . $correo);
 
-    return ['success' => true, 'message' => 'Usuario eliminado.'];
+    $mensaje = 'Usuario eliminado.';
+    if ($movimientosEliminados > 0) {
+        $mensaje .= ' Se eliminaron ' . $movimientosEliminados . ' '
+            . ($movimientosEliminados === 1 ? 'movimiento' : 'movimientos')
+            . ' de inventario asociados.';
+    }
+    if ($registrosActividades > 0) {
+        $mensaje .= ' También se eliminaron ' . $registrosActividades . ' registros de actividades asociados.';
+    }
+
+    if (($dependencias['empresas_creadas'] ?? 0) > 0) {
+        $mensaje .= ' Se desvincularon ' . (int)$dependencias['empresas_creadas'] . ' empresas creadas por el usuario.';
+    }
+
+    if (($dependencias['tokens_recuperacion'] ?? 0) > 0) {
+        $mensaje .= ' Se revocaron ' . (int)$dependencias['tokens_recuperacion'] . ' enlaces de recuperación de acceso.';
+    }
+
+    return [
+        'success' => true,
+        'message' => $mensaje,
+        'registros_actividades_eliminados' => max(0, (int)$registrosActividades),
+        'movimientos_eliminados' => max(0, (int)$movimientosEliminados),
+        'dependencias' => array_merge($dependencias, ['movimientos_eliminados' => $movimientosEliminados])
+    ];
 }
 
 function opti_aplicar_usuario_editar(mysqli $conn, array $payload, int $idRevisor)
