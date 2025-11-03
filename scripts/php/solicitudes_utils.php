@@ -873,20 +873,27 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
     $idUsuario = (int)$resultado['id_usuario'];
     $dependencias = opti_obtener_dependencias_usuario($conn, $idUsuario);
 
-    if (($dependencias['movimientos'] ?? 0) > 0) {
-        return [
-            'success' => false,
-            'message' => 'No se puede eliminar al usuario porque tiene movimientos de inventario registrados.',
-            'error_code' => 'usuario_movimientos_dependientes',
-            'dependencias' => $dependencias
-        ];
-    }
-
     $conn->begin_transaction();
 
     $registrosActividades = 0;
+    $movimientosEliminados = 0;
 
     try {
+        if (($dependencias['movimientos'] ?? 0) > 0) {
+            $stmtDelMov = $conn->prepare('DELETE FROM movimientos WHERE id_usuario = ?');
+            if (!$stmtDelMov) {
+                $conn->rollback();
+                return ['success' => false, 'message' => 'No se pudieron eliminar los movimientos del usuario.'];
+            }
+
+            $stmtDelMov->bind_param('i', $idUsuario);
+            $stmtDelMov->execute();
+            $movimientosEliminados = $stmtDelMov->affected_rows >= 0
+                ? $stmtDelMov->affected_rows
+                : (int) ($dependencias['movimientos'] ?? 0);
+            $stmtDelMov->close();
+        }
+
         if (($dependencias['empresas_creadas'] ?? 0) > 0) {
             $stmtActualizaEmpresa = $conn->prepare('UPDATE empresa SET usuario_creador = NULL WHERE usuario_creador = ?');
             if ($stmtActualizaEmpresa) {
@@ -914,34 +921,11 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
             $stmtLogs->close();
         }
 
-        $registrosActividades = 0;
-        $stmtLogs = $conn->prepare('SELECT COUNT(*) FROM log_control WHERE id_usuario = ?');
-        if ($stmtLogs) {
-            $stmtLogs->bind_param('i', $idUsuario);
-            $stmtLogs->execute();
-            $stmtLogs->bind_result($registrosActividades);
-            $stmtLogs->fetch();
-            $stmtLogs->close();
-        }
-
         $stmtDelRel = $conn->prepare('DELETE FROM usuario_empresa WHERE id_usuario = ?');
         if ($stmtDelRel) {
             $stmtDelRel->bind_param('i', $idUsuario);
             $stmtDelRel->execute();
             $stmtDelRel->close();
-        }
-
-        if ($registrosActividades > 0) {
-            $stmtDelLogs = $conn->prepare('DELETE FROM log_control WHERE id_usuario = ?');
-            if (!$stmtDelLogs) {
-                $conn->rollback();
-                return ['success' => false, 'message' => 'No se pudieron eliminar los registros de actividades del usuario.'];
-            }
-
-            $stmtDelLogs->bind_param('i', $idUsuario);
-            $stmtDelLogs->execute();
-            $registrosActividades = $stmtDelLogs->affected_rows >= 0 ? $stmtDelLogs->affected_rows : $registrosActividades;
-            $stmtDelLogs->close();
         }
 
         if ($registrosActividades > 0) {
@@ -976,6 +960,11 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
     registrarLog($conn, $idRevisor, 'Usuarios', 'Eliminación de usuario aprobada: ' . $correo);
 
     $mensaje = 'Usuario eliminado.';
+    if ($movimientosEliminados > 0) {
+        $mensaje .= ' Se eliminaron ' . $movimientosEliminados . ' '
+            . ($movimientosEliminados === 1 ? 'movimiento' : 'movimientos')
+            . ' de inventario asociados.';
+    }
     if ($registrosActividades > 0) {
         $mensaje .= ' También se eliminaron ' . $registrosActividades . ' registros de actividades asociados.';
     }
@@ -992,7 +981,8 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
         'success' => true,
         'message' => $mensaje,
         'registros_actividades_eliminados' => max(0, (int)$registrosActividades),
-        'dependencias' => $dependencias
+        'movimientos_eliminados' => max(0, (int)$movimientosEliminados),
+        'dependencias' => array_merge($dependencias, ['movimientos_eliminados' => $movimientosEliminados])
     ];
 }
 

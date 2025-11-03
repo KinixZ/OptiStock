@@ -1243,31 +1243,36 @@
             notificar('warning', `⚠️ ${baseMensaje} (${detallePendientes}).`);
             return;
           }
-          if (data?.error_code === 'usuario_movimientos_dependientes') {
-            const dependencias = data.dependencias || {};
-            const movimientos = Number(dependencias.movimientos) || 0;
-            const empresas = Number(dependencias.empresas_creadas) || 0;
-            const partes = [];
-            if (movimientos > 0) {
-              const etiqueta = movimientos === 1 ? '1 movimiento de inventario' : `${movimientos} movimientos de inventario`;
-              partes.push(etiqueta);
-            }
-            if (empresas > 0) {
-              const etiqueta = empresas === 1 ? '1 empresa creada' : `${empresas} empresas creadas`;
-              partes.push(etiqueta);
-            }
-            const detalle = partes.length > 0 ? ` (${partes.join(', ')}).` : '.';
-            const mensaje = data.message || 'El usuario tiene datos asociados que impiden su eliminación.';
-            notificar('warning', `⚠️ ${mensaje}${detalle}`);
-            return;
-          }
           notificar('error', '❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
           return;
         }
 
         usuariosEmpresa = usuariosEmpresa.filter(usuario => (usuario.correo || '').toLowerCase() !== correo.toLowerCase());
         sincronizarUsuariosEmpresaUI();
-        notificar('success', data?.message || `Usuario ${correo} eliminado.`);
+        const detallesExitos = [];
+        const movimientosEliminados = Number(data?.movimientos_eliminados) || Number(data?.dependencias?.movimientos_eliminados) || 0;
+        const registrosEliminados = Number(data?.registros_actividades_eliminados) || 0;
+        const empresasDesvinculadas = Number(data?.dependencias?.empresas_creadas) || 0;
+        const tokensRevocados = Number(data?.dependencias?.tokens_recuperacion) || 0;
+
+        const mensajeBase = data?.message || `Usuario ${correo} eliminado.`;
+        const mensajeBaseLower = mensajeBase.toLowerCase();
+
+        if (movimientosEliminados > 0 && !mensajeBaseLower.includes('movimiento')) {
+          detallesExitos.push(`${movimientosEliminados === 1 ? '1 movimiento' : `${movimientosEliminados} movimientos`} de inventario eliminados`);
+        }
+        if (registrosEliminados > 0 && !mensajeBaseLower.includes('registro de actividades')) {
+          detallesExitos.push(`${registrosEliminados === 1 ? '1 registro' : `${registrosEliminados} registros`} de actividades eliminados`);
+        }
+        if (empresasDesvinculadas > 0 && !mensajeBaseLower.includes('desvincularon')) {
+          detallesExitos.push(`${empresasDesvinculadas === 1 ? '1 empresa' : `${empresasDesvinculadas} empresas`} desvinculadas`);
+        }
+        if (tokensRevocados > 0 && !mensajeBaseLower.includes('revocaron')) {
+          detallesExitos.push(`${tokensRevocados === 1 ? '1 enlace' : `${tokensRevocados} enlaces`} de recuperación revocados`);
+        }
+
+        const mensajeExtra = detallesExitos.length > 0 ? ` (${detallesExitos.join(', ')}).` : '';
+        notificar('success', `${mensajeBase}${mensajeExtra}`);
       })
       .catch(err => {
         console.error('Error eliminando usuario:', err);
