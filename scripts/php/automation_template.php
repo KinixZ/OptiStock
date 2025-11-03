@@ -160,12 +160,12 @@ if (!$logoData) {
 
 // Fuerza una paleta monocromática para los reportes automatizados. La consulta a la
 // configuración de colores de la empresa no siempre está disponible cuando el
-// planificador se ejecuta en segundo plano, por lo que se opta por un diseño sin
-// color que garantice legibilidad consistente.
-$primaryHex = '#ffffff';
-$secondaryHex = '#f3f4f6';
+// planificador se ejecuta en segundo plano, por lo que se opta por un diseño en
+// escala de grises que garantice legibilidad consistente.
+$primaryHex = '#f3f4f6';
+$secondaryHex = '#f8fafc';
 $neutralHex = '#ffffff';
-$accentHex = '#1f2937';
+$accentHex = '#4b5563';
 $topbarTextHex = '#1f2937';
 $sidebarTextHex = '#1f2937';
 $textHex = '#1f2937';
