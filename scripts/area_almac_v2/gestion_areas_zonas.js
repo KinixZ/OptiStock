@@ -934,8 +934,37 @@ async function deleteArea(id) {
     return;
   }
 
+  const zonasVinculadas = zonasData.filter(zona => Number(zona.area_id) === Number(id)).length;
+  let zonaStrategy = '';
+
+  if (zonasVinculadas > 0) {
+    const liberar = confirm(
+      `El área tiene ${zonasVinculadas} zona${zonasVinculadas === 1 ? '' : 's'} asociada${zonasVinculadas === 1 ? '' : 's'}.` +
+      '\nPulsa Aceptar para liberarlas y conservarlas sin área.' +
+      '\nPulsa Cancelar si prefieres eliminarlas junto con el área.'
+    );
+
+    if (liberar) {
+      zonaStrategy = 'liberar';
+    } else {
+      const confirmarEliminarZonas = confirm(
+        'Se eliminarán definitivamente las zonas asociadas. ¿Deseas continuar?'
+      );
+      if (!confirmarEliminarZonas) {
+        showToast('Eliminación cancelada. No se realizaron cambios.');
+        return;
+      }
+      zonaStrategy = 'eliminar';
+    }
+  }
+
+  const params = new URLSearchParams({ id, empresa_id: EMP_ID });
+  if (zonaStrategy) {
+    params.set('zona_strategy', zonaStrategy);
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`, {
+    const res = await fetch(`${API_BASE}/guardar_areas.php?${params.toString()}`, {
       method: 'DELETE'
     });
     const respuesta = await res.json();
