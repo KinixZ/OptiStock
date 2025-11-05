@@ -3292,7 +3292,10 @@ body {
   width: min(1040px, calc(100% - 1.5rem));
   max-width: 100%;
   margin: clamp(0.75rem, 3vh, 1.5rem) auto;
-  height: auto;
+}
+
+#rolesConfigModal .modal-dialog.modal-dialog-centered {
+  align-items: stretch;
 }
 
 #rolesConfigModal .modal-dialog.modal-dialog-scrollable {
@@ -3304,13 +3307,14 @@ body {
 .roles-config-modal {
   display: flex;
   flex-direction: column;
-  max-height: calc(var(--roles-modal-viewport) - var(--roles-modal-gutter));
-  min-height: clamp(320px, 68vh, 760px);
   width: 100%;
+  min-height: clamp(480px, 65vh, 780px);
+  max-height: calc(var(--roles-modal-viewport) - var(--roles-modal-gutter));
 }
 
 #rolesConfigModal .modal-dialog.modal-dialog-scrollable .roles-config-modal {
   flex: 1 1 auto;
+  height: 100%;
 }
 
 .roles-config-modal .modal-header,
@@ -3322,12 +3326,13 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   padding-top: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .roles-config__content {
-  height: 100%;
-  min-height: 0;
+  min-height: clamp(340px, 60vh, 640px);
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   align-items: stretch;
@@ -3336,9 +3341,44 @@ body {
 
 .roles-guide,
 .roles-list-wrapper {
-  min-height: 0;
-  overflow: auto;
-  padding-right: 0.5rem;
+  min-width: 0;
+}
+
+.roles-list-wrapper {
+  padding-right: 0.75rem;
+}
+
+.roles-config__header {
+  gap: 1.25rem;
+}
+
+.roles-config__title {
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  margin-bottom: 0.35rem;
+}
+
+.roles-config__description {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 560px;
+}
+
+.roles-config__meta {
+  gap: 0.75rem;
+}
+
+.roles-meta-card {
+  min-width: 0;
+  padding: 0.9rem 1.1rem;
+  gap: 0.35rem;
+}
+
+.roles-meta-label {
+  font-size: 0.68rem;
+}
+
+.roles-meta-value {
+  font-size: clamp(1.2rem, 2.4vw, 1.6rem);
 }
 
 @media (max-width: 992px) {
@@ -3367,20 +3407,22 @@ body {
   .roles-config-modal {
     max-height: none;
     min-height: 0;
+    height: auto;
   }
 
   .roles-config-modal .modal-body {
-    overflow: visible;
+    overflow-y: auto;
   }
 
   .roles-config__content {
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    gap: 1.25rem;
   }
 
   .roles-guide,
   .roles-list-wrapper {
-    overflow: visible;
     padding-right: 0;
   }
 }
