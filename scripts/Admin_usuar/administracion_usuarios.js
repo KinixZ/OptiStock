@@ -7,58 +7,77 @@
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
 
-  const availablePermissions = [
-    'Gestionar usuarios',
-    'Configurar inventario',
-    'Ver reportes analíticos',
-    'Aprobar ajustes de stock',
-    'Registrar entradas de almacén',
-    'Generar órdenes de compra',
-    'Monitorear indicadores',
-    'Administrar catálogos de productos'
+  const permissionsCatalog = [
+    {
+      id: 'session-security',
+      label: 'Sesión y seguridad',
+      permissions: [
+        {
+          id: 'auth.login',
+          label: 'Iniciar sesión y ver mensajes de error'
+        },
+        {
+          id: 'auth.logout',
+          label: 'Cerrar sesiones previas'
+        }
+      ]
+    }
   ];
+
+  const allPermissionIds = permissionsCatalog.flatMap(group =>
+    group.permissions.map(permission => permission.id)
+  );
+  const validPermissions = new Set(allPermissionIds);
 
   const rolesData = [
     {
       id: 'administrador',
       name: 'Administrador',
       description: 'Supervisa todo el sistema y define la configuración estratégica.',
-      permissions: [...availablePermissions]
+      permissions: [...allPermissionIds]
     },
     {
       id: 'supervisor',
       name: 'Supervisor',
       description: 'Coordina al equipo y asegura el cumplimiento de los procesos diarios.',
-      permissions: [...availablePermissions]
+      permissions: [...allPermissionIds]
     },
     {
       id: 'almacenista',
       name: 'Almacenista',
       description: 'Gestiona la recepción, almacenamiento y surtido del inventario.',
-      permissions: [
-        'Configurar inventario',
-        'Registrar entradas de almacén',
-        'Generar órdenes de compra',
-        'Administrar catálogos de productos'
-      ]
+      permissions: ['auth.login']
     },
     {
       id: 'mantenimiento',
       name: 'Mantenimiento',
       description: 'Mantiene operativos los equipos y supervisa ajustes críticos.',
-      permissions: [
-        'Aprobar ajustes de stock',
-        'Registrar entradas de almacén',
-        'Monitorear indicadores'
-      ]
+      permissions: ['auth.login']
     },
     {
       id: 'etiquetador',
       name: 'Etiquetador',
       description: 'Asegura el etiquetado correcto y la actualización del catálogo.',
-      permissions: ['Registrar entradas de almacén', 'Administrar catálogos de productos']
+      permissions: ['auth.login']
     }
   ];
+
+  function normalizeRolePermissions(role) {
+    if (!role) return [];
+    const unique = [];
+    const seen = new Set();
+    (role.permissions || []).forEach(permission => {
+      if (!validPermissions.has(permission) || seen.has(permission)) {
+        return;
+      }
+      seen.add(permission);
+      unique.push(permission);
+    });
+    role.permissions = unique;
+    return role.permissions;
+  }
+
+  rolesData.forEach(normalizeRolePermissions);
 
   let rolesFeedbackTimeout = null;
   let rolesConfiguratorInitialized = false;
@@ -342,10 +361,37 @@
     if (!permissionsReferenceElement) return;
 
     permissionsReferenceElement.innerHTML = '';
-    availablePermissions.forEach(permission => {
-      const item = document.createElement('li');
-      item.textContent = permission;
-      permissionsReferenceElement.appendChild(item);
+
+    permissionsCatalog.forEach(group => {
+      const groupItem = document.createElement('li');
+      groupItem.className = 'permissions-reference__group';
+
+      const groupTitle = document.createElement('span');
+      groupTitle.className = 'permissions-reference__group-title';
+      groupTitle.textContent = group.label;
+      groupItem.appendChild(groupTitle);
+
+      const togglesList = document.createElement('ul');
+      togglesList.className = 'permissions-reference__toggles';
+
+      group.permissions.forEach(permission => {
+        const toggleItem = document.createElement('li');
+        toggleItem.className = 'permissions-reference__toggle';
+
+        const code = document.createElement('span');
+        code.className = 'permissions-reference__toggle-code';
+        code.textContent = permission.id;
+
+        const label = document.createElement('span');
+        label.className = 'permissions-reference__toggle-label';
+        label.textContent = permission.label;
+
+        toggleItem.append(code, label);
+        togglesList.appendChild(toggleItem);
+      });
+
+      groupItem.appendChild(togglesList);
+      permissionsReferenceElement.appendChild(groupItem);
     });
   }
 
@@ -355,6 +401,7 @@
     rolesListElement.innerHTML = '';
 
     rolesData.forEach(role => {
+      const normalizedPermissions = normalizeRolePermissions(role);
       const card = document.createElement('article');
       card.className = 'role-card';
 
@@ -374,7 +421,7 @@
 
       const counter = document.createElement('span');
       counter.className = 'role-count';
-      counter.textContent = formatPermissionCount(role.permissions.length);
+      counter.textContent = formatPermissionCount(normalizedPermissions.length);
 
       headerMain.append(title, description, counter);
 
@@ -403,49 +450,74 @@
 
       header.append(headerMain, toggle);
 
-      const permissionsGrid = document.createElement('div');
-      permissionsGrid.className = 'permissions-grid';
+      const permissionsContainer = document.createElement('div');
+      permissionsContainer.className = 'permissions-groups';
 
-      availablePermissions.forEach((permission, index) => {
-        const permissionId = `${role.id}-perm-${index}`;
-        const wrapper = document.createElement('label');
-        wrapper.className = 'permission-item';
-        wrapper.setAttribute('for', permissionId);
+      permissionsCatalog.forEach(group => {
+        const groupSection = document.createElement('section');
+        groupSection.className = 'permissions-group';
 
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = permissionId;
-        checkbox.value = permission;
-        checkbox.checked = role.permissions.includes(permission);
+        const groupTitle = document.createElement('h4');
+        groupTitle.className = 'permissions-group__title';
+        groupTitle.textContent = group.label;
 
-        checkbox.addEventListener('change', () => {
-          if (!puedeAdministrarRoles()) {
-            checkbox.checked = role.permissions.includes(permission);
-            reportarIntentoNoAutorizado(
-              `modificar el permiso «${permission}» del rol «${role.name}»`,
-              'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
-            );
-            return;
-          }
+        const permissionsGrid = document.createElement('div');
+        permissionsGrid.className = 'permissions-grid';
 
-          if (checkbox.checked) {
-            if (!role.permissions.includes(permission)) {
-              role.permissions.push(permission);
+        group.permissions.forEach(permission => {
+          const domId = `${role.id}-${permission.id}`.replace(/[^a-z0-9_-]/gi, '-');
+          const wrapper = document.createElement('label');
+          wrapper.className = 'permission-item';
+          wrapper.setAttribute('for', domId);
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = domId;
+          checkbox.value = permission.id;
+          checkbox.checked = normalizedPermissions.includes(permission.id);
+
+          checkbox.addEventListener('change', () => {
+            if (!puedeAdministrarRoles()) {
+              checkbox.checked = normalizedPermissions.includes(permission.id);
+              reportarIntentoNoAutorizado(
+                `modificar el permiso «${permission.id}» del rol «${role.name}»`,
+                'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
+              );
+              return;
             }
-          } else {
-            role.permissions = role.permissions.filter(perm => perm !== permission);
-          }
 
-          counter.textContent = formatPermissionCount(role.permissions.length);
-          markRoleCardAsPending(card);
+            const currentPermissions = new Set(role.permissions || []);
+            if (checkbox.checked) {
+              currentPermissions.add(permission.id);
+            } else {
+              currentPermissions.delete(permission.id);
+            }
+
+            role.permissions = Array.from(currentPermissions);
+            normalizedPermissions.length = 0;
+            normalizedPermissions.push(...normalizeRolePermissions(role));
+            counter.textContent = formatPermissionCount(normalizedPermissions.length);
+            markRoleCardAsPending(card);
+          });
+
+          const labelText = document.createElement('span');
+          labelText.className = 'permission-label';
+
+          const labelTitle = document.createElement('span');
+          labelTitle.className = 'permission-label__title';
+          labelTitle.textContent = permission.label;
+
+          const labelCode = document.createElement('span');
+          labelCode.className = 'permission-label__code';
+          labelCode.textContent = permission.id;
+
+          labelText.append(labelTitle, labelCode);
+          wrapper.append(checkbox, labelText);
+          permissionsGrid.appendChild(wrapper);
         });
 
-        const labelText = document.createElement('span');
-        labelText.className = 'permission-label';
-        labelText.textContent = permission;
-
-        wrapper.append(checkbox, labelText);
-        permissionsGrid.appendChild(wrapper);
+        groupSection.append(groupTitle, permissionsGrid);
+        permissionsContainer.appendChild(groupSection);
       });
 
       const actions = document.createElement('div');
@@ -473,7 +545,7 @@
 
       actions.appendChild(saveButton);
 
-      body.append(permissionsGrid, actions);
+      body.append(permissionsContainer, actions);
       card.append(header, body);
       rolesListElement.appendChild(card);
     });
