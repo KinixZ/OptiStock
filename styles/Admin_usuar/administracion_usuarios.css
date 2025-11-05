@@ -3115,3 +3115,163 @@ body {
     justify-content: center;
   }
 }
+
+.roles-config-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+}
+
+#rolesConfigModal .modal-dialog {
+  margin: min(1.75rem, 5vh) auto;
+  max-width: min(960px, calc(100% - 2rem));
+}
+
+#rolesConfigModal .modal-dialog.modal-dialog-scrollable {
+  max-height: calc(100% - 2rem);
+}
+
+.roles-config-modal .modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding-top: 0;
+}
+
+.roles-config-modal .modal-footer {
+  padding-top: 1.5rem;
+}
+
+.permissions-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.permissions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.permissions-group__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #171f34;
+}
+
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.permission-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--primary-border-soft);
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 0.85rem 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.permission-item:focus-within,
+.permission-item:hover {
+  border-color: rgba(255, 111, 145, 0.45);
+  box-shadow: 0 18px 32px -26px rgba(255, 111, 145, 0.45);
+}
+
+.permission-item input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.permission-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.permission-label__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #171f34;
+}
+
+.permission-label__code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--muted-color);
+}
+
+.roles-guide__list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.permissions-reference__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.permissions-reference__group-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #171f34;
+}
+
+.permissions-reference__toggles {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  list-style: disc;
+  color: var(--muted-color);
+}
+
+.permissions-reference__toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.permissions-reference__toggle-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--muted-color);
+}
+
+.permissions-reference__toggle-label {
+  font-size: 0.85rem;
+  color: #1c2340;
+}
+
+@media (max-width: 992px) {
+  .permissions-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .roles-config-modal {
+    max-height: calc(100vh - 1.5rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .permissions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #rolesConfigModal .modal-dialog {
+    margin: min(1.25rem, 4vh) auto;
+  }
+}
