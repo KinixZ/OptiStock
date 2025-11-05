@@ -7,58 +7,603 @@
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
 
-  const availablePermissions = [
-    'Gestionar usuarios',
-    'Configurar inventario',
-    'Ver reportes analíticos',
-    'Aprobar ajustes de stock',
-    'Registrar entradas de almacén',
-    'Generar órdenes de compra',
-    'Monitorear indicadores',
-    'Administrar catálogos de productos'
+  const SCOPE_OPTIONS = [
+    { id: 'self', label: 'Personal' },
+    { id: 'zone', label: 'Zona' },
+    { id: 'area', label: 'Área' },
+    { id: 'company', label: 'Compañía' }
   ];
+  const SCOPE_IDS = new Set(SCOPE_OPTIONS.map(option => option.id));
+  const DEFAULT_SCOPE = 'company';
+
+  const permissionsCatalog = [
+    {
+      id: 'session-security',
+      label: 'Sesión y seguridad',
+      permissions: [
+        {
+          id: 'auth.login',
+          label: 'Iniciar sesión',
+          description: 'Permite autenticarse y visualizar mensajes de error.',
+          scopes: []
+        },
+        {
+          id: 'auth.logout',
+          label: 'Cerrar sesiones activas',
+          description: 'Cierra sesiones previas abiertas en otros dispositivos.',
+          scopes: []
+        },
+        {
+          id: 'auth.password.reset',
+          label: 'Restablecer contraseña',
+          description: 'Habilita el flujo de recuperación de acceso de usuarios.',
+          scopes: []
+        }
+      ]
+    },
+    {
+      id: 'users-roles',
+      label: 'Usuarios y Roles',
+      permissions: [
+        {
+          id: 'users.read',
+          label: 'Consultar usuarios',
+          description: 'Permite visualizar la lista de usuarios registrados.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'users.create',
+          label: 'Crear usuarios',
+          description: 'Autoriza el registro de nuevas cuentas dentro del sistema.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'users.update',
+          label: 'Actualizar usuarios',
+          description: 'Permite editar datos generales y roles de usuarios.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'users.disable_enable',
+          label: 'Habilitar o deshabilitar usuarios',
+          description: 'Controla el acceso activo de las cuentas existentes.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'users.delete',
+          label: 'Eliminar usuarios',
+          description: 'Autoriza la eliminación permanente de cuentas.',
+          scopes: ['company']
+        },
+        {
+          id: 'roles.assign',
+          label: 'Asignar roles',
+          description: 'Permite asignar o cambiar roles a los usuarios.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'roles.permissions.configure',
+          label: 'Configurar permisos',
+          description: 'Autoriza la edición de permisos disponibles por rol.',
+          scopes: ['company']
+        }
+      ]
+    },
+    {
+      id: 'inventory',
+      label: 'Inventario',
+      permissions: [
+        {
+          id: 'inventory.products.read',
+          label: 'Consultar productos',
+          description: 'Permite visualizar el catálogo de productos.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'inventory.products.create',
+          label: 'Registrar productos',
+          description: 'Autoriza el alta de nuevos productos.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.products.update',
+          label: 'Editar productos',
+          description: 'Permite actualizar información general de productos.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'inventory.products.update.stock',
+          label: 'Actualizar stock de productos',
+          description: 'Habilita la modificación del inventario disponible.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'inventory.products.delete',
+          label: 'Eliminar productos',
+          description: 'Permite retirar productos del catálogo.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.categories.read',
+          label: 'Consultar categorías',
+          description: 'Permite visualizar categorías de inventario.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.categories.create',
+          label: 'Crear categorías',
+          description: 'Autoriza el alta de nuevas categorías.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.categories.update',
+          label: 'Editar categorías',
+          description: 'Permite modificar categorías existentes.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.categories.delete',
+          label: 'Eliminar categorías',
+          description: 'Autoriza la eliminación de categorías.',
+          scopes: ['company']
+        },
+        {
+          id: 'inventory.subcategories.read',
+          label: 'Consultar subcategorías',
+          description: 'Permite visualizar subcategorías del inventario.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.subcategories.create',
+          label: 'Crear subcategorías',
+          description: 'Autoriza el alta de nuevas subcategorías.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.subcategories.update',
+          label: 'Editar subcategorías',
+          description: 'Permite modificar subcategorías existentes.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'inventory.subcategories.delete',
+          label: 'Eliminar subcategorías',
+          description: 'Autoriza la eliminación de subcategorías.',
+          scopes: ['company']
+        },
+        {
+          id: 'inventory.movements.quick_io',
+          label: 'Movimientos rápidos',
+          description: 'Permite registrar entradas y salidas rápidas de stock.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'inventory.alerts.receive',
+          label: 'Recibir alertas de inventario',
+          description: 'Habilita notificaciones sobre niveles críticos.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'inventory.labels.register',
+          label: 'Registrar etiquetas',
+          description: 'Autoriza la gestión y asignación de etiquetas.',
+          scopes: ['zone', 'area', 'company']
+        }
+      ]
+    },
+    {
+      id: 'areas-zones',
+      label: 'Áreas y Zonas',
+      permissions: [
+        {
+          id: 'warehouse.areas.read',
+          label: 'Consultar áreas',
+          description: 'Permite ver las áreas disponibles en el almacén.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'warehouse.areas.create',
+          label: 'Crear áreas',
+          description: 'Autoriza el registro de nuevas áreas.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'warehouse.areas.update',
+          label: 'Editar áreas',
+          description: 'Permite modificar áreas existentes.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'warehouse.areas.delete',
+          label: 'Eliminar áreas',
+          description: 'Autoriza la eliminación de áreas del almacén.',
+          scopes: ['company']
+        },
+        {
+          id: 'warehouse.zones.read',
+          label: 'Consultar zonas',
+          description: 'Permite visualizar zonas dentro de un área.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'warehouse.zones.read.basic',
+          label: 'Consultar zonas (vista básica)',
+          description: 'Ofrece un listado simplificado de zonas asignadas.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'warehouse.zones.create',
+          label: 'Crear zonas',
+          description: 'Autoriza la creación de nuevas zonas.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'warehouse.zones.update',
+          label: 'Editar zonas',
+          description: 'Permite actualizar información de zonas.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'warehouse.zones.delete',
+          label: 'Eliminar zonas',
+          description: 'Autoriza la eliminación de zonas existentes.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'warehouse.assign.products_to_zone',
+          label: 'Asignar productos a zonas',
+          description: 'Permite relacionar productos con zonas específicas.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'warehouse.alerts.receive',
+          label: 'Recibir alertas del almacén',
+          description: 'Habilita notificaciones de incidentes o saturaciones.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'warehouse.incidents.report',
+          label: 'Reportar incidentes',
+          description: 'Permite registrar incidencias dentro de las zonas.',
+          scopes: ['zone', 'area', 'company']
+        }
+      ]
+    },
+    {
+      id: 'reports',
+      label: 'Reportes',
+      permissions: [
+        {
+          id: 'reports.generate',
+          label: 'Generar reportes avanzados',
+          description: 'Permite crear reportes personalizados con filtros completos.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'reports.generate.basic',
+          label: 'Generar reportes básicos',
+          description: 'Ofrece reportes con métricas esenciales.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'reports.export.pdf',
+          label: 'Exportar reportes en PDF',
+          description: 'Autoriza exportaciones en formato PDF.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'reports.export.xlsx',
+          label: 'Exportar reportes en Excel',
+          description: 'Permite descargar información en formato XLSX.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'reports.schedule',
+          label: 'Programar reportes',
+          description: 'Autoriza la programación automática de reportes.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'reports.notify',
+          label: 'Notificar resultados de reportes',
+          description: 'Habilita el envío de reportes a otros usuarios.',
+          scopes: ['area', 'company']
+        }
+      ]
+    },
+    {
+      id: 'logs',
+      label: 'LOG de Control',
+      permissions: [
+        {
+          id: 'log.read',
+          label: 'Consultar registros',
+          description: 'Permite revisar el historial de acciones del sistema.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'log.export',
+          label: 'Exportar registros',
+          description: 'Autoriza la descarga del log de auditoría.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'log.analytics.view',
+          label: 'Ver analítica del log',
+          description: 'Habilita paneles analíticos sobre eventos registrados.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'log.flag_records',
+          label: 'Marcar registros',
+          description: 'Permite resaltar eventos críticos para seguimiento.',
+          scopes: ['area', 'company']
+        },
+        {
+          id: 'log.immutability.enforce',
+          label: 'Forzar inmutabilidad',
+          description: 'Autoriza el sellado de eventos para evitar manipulaciones.',
+          scopes: ['company']
+        }
+      ]
+    },
+    {
+      id: 'dashboard-notifications',
+      label: 'Panel y Notificaciones',
+      permissions: [
+        {
+          id: 'dashboard.view.metrics',
+          label: 'Ver métricas del panel',
+          description: 'Permite acceder a tableros y métricas operativas.',
+          scopes: ['zone', 'area', 'company']
+        },
+        {
+          id: 'notifications.receive.critical',
+          label: 'Recibir notificaciones críticas',
+          description: 'Habilita alertas prioritarias del sistema.',
+          scopes: ['area', 'company']
+        }
+      ]
+    },
+    {
+      id: 'account-subscription',
+      label: 'Cuenta y Suscripción',
+      permissions: [
+        {
+          id: 'account.profile.read',
+          label: 'Ver perfil de cuenta',
+          description: 'Permite revisar información de perfil y preferencias.',
+          scopes: ['self', 'company']
+        },
+        {
+          id: 'account.profile.update',
+          label: 'Actualizar perfil de cuenta',
+          description: 'Autoriza modificar datos personales del perfil.',
+          scopes: ['self', 'company']
+        },
+        {
+          id: 'account.theme.configure',
+          label: 'Configurar tema visual',
+          description: 'Permite ajustar la apariencia del sistema.',
+          scopes: ['self', 'company']
+        },
+        {
+          id: 'subscription.manage',
+          label: 'Gestionar suscripción',
+          description: 'Autoriza actualizar planes y métodos de pago.',
+          scopes: ['company']
+        }
+      ]
+    }
+  ];
+
+  const permissionDefinitions = new Map();
+  permissionsCatalog.forEach(group => {
+    group.permissions.forEach(permission => {
+      const normalizedScopes = Array.isArray(permission.scopes)
+        ? permission.scopes.filter(scope => SCOPE_IDS.has(scope))
+        : [];
+      const defaultScopeCandidate =
+        permission.defaultScope && SCOPE_IDS.has(permission.defaultScope)
+          ? permission.defaultScope
+          : null;
+      const effectiveDefaultScope = normalizedScopes.length
+        ? (defaultScopeCandidate && normalizedScopes.includes(defaultScopeCandidate)
+          ? defaultScopeCandidate
+          : (normalizedScopes.includes(DEFAULT_SCOPE) ? DEFAULT_SCOPE : normalizedScopes[0]))
+        : null;
+
+      permission.scopes = normalizedScopes;
+      permission.defaultScope = effectiveDefaultScope;
+      permissionDefinitions.set(permission.id, permission);
+    });
+  });
+
+  const allPermissionIds = Array.from(permissionDefinitions.keys());
+  const validPermissions = new Set(allPermissionIds);
+
+  function normalizePermissionEntry(assignment, fallbackScope = DEFAULT_SCOPE) {
+    if (!assignment) return null;
+
+    let permissionId = '';
+    let scope = null;
+
+    if (typeof assignment === 'string') {
+      const [idPart, scopePart] = assignment.split('@');
+      permissionId = (idPart || '').trim();
+      scope = (scopePart || '').trim() || null;
+    } else if (typeof assignment === 'object') {
+      permissionId = (assignment.id || '').trim();
+      scope = typeof assignment.scope === 'string' ? assignment.scope.trim() : null;
+    }
+
+    if (!validPermissions.has(permissionId)) {
+      return null;
+    }
+
+    const definition = permissionDefinitions.get(permissionId);
+    const availableScopes = Array.isArray(definition?.scopes) ? definition.scopes : [];
+
+    if (!availableScopes.length) {
+      return { id: permissionId, scope: null };
+    }
+
+    let normalizedScope = scope && availableScopes.includes(scope) ? scope : null;
+
+    if (!normalizedScope) {
+      if (fallbackScope && availableScopes.includes(fallbackScope)) {
+        normalizedScope = fallbackScope;
+      } else if (definition?.defaultScope && availableScopes.includes(definition.defaultScope)) {
+        normalizedScope = definition.defaultScope;
+      } else if (availableScopes.includes(DEFAULT_SCOPE)) {
+        normalizedScope = DEFAULT_SCOPE;
+      } else {
+        normalizedScope = availableScopes[0];
+      }
+    }
+
+    return { id: permissionId, scope: normalizedScope };
+  }
+
+  function buildRolePermissionList(assignments, fallbackScope = DEFAULT_SCOPE) {
+    const normalized = [];
+    const seen = new Set();
+
+    (assignments || []).forEach(assignment => {
+      const entry = normalizePermissionEntry(assignment, fallbackScope);
+      if (!entry) return;
+
+      if (seen.has(entry.id)) {
+        const index = normalized.findIndex(item => item.id === entry.id);
+        if (index !== -1) {
+          normalized[index] = entry;
+        }
+        return;
+      }
+
+      seen.add(entry.id);
+      normalized.push(entry);
+    });
+
+    return normalized;
+  }
+
+  function getScopeLabel(scopeId) {
+    const option = SCOPE_OPTIONS.find(item => item.id === scopeId);
+    return option ? option.label : scopeId;
+  }
+
+  function formatScopeList(scopes, fallbackText = 'Sin alcance') {
+    if (!Array.isArray(scopes) || !scopes.length) {
+      return fallbackText;
+    }
+
+    return scopes
+      .map(scope => getScopeLabel(scope))
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  function getPermissionDefaultScopeForRole(permissionId, fallbackScope = DEFAULT_SCOPE) {
+    const normalized = normalizePermissionEntry({ id: permissionId, scope: fallbackScope }, fallbackScope);
+    return normalized ? normalized.scope : null;
+  }
 
   const rolesData = [
     {
       id: 'administrador',
       name: 'Administrador',
       description: 'Supervisa todo el sistema y define la configuración estratégica.',
-      permissions: [...availablePermissions]
+      scopeFallback: 'company',
+      permissions: buildRolePermissionList(
+        allPermissionIds.map(permissionId => ({ id: permissionId, scope: 'company' })),
+        'company'
+      )
     },
     {
       id: 'supervisor',
       name: 'Supervisor',
       description: 'Coordina al equipo y asegura el cumplimiento de los procesos diarios.',
-      permissions: [...availablePermissions]
+      scopeFallback: 'area',
+      permissions: buildRolePermissionList(
+        [
+          'users.read@area',
+          'inventory.products.read@area',
+          'inventory.products.create@area',
+          'inventory.products.update@area',
+          'inventory.products.delete@area',
+          'warehouse.zones.read@area',
+          'warehouse.zones.create@area',
+          'warehouse.zones.update@area',
+          'warehouse.zones.delete@area',
+          'reports.generate@area',
+          'reports.export.pdf@area',
+          'reports.export.xlsx@area',
+          'log.read@area',
+          'dashboard.view.metrics@area'
+        ],
+        'area'
+      )
     },
     {
       id: 'almacenista',
       name: 'Almacenista',
       description: 'Gestiona la recepción, almacenamiento y surtido del inventario.',
-      permissions: [
-        'Configurar inventario',
-        'Registrar entradas de almacén',
-        'Generar órdenes de compra',
-        'Administrar catálogos de productos'
-      ]
+      scopeFallback: 'zone',
+      permissions: buildRolePermissionList(
+        [
+          'inventory.products.read@zone',
+          'inventory.products.update.stock@zone',
+          'inventory.movements.quick_io@zone',
+          'warehouse.zones.read@zone',
+          'reports.generate.basic@zone',
+          'log.read@zone'
+        ],
+        'zone'
+      )
     },
     {
       id: 'mantenimiento',
       name: 'Mantenimiento',
       description: 'Mantiene operativos los equipos y supervisa ajustes críticos.',
-      permissions: [
-        'Aprobar ajustes de stock',
-        'Registrar entradas de almacén',
-        'Monitorear indicadores'
-      ]
+      scopeFallback: 'area',
+      permissions: buildRolePermissionList(
+        [
+          'warehouse.zones.read@area',
+          'warehouse.incidents.report@area',
+          'reports.export.pdf@area',
+          'log.read@area'
+        ],
+        'area'
+      )
     },
     {
       id: 'etiquetador',
       name: 'Etiquetador',
       description: 'Asegura el etiquetado correcto y la actualización del catálogo.',
-      permissions: ['Registrar entradas de almacén', 'Administrar catálogos de productos']
+      scopeFallback: 'zone',
+      permissions: buildRolePermissionList(
+        [
+          'inventory.labels.register@zone',
+          'warehouse.zones.read.basic@zone'
+        ],
+        'zone'
+      )
     }
   ];
+
+  function normalizeRolePermissions(role) {
+    if (!role) return [];
+
+    const fallbackScope = role.scopeFallback && SCOPE_IDS.has(role.scopeFallback)
+      ? role.scopeFallback
+      : DEFAULT_SCOPE;
+
+    role.permissions = buildRolePermissionList(role.permissions || [], fallbackScope);
+    return role.permissions;
+  }
+
+  rolesData.forEach(normalizeRolePermissions);
 
   let rolesFeedbackTimeout = null;
   let rolesConfiguratorInitialized = false;
@@ -157,6 +702,7 @@
   let rolesButtonLabel = null;
   let rolesModalInstance = null;
   let rolesDomReadyHandler = null;
+  let rolesPresentationMediaQuery = null;
 
   function resolveRolesElements() {
     rolesModalElement = document.getElementById('rolesConfigModal');
@@ -167,6 +713,43 @@
     rolesCountElement = document.getElementById('rolesCount');
     rolesLastUpdatedElement = document.getElementById('lastUpdated');
     rolesButtonLabel = toggleRolesButton ? toggleRolesButton.querySelector('.cta-button__label') : null;
+    setupRolesPresentationMediaQuery();
+  }
+
+  function teardownRolesPresentationMediaQuery() {
+    if (!rolesPresentationMediaQuery) return;
+
+    if (typeof rolesPresentationMediaQuery.removeEventListener === 'function') {
+      rolesPresentationMediaQuery.removeEventListener('change', updateRolesModalPresentation);
+    } else if (typeof rolesPresentationMediaQuery.removeListener === 'function') {
+      rolesPresentationMediaQuery.removeListener(updateRolesModalPresentation);
+    }
+
+    rolesPresentationMediaQuery = null;
+  }
+
+  function updateRolesModalPresentation() {
+    if (!rolesModalElement || !rolesPresentationMediaQuery) return;
+
+    const shouldUseFullHeight = rolesPresentationMediaQuery.matches;
+    rolesModalElement.classList.toggle('roles-modal--fullheight', shouldUseFullHeight);
+  }
+
+  function setupRolesPresentationMediaQuery() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    teardownRolesPresentationMediaQuery();
+    rolesPresentationMediaQuery = window.matchMedia('(max-height: 720px)');
+
+    if (typeof rolesPresentationMediaQuery.addEventListener === 'function') {
+      rolesPresentationMediaQuery.addEventListener('change', updateRolesModalPresentation);
+    } else if (typeof rolesPresentationMediaQuery.addListener === 'function') {
+      rolesPresentationMediaQuery.addListener(updateRolesModalPresentation);
+    }
+
+    updateRolesModalPresentation();
   }
 
   function setupRolesModalInteractions() {
@@ -207,6 +790,8 @@
         if (rolesButtonLabel) {
           rolesButtonLabel.textContent = 'Roles y permisos';
         }
+
+        updateRolesModalPresentation();
       });
 
       addListener(rolesModalElement, 'hidden.bs.modal', () => {
@@ -342,10 +927,53 @@
     if (!permissionsReferenceElement) return;
 
     permissionsReferenceElement.innerHTML = '';
-    availablePermissions.forEach(permission => {
-      const item = document.createElement('li');
-      item.textContent = permission;
-      permissionsReferenceElement.appendChild(item);
+
+    permissionsCatalog.forEach(group => {
+      const groupItem = document.createElement('li');
+      groupItem.className = 'permissions-reference__group';
+
+      const groupTitle = document.createElement('span');
+      groupTitle.className = 'permissions-reference__group-title';
+      groupTitle.textContent = group.label;
+      groupItem.appendChild(groupTitle);
+
+      const togglesList = document.createElement('ul');
+      togglesList.className = 'permissions-reference__toggles';
+
+      group.permissions.forEach(permission => {
+        const toggleItem = document.createElement('li');
+        toggleItem.className = 'permissions-reference__toggle';
+
+        const code = document.createElement('span');
+        code.className = 'permissions-reference__toggle-code';
+        code.textContent = permission.id;
+
+        const label = document.createElement('span');
+        label.className = 'permissions-reference__toggle-label';
+        label.textContent = permission.label;
+
+        toggleItem.append(code, label);
+
+        if (permission.description) {
+          const description = document.createElement('span');
+          description.className = 'permissions-reference__toggle-description';
+          description.textContent = permission.description;
+          toggleItem.appendChild(description);
+        }
+
+        const scopesBadge = document.createElement('span');
+        scopesBadge.className = 'permissions-reference__toggle-scopes';
+        const scopesText = formatScopeList(permission.scopes, 'Sin alcance específico');
+        scopesBadge.textContent = permission.scopes && permission.scopes.length
+          ? `Alcances: ${scopesText}`
+          : scopesText;
+        toggleItem.appendChild(scopesBadge);
+
+        togglesList.appendChild(toggleItem);
+      });
+
+      groupItem.appendChild(togglesList);
+      permissionsReferenceElement.appendChild(groupItem);
     });
   }
 
@@ -354,7 +982,8 @@
 
     rolesListElement.innerHTML = '';
 
-    rolesData.forEach(role => {
+    rolesData.forEach((role, index) => {
+      const normalizedPermissions = normalizeRolePermissions(role);
       const card = document.createElement('article');
       card.className = 'role-card';
 
@@ -374,7 +1003,7 @@
 
       const counter = document.createElement('span');
       counter.className = 'role-count';
-      counter.textContent = formatPermissionCount(role.permissions.length);
+      counter.textContent = formatPermissionCount(normalizedPermissions.length);
 
       headerMain.append(title, description, counter);
 
@@ -391,61 +1020,213 @@
       toggle.setAttribute('aria-controls', bodyId);
 
       const toggleText = document.createElement('span');
-      toggleText.textContent = 'Ver permisos';
+      const shouldStartExpanded = index === 0;
+      toggleText.textContent = shouldStartExpanded ? 'Ocultar permisos' : 'Ver permisos';
       toggle.appendChild(toggleText);
+
+      if (shouldStartExpanded) {
+        toggle.setAttribute('aria-expanded', 'true');
+        body.hidden = false;
+      }
 
       toggle.addEventListener('click', () => {
         const expanded = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', String(!expanded));
-        toggleText.textContent = expanded ? 'Ver permisos' : 'Ocultar permisos';
-        body.hidden = expanded;
+        const nextExpanded = !expanded;
+        toggle.setAttribute('aria-expanded', String(nextExpanded));
+        toggleText.textContent = nextExpanded ? 'Ocultar permisos' : 'Ver permisos';
+        body.hidden = !nextExpanded;
       });
 
       header.append(headerMain, toggle);
 
-      const permissionsGrid = document.createElement('div');
-      permissionsGrid.className = 'permissions-grid';
+      const permissionsContainer = document.createElement('div');
+      permissionsContainer.className = 'permissions-groups';
 
-      availablePermissions.forEach((permission, index) => {
-        const permissionId = `${role.id}-perm-${index}`;
-        const wrapper = document.createElement('label');
-        wrapper.className = 'permission-item';
-        wrapper.setAttribute('for', permissionId);
+      const fallbackScope = role.scopeFallback && SCOPE_IDS.has(role.scopeFallback)
+        ? role.scopeFallback
+        : DEFAULT_SCOPE;
+      const rolePermissionsMap = new Map(
+        normalizedPermissions.map(permission => [permission.id, permission.scope || null])
+      );
 
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = permissionId;
-        checkbox.value = permission;
-        checkbox.checked = role.permissions.includes(permission);
+      const syncRolePermissions = () => {
+        role.permissions = Array.from(rolePermissionsMap.entries()).map(([id, scope]) => ({ id, scope }));
+        const next = normalizeRolePermissions(role);
+        rolePermissionsMap.clear();
+        next.forEach(item => {
+          rolePermissionsMap.set(item.id, item.scope || null);
+        });
+        normalizedPermissions.length = 0;
+        normalizedPermissions.push(...next);
+        counter.textContent = formatPermissionCount(next.length);
+      };
 
-        checkbox.addEventListener('change', () => {
-          if (!puedeAdministrarRoles()) {
-            checkbox.checked = role.permissions.includes(permission);
-            reportarIntentoNoAutorizado(
-              `modificar el permiso «${permission}» del rol «${role.name}»`,
-              'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
-            );
-            return;
+      permissionsCatalog.forEach(group => {
+        const groupSection = document.createElement('section');
+        groupSection.className = 'permissions-group';
+
+        const groupTitle = document.createElement('h4');
+        groupTitle.className = 'permissions-group__title';
+        groupTitle.textContent = group.label;
+
+        const permissionsGrid = document.createElement('div');
+        permissionsGrid.className = 'permissions-grid';
+
+        group.permissions.forEach(permission => {
+          const domId = `${role.id}-${permission.id}`.replace(/[^a-z0-9_-]/gi, '-');
+          const availableScopes = Array.isArray(permission.scopes) ? permission.scopes : [];
+          const isActive = rolePermissionsMap.has(permission.id);
+          const currentScope = rolePermissionsMap.get(permission.id) || null;
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'permission-item';
+          if (isActive) {
+            wrapper.classList.add('permission-item--active');
           }
 
-          if (checkbox.checked) {
-            if (!role.permissions.includes(permission)) {
-              role.permissions.push(permission);
+          const toggleWrapper = document.createElement('label');
+          toggleWrapper.className = 'permission-item__main permission-toggle';
+          toggleWrapper.setAttribute('for', domId);
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = domId;
+          checkbox.value = permission.id;
+          checkbox.checked = isActive;
+
+          const labelText = document.createElement('span');
+          labelText.className = 'permission-label';
+
+          const labelTitle = document.createElement('span');
+          labelTitle.className = 'permission-label__title';
+          labelTitle.textContent = permission.label;
+
+          const labelCode = document.createElement('span');
+          labelCode.className = 'permission-label__code';
+          labelCode.textContent = permission.id;
+
+          labelText.append(labelTitle, labelCode);
+
+          if (permission.description) {
+            const labelDescription = document.createElement('span');
+            labelDescription.className = 'permission-label__description';
+            labelDescription.textContent = permission.description;
+            labelText.appendChild(labelDescription);
+          }
+
+          toggleWrapper.append(checkbox, labelText);
+
+          const actionsContainer = document.createElement('div');
+          actionsContainer.className = 'permission-item__actions';
+
+          let scopeSelect = null;
+          let lastScope = currentScope;
+
+          if (availableScopes.length) {
+            scopeSelect = document.createElement('select');
+            scopeSelect.className = 'permission-scope form-select form-select-sm';
+            scopeSelect.setAttribute('aria-label', `Alcance de ${permission.label}`);
+
+            availableScopes.forEach(scopeId => {
+              const option = document.createElement('option');
+              option.value = scopeId;
+              option.textContent = getScopeLabel(scopeId);
+              scopeSelect.appendChild(option);
+            });
+
+            const defaultScopeForRole = getPermissionDefaultScopeForRole(permission.id, fallbackScope);
+            const scopeToApply = isActive
+              ? (currentScope && availableScopes.includes(currentScope) ? currentScope : defaultScopeForRole)
+              : defaultScopeForRole;
+
+            if (scopeToApply && availableScopes.includes(scopeToApply)) {
+              scopeSelect.value = scopeToApply;
+            } else if (availableScopes.length) {
+              scopeSelect.value = availableScopes[0];
             }
+
+            lastScope = scopeSelect.value || null;
+            scopeSelect.disabled = !isActive;
+            actionsContainer.appendChild(scopeSelect);
           } else {
-            role.permissions = role.permissions.filter(perm => perm !== permission);
+            const scopeBadge = document.createElement('span');
+            scopeBadge.className = 'permission-scope-badge';
+            scopeBadge.textContent = 'Sin alcance';
+            actionsContainer.appendChild(scopeBadge);
           }
 
-          counter.textContent = formatPermissionCount(role.permissions.length);
-          markRoleCardAsPending(card);
+          const updateWrapperState = () => {
+            wrapper.classList.toggle('permission-item--active', checkbox.checked);
+            if (scopeSelect) {
+              scopeSelect.disabled = !checkbox.checked;
+            }
+          };
+
+          checkbox.addEventListener('change', () => {
+            if (!puedeAdministrarRoles()) {
+              checkbox.checked = !checkbox.checked;
+              updateWrapperState();
+              reportarIntentoNoAutorizado(
+                `modificar el permiso «${permission.id}» del rol «${role.name}»`,
+                'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
+              );
+              return;
+            }
+
+            if (checkbox.checked) {
+              let scopeToStore = null;
+              if (scopeSelect) {
+                if (!scopeSelect.value || !availableScopes.includes(scopeSelect.value)) {
+                  const fallback = getPermissionDefaultScopeForRole(permission.id, fallbackScope);
+                  if (fallback && availableScopes.includes(fallback)) {
+                    scopeSelect.value = fallback;
+                  } else if (availableScopes.length) {
+                    scopeSelect.value = availableScopes[0];
+                  }
+                }
+                scopeToStore = scopeSelect.value || null;
+                lastScope = scopeToStore;
+              }
+              rolePermissionsMap.set(permission.id, scopeToStore);
+            } else {
+              rolePermissionsMap.delete(permission.id);
+            }
+
+            syncRolePermissions();
+            updateWrapperState();
+            markRoleCardAsPending(card);
+          });
+
+          if (scopeSelect) {
+            scopeSelect.addEventListener('change', () => {
+              const nextScope = scopeSelect.value;
+              if (!puedeAdministrarRoles()) {
+                scopeSelect.value = lastScope || scopeSelect.value;
+                reportarIntentoNoAutorizado(
+                  `ajustar el alcance de «${permission.id}» para el rol «${role.name}»`,
+                  'Solo un administrador puede modificar los permisos de los roles. Se notificó al responsable.'
+                );
+                return;
+              }
+
+              if (!checkbox.checked) {
+                checkbox.checked = true;
+              }
+
+              lastScope = nextScope;
+              rolePermissionsMap.set(permission.id, nextScope || null);
+              syncRolePermissions();
+              updateWrapperState();
+              markRoleCardAsPending(card);
+            });
+          }
+
+          wrapper.append(toggleWrapper, actionsContainer);
+          permissionsGrid.appendChild(wrapper);
         });
 
-        const labelText = document.createElement('span');
-        labelText.className = 'permission-label';
-        labelText.textContent = permission;
-
-        wrapper.append(checkbox, labelText);
-        permissionsGrid.appendChild(wrapper);
+        groupSection.append(groupTitle, permissionsGrid);
+        permissionsContainer.appendChild(groupSection);
       });
 
       const actions = document.createElement('div');
@@ -473,7 +1254,7 @@
 
       actions.appendChild(saveButton);
 
-      body.append(permissionsGrid, actions);
+      body.append(permissionsContainer, actions);
       card.append(header, body);
       rolesListElement.appendChild(card);
     });
@@ -1558,6 +2339,8 @@
       document.removeEventListener('DOMContentLoaded', domReadyHandler);
       domReadyHandler = null;
     }
+
+    teardownRolesPresentationMediaQuery();
 
     cacheAreasZonas = null;
     solicitudAreas = null;
