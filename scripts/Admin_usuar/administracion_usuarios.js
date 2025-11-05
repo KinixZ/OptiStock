@@ -400,7 +400,7 @@
 
     rolesListElement.innerHTML = '';
 
-    rolesData.forEach(role => {
+    rolesData.forEach((role, index) => {
       const normalizedPermissions = normalizeRolePermissions(role);
       const card = document.createElement('article');
       card.className = 'role-card';
@@ -438,14 +438,21 @@
       toggle.setAttribute('aria-controls', bodyId);
 
       const toggleText = document.createElement('span');
-      toggleText.textContent = 'Ver permisos';
+      const shouldStartExpanded = index === 0;
+      toggleText.textContent = shouldStartExpanded ? 'Ocultar permisos' : 'Ver permisos';
       toggle.appendChild(toggleText);
+
+      if (shouldStartExpanded) {
+        toggle.setAttribute('aria-expanded', 'true');
+        body.hidden = false;
+      }
 
       toggle.addEventListener('click', () => {
         const expanded = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', String(!expanded));
-        toggleText.textContent = expanded ? 'Ver permisos' : 'Ocultar permisos';
-        body.hidden = expanded;
+        const nextExpanded = !expanded;
+        toggle.setAttribute('aria-expanded', String(nextExpanded));
+        toggleText.textContent = nextExpanded ? 'Ocultar permisos' : 'Ver permisos';
+        body.hidden = !nextExpanded;
       });
 
       header.append(headerMain, toggle);

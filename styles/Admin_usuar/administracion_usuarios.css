@@ -3275,3 +3275,83 @@ body {
     margin: min(1.25rem, 4vh) auto;
   }
 }
+
+/* Roles & permissions modal layout adjustments */
+#rolesConfigModal .modal-dialog {
+  max-width: min(1040px, calc(100% - 1.5rem));
+  height: calc(100% - 2rem);
+  margin: 1rem auto;
+}
+
+#rolesConfigModal .modal-dialog.modal-dialog-scrollable {
+  max-height: none;
+  height: calc(100% - 2rem);
+}
+
+.roles-config-modal {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.roles-config-modal .modal-header,
+.roles-config-modal .modal-footer {
+  flex-shrink: 0;
+}
+
+.roles-config-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 0;
+  overflow: hidden;
+}
+
+.roles-config__content {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+.roles-guide {
+  min-height: 0;
+  overflow: auto;
+}
+
+.roles-list-wrapper {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.5rem;
+}
+
+@media (max-width: 992px) {
+  #rolesConfigModal .modal-dialog {
+    height: auto;
+  }
+
+  #rolesConfigModal .modal-dialog.modal-dialog-scrollable {
+    height: auto;
+  }
+
+  .roles-config-modal {
+    height: auto;
+  }
+
+  .roles-config-modal .modal-body {
+    overflow: visible;
+  }
+
+  .roles-config__content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .roles-guide,
+  .roles-list-wrapper {
+    overflow: visible;
+    padding-right: 0;
+  }
+}
