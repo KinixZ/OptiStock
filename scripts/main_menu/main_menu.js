@@ -2070,7 +2070,7 @@ function buildCapacityAlertNotification(entry, markAsNew, preservedTimestamp) {
         mensaje: partesMensaje.join(' ').trim(),
         prioridad,
         fecha_disponible_desde: timestamp,
-        ruta_destino: 'area_almac_v2/gestion_areas_zonas.html',
+        ruta_destino: 'area_almac/areas_zonas.html',
         estado: 'Enviada',
         es_nueva: !!markAsNew,
         tipo_destinatario: 'Usuario',
@@ -3275,7 +3275,7 @@ const tutorialSteps = [
     {
         title: "Áreas y Zonas de Almacén",
         content: "Desde este módulo podrás gestionar todas las áreas y zonas de tu almacén, asignar ubicaciones y configurar la distribución física de tus productos.",
-        element: document.querySelector('.sidebar-menu a[data-page="area_almac_v2/gestion_areas_zonas.html"]')
+        element: document.querySelector('.sidebar-menu a[data-page="area_almac/areas_zonas.html"]')
     },
     {
         title: "Gestión de Inventario",

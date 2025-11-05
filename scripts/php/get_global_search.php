@@ -307,7 +307,7 @@ if ($areasStmt = $conn->prepare($areasSql)) {
             'titulo' => sanitizeText($row['nombre']),
             'descripcion' => implode(' · ', array_filter($descripcionPartes)),
             'accion' => 'Gestionar áreas',
-            'url' => '../area_almac_v2/gestion_areas_zonas.html',
+            'url' => '../area_almac/areas_zonas.html',
             'keywords' => collectKeywords([
                 'area',
                 'almacen',
@@ -348,7 +348,7 @@ if ($zonasStmt = $conn->prepare($zonasSql)) {
             'titulo' => sanitizeText($row['nombre']),
             'descripcion' => implode(' · ', array_filter($descripcionPartes)),
             'accion' => 'Gestionar zonas',
-            'url' => '../area_almac_v2/gestion_areas_zonas.html',
+            'url' => '../area_almac/areas_zonas.html',
             'keywords' => collectKeywords([
                 'zona',
                 'almacen',
