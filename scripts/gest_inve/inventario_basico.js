@@ -525,8 +525,50 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   if (productoFormCollapseEl) {
     const initialState = productoFormCollapseEl.classList.contains('show');
     updateProductoFormToggleLabel(initialState);
-    productoFormCollapseEl.addEventListener('shown.bs.collapse', () => updateProductoFormToggleLabel(true));
-    productoFormCollapseEl.addEventListener('hidden.bs.collapse', () => updateProductoFormToggleLabel(false));
+
+    if (!productoFormCollapse) {
+      productoFormCollapseEl.hidden = !initialState;
+      productoFormCollapseEl.setAttribute('aria-hidden', initialState ? 'false' : 'true');
+    }
+
+    productoFormCollapseEl.addEventListener('shown.bs.collapse', () => {
+      updateProductoFormToggleLabel(true);
+      productoFormCollapseEl.removeAttribute('hidden');
+      productoFormCollapseEl.setAttribute('aria-hidden', 'false');
+    });
+    productoFormCollapseEl.addEventListener('hidden.bs.collapse', () => {
+      updateProductoFormToggleLabel(false);
+      productoFormCollapseEl.setAttribute('hidden', '');
+      productoFormCollapseEl.setAttribute('aria-hidden', 'true');
+    });
+
+    if (productoFormToggle) {
+      productoFormToggle.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const isOpen = productoFormCollapseEl.classList.contains('show');
+        const nextState = !isOpen;
+
+        if (productoFormCollapse) {
+          if (isOpen) {
+            productoFormCollapse.hide();
+          } else {
+            productoFormCollapse.show();
+          }
+        } else {
+          productoFormCollapseEl.classList.toggle('show', nextState);
+          if (nextState) {
+            productoFormCollapseEl.removeAttribute('hidden');
+          } else {
+            productoFormCollapseEl.setAttribute('hidden', '');
+          }
+        }
+
+        productoFormCollapseEl.setAttribute('aria-hidden', nextState ? 'false' : 'true');
+        updateProductoFormToggleLabel(nextState);
+      });
+    }
   }
 
   setProductoFormMode('create');

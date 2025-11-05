@@ -509,6 +509,11 @@
     return normalized ? normalized.scope : null;
   }
 
+  const allPermissionIds = permissionsCatalog.flatMap(group =>
+    group.permissions.map(permission => permission.id)
+  );
+  const validPermissions = new Set(allPermissionIds);
+
   const rolesData = [
     {
       id: 'administrador',
