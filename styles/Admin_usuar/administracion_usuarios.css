@@ -3277,22 +3277,40 @@ body {
 }
 
 /* Roles & permissions modal layout adjustments */
+#rolesConfigModal {
+  --roles-modal-viewport: 100vh;
+  --roles-modal-gutter: clamp(2.25rem, 5vh, 3rem);
+}
+
+@supports (height: 100dvh) {
+  #rolesConfigModal {
+    --roles-modal-viewport: 100dvh;
+  }
+}
+
 #rolesConfigModal .modal-dialog {
-  max-width: min(1040px, calc(100% - 1.5rem));
-  height: calc(100% - 2rem);
-  margin: 1rem auto;
+  width: min(1040px, calc(100% - 1.5rem));
+  max-width: 100%;
+  margin: clamp(0.75rem, 3vh, 1.5rem) auto;
+  height: auto;
 }
 
 #rolesConfigModal .modal-dialog.modal-dialog-scrollable {
-  max-height: none;
-  height: calc(100% - 2rem);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--roles-modal-viewport) - var(--roles-modal-gutter));
 }
 
 .roles-config-modal {
-  height: 100%;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  max-height: calc(var(--roles-modal-viewport) - var(--roles-modal-gutter));
+  min-height: clamp(320px, 68vh, 760px);
+  width: 100%;
+}
+
+#rolesConfigModal .modal-dialog.modal-dialog-scrollable .roles-config-modal {
+  flex: 1 1 auto;
 }
 
 .roles-config-modal .modal-header,
@@ -3316,11 +3334,7 @@ body {
   gap: 1.5rem;
 }
 
-.roles-guide {
-  min-height: 0;
-  overflow: auto;
-}
-
+.roles-guide,
 .roles-list-wrapper {
   min-height: 0;
   overflow: auto;
@@ -3328,16 +3342,31 @@ body {
 }
 
 @media (max-width: 992px) {
+  #rolesConfigModal {
+    --roles-modal-gutter: clamp(2rem, 6vh, 2.75rem);
+  }
+
   #rolesConfigModal .modal-dialog {
-    height: auto;
+    margin: clamp(0.75rem, 3vh, 1.25rem) auto;
+  }
+}
+
+@media (max-width: 768px) {
+  #rolesConfigModal {
+    --roles-modal-gutter: clamp(1.5rem, 7vh, 2.25rem);
+  }
+
+  #rolesConfigModal .modal-dialog {
+    margin: clamp(0.5rem, 3vh, 1rem) auto;
   }
 
   #rolesConfigModal .modal-dialog.modal-dialog-scrollable {
-    height: auto;
+    max-height: calc(var(--roles-modal-viewport) - var(--roles-modal-gutter));
   }
 
   .roles-config-modal {
-    height: auto;
+    max-height: none;
+    min-height: 0;
   }
 
   .roles-config-modal .modal-body {
