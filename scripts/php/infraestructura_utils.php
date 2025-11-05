@@ -151,7 +151,7 @@ function actualizarOcupacionArea(mysqli $conn, int $areaId): void
 
 function asegurarNotificacionSaturacion(mysqli $conn, int $empresaId, string $zonaNombre, float $porcentaje): void
 {
-    $ruta = 'area_almac_v2/gestion_areas_zonas.html';
+    $ruta = 'area_almac/areas_zonas.html';
     $like = '%' . $zonaNombre . '%';
     $stmt = $conn->prepare('SELECT id FROM notificaciones WHERE id_empresa = ? AND ruta_destino = ? AND mensaje LIKE ? AND estado IN ("Pendiente", "Enviada") LIMIT 1');
     $stmt->bind_param('iss', $empresaId, $ruta, $like);
