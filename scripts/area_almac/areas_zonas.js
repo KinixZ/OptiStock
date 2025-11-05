@@ -7,7 +7,7 @@ const API_ENDPOINTS = {
   areas: `${BASE_URL}scripts/php/guardar_areas.php`,
   zonas: `${BASE_URL}scripts/php/guardar_zonas.php`
 };
-const empresaId = localStorage.getItem('id_empresa');
+const empresaId = Number.parseInt(localStorage.getItem('id_empresa') || '0', 10) || 0;
 
 // Elementos del DOM
 const sublevelsCountInput = document.getElementById('sublevelsCount');
@@ -720,118 +720,122 @@ function mostrarResumen(data) {
 }
 
 // Manejar formulario de área
-areaForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const nombre = areaForm.areaName.value.trim();
-  const descripcion = areaForm.areaDesc.value.trim();
-  const ancho = parseFloat(areaForm.areaWidth.value);
-  const alto = parseFloat(areaForm.areaHeight.value);
-  const largo = parseFloat(areaForm.areaLength.value);
-  const id = areaForm.dataset.id;
+if (areaForm) {
+  areaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nombre = areaForm.areaName.value.trim();
+    const descripcion = areaForm.areaDesc.value.trim();
+    const ancho = parseFloat(areaForm.areaWidth.value);
+    const alto = parseFloat(areaForm.areaHeight.value);
+    const largo = parseFloat(areaForm.areaLength.value);
+    const id = areaForm.dataset.id;
 
-  if (!nombre || isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
-    mostrarError('Debe completar todos los campos del área');
-    return;
-  }
-
-  const areaData = { nombre, descripcion, ancho, alto, largo, empresa_id: parseInt(empresaId) };
-
-  try {
-    if (id) {
-      await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'PUT', areaData);
-    } else {
-      await fetchAPI(API_ENDPOINTS.areas, 'POST', areaData);
-    }
-    
-    await cargarYMostrarRegistros();
-    areaForm.reset();
-    areaForm.style.display = 'none';
-  } catch (error) {
-    console.error('Error guardando área:', error);
-  }
-});
-
-// Manejar formulario de zona
-zoneForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const id = zoneForm.dataset.id;
-  const nombre = zoneForm.zoneName.value.trim();
-  const descripcion = zoneForm.zoneDesc.value.trim();
-  const ancho = parseFloat(zoneForm.zoneWidth.value);
-  const alto = parseFloat(zoneForm.zoneHeight.value);
-  const largo = parseFloat(zoneForm.zoneLength.value);
-  const tipo = zoneForm.storageType.value;
-  const area_id = zoneForm.zoneArea.value || null;
-  const sublevelsCount = parseInt(zoneForm.sublevelsCount.value) || 0;
-
-  // Validaciones
-  if (!nombre || !descripcion || !tipo || isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
-    mostrarError('Debe completar todos los campos obligatorios con valores válidos.');
-    return;
-  }
-
-  // Recolectar subniveles
-  const subniveles = [];
-  for (let i = 1; i <= sublevelsCount; i++) {
-    const ancho = parseFloat(zoneForm.querySelector(`[name="sublevelWidth${i}"]`)?.value);
-    const alto = parseFloat(zoneForm.querySelector(`[name="sublevelHeight${i}"]`)?.value);
-    const largo = parseFloat(zoneForm.querySelector(`[name="sublevelLength${i}"]`)?.value);
-    const distancia = parseFloat(zoneForm.querySelector(`[name="sublevelDistance${i}"]`)?.value || 0);
-    
-    if (isNaN(ancho) || isNaN(alto) || isNaN(largo)) {
-      mostrarError(`Dimensiones del subnivel ${i} deben ser válidas.`);
+    if (!nombre || Number.isNaN(ancho) || Number.isNaN(alto) || Number.isNaN(largo)) {
+      mostrarError('Debe completar todos los campos del área');
       return;
     }
-    
-    subniveles.push({
-      numero_subnivel: i,
-      ancho,
-      alto,
-      largo,
-      distancia
-    });
-  }
 
-  try {
-  const zonaData = {
-      nombre,
-      descripcion,
-      ancho,
-      alto,
-      largo,
-      tipo_almacenamiento: tipo,
-      area_id,
-      subniveles,
-      empresa_id: parseInt(empresaId)
-    };
+    const areaData = { nombre, descripcion, ancho, alto, largo, empresa_id: empresaId };
 
-    if (id) {
-      // Edición
-      const respuesta = await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'PUT', zonaData);
-      manejarRespuestaSolicitud(
-        respuesta,
-        'Solicitud de actualización de zona enviada para revisión.',
-        'Zona actualizada correctamente'
-      );
-    } else {
-      // Creación
-      const respuesta = await fetchAPI(API_ENDPOINTS.zonas, 'POST', zonaData);
-      manejarRespuestaSolicitud(
-        respuesta,
-        'Solicitud de creación de zona enviada para revisión.',
-        'Zona registrada correctamente'
-      );
+    try {
+      if (id) {
+        await fetchAPI(`${API_ENDPOINTS.areas}?id=${id}&empresa_id=${empresaId}`, 'PUT', areaData);
+      } else {
+        await fetchAPI(API_ENDPOINTS.areas, 'POST', areaData);
+      }
+
+      await cargarYMostrarRegistros();
+      areaForm.reset();
+      areaForm.style.display = 'none';
+    } catch (error) {
+      console.error('Error guardando área:', error);
+    }
+  });
+}
+
+// Manejar formulario de zona
+if (zoneForm) {
+  zoneForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const id = zoneForm.dataset.id;
+    const nombre = zoneForm.zoneName.value.trim();
+    const descripcion = zoneForm.zoneDesc.value.trim();
+    const ancho = parseFloat(zoneForm.zoneWidth.value);
+    const alto = parseFloat(zoneForm.zoneHeight.value);
+    const largo = parseFloat(zoneForm.zoneLength.value);
+    const tipo = zoneForm.storageType.value;
+    const area_id = zoneForm.zoneArea.value || null;
+    const sublevelsCount = parseInt(zoneForm.sublevelsCount.value, 10) || 0;
+
+    // Validaciones
+    if (!nombre || !descripcion || !tipo || Number.isNaN(ancho) || Number.isNaN(alto) || Number.isNaN(largo)) {
+      mostrarError('Debe completar todos los campos obligatorios con valores válidos.');
+      return;
     }
 
-    await cargarYMostrarRegistros();
-    zoneForm.reset();
-    renderSublevels(0);
-    zoneForm.style.display = 'none';
-  } catch (error) {
-    console.error('Error guardando zona:', error);
-  }
-});
+    // Recolectar subniveles
+    const subniveles = [];
+    for (let i = 1; i <= sublevelsCount; i++) {
+      const anchoSub = parseFloat(zoneForm.querySelector(`[name="sublevelWidth${i}"]`)?.value);
+      const altoSub = parseFloat(zoneForm.querySelector(`[name="sublevelHeight${i}"]`)?.value);
+      const largoSub = parseFloat(zoneForm.querySelector(`[name="sublevelLength${i}"]`)?.value);
+      const distancia = parseFloat(zoneForm.querySelector(`[name="sublevelDistance${i}"]`)?.value || 0);
+
+      if (Number.isNaN(anchoSub) || Number.isNaN(altoSub) || Number.isNaN(largoSub)) {
+        mostrarError(`Dimensiones del subnivel ${i} deben ser válidas.`);
+        return;
+      }
+
+      subniveles.push({
+        numero_subnivel: i,
+        ancho: anchoSub,
+        alto: altoSub,
+        largo: largoSub,
+        distancia
+      });
+    }
+
+    try {
+      const zonaData = {
+        nombre,
+        descripcion,
+        ancho,
+        alto,
+        largo,
+        tipo_almacenamiento: tipo,
+        area_id,
+        subniveles,
+        empresa_id: empresaId
+      };
+
+      if (id) {
+        // Edición
+        const respuesta = await fetchAPI(`${API_ENDPOINTS.zonas}?id=${id}&empresa_id=${empresaId}`, 'PUT', zonaData);
+        manejarRespuestaSolicitud(
+          respuesta,
+          'Solicitud de actualización de zona enviada para revisión.',
+          'Zona actualizada correctamente'
+        );
+      } else {
+        // Creación
+        const respuesta = await fetchAPI(API_ENDPOINTS.zonas, 'POST', zonaData);
+        manejarRespuestaSolicitud(
+          respuesta,
+          'Solicitud de creación de zona enviada para revisión.',
+          'Zona registrada correctamente'
+        );
+      }
+
+      await cargarYMostrarRegistros();
+      zoneForm.reset();
+      renderSublevels(0);
+      zoneForm.style.display = 'none';
+    } catch (error) {
+      console.error('Error guardando zona:', error);
+    }
+  });
+}
 
 // Funciones de edición/eliminación
 async function editarArea(id) {
@@ -1262,6 +1266,13 @@ if (reasignacionOverlay) {
   });
 }
 
+// Exponer funciones clave para los manejadores declarados en el marcado
+window.mostrarFormulario = mostrarFormulario;
+window.editarArea = editarArea;
+window.eliminarArea = eliminarArea;
+window.editarZona = editarZona;
+window.eliminarZona = eliminarZona;
+
 // Inicialización
 async function initAreasZonas() {
   // Verificar sesión
@@ -1288,13 +1299,6 @@ async function initAreasZonas() {
       cargarYMostrarRegistros();
     }
   });
-
-  // Hacer funciones disponibles globalmente
-  window.mostrarFormulario = mostrarFormulario;
-  window.editarArea = editarArea;
-  window.eliminarArea = eliminarArea;
-  window.editarZona = editarZona;
-  window.eliminarZona = eliminarZona;
 
 }
 
