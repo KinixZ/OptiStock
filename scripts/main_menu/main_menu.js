@@ -89,6 +89,36 @@ const NOTIFICATION_PRIORITIES = ['Alta', 'Media', 'Baja'];
 const NOTIFICATION_STATES = ['Pendiente', 'Enviada', 'Leida', 'Archivada'];
 const NOTIFICATION_TARGETS = ['General', 'Rol', 'Usuario'];
 
+const permissionsHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions
+        ? window.OptiStockPermissions
+        : null;
+
+function obtenerRolParaPermisos() {
+    if (activeUsuarioRol) {
+        return activeUsuarioRol;
+    }
+
+    try {
+        return localStorage.getItem('usuario_rol') || null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function tienePermisoAccion(permiso) {
+    if (!permiso) {
+        return true;
+    }
+
+    if (!permissionsHelper || typeof permissionsHelper.isPermissionEnabled !== 'function') {
+        return true;
+    }
+
+    const rol = obtenerRolParaPermisos();
+    return permissionsHelper.isPermissionEnabled(rol, permiso);
+}
+
 function normalizeNotificationDateTime(value) {
     if (!value) {
         return null;
@@ -4989,6 +5019,10 @@ if (userImgEl) {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", function (e) {
             e.preventDefault();
+            if (!tienePermisoAccion('auth.logout')) {
+                alert('Permiso deshabilitado');
+                return;
+            }
             fetch("/scripts/php/logout.php", {
                 method: "POST",
                 credentials: "include"

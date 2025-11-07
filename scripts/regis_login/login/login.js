@@ -7,6 +7,45 @@ document.addEventListener("DOMContentLoaded", function () {
         return;  // Salir de la función para evitar más redirecciones
     }
 
+    const permissionsHelper =
+        typeof window !== 'undefined' && window.OptiStockPermissions
+            ? window.OptiStockPermissions
+            : null;
+
+    const errorMessageEl = document.getElementById('error-message');
+
+    const mostrarError = (mensaje) => {
+        if (errorMessageEl) {
+            errorMessageEl.textContent = mensaje || '';
+            errorMessageEl.style.color = 'red';
+            errorMessageEl.classList.remove('d-none');
+        } else if (mensaje) {
+            alert(mensaje);
+        }
+    };
+
+    const limpiarError = () => {
+        if (errorMessageEl) {
+            errorMessageEl.textContent = '';
+            errorMessageEl.classList.add('d-none');
+        }
+    };
+
+    const tienePermiso = (rol, permiso) => {
+        if (!permiso) return true;
+        if (!permissionsHelper || typeof permissionsHelper.isPermissionEnabled !== 'function') {
+            return true;
+        }
+        return permissionsHelper.isPermissionEnabled(rol, permiso);
+    };
+
+    const cerrarSesionServidor = () => {
+        return fetch('../../../scripts/php/logout.php', {
+            method: 'POST',
+            credentials: 'include'
+        }).catch(() => {});
+    };
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('msg') === 'created') {
         const statusDiv = document.getElementById('status-message');
@@ -61,6 +100,14 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("Respuesta del backend:", data);
 
             if (data.success) {
+                if (!tienePermiso(data.rol, 'auth.login')) {
+                    cerrarSesionServidor().finally(() => {
+                        mostrarError('Tu cuenta no tiene permiso para acceder.');
+                    });
+                    return;
+                }
+
+                limpiarError();
                 // Guardar la sesión en localStorage
                 localStorage.setItem('usuario_id', data.id);
                 localStorage.setItem('usuario_nombre', data.nombre);
@@ -86,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     window.location.href = `../regist/regist_google.html?email=${email}&nombre=${nombre}&apellido=${apellido}`;
                 }
             } else {
-                alert("Error en autenticación con Google.");
+                mostrarError(data.message || "Error en autenticación con Google.");
                 console.error("Mensaje backend:", data.message || data.error);
             }
         });
@@ -139,10 +186,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             return response.json();
         })
-        .then(data => {
+        .then(async data => {
             console.log("Respuesta del backend:", data);
-            const errorMessage = document.getElementById('error-message');
             if (data.success) {
+                if (!tienePermiso(data.rol, 'auth.login')) {
+                    await cerrarSesionServidor();
+                    mostrarError('Tu cuenta no tiene permiso para acceder.');
+                    return;
+                }
+
+                limpiarError();
                 // Guardar la sesión en localStorage
                 localStorage.setItem('usuario_id', data.id_usuario);
                 localStorage.setItem('usuario_nombre', data.nombre);
@@ -164,13 +217,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 window.location.href = data.redirect;
             } else {
-                errorMessage.textContent = data.message;
-                errorMessage.style.color = "red";
+                mostrarError(data.message || 'Error al iniciar sesión.');
             }
         })
         .catch(err => {
             console.error('Error en la solicitud:', err);
-            alert("Parece que hubo un error a la hora de iniciar sesión. Revisa tus datos e intentelo de nuevo.");
+            mostrarError("Parece que hubo un error a la hora de iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
         });
     });
 

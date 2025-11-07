@@ -6,6 +6,10 @@
   let solicitudAreas = null;
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
+  const permisosHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions
+      ? window.OptiStockPermissions
+      : null;
   const catalogoPermisosCategorias = [
     {
       nombre: 'Sesión y Seguridad',
@@ -290,7 +294,9 @@
     }
   };
 
-  const STORAGE_KEY_CONFIG_ROLES = 'optistock::configuracion_permisos_roles';
+  const STORAGE_KEY_CONFIG_ROLES =
+    (permisosHelper && permisosHelper.STORAGE_KEY) ||
+    'optistock::configuracion_permisos_roles';
   const estadoPermisosPorRol = new Map();
   const permisosGuardadosPorRol = cargarPermisosGuardados();
 
@@ -382,6 +388,10 @@
   }
 
   function cargarPermisosGuardados() {
+    if (permisosHelper && typeof permisosHelper.loadConfig === 'function') {
+      return permisosHelper.loadConfig();
+    }
+
     if (!puedeUsarLocalStorage()) {
       return {};
     }
@@ -431,6 +441,11 @@
   }
 
   function persistirPermisosGuardados() {
+    if (permisosHelper && typeof permisosHelper.saveConfig === 'function') {
+      permisosHelper.saveConfig(permisosGuardadosPorRol);
+      return;
+    }
+
     if (!puedeUsarLocalStorage()) {
       return;
     }
