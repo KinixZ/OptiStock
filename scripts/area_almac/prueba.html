@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configuración de Roles - OptiStock</title>
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        background: #f6f7fb;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        padding: 30px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    h2 {
+        margin-top: 0;
+        color: #222;
+    }
+
+    /* Selector de roles */
+    .role-selector {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .role-btn {
+        background: #e7e9f5;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .role-btn:hover {
+        background: #d4d6f0;
+    }
+
+    .role-btn.active {
+        background: #6c63ff;
+        color: white;
+    }
+
+    /* Contenedor de permisos */
+    .permissions-box {
+        background: #f9fafc;
+        border: 1px solid #e3e7ef;
+        border-radius: 15px;
+        padding: 20px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .perm-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .perm-item {
+        background: #eef1fa;
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .perm-item input {
+        margin-right: 6px;
+    }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Configuración de Roles</h2>
+    <p>Selecciona un rol para configurar sus permisos:</p>
+
+    <div class="role-selector">
+        <button class="role-btn" data-role="Administrador">Administrador</button>
+        <button class="role-btn" data-role="Supervisor">Supervisor</button>
+        <button class="role-btn" data-role="Almacenista">Almacenista</button>
+        <button class="role-btn" data-role="Mantenimiento">Mantenimiento</button>
+        <button class="role-btn" data-role="Etiquetador">Etiquetador</button>
+    </div>
+
+    <div id="permissionsContainer"></div>
+</div>
+
+<script>
+const permisosPorRol = {
+    "Administrador": [
+        "Gestión completa del sistema",
+        "Aprobación de solicitudes",
+        "Acceso a reportes financieros",
+        "Administrar usuarios",
+        "Configurar suscripciones"
+    ],
+    "Supervisor": [
+        "Supervisión de inventario",
+        "Generar reportes",
+        "Aprobación de movimientos",
+        "Gestión de zonas y áreas"
+    ],
+    "Almacenista": [
+        "Registrar productos",
+        "Actualizar existencias",
+        "Mover productos entre áreas",
+        "Visualizar inventario general"
+    ],
+    "Mantenimiento": [
+        "Registrar incidencias",
+        "Actualizar estado de equipos",
+        "Ver reportes de mantenimiento"
+    ],
+    "Etiquetador": [
+        "Generar etiquetas QR",
+        "Asignar etiquetas a productos",
+        "Actualizar estado de etiquetado"
+    ]
+};
+
+const buttons = document.querySelectorAll('.role-btn');
+const permissionsContainer = document.getElementById('permissionsContainer');
+
+buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const rol = btn.dataset.role;
+        const permisos = permisosPorRol[rol] || [];
+
+        permissionsContainer.innerHTML = `
+            <div class="permissions-box">
+                <h3>${rol}</h3>
+                <div class="perm-list">
+                    ${permisos.map(p => `
+                        <label class="perm-item">
+                            <input type="checkbox" checked>
+                            ${p}
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+});
+</script>
+
+</body>
+</html>
