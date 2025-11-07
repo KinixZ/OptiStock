@@ -249,6 +249,51 @@
     }
   ];
 
+  const clavesPermisosCatalogo = catalogoPermisosCategorias.reduce((lista, categoria) => {
+    if (!categoria || !Array.isArray(categoria.permisos)) {
+      return lista;
+    }
+    categoria.permisos.forEach(permiso => {
+      if (permiso && typeof permiso.clave === 'string' && permiso.clave.length > 0) {
+        lista.push(permiso.clave);
+      }
+    });
+    return lista;
+  }, []);
+
+  const totalPermisosCatalogo = clavesPermisosCatalogo.length;
+
+  const configuracionInicialPermisosPorRol = {
+    Administrador: { modo: 'all' },
+    Supervisor: {
+      modo: 'all',
+      deshabilitar: ['roles.permissions.configure', 'subscription.manage']
+    },
+    Almacenista: {
+      modo: 'all',
+      deshabilitar: [
+        'users.',
+        'roles.',
+        'log.',
+        'subscription.',
+        'account.theme.configure',
+        'reports.schedule'
+      ]
+    },
+    Mantenimiento: {
+      modo: 'all',
+      deshabilitar: ['users.', 'roles.', 'inventory.', 'subscription.', 'reports.schedule']
+    },
+    Etiquetador: {
+      modo: 'all',
+      deshabilitar: ['users.', 'roles.', 'warehouse.', 'log.', 'subscription.', 'reports.']
+    }
+  };
+
+  const STORAGE_KEY_CONFIG_ROLES = 'optistock::configuracion_permisos_roles';
+  const estadoPermisosPorRol = new Map();
+  const permisosGuardadosPorRol = cargarPermisosGuardados();
+
   function addListener(element, event, handler) {
     if (!element) return;
     element.addEventListener(event, handler);
@@ -328,16 +373,328 @@
       .replace(/^-+|-+$/g, '');
   }
 
+  function puedeUsarLocalStorage() {
+    try {
+      return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function cargarPermisosGuardados() {
+    if (!puedeUsarLocalStorage()) {
+      return {};
+    }
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY_CONFIG_ROLES);
+      if (!raw) {
+        return {};
+      }
+
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return {};
+      }
+
+      return Object.entries(parsed).reduce((acumulado, [rol, registro]) => {
+        if (!registro) {
+          return acumulado;
+        }
+
+        const listaActivos = Array.isArray(registro?.activos)
+          ? registro.activos
+          : Array.isArray(registro)
+          ? registro
+          : [];
+
+        const filtrados = listaActivos.filter(clave => clavesPermisosCatalogo.includes(clave));
+        const conocidos = Array.isArray(registro?.conocidos)
+          ? registro.conocidos.filter(clave => typeof clave === 'string' && clave.length > 0)
+          : null;
+
+        acumulado[rol] = {
+          activos: filtrados,
+          conocidos,
+          actualizado:
+            typeof registro?.actualizado === 'number' && Number.isFinite(registro.actualizado)
+              ? registro.actualizado
+              : null
+        };
+
+        return acumulado;
+      }, {});
+    } catch (error) {
+      console.warn('No se pudieron cargar los permisos guardados de roles.', error);
+      return {};
+    }
+  }
+
+  function persistirPermisosGuardados() {
+    if (!puedeUsarLocalStorage()) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY_CONFIG_ROLES, JSON.stringify(permisosGuardadosPorRol));
+    } catch (error) {
+      console.warn('No se pudieron guardar los permisos de roles.', error);
+    }
+  }
+
+  function coincideReglaPermiso(permiso, regla) {
+    if (!permiso || !regla) {
+      return false;
+    }
+
+    if (regla === '*') {
+      return true;
+    }
+
+    if (regla.endsWith('.*')) {
+      return permiso.startsWith(regla.slice(0, -2));
+    }
+
+    if (regla.endsWith('.')) {
+      return permiso.startsWith(regla);
+    }
+
+    return permiso === regla;
+  }
+
+  function generarEstadoInicialPermisos(rol) {
+    const config = configuracionInicialPermisosPorRol[rol] || { modo: 'all' };
+    const porDefecto = new Set();
+
+    clavesPermisosCatalogo.forEach(clave => {
+      let habilitado = config?.modo === 'none' ? false : true;
+
+      if (Array.isArray(config?.deshabilitar) && config.deshabilitar.some(regla => coincideReglaPermiso(clave, regla))) {
+        habilitado = false;
+      }
+
+      if (Array.isArray(config?.habilitar) && config.habilitar.some(regla => coincideReglaPermiso(clave, regla))) {
+        habilitado = true;
+      }
+
+      if (habilitado) {
+        porDefecto.add(clave);
+      }
+    });
+
+    const registroGuardado = permisosGuardadosPorRol[rol];
+    const guardadoActivos = Array.isArray(registroGuardado?.activos)
+      ? registroGuardado.activos
+      : Array.isArray(registroGuardado)
+      ? registroGuardado
+      : null;
+    const guardadoSet = guardadoActivos
+      ? new Set(guardadoActivos.filter(clave => clavesPermisosCatalogo.includes(clave)))
+      : null;
+    const conocidosSet = Array.isArray(registroGuardado?.conocidos)
+      ? new Set(
+          registroGuardado.conocidos.filter(clave => typeof clave === 'string' && clave.length > 0)
+        )
+      : null;
+
+    const activos = new Set();
+    clavesPermisosCatalogo.forEach(clave => {
+      let habilitado = porDefecto.has(clave);
+
+      if (guardadoSet) {
+        const existiaEnGuardado = conocidosSet ? conocidosSet.has(clave) : true;
+        if (existiaEnGuardado) {
+          habilitado = guardadoSet.has(clave);
+        }
+      }
+
+      if (habilitado) {
+        activos.add(clave);
+      }
+    });
+
+    const referenciaGuardada = new Set(activos);
+    const ultimaGuardado =
+      registroGuardado && typeof registroGuardado.actualizado === 'number' && Number.isFinite(registroGuardado.actualizado)
+        ? new Date(registroGuardado.actualizado)
+        : null;
+
+    return {
+      activos,
+      referenciaGuardada,
+      cambiosPendientes: false,
+      ultimaGuardado
+    };
+  }
+
+  function obtenerEstadoPermisosRol(rol) {
+    if (!rol) {
+      return {
+        activos: new Set(),
+        referenciaGuardada: new Set(),
+        cambiosPendientes: false,
+        ultimaGuardado: null
+      };
+    }
+
+    if (!estadoPermisosPorRol.has(rol)) {
+      estadoPermisosPorRol.set(rol, generarEstadoInicialPermisos(rol));
+    }
+
+    return estadoPermisosPorRol.get(rol);
+  }
+
+  function sonSetsIguales(setA, setB) {
+    if (setA === setB) {
+      return true;
+    }
+
+    if (!setA || !setB || setA.size !== setB.size) {
+      return false;
+    }
+
+    for (const valor of setA) {
+      if (!setB.has(valor)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function formatearMarcaTemporal(fecha) {
+    if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) {
+      return '';
+    }
+
+    try {
+      return fecha.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    } catch (error) {
+      return fecha.toISOString();
+    }
+  }
+
+  function obtenerTextoEstadoPermisos(estado) {
+    if (!estado) {
+      return '';
+    }
+
+    if (estado.cambiosPendientes) {
+      return 'Cambios sin guardar';
+    }
+
+    if (estado.ultimaGuardado) {
+      return `Guardado ${formatearMarcaTemporal(estado.ultimaGuardado)}`;
+    }
+
+    return 'Configuración predeterminada';
+  }
+
+  function actualizarResumenPermisosUI(contenedor, rol) {
+    if (!contenedor || !rol) {
+      return;
+    }
+
+    const estado = obtenerEstadoPermisosRol(rol);
+    const conteoElemento = contenedor.querySelector('[data-role-permissions-count]');
+    if (conteoElemento) {
+      conteoElemento.textContent = `${estado.activos.size} de ${totalPermisosCatalogo} permisos activos`;
+    }
+
+    const estadoElemento = contenedor.querySelector('[data-role-permissions-status]');
+    if (estadoElemento) {
+      const textoEstado = obtenerTextoEstadoPermisos(estado);
+      estadoElemento.textContent = textoEstado;
+      estadoElemento.classList.toggle('roles-permissions-status--pending', Boolean(estado.cambiosPendientes));
+    }
+
+    const botonGuardar = contenedor.querySelector('[data-role-save]');
+    if (botonGuardar) {
+      botonGuardar.disabled = !estado.cambiosPendientes;
+    }
+  }
+
+  function configurarInteraccionesPermisos(panel, rol) {
+    if (!panel || !rol) {
+      return;
+    }
+
+    const tarjeta = panel.querySelector('.roles-permissions-card');
+    if (!tarjeta) {
+      return;
+    }
+
+    const estado = obtenerEstadoPermisosRol(rol);
+    const checkboxes = tarjeta.querySelectorAll("input[type='checkbox'][data-permission-key]");
+
+    checkboxes.forEach(checkbox => {
+      const clave = checkbox.dataset.permissionKey;
+      if (!clave) {
+        return;
+      }
+
+      checkbox.checked = estado.activos.has(clave);
+
+      addListener(checkbox, 'change', () => {
+        if (checkbox.checked) {
+          estado.activos.add(clave);
+        } else {
+          estado.activos.delete(clave);
+        }
+
+        estado.cambiosPendientes = !sonSetsIguales(estado.activos, estado.referenciaGuardada);
+        actualizarResumenPermisosUI(tarjeta, rol);
+      });
+    });
+
+    const botonGuardar = tarjeta.querySelector('[data-role-save]');
+    if (botonGuardar) {
+      addListener(botonGuardar, 'click', () => {
+        const permisosActivos = Array.from(estado.activos).sort();
+        const permisosInactivos = clavesPermisosCatalogo.filter(clave => !estado.activos.has(clave)).sort();
+
+        estado.referenciaGuardada = new Set(estado.activos);
+        estado.cambiosPendientes = false;
+        estado.ultimaGuardado = new Date();
+
+        permisosGuardadosPorRol[rol] = {
+          activos: permisosActivos,
+          conocidos: clavesPermisosCatalogo.slice(),
+          actualizado: estado.ultimaGuardado.getTime()
+        };
+        persistirPermisosGuardados();
+
+        if (typeof console !== 'undefined') {
+          if (typeof console.groupCollapsed === 'function') {
+            console.groupCollapsed(`Configuración de permisos guardada para ${rol}`);
+            console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
+            console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+            console.groupEnd();
+          } else {
+            console.log(`Configuración de permisos guardada para ${rol}`);
+            console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
+            console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+          }
+        }
+
+        notificar('success', `Configuración de permisos guardada para ${rol}.`);
+        actualizarResumenPermisosUI(tarjeta, rol);
+      });
+    }
+
+    actualizarResumenPermisosUI(tarjeta, rol);
+  }
+
   function crearMarkupPermisosRol(rol) {
     if (!rol) {
       return '';
     }
 
+    const estadoPermisos = obtenerEstadoPermisosRol(rol);
     const rolSlug = slugify(rol);
-    const totalPermisos = catalogoPermisosCategorias.reduce(
-      (acumulado, categoria) => acumulado + (categoria?.permisos?.length || 0),
-      0
-    );
+    const totalPermisos = totalPermisosCatalogo;
+    const totalActivos = estadoPermisos?.activos?.size || 0;
+    const textoEstado = obtenerTextoEstadoPermisos(estadoPermisos);
 
     const categoriasMarkup = catalogoPermisosCategorias
       .map((categoria, categoriaIndex) => {
@@ -360,10 +717,13 @@
             const permisoClave = permiso.clave || `permiso-${categoriaIndex + 1}-${permisoIndex + 1}`;
             const permisoDescripcion = permiso.descripcion || '';
             const permisoId = `permiso-${rolSlug}-${categoriaSlug}-${permisoIndex}`;
+            const permisoActivo = Boolean(estadoPermisos?.activos?.has(permisoClave));
 
             return `
               <label class="roles-permission-item" for="${escapeHtml(permisoId)}">
-                <input id="${escapeHtml(permisoId)}" type="checkbox" data-permission-key="${escapeHtml(permisoClave)}" checked />
+                <input id="${escapeHtml(permisoId)}" type="checkbox" data-permission-key="${escapeHtml(permisoClave)}" ${
+              permisoActivo ? 'checked' : ''
+            } />
                 <span class="roles-permission-text">
                   <span class="roles-permission-code">${escapeHtml(permisoClave)}</span>
                   <span class="roles-permission-description">${escapeHtml(permisoDescripcion)}</span>
@@ -403,6 +763,19 @@
         <div class="role-permissions-categories">
           ${categoriasMarkup}
         </div>
+        <footer class="roles-permissions-footer">
+          <div class="roles-permissions-summary">
+            <span class="roles-permissions-count" data-role-permissions-count>${escapeHtml(
+              `${totalActivos} de ${totalPermisos} permisos activos`
+            )}</span>
+            <span class="roles-permissions-status${
+              estadoPermisos?.cambiosPendientes ? ' roles-permissions-status--pending' : ''
+            }" data-role-permissions-status>${escapeHtml(textoEstado)}</span>
+          </div>
+          <button type="button" class="roles-permissions-save" data-role-save ${
+            estadoPermisos?.cambiosPendientes ? '' : 'disabled'
+          }>Guardar configuración</button>
+        </footer>
       </article>
     `;
   }
@@ -477,6 +850,7 @@
 
       panel.innerHTML = markup;
       activarCategoriasInteractivas(panel);
+      configurarInteraccionesPermisos(panel, rol);
     }
 
     botones.forEach(boton => {

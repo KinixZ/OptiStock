@@ -481,6 +481,80 @@ body {
   gap: 1rem;
 }
 
+.roles-permissions-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(108, 99, 255, 0.16);
+}
+
+.roles-permissions-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.roles-permissions-count {
+  font-weight: 600;
+  color: #2d3270;
+}
+
+.roles-permissions-status {
+  font-size: 0.8rem;
+  color: #5a5f7d;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.roles-permissions-status::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.roles-permissions-status--pending {
+  color: #c6487a;
+}
+
+.roles-permissions-save {
+  background: #6c63ff;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 20px 40px -28px rgba(108, 99, 255, 0.65);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.roles-permissions-save:hover:not(:disabled) {
+  background: #5a53f7;
+  box-shadow: 0 26px 52px -32px rgba(108, 99, 255, 0.7);
+  transform: translateY(-1px);
+}
+
+.roles-permissions-save:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.roles-permissions-save:disabled {
+  background: rgba(108, 99, 255, 0.35);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .role-permissions-category {
   border: 1px solid var(--border-color);
   border-radius: 14px;
@@ -626,6 +700,17 @@ body {
 
   .roles-permission-item {
     flex-basis: 100%;
+  }
+
+  .roles-permissions-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+  }
+
+  .roles-permissions-save {
+    width: 100%;
+    justify-content: center;
   }
 }
 
