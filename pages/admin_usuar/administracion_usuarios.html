@@ -134,6 +134,28 @@
 
       <div class="metrics-grid" id="metricasUsuarios"></div>
     </section>
+
+    <section class="roles-card" id="configuracionRoles">
+      <div class="roles-heading">
+        <div>
+          <span class="roles-eyebrow">Configuración</span>
+          <h2 class="roles-title">Configuración de roles</h2>
+          <p class="roles-description">
+            Selecciona un rol para visualizar, ajustar y guardar los permisos habilitables agrupados por categoría.
+          </p>
+        </div>
+      </div>
+
+      <div class="role-selector" role="tablist" aria-label="Configurar roles">
+        <button type="button" class="role-chip" data-role-config="Administrador">Administrador</button>
+        <button type="button" class="role-chip" data-role-config="Supervisor">Supervisor</button>
+        <button type="button" class="role-chip" data-role-config="Almacenista">Almacenista</button>
+        <button type="button" class="role-chip" data-role-config="Mantenimiento">Mantenimiento</button>
+        <button type="button" class="role-chip" data-role-config="Etiquetador">Etiquetador</button>
+      </div>
+
+      <div id="rolePermissionsPanel" class="role-permissions-panel" aria-live="polite"></div>
+    </section>
   </div>
 
   <div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
