@@ -6,6 +6,349 @@
   let solicitudAreas = null;
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
+  const permisosHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions
+      ? window.OptiStockPermissions
+      : null;
+
+  function resolverBaseScripts() {
+    if (typeof document === 'undefined') {
+      return '../../scripts/';
+    }
+
+    const tomarSrc = script => {
+      if (!script) {
+        return '';
+      }
+      return script.getAttribute('src') || script.src || '';
+    };
+
+    let scriptSrc = tomarSrc(document.currentScript);
+    if (!scriptSrc) {
+      const scripts = document.getElementsByTagName('script');
+      for (let i = scripts.length - 1; i >= 0; i -= 1) {
+        const candidato = tomarSrc(scripts[i]);
+        if (candidato && candidato.indexOf('administracion_usuarios.js') !== -1) {
+          scriptSrc = candidato;
+          break;
+        }
+      }
+    }
+
+    if (!scriptSrc) {
+      return '../../scripts/';
+    }
+
+    const limpio = scriptSrc.split('#')[0].split('?')[0].replace(/\+/g, '/');
+    if (limpio) {
+      const relativo = limpio.replace(/Admin_usuar\/administracion_usuarios\.js$/, '');
+      if (relativo && relativo !== limpio) {
+        return relativo.endsWith('/') ? relativo : `${relativo}/`;
+      }
+    }
+
+    try {
+      const referencia = typeof window !== 'undefined' && window.location ? window.location.href : undefined;
+      const absoluto = new URL(scriptSrc, referencia);
+      const baseAbsoluta = absoluto.href.replace(/\/Admin_usuar\/administracion_usuarios\.js(?:\?.*)?$/, '/');
+      return baseAbsoluta.endsWith('/') ? baseAbsoluta : `${baseAbsoluta}/`;
+    } catch (error) {
+      return '../../scripts/';
+    }
+  }
+
+  const BASE_SCRIPTS = resolverBaseScripts();
+  const ENDPOINT_PERMISOS_LISTAR = `${BASE_SCRIPTS}php/roles/obtener_permisos_roles.php`;
+  const ENDPOINT_PERMISOS_GUARDAR = `${BASE_SCRIPTS}php/roles/guardar_permisos_rol.php`;
+  const catalogoPermisosCategorias = [
+    {
+      nombre: 'Sesión y Seguridad',
+      permisos: [
+        {
+          clave: 'auth.login',
+          descripcion: 'Permite iniciar sesión en la plataforma.'
+        },
+        {
+          clave: 'auth.logout',
+          descripcion: 'Permite cerrar sesión y finalizar otras sesiones activas.'
+        },
+        {
+          clave: 'auth.password.reset',
+          descripcion: 'Permite restablecer contraseñas mediante correo o token.'
+        }
+      ]
+    },
+    {
+      nombre: 'Usuarios y Roles',
+      permisos: [
+        {
+          clave: 'users.read',
+          descripcion: 'Ver y buscar usuarios en el sistema.'
+        },
+        {
+          clave: 'users.create',
+          descripcion: 'Registrar nuevos usuarios y asignarles un rol.'
+        },
+        {
+          clave: 'users.update',
+          descripcion: 'Editar datos de usuarios (nombre, correo, rol, área, etc.).'
+        },
+        {
+          clave: 'users.disable_enable',
+          descripcion: 'Activar o desactivar usuarios temporalmente.'
+        },
+        {
+          clave: 'users.delete',
+          descripcion: 'Eliminar usuarios definitivamente del sistema.'
+        },
+        {
+          clave: 'roles.assign',
+          descripcion: 'Asignar roles a los usuarios.'
+        },
+        {
+          clave: 'roles.permissions.configure',
+          descripcion: 'Editar y configurar los permisos que tiene cada rol.'
+        }
+      ]
+    },
+    {
+      nombre: 'Inventario',
+      permisos: [
+        {
+          clave: 'inventory.products.read',
+          descripcion: 'Ver todos los productos y sus detalles.'
+        },
+        {
+          clave: 'inventory.products.create',
+          descripcion: 'Agregar nuevos productos al inventario.'
+        },
+        {
+          clave: 'inventory.products.update',
+          descripcion: 'Editar datos de productos existentes (stock, precio, nombre).'
+        },
+        {
+          clave: 'inventory.products.delete',
+          descripcion: 'Eliminar productos del inventario.'
+        },
+        {
+          clave: 'inventory.categories.read',
+          descripcion: 'Ver las categorías de productos.'
+        },
+        {
+          clave: 'inventory.categories.create',
+          descripcion: 'Crear nuevas categorías.'
+        },
+        {
+          clave: 'inventory.categories.update',
+          descripcion: 'Modificar categorías existentes.'
+        },
+        {
+          clave: 'inventory.categories.delete',
+          descripcion: 'Eliminar categorías (si no tienen productos activos).'
+        },
+        {
+          clave: 'inventory.subcategories.read',
+          descripcion: 'Ver subcategorías dentro de una categoría.'
+        },
+        {
+          clave: 'inventory.subcategories.create',
+          descripcion: 'Crear nuevas subcategorías.'
+        },
+        {
+          clave: 'inventory.subcategories.update',
+          descripcion: 'Modificar subcategorías existentes.'
+        },
+        {
+          clave: 'inventory.subcategories.delete',
+          descripcion: 'Eliminar subcategorías.'
+        },
+        {
+          clave: 'inventory.movements.quick_io',
+          descripcion: 'Registrar ingresos o egresos rápidos (movimientos de stock).'
+        },
+        {
+          clave: 'inventory.alerts.receive',
+          descripcion: 'Recibir notificaciones de bajo stock o productos críticos.'
+        }
+      ]
+    },
+    {
+      nombre: 'Áreas y Zonas',
+      permisos: [
+        {
+          clave: 'warehouse.areas.read',
+          descripcion: 'Ver todas las áreas del almacén.'
+        },
+        {
+          clave: 'warehouse.areas.create',
+          descripcion: 'Crear nuevas áreas.'
+        },
+        {
+          clave: 'warehouse.areas.update',
+          descripcion: 'Editar nombres o descripciones de áreas.'
+        },
+        {
+          clave: 'warehouse.areas.delete',
+          descripcion: 'Eliminar áreas (si no contienen zonas o productos).'
+        },
+        {
+          clave: 'warehouse.zones.read',
+          descripcion: 'Ver zonas dentro de cada área.'
+        },
+        {
+          clave: 'warehouse.zones.create',
+          descripcion: 'Crear nuevas zonas.'
+        },
+        {
+          clave: 'warehouse.zones.update',
+          descripcion: 'Modificar nombre, capacidad o configuración de una zona.'
+        },
+        {
+          clave: 'warehouse.zones.delete',
+          descripcion: 'Eliminar zonas del sistema.'
+        },
+        {
+          clave: 'warehouse.assign.products_to_zone',
+          descripcion: 'Asignar productos a zonas específicas.'
+        },
+        {
+          clave: 'warehouse.alerts.receive',
+          descripcion: 'Recibir alertas de zonas llenas o sobrecapacidad.'
+        }
+      ]
+    },
+    {
+      nombre: 'Reportes',
+      permisos: [
+        {
+          clave: 'reports.generate',
+          descripcion: 'Generar reportes manualmente desde la interfaz.'
+        },
+        {
+          clave: 'reports.export.pdf',
+          descripcion: 'Exportar reportes a formato PDF.'
+        },
+        {
+          clave: 'reports.export.xlsx',
+          descripcion: 'Exportar reportes a formato Excel.'
+        },
+        {
+          clave: 'reports.schedule',
+          descripcion: 'Programar reportes automáticos (diarios, semanales, etc.).'
+        },
+        {
+          clave: 'reports.notify',
+          descripcion: 'Recibir notificaciones de reportes generados o programados.'
+        }
+      ]
+    },
+    {
+      nombre: 'LOG de Control',
+      permisos: [
+        {
+          clave: 'log.read',
+          descripcion: 'Ver el historial de acciones realizadas por todos los usuarios.'
+        },
+        {
+          clave: 'log.export',
+          descripcion: 'Exportar registros del LOG a PDF o Excel.'
+        },
+        {
+          clave: 'log.analytics.view',
+          descripcion: 'Ver estadísticas y gráficas del LOG (por módulo, usuario, fecha).'
+        },
+        {
+          clave: 'log.flag_records',
+          descripcion: 'Marcar registros para revisión o auditoría.'
+        },
+        {
+          clave: 'log.immutability.enforce',
+          descripcion: 'Garantizar que los registros del LOG no puedan modificarse o eliminarse.'
+        }
+      ]
+    },
+    {
+      nombre: 'Panel Principal y Notificaciones',
+      permisos: [
+        {
+          clave: 'dashboard.view.metrics',
+          descripcion: 'Ver métricas generales (productos, stock, movimientos, accesos).'
+        },
+        {
+          clave: 'notifications.receive.critical',
+          descripcion: 'Recibir notificaciones importantes del sistema (errores, alertas críticas).'
+        }
+      ]
+    },
+    {
+      nombre: 'Cuenta, Suscripción y Personalización',
+      permisos: [
+        {
+          clave: 'account.profile.read',
+          descripcion: 'Ver los datos de perfil y empresa.'
+        },
+        {
+          clave: 'account.profile.update',
+          descripcion: 'Modificar datos personales o de la empresa.'
+        },
+        {
+          clave: 'account.theme.configure',
+          descripcion: 'Cambiar colores, logotipo y tema visual del panel.'
+        },
+        {
+          clave: 'subscription.manage',
+          descripcion: 'Gestionar el plan de suscripción, pagos y renovaciones.'
+        }
+      ]
+    }
+  ];
+
+  const clavesPermisosCatalogo = catalogoPermisosCategorias.reduce((lista, categoria) => {
+    if (!categoria || !Array.isArray(categoria.permisos)) {
+      return lista;
+    }
+    categoria.permisos.forEach(permiso => {
+      if (permiso && typeof permiso.clave === 'string' && permiso.clave.length > 0) {
+        lista.push(permiso.clave);
+      }
+    });
+    return lista;
+  }, []);
+
+  const totalPermisosCatalogo = clavesPermisosCatalogo.length;
+
+  const configuracionInicialPermisosPorRol = {
+    Administrador: { modo: 'all' },
+    Supervisor: {
+      modo: 'all',
+      deshabilitar: ['roles.permissions.configure', 'subscription.manage']
+    },
+    Almacenista: {
+      modo: 'all',
+      deshabilitar: [
+        'users.',
+        'roles.',
+        'log.',
+        'subscription.',
+        'account.theme.configure',
+        'reports.schedule'
+      ]
+    },
+    Mantenimiento: {
+      modo: 'all',
+      deshabilitar: ['users.', 'roles.', 'inventory.', 'subscription.', 'reports.schedule']
+    },
+    Etiquetador: {
+      modo: 'all',
+      deshabilitar: ['users.', 'roles.', 'warehouse.', 'log.', 'subscription.', 'reports.']
+    }
+  };
+
+  const STORAGE_KEY_CONFIG_ROLES =
+    (permisosHelper && permisosHelper.STORAGE_KEY) ||
+    'optistock::configuracion_permisos_roles';
+  const estadoPermisosPorRol = new Map();
+  let permisosGuardadosPorRol = leerPermisosGuardadosLocales();
 
   function addListener(element, event, handler) {
     if (!element) return;
@@ -75,6 +418,746 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function slugify(value) {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function puedeUsarLocalStorage() {
+    try {
+      return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function normalizarPermisosGuardados(origen) {
+    const resultado = {};
+    if (!origen) {
+      return resultado;
+    }
+
+    const registrar = (rol, registro) => {
+      if (typeof rol !== 'string') {
+        return;
+      }
+
+      const rolKey = rol.trim();
+      if (!rolKey) {
+        return;
+      }
+
+      const listaActivos = Array.isArray(registro?.activos)
+        ? registro.activos
+        : Array.isArray(registro?.permisos_activos)
+        ? registro.permisos_activos
+        : Array.isArray(registro)
+        ? registro
+        : [];
+
+      const activosNormalizados = listaActivos
+        .map(valor =>
+          typeof valor === 'string' ? valor.trim() : valor != null ? String(valor).trim() : ''
+        )
+        .filter(clave => clave && clavesPermisosCatalogo.includes(clave));
+
+      const conocidosOrigen = Array.isArray(registro?.conocidos)
+        ? registro.conocidos
+        : Array.isArray(registro?.permisos_conocidos)
+        ? registro.permisos_conocidos
+        : null;
+
+      const conocidosNormalizados = Array.isArray(conocidosOrigen)
+        ? conocidosOrigen
+            .map(valor =>
+              typeof valor === 'string' ? valor.trim() : valor != null ? String(valor).trim() : ''
+            )
+            .filter(Boolean)
+        : null;
+
+      const actualizadoRaw =
+        registro?.actualizado ?? registro?.actualizado_en ?? registro?.updated_at ?? null;
+      let actualizado = null;
+
+      if (typeof actualizadoRaw === 'number' && Number.isFinite(actualizadoRaw)) {
+        actualizado = actualizadoRaw;
+      } else if (typeof actualizadoRaw === 'string') {
+        const parsed = Number(actualizadoRaw);
+        if (Number.isFinite(parsed)) {
+          actualizado = parsed;
+        } else {
+          const fecha = new Date(actualizadoRaw);
+          actualizado = Number.isNaN(fecha.getTime()) ? null : fecha.getTime();
+        }
+      }
+
+      resultado[rolKey] = {
+        activos: activosNormalizados,
+        conocidos: conocidosNormalizados,
+        actualizado
+      };
+    };
+
+    if (Array.isArray(origen)) {
+      origen.forEach(item => {
+        if (!item || typeof item !== 'object') {
+          return;
+        }
+
+        const rol = typeof item.rol === 'string' ? item.rol : '';
+        registrar(rol, item);
+      });
+      return resultado;
+    }
+
+    if (typeof origen === 'object') {
+      Object.entries(origen).forEach(([rol, registro]) => registrar(rol, registro));
+    }
+
+    return resultado;
+  }
+
+  function leerPermisosGuardadosLocales() {
+    if (permisosHelper && typeof permisosHelper.loadConfig === 'function') {
+      try {
+        return normalizarPermisosGuardados(permisosHelper.loadConfig());
+      } catch (error) {
+        console.warn('No se pudo leer la configuración de permisos desde el helper.', error);
+      }
+    }
+
+    if (!puedeUsarLocalStorage()) {
+      return {};
+    }
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY_CONFIG_ROLES);
+      if (!raw) {
+        return {};
+      }
+
+      const parsed = JSON.parse(raw);
+      return normalizarPermisosGuardados(parsed);
+    } catch (error) {
+      console.warn('No se pudieron cargar los permisos guardados de roles.', error);
+      return {};
+    }
+  }
+
+  function obtenerIdEmpresaActual() {
+    try {
+      const raw = window.localStorage.getItem('id_empresa');
+      if (!raw) {
+        return null;
+      }
+
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const numeric = Number.parseInt(trimmed, 10);
+      return Number.isFinite(numeric) ? numeric : trimmed;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function guardarPermisosRolServidor(idEmpresa, rol, registro) {
+    const payload = {
+      id_empresa: idEmpresa,
+      rol,
+      activos: Array.isArray(registro?.activos) ? registro.activos : [],
+      conocidos: Array.isArray(registro?.conocidos) ? registro.conocidos : null
+    };
+
+    const response = await fetch(ENDPOINT_PERMISOS_GUARDAR, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data || data.success === false) {
+      throw new Error(data && data.message ? data.message : 'No se pudo guardar la configuración del rol.');
+    }
+
+    return data.record || data.data || payload;
+  }
+
+  async function obtenerPermisosRolesServidor(idEmpresa) {
+    const response = await fetch(ENDPOINT_PERMISOS_LISTAR, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id_empresa: idEmpresa })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data || data.success === false) {
+      throw new Error(data && data.message ? data.message : 'No se pudo obtener la configuración de roles.');
+    }
+
+    return normalizarPermisosGuardados(data.data || data.config || data.permisos || {});
+  }
+
+  async function persistirPermisosGuardados(rol, registro) {
+    const rolClave = typeof rol === 'string' ? rol.trim() : '';
+    if (!rolClave || !registro) {
+      return null;
+    }
+
+    const idEmpresa = obtenerIdEmpresaActual();
+    if (!idEmpresa) {
+      throw new Error('No se pudo determinar la empresa activa para guardar los permisos.');
+    }
+
+    if (permisosHelper && typeof permisosHelper.saveRoleRemote === 'function') {
+      const resultado = await permisosHelper.saveRoleRemote(idEmpresa, rolClave, registro);
+      return resultado ? { rol: rolClave, ...resultado } : { rol: rolClave, ...registro };
+    }
+
+    const respuesta = await guardarPermisosRolServidor(idEmpresa, rolClave, registro);
+    return respuesta ? { rol: rolClave, ...respuesta } : { rol: rolClave, ...registro };
+  }
+
+  async function sincronizarPermisosRoles() {
+    const idEmpresa = obtenerIdEmpresaActual();
+    if (!idEmpresa) {
+      permisosGuardadosPorRol = {};
+      estadoPermisosPorRol.clear();
+      return;
+    }
+
+    let configuracionNormalizada = null;
+
+    if (permisosHelper && typeof permisosHelper.syncWithServer === 'function') {
+      try {
+        const resultado = await permisosHelper.syncWithServer(idEmpresa, { force: true });
+        configuracionNormalizada = normalizarPermisosGuardados(resultado);
+      } catch (error) {
+        console.warn('No se pudieron sincronizar los permisos mediante el helper compartido.', error);
+        if (typeof permisosHelper.loadConfig === 'function') {
+          try {
+            configuracionNormalizada = normalizarPermisosGuardados(permisosHelper.loadConfig());
+          } catch (loadError) {
+            console.warn('No se pudo leer la configuración local de permisos desde el helper.', loadError);
+          }
+        }
+      }
+    }
+
+    if (!configuracionNormalizada) {
+      try {
+        configuracionNormalizada = await obtenerPermisosRolesServidor(idEmpresa);
+        if (permisosHelper && typeof permisosHelper.saveConfig === 'function') {
+          permisosHelper.saveConfig(configuracionNormalizada);
+        }
+      } catch (error) {
+        console.warn('No se pudieron obtener los permisos de roles desde el servidor.', error);
+        configuracionNormalizada = leerPermisosGuardadosLocales();
+      }
+    }
+
+    permisosGuardadosPorRol = configuracionNormalizada || {};
+    estadoPermisosPorRol.clear();
+
+    if (!permisosHelper && puedeUsarLocalStorage()) {
+      try {
+        window.localStorage.setItem(
+          STORAGE_KEY_CONFIG_ROLES,
+          JSON.stringify(permisosGuardadosPorRol)
+        );
+      } catch (error) {
+        console.warn('No se pudo actualizar la copia local de permisos de roles.', error);
+      }
+    }
+  }
+
+  function coincideReglaPermiso(permiso, regla) {
+    if (!permiso || !regla) {
+      return false;
+    }
+
+    if (regla === '*') {
+      return true;
+    }
+
+    if (regla.endsWith('.*')) {
+      return permiso.startsWith(regla.slice(0, -2));
+    }
+
+    if (regla.endsWith('.')) {
+      return permiso.startsWith(regla);
+    }
+
+    return permiso === regla;
+  }
+
+  function generarEstadoInicialPermisos(rol) {
+    const config = configuracionInicialPermisosPorRol[rol] || { modo: 'all' };
+    const porDefecto = new Set();
+
+    clavesPermisosCatalogo.forEach(clave => {
+      let habilitado = config?.modo === 'none' ? false : true;
+
+      if (Array.isArray(config?.deshabilitar) && config.deshabilitar.some(regla => coincideReglaPermiso(clave, regla))) {
+        habilitado = false;
+      }
+
+      if (Array.isArray(config?.habilitar) && config.habilitar.some(regla => coincideReglaPermiso(clave, regla))) {
+        habilitado = true;
+      }
+
+      if (habilitado) {
+        porDefecto.add(clave);
+      }
+    });
+
+    const registroGuardado = permisosGuardadosPorRol[rol];
+    const guardadoActivos = Array.isArray(registroGuardado?.activos)
+      ? registroGuardado.activos
+      : Array.isArray(registroGuardado)
+      ? registroGuardado
+      : null;
+    const guardadoSet = guardadoActivos
+      ? new Set(guardadoActivos.filter(clave => clavesPermisosCatalogo.includes(clave)))
+      : null;
+    const conocidosSet = Array.isArray(registroGuardado?.conocidos)
+      ? new Set(
+          registroGuardado.conocidos.filter(clave => typeof clave === 'string' && clave.length > 0)
+        )
+      : null;
+
+    const activos = new Set();
+    clavesPermisosCatalogo.forEach(clave => {
+      let habilitado = porDefecto.has(clave);
+
+      if (guardadoSet) {
+        const existiaEnGuardado = conocidosSet ? conocidosSet.has(clave) : true;
+        if (existiaEnGuardado) {
+          habilitado = guardadoSet.has(clave);
+        }
+      }
+
+      if (habilitado) {
+        activos.add(clave);
+      }
+    });
+
+    const referenciaGuardada = new Set(activos);
+    const ultimaGuardado =
+      registroGuardado && typeof registroGuardado.actualizado === 'number' && Number.isFinite(registroGuardado.actualizado)
+        ? new Date(registroGuardado.actualizado)
+        : null;
+
+    return {
+      activos,
+      referenciaGuardada,
+      cambiosPendientes: false,
+      ultimaGuardado
+    };
+  }
+
+  function obtenerEstadoPermisosRol(rol) {
+    if (!rol) {
+      return {
+        activos: new Set(),
+        referenciaGuardada: new Set(),
+        cambiosPendientes: false,
+        ultimaGuardado: null
+      };
+    }
+
+    if (!estadoPermisosPorRol.has(rol)) {
+      estadoPermisosPorRol.set(rol, generarEstadoInicialPermisos(rol));
+    }
+
+    return estadoPermisosPorRol.get(rol);
+  }
+
+  function sonSetsIguales(setA, setB) {
+    if (setA === setB) {
+      return true;
+    }
+
+    if (!setA || !setB || setA.size !== setB.size) {
+      return false;
+    }
+
+    for (const valor of setA) {
+      if (!setB.has(valor)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function formatearMarcaTemporal(fecha) {
+    if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) {
+      return '';
+    }
+
+    try {
+      return fecha.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    } catch (error) {
+      return fecha.toISOString();
+    }
+  }
+
+  function obtenerTextoEstadoPermisos(estado) {
+    if (!estado) {
+      return '';
+    }
+
+    if (estado.cambiosPendientes) {
+      return 'Cambios sin guardar';
+    }
+
+    if (estado.ultimaGuardado) {
+      return `Guardado ${formatearMarcaTemporal(estado.ultimaGuardado)}`;
+    }
+
+    return 'Configuración predeterminada';
+  }
+
+  function actualizarResumenPermisosUI(contenedor, rol) {
+    if (!contenedor || !rol) {
+      return;
+    }
+
+    const estado = obtenerEstadoPermisosRol(rol);
+    const conteoElemento = contenedor.querySelector('[data-role-permissions-count]');
+    if (conteoElemento) {
+      conteoElemento.textContent = `${estado.activos.size} de ${totalPermisosCatalogo} permisos activos`;
+    }
+
+    const estadoElemento = contenedor.querySelector('[data-role-permissions-status]');
+    if (estadoElemento) {
+      const textoEstado = obtenerTextoEstadoPermisos(estado);
+      estadoElemento.textContent = textoEstado;
+      estadoElemento.classList.toggle('roles-permissions-status--pending', Boolean(estado.cambiosPendientes));
+    }
+
+    const botonGuardar = contenedor.querySelector('[data-role-save]');
+    if (botonGuardar) {
+      botonGuardar.disabled = !estado.cambiosPendientes;
+    }
+  }
+
+  function configurarInteraccionesPermisos(panel, rol) {
+    if (!panel || !rol) {
+      return;
+    }
+
+    const tarjeta = panel.querySelector('.roles-permissions-card');
+    if (!tarjeta) {
+      return;
+    }
+
+    const estado = obtenerEstadoPermisosRol(rol);
+    const checkboxes = tarjeta.querySelectorAll("input[type='checkbox'][data-permission-key]");
+
+    checkboxes.forEach(checkbox => {
+      const clave = checkbox.dataset.permissionKey;
+      if (!clave) {
+        return;
+      }
+
+      checkbox.checked = estado.activos.has(clave);
+
+      addListener(checkbox, 'change', () => {
+        if (checkbox.checked) {
+          estado.activos.add(clave);
+        } else {
+          estado.activos.delete(clave);
+        }
+
+        estado.cambiosPendientes = !sonSetsIguales(estado.activos, estado.referenciaGuardada);
+        actualizarResumenPermisosUI(tarjeta, rol);
+      });
+    });
+
+    const botonGuardar = tarjeta.querySelector('[data-role-save]');
+    if (botonGuardar) {
+      addListener(botonGuardar, 'click', async () => {
+        const permisosActivos = Array.from(estado.activos).sort();
+        const permisosInactivos = clavesPermisosCatalogo.filter(clave => !estado.activos.has(clave)).sort();
+
+        const referenciaAnterior = new Set(estado.referenciaGuardada);
+        const ultimaGuardadoAnterior = estado.ultimaGuardado;
+        const registroPrevio = permisosGuardadosPorRol[rol]
+          ? { ...permisosGuardadosPorRol[rol] }
+          : null;
+
+        const marcaTemporal = Date.now();
+        estado.referenciaGuardada = new Set(estado.activos);
+        estado.cambiosPendientes = false;
+        estado.ultimaGuardado = new Date(marcaTemporal);
+
+        const registroActual = {
+          activos: permisosActivos,
+          conocidos: clavesPermisosCatalogo.slice(),
+          actualizado: marcaTemporal
+        };
+        permisosGuardadosPorRol[rol] = registroActual;
+
+        try {
+          const respuesta = await persistirPermisosGuardados(rol, registroActual);
+          if (respuesta) {
+            const normalizado = normalizarPermisosGuardados([
+              { rol: respuesta.rol || rol, ...respuesta }
+            ]);
+            if (normalizado[rol]) {
+              permisosGuardadosPorRol[rol] = normalizado[rol];
+              estado.referenciaGuardada = new Set(normalizado[rol].activos || []);
+              estado.ultimaGuardado =
+                typeof normalizado[rol].actualizado === 'number'
+                  ? new Date(normalizado[rol].actualizado)
+                  : estado.ultimaGuardado;
+            }
+          }
+
+          if (!permisosHelper && puedeUsarLocalStorage()) {
+            try {
+              window.localStorage.setItem(
+                STORAGE_KEY_CONFIG_ROLES,
+                JSON.stringify(permisosGuardadosPorRol)
+              );
+            } catch (storageError) {
+              console.warn('No se pudo actualizar la copia local de permisos de roles.', storageError);
+            }
+          }
+
+          if (typeof console !== 'undefined') {
+            if (typeof console.groupCollapsed === 'function') {
+              console.groupCollapsed(`Configuración de permisos guardada para ${rol}`);
+              console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
+              console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+              console.groupEnd();
+            } else {
+              console.log(`Configuración de permisos guardada para ${rol}`);
+              console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
+              console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+            }
+          }
+
+          notificar('success', `Configuración de permisos guardada para ${rol}.`);
+        } catch (error) {
+          console.error('No se pudo guardar la configuración de permisos del rol.', error);
+          if (registroPrevio) {
+            permisosGuardadosPorRol[rol] = registroPrevio;
+          } else {
+            delete permisosGuardadosPorRol[rol];
+          }
+          estado.referenciaGuardada = referenciaAnterior;
+          estado.cambiosPendientes = true;
+          estado.ultimaGuardado = ultimaGuardadoAnterior;
+          notificar('error', 'No se pudo guardar la configuración. Intenta nuevamente.');
+        } finally {
+          actualizarResumenPermisosUI(tarjeta, rol);
+        }
+      });
+    }
+
+    actualizarResumenPermisosUI(tarjeta, rol);
+  }
+
+  function crearMarkupPermisosRol(rol) {
+    if (!rol) {
+      return '';
+    }
+
+    const estadoPermisos = obtenerEstadoPermisosRol(rol);
+    const rolSlug = slugify(rol);
+    const totalPermisos = totalPermisosCatalogo;
+    const totalActivos = estadoPermisos?.activos?.size || 0;
+    const textoEstado = obtenerTextoEstadoPermisos(estadoPermisos);
+
+    const categoriasMarkup = catalogoPermisosCategorias
+      .map((categoria, categoriaIndex) => {
+        if (!categoria || !Array.isArray(categoria.permisos) || !categoria.permisos.length) {
+          return '';
+        }
+
+        const categoriaTitulo = categoria.nombre || `Categoría ${categoriaIndex + 1}`;
+        const categoriaSlug = slugify(`${categoriaTitulo}-${categoriaIndex}`);
+        const contentId = `role-${rolSlug}-categoria-${categoriaSlug}`;
+        const totalCategoria = categoria.permisos.length;
+        const etiquetaPermisos = totalCategoria === 1 ? 'permiso' : 'permisos';
+
+        const permisosMarkup = categoria.permisos
+          .map((permiso, permisoIndex) => {
+            if (!permiso) {
+              return '';
+            }
+
+            const permisoClave = permiso.clave || `permiso-${categoriaIndex + 1}-${permisoIndex + 1}`;
+            const permisoDescripcion = permiso.descripcion || '';
+            const permisoId = `permiso-${rolSlug}-${categoriaSlug}-${permisoIndex}`;
+            const permisoActivo = Boolean(estadoPermisos?.activos?.has(permisoClave));
+
+            return `
+              <label class="roles-permission-item" for="${escapeHtml(permisoId)}">
+                <input id="${escapeHtml(permisoId)}" type="checkbox" data-permission-key="${escapeHtml(permisoClave)}" ${
+              permisoActivo ? 'checked' : ''
+            } />
+                <span class="roles-permission-text">
+                  <span class="roles-permission-code">${escapeHtml(permisoClave)}</span>
+                  <span class="roles-permission-description">${escapeHtml(permisoDescripcion)}</span>
+                </span>
+              </label>
+            `;
+          })
+          .join('');
+
+        return `
+          <section class="role-permissions-category role-permissions-category--expanded" data-role-category>
+            <button type="button" class="role-permissions-category__header" data-role-category-toggle aria-expanded="true" aria-controls="${escapeHtml(contentId)}">
+              <span class="role-permissions-category__title">${escapeHtml(categoriaTitulo)}</span>
+              <span class="role-permissions-category__meta">${totalCategoria} ${etiquetaPermisos}</span>
+              <span class="role-permissions-category__chevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="${escapeHtml(contentId)}" class="role-permissions-category__content">
+              <div class="roles-permissions-list">
+                ${permisosMarkup}
+              </div>
+            </div>
+          </section>
+        `;
+      })
+      .join('');
+
+    return `
+      <article class="roles-permissions-card">
+        <header class="roles-permissions-header">
+          <h3 class="roles-permissions-title">${escapeHtml(rol)}</h3>
+          <p class="roles-permissions-subtitle">
+            Activa o desactiva los permisos disponibles para este rol. (${totalPermisos} permiso${
+              totalPermisos === 1 ? '' : 's'
+            } configurables)
+          </p>
+        </header>
+        <div class="role-permissions-categories">
+          ${categoriasMarkup}
+        </div>
+        <footer class="roles-permissions-footer">
+          <div class="roles-permissions-summary">
+            <span class="roles-permissions-count" data-role-permissions-count>${escapeHtml(
+              `${totalActivos} de ${totalPermisos} permisos activos`
+            )}</span>
+            <span class="roles-permissions-status${
+              estadoPermisos?.cambiosPendientes ? ' roles-permissions-status--pending' : ''
+            }" data-role-permissions-status>${escapeHtml(textoEstado)}</span>
+          </div>
+          <button type="button" class="roles-permissions-save" data-role-save ${
+            estadoPermisos?.cambiosPendientes ? '' : 'disabled'
+          }>Guardar configuración</button>
+        </footer>
+      </article>
+    `;
+  }
+
+  function activarCategoriasInteractivas(panel) {
+    if (!panel) {
+      return;
+    }
+
+    const toggles = panel.querySelectorAll('[data-role-category-toggle]');
+    toggles.forEach(toggle => {
+      const categoria = toggle?.closest('[data-role-category]');
+      const contenido = categoria ? categoria.querySelector('.role-permissions-category__content') : null;
+      if (!categoria || !contenido) {
+        return;
+      }
+
+      contenido.removeAttribute('hidden');
+      categoria.classList.add('role-permissions-category--expanded');
+      categoria.classList.remove('role-permissions-category--collapsed');
+
+      addListener(toggle, 'click', () => {
+        const estaExpandido = toggle.getAttribute('aria-expanded') === 'true';
+        const nuevoEstado = !estaExpandido;
+
+        toggle.setAttribute('aria-expanded', nuevoEstado ? 'true' : 'false');
+        categoria.classList.toggle('role-permissions-category--expanded', nuevoEstado);
+        categoria.classList.toggle('role-permissions-category--collapsed', !nuevoEstado);
+
+        if (nuevoEstado) {
+          contenido.removeAttribute('hidden');
+        } else {
+          contenido.setAttribute('hidden', 'hidden');
+        }
+      });
+    });
+  }
+
+  function inicializarConfiguracionRoles() {
+    const panel = document.getElementById('rolePermissionsPanel');
+    const botones = Array.from(document.querySelectorAll('[data-role-config]'));
+    if (!panel || !botones.length) {
+      return;
+    }
+
+    panel.innerHTML =
+      '<div class="roles-permissions-placeholder">Selecciona un rol para consultar los permisos disponibles agrupados por categoría.</div>';
+
+    let rolActivo = null;
+
+    function seleccionarRol(rol) {
+      if (!rol || rol === rolActivo) {
+        return;
+      }
+
+      rolActivo = rol;
+      botones.forEach(boton => {
+        const esActivo = boton.dataset.roleConfig === rol;
+        boton.classList.toggle('role-chip--active', esActivo);
+        boton.setAttribute('aria-pressed', esActivo ? 'true' : 'false');
+      });
+
+      const markup = crearMarkupPermisosRol(rol);
+      if (!markup) {
+        panel.innerHTML = `
+          <div class="roles-permissions-placeholder">
+            No hay permisos configurados para <strong>${escapeHtml(rol)}</strong>.
+          </div>
+        `;
+        return;
+      }
+
+      panel.innerHTML = markup;
+      activarCategoriasInteractivas(panel);
+      configurarInteraccionesPermisos(panel, rol);
+    }
+
+    botones.forEach(boton => {
+      const rol = boton.dataset.roleConfig;
+      if (!rol) return;
+      boton.setAttribute('aria-pressed', 'false');
+      addListener(boton, 'click', () => seleccionarRol(rol));
+    });
+
+    const rolInicial = botones[0] ? botones[0].dataset.roleConfig : null;
+    if (rolInicial) {
+      seleccionarRol(rolInicial);
+    }
   }
 
   function notificar(tipo, mensaje) {
@@ -1059,11 +2142,22 @@
     }
   });
 
-  if (document.readyState !== 'loading') {
+  async function inicializarModuloUsuarios() {
+    try {
+      await sincronizarPermisosRoles();
+    } catch (error) {
+      console.warn('No se pudieron sincronizar los permisos de roles al iniciar el módulo.', error);
+    }
+
     cargarUsuariosEmpresa();
+    inicializarConfiguracionRoles();
+  }
+
+  if (document.readyState !== 'loading') {
+    inicializarModuloUsuarios();
   } else {
     domReadyHandler = () => {
-      cargarUsuariosEmpresa();
+      inicializarModuloUsuarios();
       document.removeEventListener('DOMContentLoaded', domReadyHandler);
       domReadyHandler = null;
     };

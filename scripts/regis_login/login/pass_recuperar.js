@@ -3,9 +3,72 @@ const codeForm = document.getElementById("codeForm");
 const passwordForm = document.getElementById("passwordForm");
 const msg = document.getElementById("recovery-message");
 
-emailForm.addEventListener("submit", function (event) {
+const permissionsHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions
+        ? window.OptiStockPermissions
+        : null;
+
+let rolVerificado = null;
+
+const tienePermiso = (rol, permiso) => {
+    if (!permiso) return true;
+    if (!permissionsHelper || typeof permissionsHelper.isPermissionEnabled !== 'function') {
+        return true;
+    }
+    return permissionsHelper.isPermissionEnabled(rol, permiso);
+};
+
+const mostrarMensaje = (texto, color = 'red') => {
+    if (!msg) return;
+    msg.textContent = texto;
+    msg.style.color = color;
+};
+
+const obtenerRolPorCorreo = async (email) => {
+    const response = await fetch('../../../scripts/php/obtener_rol_por_correo.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
+};
+
+emailForm.addEventListener("submit", async function (event) {
     event.preventDefault();
     const email = document.getElementById("email").value;
+
+    try {
+        const resultadoRol = await obtenerRolPorCorreo(email);
+        if (!resultadoRol.success) {
+            mostrarMensaje(resultadoRol.message || 'No se pudo verificar el rol del usuario.');
+            return;
+        }
+
+        const rol = resultadoRol.rol;
+        if (permissionsHelper && typeof permissionsHelper.syncWithServer === 'function') {
+            try {
+                await permissionsHelper.syncWithServer(resultadoRol.id_empresa, { force: false });
+            } catch (error) {
+                console.warn('No se pudieron sincronizar los permisos antes de validar la recuperación de contraseña.', error);
+            }
+        }
+
+        if (!tienePermiso(rol, 'auth.password.reset')) {
+            mostrarMensaje('No tienes permiso para hacer eso.');
+            return;
+        }
+
+        rolVerificado = rol;
+    } catch (error) {
+        console.error("Error verificando rol para recuperación:", error);
+        mostrarMensaje('No se pudo verificar tu permiso para restablecer la contraseña. Inténtalo más tarde.');
+        return;
+    }
 
     fetch('../../../scripts/php/pass_recuperar.php', {
         method: 'POST',
@@ -14,8 +77,7 @@ emailForm.addEventListener("submit", function (event) {
     })
     .then(response => response.json())
     .then(data => {
-        msg.textContent = data.message;
-        msg.style.color = data.success ? "green" : "red";
+        mostrarMensaje(data.message, data.success ? 'green' : 'red');
 
         if (data.success) {
             emailForm.style.display = "none";
@@ -26,8 +88,7 @@ emailForm.addEventListener("submit", function (event) {
     })
     .catch(err => {
         console.error("Error en la solicitud:", err);
-        msg.textContent = "Error inesperado. Intenta más tarde.";
-        msg.style.color = "red";
+        mostrarMensaje("Error inesperado. Intenta más tarde.");
     });
 });
 

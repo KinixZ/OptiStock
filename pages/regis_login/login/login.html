@@ -26,6 +26,7 @@
                 </div>
                 <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
             </form>
+            <div id="error-message" class="alert alert-danger mt-3 d-none" role="alert"></div>
             <a href="pass_recuperar.html">¿Olvidaste tu contraseña? reestablecela aca</a>
             <hr>
             <!-- Botón de Google -->
@@ -38,6 +39,7 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="../../../scripts/utils/role_permissions.js"></script>
     <script src="../../../scripts/regis_login/login/login.js"></script>
 </body>
 </html>

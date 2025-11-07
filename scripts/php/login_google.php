@@ -54,6 +54,40 @@ if ($check->num_rows > 0) {
         $log->close();
     }
 
+    $idEmpresa = null;
+    $empresaNombre = null;
+
+    $stmtEmpresa = $conn->prepare("SELECT id_empresa, nombre_empresa FROM empresa WHERE usuario_creador = ? LIMIT 1");
+    if ($stmtEmpresa) {
+        $stmtEmpresa->bind_param("i", $id);
+        $stmtEmpresa->execute();
+        $resEmpresa = $stmtEmpresa->get_result();
+        if ($resEmpresa && $resEmpresa->num_rows > 0) {
+            $empresa = $resEmpresa->fetch_assoc();
+            $idEmpresa = isset($empresa['id_empresa']) ? (int) $empresa['id_empresa'] : null;
+            $empresaNombre = $empresa['nombre_empresa'] ?? null;
+        }
+        $stmtEmpresa->close();
+    }
+
+    if (!$idEmpresa) {
+        $stmtAfiliacion = $conn->prepare("SELECT e.id_empresa, e.nombre_empresa FROM usuario_empresa ue INNER JOIN empresa e ON ue.id_empresa = e.id_empresa WHERE ue.id_usuario = ? LIMIT 1");
+        if ($stmtAfiliacion) {
+            $stmtAfiliacion->bind_param("i", $id);
+            $stmtAfiliacion->execute();
+            $resAfiliacion = $stmtAfiliacion->get_result();
+            if ($resAfiliacion && $resAfiliacion->num_rows > 0) {
+                $empresa = $resAfiliacion->fetch_assoc();
+                $idEmpresa = isset($empresa['id_empresa']) ? (int) $empresa['id_empresa'] : null;
+                $empresaNombre = $empresa['nombre_empresa'] ?? null;
+            }
+            $stmtAfiliacion->close();
+        }
+    }
+
+    $_SESSION['id_empresa'] = $idEmpresa;
+    $_SESSION['empresa_nombre'] = $empresaNombre;
+
     echo json_encode([
         "success" => true,
         "completo" => $completo,
@@ -63,7 +97,9 @@ if ($check->num_rows > 0) {
         "rol" => $rol,
         "suscripcion" => $suscripcion,
         "foto_perfil" => $foto_perfil,
-        "tutorial_visto" => (int) $tutorialVisto
+        "tutorial_visto" => (int) $tutorialVisto,
+        "id_empresa" => $idEmpresa,
+        "empresa_nombre" => $empresaNombre
     ]);
 } else {
     // Registrar usuario nuevo (el rol se asigna automáticamente por defecto)
@@ -98,6 +134,9 @@ if ($check->num_rows > 0) {
             $log->close();
         }
 
+        $_SESSION['id_empresa'] = null;
+        $_SESSION['empresa_nombre'] = null;
+
         echo json_encode([
             "success" => true,
             "completo" => false,
@@ -106,7 +145,10 @@ if ($check->num_rows > 0) {
             "correo" => $correo,
             "rol" => $rol,
             "foto_perfil" => $foto_perfil,
-            "tutorial_visto" => 0
+            "tutorial_visto" => 0,
+            "suscripcion" => null,
+            "id_empresa" => null,
+            "empresa_nombre" => null
         ]);
     } else {
         echo json_encode(["success" => false, "message" => "Error al insertar usuario", "error" => $conn->error]);

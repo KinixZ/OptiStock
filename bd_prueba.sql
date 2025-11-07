@@ -1683,3 +1683,37 @@ CREATE TABLE IF NOT EXISTS solicitudes_cambios_historial (
     INDEX idx_historial_empresa (id_empresa),
     INDEX idx_historial_estado (estado)
 );
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `roles_permisos`
+--
+
+CREATE TABLE IF NOT EXISTS `roles_permisos` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `rol` varchar(100) NOT NULL,
+  `permisos_activos` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `permisos_conocidos` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Indices de la tabla `roles_permisos`
+--
+
+ALTER TABLE `roles_permisos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `roles_permisos_empresa_rol_unique` (`id_empresa`,`rol`);
+
+-- --------------------------------------------------------
+
+--
+-- AUTO_INCREMENT de la tabla `roles_permisos`
+--
+
+ALTER TABLE `roles_permisos`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
