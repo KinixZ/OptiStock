@@ -6,6 +6,37 @@
   let solicitudAreas = null;
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
+  const configuracionPermisosRoles = {
+    Administrador: [
+      'Gestión completa del sistema',
+      'Aprobación de solicitudes',
+      'Acceso a reportes financieros',
+      'Administrar usuarios',
+      'Configurar suscripciones'
+    ],
+    Supervisor: [
+      'Supervisión de inventario',
+      'Generar reportes',
+      'Aprobación de movimientos',
+      'Gestión de zonas y áreas'
+    ],
+    Almacenista: [
+      'Registrar productos',
+      'Actualizar existencias',
+      'Mover productos entre áreas',
+      'Visualizar inventario general'
+    ],
+    Mantenimiento: [
+      'Registrar incidencias',
+      'Actualizar estado de equipos',
+      'Ver reportes de mantenimiento'
+    ],
+    Etiquetador: [
+      'Generar etiquetas QR',
+      'Asignar etiquetas a productos',
+      'Actualizar estado de etiquetado'
+    ]
+  };
 
   function addListener(element, event, handler) {
     if (!element) return;
@@ -75,6 +106,83 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function crearMarkupPermisosRol(rol, permisos) {
+    const listaPermisos = (permisos || []).map((permiso, index) => {
+      const rolSlug = String(rol || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-');
+      const id = `permiso-${rolSlug}-${index}`;
+      return `
+        <label class="roles-permission-item" for="${escapeHtml(id)}">
+          <input id="${escapeHtml(id)}" type="checkbox" checked />
+          <span>${escapeHtml(permiso)}</span>
+        </label>
+      `;
+    });
+
+    return `
+      <article class="roles-permissions-card">
+        <header class="roles-permissions-header">
+          <h3 class="roles-permissions-title">${escapeHtml(rol)}</h3>
+          <p class="roles-permissions-subtitle">Permisos sugeridos para este rol</p>
+        </header>
+        <div class="roles-permissions-list">
+          ${listaPermisos.join('')}
+        </div>
+      </article>
+    `;
+  }
+
+  function inicializarConfiguracionRoles() {
+    const panel = document.getElementById('rolePermissionsPanel');
+    const botones = Array.from(document.querySelectorAll('[data-role-config]'));
+    if (!panel || !botones.length) {
+      return;
+    }
+
+    panel.innerHTML =
+      '<div class="roles-permissions-placeholder">Selecciona un rol para consultar los permisos sugeridos.</div>';
+
+    let rolActivo = null;
+
+    function seleccionarRol(rol) {
+      if (!rol || rol === rolActivo) {
+        return;
+      }
+
+      rolActivo = rol;
+      botones.forEach(boton => {
+        const esActivo = boton.dataset.roleConfig === rol;
+        boton.classList.toggle('role-chip--active', esActivo);
+        boton.setAttribute('aria-pressed', esActivo ? 'true' : 'false');
+      });
+
+      const permisos = configuracionPermisosRoles[rol] || [];
+      if (!permisos.length) {
+        panel.innerHTML = `
+          <div class="roles-permissions-placeholder">
+            No hay permisos configurados para <strong>${escapeHtml(rol)}</strong>.
+          </div>
+        `;
+        return;
+      }
+
+      panel.innerHTML = crearMarkupPermisosRol(rol, permisos);
+    }
+
+    botones.forEach(boton => {
+      const rol = boton.dataset.roleConfig;
+      if (!rol) return;
+      boton.setAttribute('aria-pressed', 'false');
+      addListener(boton, 'click', () => seleccionarRol(rol));
+    });
+
+    const rolInicial = botones[0] ? botones[0].dataset.roleConfig : null;
+    if (rolInicial) {
+      seleccionarRol(rolInicial);
+    }
   }
 
   function notificar(tipo, mensaje) {
@@ -1061,9 +1169,11 @@
 
   if (document.readyState !== 'loading') {
     cargarUsuariosEmpresa();
+    inicializarConfiguracionRoles();
   } else {
     domReadyHandler = () => {
       cargarUsuariosEmpresa();
+      inicializarConfiguracionRoles();
       document.removeEventListener('DOMContentLoaded', domReadyHandler);
       domReadyHandler = null;
     };
