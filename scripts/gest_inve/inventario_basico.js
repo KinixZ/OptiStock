@@ -480,8 +480,18 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   }
 
   let productoFormCollapse = null;
-  if (productoFormCollapseEl && window.bootstrap?.Collapse) {
-    productoFormCollapse = window.bootstrap.Collapse.getOrCreateInstance(productoFormCollapseEl, {
+  const collapseConstructor = (() => {
+    if (typeof window !== 'undefined' && window.bootstrap && typeof window.bootstrap.Collapse === 'function') {
+      return window.bootstrap.Collapse;
+    }
+    if (typeof bootstrap !== 'undefined' && bootstrap && typeof bootstrap.Collapse === 'function') {
+      return bootstrap.Collapse;
+    }
+    return null;
+  })();
+
+  if (productoFormCollapseEl && collapseConstructor) {
+    productoFormCollapse = collapseConstructor.getOrCreateInstance(productoFormCollapseEl, {
       toggle: false
     });
     if (productoFormCollapseEl.classList.contains('show')) {
@@ -493,8 +503,10 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
 
   function updateProductoFormToggleLabel(isOpen) {
     if (!productoFormToggle) return;
-    productoFormToggle.textContent = isOpen ? 'Ocultar formulario' : 'Mostrar formulario';
+    const label = isOpen ? 'Ocultar' : 'Mostrar';
+    productoFormToggle.textContent = label;
     productoFormToggle.setAttribute('aria-expanded', String(isOpen));
+    productoFormToggle.setAttribute('aria-label', `${label} formulario de productos`);
   }
 
   function setProductoFormMode(mode, nombre = '') {
