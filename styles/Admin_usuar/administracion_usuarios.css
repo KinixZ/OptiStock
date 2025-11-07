@@ -2520,6 +2520,20 @@ body {
   align-items: center;
 }
 
+.refresh-users-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.refresh-users-button span[aria-hidden='true'] {
+  font-size: 1rem;
+}
+
 .search-field {
   display: inline-flex;
   align-items: center;

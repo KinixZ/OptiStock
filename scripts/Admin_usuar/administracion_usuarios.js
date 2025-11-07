@@ -6,6 +6,7 @@
   let solicitudAreas = null;
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
+  const USUARIOS_REFRESH_KEY = 'usuariosEmpresa:recargar';
 
   const SCOPE_OPTIONS = [
     { id: 'self', label: 'Personal' },
@@ -695,6 +696,7 @@
   const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
   const tablaUsuariosElement = document.getElementById('tablaUsuariosEmpresa');
   const tablaUsuariosBody = tablaUsuariosElement ? tablaUsuariosElement.querySelector('tbody') : null;
+  const botonRecargarUsuarios = document.getElementById('btnRecargarUsuarios');
   let modalAsignarInstancia = null;
 
   let rolesModalElement = null;
@@ -2130,7 +2132,8 @@
       });
   }
 
-  function cargarUsuariosEmpresa() {
+  function cargarUsuariosEmpresa(opciones = {}) {
+    const { mostrarNotificacion = false } = opciones;
     const id_empresa = localStorage.getItem('id_empresa');
     if (!id_empresa) {
       usuariosEmpresa = [];
@@ -2148,6 +2151,10 @@
         if (!data.success) {
           usuariosEmpresa = [];
           sincronizarUsuariosEmpresaUI();
+          if (mostrarNotificacion) {
+            const mensaje = data?.message ? `❌ ${data.message}` : '❌ No se pudo actualizar la lista de usuarios.';
+            notificar('error', mensaje);
+          }
           return;
         }
 
@@ -2159,6 +2166,9 @@
             }))
           : [];
         sincronizarUsuariosEmpresaUI();
+        if (mostrarNotificacion) {
+          notificar('success', 'Lista de usuarios actualizada.');
+        }
       })
       .catch(err => {
         console.error('Error al cargar usuarios:', err);
@@ -2167,7 +2177,30 @@
         renderTabla([]);
         actualizarResumen({});
         renderMetricas({});
+        if (mostrarNotificacion) {
+          notificar('error', '❌ No se pudo actualizar la lista de usuarios.');
+        }
       });
+  }
+
+  function consumirBanderaRecargaUsuarios() {
+    if (typeof localStorage === 'undefined') {
+      return false;
+    }
+    const flag = localStorage.getItem(USUARIOS_REFRESH_KEY);
+    if (!flag) {
+      return false;
+    }
+    localStorage.removeItem(USUARIOS_REFRESH_KEY);
+    return true;
+  }
+
+  function intentarRecargarUsuariosPendientes(opciones = {}) {
+    if (!consumirBanderaRecargaUsuarios()) {
+      return false;
+    }
+    cargarUsuariosEmpresa(opciones);
+    return true;
   }
 
   function descargarBlob(blob, fileName) {
@@ -2298,6 +2331,22 @@
   addListener(formAsignarAcceso, 'submit', manejarAsignacionAcceso);
   addListener(selectArea, 'change', manejarCambioArea);
   addListener(document, 'click', manejarClickFueraMenus);
+  addListener(botonRecargarUsuarios, 'click', () => {
+    cargarUsuariosEmpresa({ mostrarNotificacion: true });
+  });
+  addListener(window, 'focus', () => {
+    intentarRecargarUsuariosPendientes({ mostrarNotificacion: true });
+  });
+  addListener(document, 'visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      intentarRecargarUsuariosPendientes({ mostrarNotificacion: true });
+    }
+  });
+  addListener(window, 'storage', event => {
+    if (event && event.key === USUARIOS_REFRESH_KEY && event.newValue) {
+      cargarUsuariosEmpresa({ mostrarNotificacion: true });
+    }
+  });
   addListener(modalAsignar, 'hidden.bs.modal', () => {
     usuarioAccesosSeleccionadoId = null;
     asignacionEnCurso = false;
@@ -2319,9 +2368,11 @@
 
   if (document.readyState !== 'loading') {
     cargarUsuariosEmpresa();
+    intentarRecargarUsuariosPendientes();
   } else {
     domReadyHandler = () => {
       cargarUsuariosEmpresa();
+      intentarRecargarUsuariosPendientes();
       document.removeEventListener('DOMContentLoaded', domReadyHandler);
       domReadyHandler = null;
     };
