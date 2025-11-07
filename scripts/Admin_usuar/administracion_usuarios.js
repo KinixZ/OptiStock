@@ -6,37 +6,248 @@
   let solicitudAreas = null;
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
-  const configuracionPermisosRoles = {
-    Administrador: [
-      'Gestión completa del sistema',
-      'Aprobación de solicitudes',
-      'Acceso a reportes financieros',
-      'Administrar usuarios',
-      'Configurar suscripciones'
-    ],
-    Supervisor: [
-      'Supervisión de inventario',
-      'Generar reportes',
-      'Aprobación de movimientos',
-      'Gestión de zonas y áreas'
-    ],
-    Almacenista: [
-      'Registrar productos',
-      'Actualizar existencias',
-      'Mover productos entre áreas',
-      'Visualizar inventario general'
-    ],
-    Mantenimiento: [
-      'Registrar incidencias',
-      'Actualizar estado de equipos',
-      'Ver reportes de mantenimiento'
-    ],
-    Etiquetador: [
-      'Generar etiquetas QR',
-      'Asignar etiquetas a productos',
-      'Actualizar estado de etiquetado'
-    ]
-  };
+  const catalogoPermisosCategorias = [
+    {
+      nombre: 'Sesión y Seguridad',
+      permisos: [
+        {
+          clave: 'auth.login',
+          descripcion: 'Permite iniciar sesión en la plataforma.'
+        },
+        {
+          clave: 'auth.logout',
+          descripcion: 'Permite cerrar sesión y finalizar otras sesiones activas.'
+        },
+        {
+          clave: 'auth.password.reset',
+          descripcion: 'Permite restablecer contraseñas mediante correo o token.'
+        }
+      ]
+    },
+    {
+      nombre: 'Usuarios y Roles',
+      permisos: [
+        {
+          clave: 'users.read',
+          descripcion: 'Ver y buscar usuarios en el sistema.'
+        },
+        {
+          clave: 'users.create',
+          descripcion: 'Registrar nuevos usuarios y asignarles un rol.'
+        },
+        {
+          clave: 'users.update',
+          descripcion: 'Editar datos de usuarios (nombre, correo, rol, área, etc.).'
+        },
+        {
+          clave: 'users.disable_enable',
+          descripcion: 'Activar o desactivar usuarios temporalmente.'
+        },
+        {
+          clave: 'users.delete',
+          descripcion: 'Eliminar usuarios definitivamente del sistema.'
+        },
+        {
+          clave: 'roles.assign',
+          descripcion: 'Asignar roles a los usuarios.'
+        },
+        {
+          clave: 'roles.permissions.configure',
+          descripcion: 'Editar y configurar los permisos que tiene cada rol.'
+        }
+      ]
+    },
+    {
+      nombre: 'Inventario',
+      permisos: [
+        {
+          clave: 'inventory.products.read',
+          descripcion: 'Ver todos los productos y sus detalles.'
+        },
+        {
+          clave: 'inventory.products.create',
+          descripcion: 'Agregar nuevos productos al inventario.'
+        },
+        {
+          clave: 'inventory.products.update',
+          descripcion: 'Editar datos de productos existentes (stock, precio, nombre).'
+        },
+        {
+          clave: 'inventory.products.delete',
+          descripcion: 'Eliminar productos del inventario.'
+        },
+        {
+          clave: 'inventory.categories.read',
+          descripcion: 'Ver las categorías de productos.'
+        },
+        {
+          clave: 'inventory.categories.create',
+          descripcion: 'Crear nuevas categorías.'
+        },
+        {
+          clave: 'inventory.categories.update',
+          descripcion: 'Modificar categorías existentes.'
+        },
+        {
+          clave: 'inventory.categories.delete',
+          descripcion: 'Eliminar categorías (si no tienen productos activos).'
+        },
+        {
+          clave: 'inventory.subcategories.read',
+          descripcion: 'Ver subcategorías dentro de una categoría.'
+        },
+        {
+          clave: 'inventory.subcategories.create',
+          descripcion: 'Crear nuevas subcategorías.'
+        },
+        {
+          clave: 'inventory.subcategories.update',
+          descripcion: 'Modificar subcategorías existentes.'
+        },
+        {
+          clave: 'inventory.subcategories.delete',
+          descripcion: 'Eliminar subcategorías.'
+        },
+        {
+          clave: 'inventory.movements.quick_io',
+          descripcion: 'Registrar ingresos o egresos rápidos (movimientos de stock).'
+        },
+        {
+          clave: 'inventory.alerts.receive',
+          descripcion: 'Recibir notificaciones de bajo stock o productos críticos.'
+        }
+      ]
+    },
+    {
+      nombre: 'Áreas y Zonas',
+      permisos: [
+        {
+          clave: 'warehouse.areas.read',
+          descripcion: 'Ver todas las áreas del almacén.'
+        },
+        {
+          clave: 'warehouse.areas.create',
+          descripcion: 'Crear nuevas áreas.'
+        },
+        {
+          clave: 'warehouse.areas.update',
+          descripcion: 'Editar nombres o descripciones de áreas.'
+        },
+        {
+          clave: 'warehouse.areas.delete',
+          descripcion: 'Eliminar áreas (si no contienen zonas o productos).'
+        },
+        {
+          clave: 'warehouse.zones.read',
+          descripcion: 'Ver zonas dentro de cada área.'
+        },
+        {
+          clave: 'warehouse.zones.create',
+          descripcion: 'Crear nuevas zonas.'
+        },
+        {
+          clave: 'warehouse.zones.update',
+          descripcion: 'Modificar nombre, capacidad o configuración de una zona.'
+        },
+        {
+          clave: 'warehouse.zones.delete',
+          descripcion: 'Eliminar zonas del sistema.'
+        },
+        {
+          clave: 'warehouse.assign.products_to_zone',
+          descripcion: 'Asignar productos a zonas específicas.'
+        },
+        {
+          clave: 'warehouse.alerts.receive',
+          descripcion: 'Recibir alertas de zonas llenas o sobrecapacidad.'
+        }
+      ]
+    },
+    {
+      nombre: 'Reportes',
+      permisos: [
+        {
+          clave: 'reports.generate',
+          descripcion: 'Generar reportes manualmente desde la interfaz.'
+        },
+        {
+          clave: 'reports.export.pdf',
+          descripcion: 'Exportar reportes a formato PDF.'
+        },
+        {
+          clave: 'reports.export.xlsx',
+          descripcion: 'Exportar reportes a formato Excel.'
+        },
+        {
+          clave: 'reports.schedule',
+          descripcion: 'Programar reportes automáticos (diarios, semanales, etc.).'
+        },
+        {
+          clave: 'reports.notify',
+          descripcion: 'Recibir notificaciones de reportes generados o programados.'
+        }
+      ]
+    },
+    {
+      nombre: 'LOG de Control',
+      permisos: [
+        {
+          clave: 'log.read',
+          descripcion: 'Ver el historial de acciones realizadas por todos los usuarios.'
+        },
+        {
+          clave: 'log.export',
+          descripcion: 'Exportar registros del LOG a PDF o Excel.'
+        },
+        {
+          clave: 'log.analytics.view',
+          descripcion: 'Ver estadísticas y gráficas del LOG (por módulo, usuario, fecha).'
+        },
+        {
+          clave: 'log.flag_records',
+          descripcion: 'Marcar registros para revisión o auditoría.'
+        },
+        {
+          clave: 'log.immutability.enforce',
+          descripcion: 'Garantizar que los registros del LOG no puedan modificarse o eliminarse.'
+        }
+      ]
+    },
+    {
+      nombre: 'Panel Principal y Notificaciones',
+      permisos: [
+        {
+          clave: 'dashboard.view.metrics',
+          descripcion: 'Ver métricas generales (productos, stock, movimientos, accesos).'
+        },
+        {
+          clave: 'notifications.receive.critical',
+          descripcion: 'Recibir notificaciones importantes del sistema (errores, alertas críticas).'
+        }
+      ]
+    },
+    {
+      nombre: 'Cuenta, Suscripción y Personalización',
+      permisos: [
+        {
+          clave: 'account.profile.read',
+          descripcion: 'Ver los datos de perfil y empresa.'
+        },
+        {
+          clave: 'account.profile.update',
+          descripcion: 'Modificar datos personales o de la empresa.'
+        },
+        {
+          clave: 'account.theme.configure',
+          descripcion: 'Cambiar colores, logotipo y tema visual del panel.'
+        },
+        {
+          clave: 'subscription.manage',
+          descripcion: 'Gestionar el plan de suscripción, pagos y renovaciones.'
+        }
+      ]
+    }
+  ];
 
   function addListener(element, event, handler) {
     if (!element) return;
@@ -108,31 +319,126 @@
       .replace(/'/g, '&#39;');
   }
 
-  function crearMarkupPermisosRol(rol, permisos) {
-    const listaPermisos = (permisos || []).map((permiso, index) => {
-      const rolSlug = String(rol || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-');
-      const id = `permiso-${rolSlug}-${index}`;
-      return `
-        <label class="roles-permission-item" for="${escapeHtml(id)}">
-          <input id="${escapeHtml(id)}" type="checkbox" checked />
-          <span>${escapeHtml(permiso)}</span>
-        </label>
-      `;
-    });
+  function slugify(value) {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function crearMarkupPermisosRol(rol) {
+    if (!rol) {
+      return '';
+    }
+
+    const rolSlug = slugify(rol);
+    const totalPermisos = catalogoPermisosCategorias.reduce(
+      (acumulado, categoria) => acumulado + (categoria?.permisos?.length || 0),
+      0
+    );
+
+    const categoriasMarkup = catalogoPermisosCategorias
+      .map((categoria, categoriaIndex) => {
+        if (!categoria || !Array.isArray(categoria.permisos) || !categoria.permisos.length) {
+          return '';
+        }
+
+        const categoriaTitulo = categoria.nombre || `Categoría ${categoriaIndex + 1}`;
+        const categoriaSlug = slugify(`${categoriaTitulo}-${categoriaIndex}`);
+        const contentId = `role-${rolSlug}-categoria-${categoriaSlug}`;
+        const totalCategoria = categoria.permisos.length;
+        const etiquetaPermisos = totalCategoria === 1 ? 'permiso' : 'permisos';
+
+        const permisosMarkup = categoria.permisos
+          .map((permiso, permisoIndex) => {
+            if (!permiso) {
+              return '';
+            }
+
+            const permisoClave = permiso.clave || `permiso-${categoriaIndex + 1}-${permisoIndex + 1}`;
+            const permisoDescripcion = permiso.descripcion || '';
+            const permisoId = `permiso-${rolSlug}-${categoriaSlug}-${permisoIndex}`;
+
+            return `
+              <label class="roles-permission-item" for="${escapeHtml(permisoId)}">
+                <input id="${escapeHtml(permisoId)}" type="checkbox" data-permission-key="${escapeHtml(permisoClave)}" checked />
+                <span class="roles-permission-text">
+                  <span class="roles-permission-code">${escapeHtml(permisoClave)}</span>
+                  <span class="roles-permission-description">${escapeHtml(permisoDescripcion)}</span>
+                </span>
+              </label>
+            `;
+          })
+          .join('');
+
+        return `
+          <section class="role-permissions-category role-permissions-category--expanded" data-role-category>
+            <button type="button" class="role-permissions-category__header" data-role-category-toggle aria-expanded="true" aria-controls="${escapeHtml(contentId)}">
+              <span class="role-permissions-category__title">${escapeHtml(categoriaTitulo)}</span>
+              <span class="role-permissions-category__meta">${totalCategoria} ${etiquetaPermisos}</span>
+              <span class="role-permissions-category__chevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="${escapeHtml(contentId)}" class="role-permissions-category__content">
+              <div class="roles-permissions-list">
+                ${permisosMarkup}
+              </div>
+            </div>
+          </section>
+        `;
+      })
+      .join('');
 
     return `
       <article class="roles-permissions-card">
         <header class="roles-permissions-header">
           <h3 class="roles-permissions-title">${escapeHtml(rol)}</h3>
-          <p class="roles-permissions-subtitle">Permisos sugeridos para este rol</p>
+          <p class="roles-permissions-subtitle">
+            Activa o desactiva los permisos disponibles para este rol. (${totalPermisos} permiso${
+              totalPermisos === 1 ? '' : 's'
+            } configurables)
+          </p>
         </header>
-        <div class="roles-permissions-list">
-          ${listaPermisos.join('')}
+        <div class="role-permissions-categories">
+          ${categoriasMarkup}
         </div>
       </article>
     `;
+  }
+
+  function activarCategoriasInteractivas(panel) {
+    if (!panel) {
+      return;
+    }
+
+    const toggles = panel.querySelectorAll('[data-role-category-toggle]');
+    toggles.forEach(toggle => {
+      const categoria = toggle?.closest('[data-role-category]');
+      const contenido = categoria ? categoria.querySelector('.role-permissions-category__content') : null;
+      if (!categoria || !contenido) {
+        return;
+      }
+
+      contenido.removeAttribute('hidden');
+      categoria.classList.add('role-permissions-category--expanded');
+      categoria.classList.remove('role-permissions-category--collapsed');
+
+      addListener(toggle, 'click', () => {
+        const estaExpandido = toggle.getAttribute('aria-expanded') === 'true';
+        const nuevoEstado = !estaExpandido;
+
+        toggle.setAttribute('aria-expanded', nuevoEstado ? 'true' : 'false');
+        categoria.classList.toggle('role-permissions-category--expanded', nuevoEstado);
+        categoria.classList.toggle('role-permissions-category--collapsed', !nuevoEstado);
+
+        if (nuevoEstado) {
+          contenido.removeAttribute('hidden');
+        } else {
+          contenido.setAttribute('hidden', 'hidden');
+        }
+      });
+    });
   }
 
   function inicializarConfiguracionRoles() {
@@ -143,7 +449,7 @@
     }
 
     panel.innerHTML =
-      '<div class="roles-permissions-placeholder">Selecciona un rol para consultar los permisos sugeridos.</div>';
+      '<div class="roles-permissions-placeholder">Selecciona un rol para consultar los permisos disponibles agrupados por categoría.</div>';
 
     let rolActivo = null;
 
@@ -159,8 +465,8 @@
         boton.setAttribute('aria-pressed', esActivo ? 'true' : 'false');
       });
 
-      const permisos = configuracionPermisosRoles[rol] || [];
-      if (!permisos.length) {
+      const markup = crearMarkupPermisosRol(rol);
+      if (!markup) {
         panel.innerHTML = `
           <div class="roles-permissions-placeholder">
             No hay permisos configurados para <strong>${escapeHtml(rol)}</strong>.
@@ -169,7 +475,8 @@
         return;
       }
 
-      panel.innerHTML = crearMarkupPermisosRol(rol, permisos);
+      panel.innerHTML = markup;
+      activarCategoriasInteractivas(panel);
     }
 
     botones.forEach(boton => {
