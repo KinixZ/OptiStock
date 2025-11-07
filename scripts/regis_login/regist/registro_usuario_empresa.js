@@ -35,6 +35,7 @@ document.getElementById('registerForm').addEventListener('submit', function(even
     .then(res => res.json())
     .then(response => {
         if (response.success) {
+            localStorage.setItem('usuariosEmpresa:recargar', Date.now().toString());
             notify('success', 'Usuario registrado correctamente');
             localStorage.setItem('cargarVista', 'admin_usuar/administracion_usuarios.html');
             setTimeout(() => {
