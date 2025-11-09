@@ -1,6 +1,8 @@
 <?php
 header("Content-Type: application/json");
 
+require_once __DIR__ . '/accesos_utils.php';
+
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $servername = "localhost";
@@ -18,6 +20,10 @@ try {
 
 $data = json_decode(file_get_contents("php://input"), true);
 $id_empresa = intval($data['id_empresa']);
+
+$usuarioSesionId = obtenerUsuarioIdSesion();
+$mapaAccesosSesion = construirMapaAccesosUsuario($conn, $usuarioSesionId);
+$filtrarPorAreas = debeFiltrarPorAccesos($mapaAccesosSesion);
 
 $sql = "SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.rol, u.telefono, u.fecha_nacimiento, u.foto_perfil, u.activo
         FROM usuario u
@@ -77,4 +83,35 @@ if ($idsUsuarios) {
     $stmtAccesos->close();
 }
 
-echo json_encode(["success" => true, "usuarios" => array_values($usuarios)]);
+$usuariosFiltrados = [];
+
+foreach ($usuarios as $usuario) {
+    if (!$filtrarPorAreas) {
+        $usuariosFiltrados[] = $usuario;
+        continue;
+    }
+
+    $accesos = isset($usuario['accesos']) && is_array($usuario['accesos'])
+        ? $usuario['accesos']
+        : [];
+
+    if (empty($accesos)) {
+        $usuariosFiltrados[] = $usuario;
+        continue;
+    }
+
+    $puedeVer = false;
+    foreach ($accesos as $acceso) {
+        $areaId = isset($acceso['id_area']) ? (int) $acceso['id_area'] : 0;
+        if ($areaId > 0 && usuarioPuedeVerArea($mapaAccesosSesion, $areaId)) {
+            $puedeVer = true;
+            break;
+        }
+    }
+
+    if ($puedeVer) {
+        $usuariosFiltrados[] = $usuario;
+    }
+}
+
+echo json_encode(["success" => true, "usuarios" => array_values($usuariosFiltrados)]);
