@@ -163,34 +163,6 @@ img {
   color: var(--muted-color);
 }
 
-.plan-card {
-  gap: 0.75rem;
-}
-
-.plan-card__details {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.6rem;
-}
-
-.plan-card__details li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.65rem 0.85rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.75);
-  font-size: 0.85rem;
-  color: var(--muted-color);
-}
-
-.plan-card__details strong {
-  font-size: 0.95rem;
-  color: #1f2538;
-}
-
 .account-layout {
   display: grid;
   grid-template-columns: minmax(220px, 260px) 1fr;
@@ -377,10 +349,6 @@ img {
   flex-wrap: wrap;
 }
 
-.section-actions--stack {
-  justify-content: flex-start;
-}
-
 .cta-pill {
   display: inline-flex;
   align-items: center;
@@ -411,35 +379,6 @@ img {
   height: 34px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
-}
-
-.btn-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--primary-surface);
-  color: var(--primary-color);
-  border: 1px solid rgba(255, 111, 145, 0.25);
-  border-radius: var(--radius-pill);
-  padding: 0.65rem 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.btn-chip:hover {
-  background: var(--primary-surface-strong);
-  box-shadow: 0 14px 28px -24px rgba(255, 111, 145, 0.8);
-}
-
-.btn-chip--danger {
-  background: rgba(255, 107, 107, 0.12);
-  color: var(--danger-color);
-  border-color: rgba(255, 107, 107, 0.3);
-}
-
-.btn-chip--danger:hover {
-  background: rgba(255, 107, 107, 0.18);
 }
 
 .company-summary {
@@ -473,134 +412,6 @@ img {
   min-width: 220px;
 }
 
-.subscription-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  margin-bottom: 1.5rem;
-}
-
-.subscription-card {
-  background: #f8f9fc;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.subscription-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.subscription-card__title {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #1f2538;
-}
-
-.subscription-card__details {
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.subscription-card__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.95rem;
-}
-
-.subscription-card__row dt {
-  margin: 0;
-  font-weight: 600;
-  color: #1f2538;
-}
-
-.subscription-card__row dd {
-  margin: 0;
-  color: var(--muted-color);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-}
-
-#subscriptionMessage {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.subscription-actions {
-  margin-top: 0.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.subscription-actions .btn {
-  min-width: 180px;
-}
-
-.plan-overview {
-  background: var(--primary-surface-extra);
-  border: 1px solid var(--primary-border-soft);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  display: grid;
-  gap: 1rem;
-  align-content: start;
-}
-
-.plan-overview__item {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.subscription-note {
-  margin: 1rem 0 0;
-  font-size: 0.85rem;
-  line-height: 1.45;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.comparison-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 420px;
-}
-
-.comparison-table thead {
-  background: var(--primary-surface);
-}
-
-.comparison-table th,
-.comparison-table td {
-  padding: 0.85rem 1rem;
-  text-align: center;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 0.95rem;
-}
-
-.comparison-table th:first-child,
-.comparison-table td:first-child {
-  text-align: left;
-}
-
-.comparison-table tbody tr:nth-child(even) {
-  background: rgba(255, 111, 145, 0.04);
-}
-
 .modal-content {
   border-radius: 18px;
 }
@@ -629,9 +440,7 @@ img {
     justify-content: stretch;
   }
 
-  .cta-pill,
-  .btn-chip,
-  .subscription-actions .btn {
+  .cta-pill {
     width: 100%;
     justify-content: center;
   }
@@ -645,8 +454,7 @@ img {
   .page-header,
   .highlight-card,
   .account-menu,
-  .profile-card,
-  .subscription-card {
+  .profile-card {
     padding: 1.4rem;
   }
 
@@ -658,26 +466,7 @@ img {
     grid-template-columns: 1fr;
   }
 
-  .subscription-card__row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .subscription-actions {
-    flex-direction: column;
-  }
-
-  .subscription-actions .btn {
-    min-width: 100%;
-  }
-
   .account-layout {
     grid-template-columns: 1fr;
-  }
-
-  .plan-card__details li {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.35rem;
   }
 }
