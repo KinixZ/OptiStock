@@ -64,10 +64,6 @@ if (!$empresa) {
         $config = $res3->fetch_assoc();
     }
 
-    if ($empresa && !empty($empresa['logo_empresa'])) {
-        $empresa['logo_empresa'] = '/' . ltrim($empresa['logo_empresa'], '/');
-    }
-
     echo json_encode([
         'success' => true,
         'usuario' => $usuario,

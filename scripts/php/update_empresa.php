@@ -46,7 +46,7 @@ $stmt->close();
 $logo_empresa = $logo_actual;
 
 // Logo nuevo (opcional)
-if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK && !$forzarEjecucion) {
+if (isset($_FILES['logo_empresa']) && $_FILES['logo_empresa']['error'] === UPLOAD_ERR_OK) {
     $archivoPendiente = opti_guardar_archivo_pendiente($_FILES['logo_empresa'], 'logos', 'logo_' . $id_empresa);
     if (!$archivoPendiente) {
         echo json_encode(["success" => false, "message" => "No se pudo preparar el logo para revisión"]);
