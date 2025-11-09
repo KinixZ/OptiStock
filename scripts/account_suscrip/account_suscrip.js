@@ -1,8 +1,36 @@
 (() => {
 // Gestión de datos de cuenta
 
-const DEFAULT_PROFILE_IMG = '/images/profile.jpg';
-const DEFAULT_COMPANY_LOGO = '/images/optistockLogo.png';
+const APP_ROOT = (() => {
+  const path = window.location.pathname;
+  const pagesIndex = path.indexOf('/pages/');
+  if (pagesIndex !== -1) {
+    return path.slice(0, pagesIndex);
+  }
+  const lastSlash = path.lastIndexOf('/');
+  if (lastSlash <= 0) {
+    return '';
+  }
+  return path.slice(0, lastSlash);
+})();
+
+function resolveUrl(path) {
+  if (!path) return '';
+  const normalized = `${path}`.replace(/\\/g, '/').trim();
+  if (/^(?:[a-z]+:)?\/\//i.test(normalized)) {
+    return normalized;
+  }
+  const withoutLeadingDots = normalized.replace(/^(\.\/)+/, '');
+  const cleaned = withoutLeadingDots.replace(/^\/+/, '');
+  const base = APP_ROOT ? `${APP_ROOT.replace(/\/+$/, '')}/` : '/';
+  return `${base}${cleaned}`;
+}
+
+const DEFAULT_PROFILE_IMG = resolveUrl('images/profile.jpg');
+const DEFAULT_COMPANY_LOGO = resolveUrl('images/optistockLogo.png');
+const ACCOUNT_DATA_URL = resolveUrl('scripts/php/get_account_data.php');
+const UPDATE_USER_URL = resolveUrl('scripts/php/update_user.php');
+const UPDATE_EMPRESA_URL = resolveUrl('scripts/php/update_empresa.php');
 
 function getContrastingColor(hexColor) {
   const r = parseInt(hexColor.slice(1, 3), 16);
@@ -13,15 +41,25 @@ function getContrastingColor(hexColor) {
 }
 
 async function obtenerDatosCuenta(id_usuario) {
-  const res = await fetch(`/scripts/php/get_account_data.php?usuario_id=${id_usuario}`);
+  const res = await fetch(`${ACCOUNT_DATA_URL}?usuario_id=${id_usuario}`);
   return res.json();
 }
 
 function sanitizePath(path) {
   if (!path) return '';
-  const normalized = path.replace(/\\/g, '/').trim();
-  if (normalized.startsWith('http')) return normalized;
-  return `/${normalized.replace(/^\/+/, '')}`;
+  const normalized = `${path}`.replace(/\\/g, '/').trim();
+  if (/^(?:[a-z]+:)?\/\//i.test(normalized)) {
+    return normalized;
+  }
+  if (APP_ROOT) {
+    const basePrefix = APP_ROOT.replace(/\/+$/, '');
+    if (basePrefix && normalized.startsWith(`${basePrefix}/`)) {
+      return normalized;
+    }
+  } else if (normalized.startsWith('/')) {
+    return normalized;
+  }
+  return resolveUrl(normalized);
 }
 
 function setTextContent(field, value, fallback = '—') {
@@ -32,7 +70,9 @@ function setTextContent(field, value, fallback = '—') {
 }
 
 function setImageContent(field, value, fallback) {
-  const src = value && `${value}`.trim() !== '' ? sanitizePath(value) : fallback;
+  const candidate = value && `${value}`.trim() !== '' ? value : fallback;
+  if (!candidate) return;
+  const src = sanitizePath(candidate);
   if (!src) return;
   document.querySelectorAll(`[data-field-image="${field}"]`).forEach((img) => {
     img.src = src;
@@ -68,23 +108,23 @@ function mainAccountSuscrip() {
     setTextContent('nombreCompleto', nombreCompleto, '—');
     setTextContent('correoUsuario', usuario.correo, '—');
     setTextContent('telefonoUsuario', usuario.telefono, '—');
-    const fotoPath = usuario.foto_perfil ? sanitizePath(usuario.foto_perfil) : DEFAULT_PROFILE_IMG;
-    setImageContent('fotoPerfil', fotoPath, DEFAULT_PROFILE_IMG);
+    setImageContent('fotoPerfil', usuario.foto_perfil, DEFAULT_PROFILE_IMG);
 
     localStorage.setItem('usuario_nombre', nombreCompleto || '');
     localStorage.setItem('usuario_email', usuario.correo || '');
     localStorage.setItem('usuario_telefono', usuario.telefono || '');
-    localStorage.setItem('foto_perfil', usuario.foto_perfil || '');
+    const fotoFinal = usuario.foto_perfil ? sanitizePath(usuario.foto_perfil) : DEFAULT_PROFILE_IMG;
+    localStorage.setItem('foto_perfil', fotoFinal || '');
 
     const empresa = data.empresa || {};
     setTextContent('nombreEmpresa', empresa.nombre_empresa, '—');
     setTextContent('sectorEmpresa', empresa.sector_empresa, '—');
-    const logoPath = empresa.logo_empresa ? sanitizePath(empresa.logo_empresa) : DEFAULT_COMPANY_LOGO;
-    setImageContent('logoEmpresa', logoPath, DEFAULT_COMPANY_LOGO);
+    setImageContent('logoEmpresa', empresa.logo_empresa, DEFAULT_COMPANY_LOGO);
 
     localStorage.setItem('empresa_nombre', empresa.nombre_empresa || '');
     localStorage.setItem('empresa_sector', empresa.sector_empresa || '');
-    localStorage.setItem('logo_empresa', logoPath || DEFAULT_COMPANY_LOGO);
+    const logoFinal = empresa.logo_empresa ? sanitizePath(empresa.logo_empresa) : DEFAULT_COMPANY_LOGO;
+    localStorage.setItem('logo_empresa', logoFinal || DEFAULT_COMPANY_LOGO);
 
   }
 
@@ -125,7 +165,7 @@ function mainAccountSuscrip() {
     const file = document.getElementById('inputFoto').files[0];
     if (file) formData.append('foto_perfil', file);
 
-    const resp = await fetch('/scripts/php/update_user.php', {
+    const resp = await fetch(UPDATE_USER_URL, {
       method: 'POST',
       body: formData,
     }).then((r) => r.json());
@@ -167,7 +207,7 @@ function mainAccountSuscrip() {
     const file = document.getElementById('inputLogoEmpresaFile').files[0];
     if (file) formData.append('logo_empresa', file);
 
-    const resp = await fetch('/scripts/php/update_empresa.php', {
+    const resp = await fetch(UPDATE_EMPRESA_URL, {
       method: 'POST',
       body: formData,
     }).then((r) => r.json());
