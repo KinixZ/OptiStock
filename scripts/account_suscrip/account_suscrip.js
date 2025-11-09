@@ -1,5 +1,5 @@
 (() => {
-// Gestion de cuenta y suscripción
+// Gestión de datos de cuenta
 
 const DEFAULT_PROFILE_IMG = '/images/profile.jpg';
 const DEFAULT_COMPANY_LOGO = '/images/optistockLogo.png';
@@ -39,10 +39,6 @@ function setImageContent(field, value, fallback) {
   });
 }
 
-function firstAvailable(...values) {
-  return values.find((value) => value && `${value}`.trim() !== '');
-}
-
 function mainAccountSuscrip() {
   console.log('✅ account_suscrip.js está corriendo');
 
@@ -53,22 +49,6 @@ function mainAccountSuscrip() {
     alert('Falta información del usuario en localStorage.');
     return;
   }
-
-  const nombreEl = document.getElementById('nombreCompleto');
-  const correoEl = document.getElementById('correoUsuario');
-  const telEl    = document.getElementById('telefonoUsuario');
-  const fotoEl   = document.getElementById('fotoPerfil');
-  const empNomEl = document.getElementById('nombreEmpresa');
-  const empSecEl = document.getElementById('sectorEmpresa');
-  const empLogo  = document.getElementById('logoEmpresa');
-  const subscriptionStatusBadge = document.getElementById('subscriptionStatusBadge');
-  const subscriptionLastRenewalEl = document.getElementById('subscriptionLastRenewal');
-  const subscriptionNextRenewalEl = document.getElementById('subscriptionNextRenewal');
-  const subscriptionMessageEl = document.getElementById('subscriptionMessage');
-  const subscriptionToggleBtn = document.getElementById('btnSubscriptionToggle');
-  const subscriptionRenewBtn = document.getElementById('btnSubscriptionRenew');
-  const SUBSCRIPTION_STORAGE_KEY = 'optistock_subscription_state';
-  const btnCancel = document.getElementById('btnCancelarSuscripcion');
 
   async function cargar() {
     const data = await obtenerDatosCuenta(usuarioId);
@@ -106,28 +86,6 @@ function mainAccountSuscrip() {
     localStorage.setItem('empresa_sector', empresa.sector_empresa || '');
     localStorage.setItem('logo_empresa', logoPath || DEFAULT_COMPANY_LOGO);
 
-    const suscripcion = data.suscripcion || data.subscription || data.plan || {};
-    const planName = firstAvailable(
-      suscripcion.plan,
-      suscripcion.nombre_plan,
-      suscripcion.plan_actual,
-      suscripcion.nombre
-    );
-    const fechaRenovacion = firstAvailable(
-      suscripcion.renovacion,
-      suscripcion.fecha_renovacion,
-      suscripcion.fechaRenovacion,
-      suscripcion.renovacion_plan
-    );
-    const metodoPago = firstAvailable(
-      suscripcion.metodo_pago,
-      suscripcion.metodoPago,
-      suscripcion.metodo
-    );
-
-    setTextContent('planActual', planName, 'Gratuito');
-    setTextContent('fechaRenovacion', fechaRenovacion, '—');
-    setTextContent('metodoPago', metodoPago, '—');
   }
 
   cargar();
@@ -230,221 +188,6 @@ function mainAccountSuscrip() {
     alert(resp?.message || 'Información de la empresa actualizada.');
   });
 
-  // --- Suscripción local (estado 0/1) ---
-  if (subscriptionStatusBadge || subscriptionToggleBtn || subscriptionRenewBtn) {
-    function getDefaultSubscriptionState() {
-      return {
-        status: 0,
-        lastRenewal: null,
-        nextRenewal: null
-      };
-    }
-
-    function loadSubscriptionState() {
-      try {
-        const raw = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
-        if (!raw) {
-          return getDefaultSubscriptionState();
-        }
-        const parsed = JSON.parse(raw);
-        return {
-          status: Number(parsed.status) === 1 ? 1 : 0,
-          lastRenewal: parsed.lastRenewal || null,
-          nextRenewal: parsed.nextRenewal || null
-        };
-      } catch (error) {
-        console.warn('No se pudo leer la suscripción guardada', error);
-        return getDefaultSubscriptionState();
-      }
-    }
-
-    function saveSubscriptionState(state) {
-      try {
-        const normalized = {
-          status: state.status === 1 ? 1 : 0,
-          lastRenewal: state.lastRenewal || null,
-          nextRenewal: state.nextRenewal || null
-        };
-        localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(normalized));
-      } catch (error) {
-        console.warn('No se pudo guardar la suscripción', error);
-      }
-    }
-
-    function addMonths(date, months) {
-      const result = new Date(date.getTime());
-      const originalDay = result.getDate();
-      result.setMonth(result.getMonth() + months);
-      if (result.getDate() !== originalDay) {
-        result.setDate(0);
-      }
-      return result;
-    }
-
-    function formatDate(value) {
-      if (!value) {
-        return '-';
-      }
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) {
-        return '-';
-      }
-      return new Intl.DateTimeFormat('es-ES', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      }).format(date);
-    }
-
-    function ensureSubscriptionFreshness(state) {
-      const normalized = { ...state };
-      if (normalized.status === 1 && normalized.nextRenewal) {
-        const nextDate = new Date(normalized.nextRenewal);
-        if (!Number.isNaN(nextDate.getTime()) && Date.now() >= nextDate.getTime()) {
-          normalized.status = 0;
-        }
-      }
-      return normalized;
-    }
-
-    function updateSubscriptionUI(state) {
-      const now = new Date();
-      const nextDate = state.nextRenewal ? new Date(state.nextRenewal) : null;
-      const isExpired = !!(nextDate && !Number.isNaN(nextDate.getTime()) && nextDate <= now);
-
-      if (subscriptionStatusBadge) {
-        subscriptionStatusBadge.textContent = state.status === 1 ? 'Activo (1)' : 'Inactivo (0)';
-        subscriptionStatusBadge.classList.remove('bg-success', 'bg-secondary', 'bg-warning');
-        if (state.status === 1) {
-          subscriptionStatusBadge.classList.add('bg-success');
-        } else if (isExpired) {
-          subscriptionStatusBadge.classList.add('bg-warning');
-        } else {
-          subscriptionStatusBadge.classList.add('bg-secondary');
-        }
-      }
-
-      if (subscriptionLastRenewalEl) {
-        subscriptionLastRenewalEl.textContent = formatDate(state.lastRenewal);
-      }
-
-      if (subscriptionNextRenewalEl) {
-        subscriptionNextRenewalEl.textContent = formatDate(state.nextRenewal);
-      }
-
-      if (subscriptionToggleBtn) {
-        subscriptionToggleBtn.textContent = state.status === 1 ? 'Cancelar suscripción' : 'Activar suscripción';
-        subscriptionToggleBtn.classList.toggle('btn-success', state.status !== 1);
-        subscriptionToggleBtn.classList.toggle('btn-danger', state.status === 1);
-      }
-
-      if (subscriptionRenewBtn) {
-        const canRenew = state.status === 1 || isExpired;
-        subscriptionRenewBtn.disabled = !canRenew;
-      }
-
-      if (subscriptionMessageEl) {
-        if (isExpired) {
-          subscriptionMessageEl.textContent = `Tu suscripción venció el ${formatDate(state.nextRenewal)}. Pulsa "Renovar por un mes" para activarla nuevamente.`;
-          subscriptionMessageEl.classList.remove('d-none');
-        } else {
-          subscriptionMessageEl.textContent = '';
-          subscriptionMessageEl.classList.add('d-none');
-        }
-      }
-    }
-
-    function createActivatedState(previousState) {
-      const now = new Date();
-      const next = addMonths(now, 1);
-      return {
-        ...previousState,
-        status: 1,
-        lastRenewal: now.toISOString(),
-        nextRenewal: next.toISOString()
-      };
-    }
-
-    function createRenewedState(previousState) {
-      const now = new Date();
-      const storedNext = previousState.nextRenewal ? new Date(previousState.nextRenewal) : null;
-      const hasValidStoredNext = storedNext && !Number.isNaN(storedNext.getTime());
-      const baseDate = hasValidStoredNext && storedNext > now ? storedNext : now;
-      const next = addMonths(baseDate, 1);
-      return {
-        ...previousState,
-        status: 1,
-        lastRenewal: now.toISOString(),
-        nextRenewal: next.toISOString()
-      };
-    }
-
-    let subscriptionState = ensureSubscriptionFreshness(loadSubscriptionState());
-    saveSubscriptionState(subscriptionState);
-    updateSubscriptionUI(subscriptionState);
-
-    if (subscriptionToggleBtn) {
-      subscriptionToggleBtn.addEventListener('click', () => {
-        if (subscriptionState.status === 1) {
-          if (!confirm('¿Seguro que deseas cancelar la suscripción?')) {
-            return;
-          }
-          subscriptionState = {
-            ...subscriptionState,
-            status: 0,
-            nextRenewal: null
-          };
-          saveSubscriptionState(subscriptionState);
-          updateSubscriptionUI(subscriptionState);
-          alert('Suscripción cancelada. Puedes activarla de nuevo cuando quieras.');
-        } else {
-          subscriptionState = createActivatedState(subscriptionState);
-          saveSubscriptionState(subscriptionState);
-          updateSubscriptionUI(subscriptionState);
-          alert(`Suscripción activada. Próxima renovación el ${formatDate(subscriptionState.nextRenewal)}.`);
-        }
-      });
-    }
-
-    if (subscriptionRenewBtn) {
-      subscriptionRenewBtn.addEventListener('click', () => {
-        const now = new Date();
-        const nextDate = subscriptionState.nextRenewal ? new Date(subscriptionState.nextRenewal) : null;
-        const isExpired = !!(nextDate && !Number.isNaN(nextDate.getTime()) && nextDate <= now);
-
-        if (subscriptionState.status === 0 && !isExpired) {
-          alert('Activa la suscripción antes de renovarla.');
-          return;
-        }
-
-        subscriptionState = createRenewedState(subscriptionState);
-        saveSubscriptionState(subscriptionState);
-        updateSubscriptionUI(subscriptionState);
-        alert(`Suscripción renovada. La próxima renovación será el ${formatDate(subscriptionState.nextRenewal)}.`);
-      });
-    }
-  }
-
-  // Actualizar plan
-  const btnPlan = document.getElementById('btnActualizarPlan');
-  btnPlan?.addEventListener('click', () => {
-    const plan = prompt('Ingresa el nuevo plan (Pro, etc)');
-    if (plan) {
-      const form = new URLSearchParams();
-      form.append('id_empresa', idEmpresa);
-      form.append('plan', plan);
-      fetch('/scripts/php/update_subscription_plan.php', { method: 'POST', body: form })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.success) {
-            alert('Plan actualizado');
-            cargar();
-          } else {
-            alert(d.message || 'Error');
-          }
-        });
-    }
-  });
-
   // Navegación lateral
   const menuItems = document.querySelectorAll('.account-menu li');
   const sections = document.querySelectorAll('.account-section');
@@ -457,32 +200,6 @@ function mainAccountSuscrip() {
     });
   });
 
-  // Cancelar suscripción con doble confirmación
-  if (btnCancel) {
-    btnCancel.addEventListener('click', () => {
-      if (
-        confirm('¿Seguro que deseas cancelar la suscripción?') &&
-        confirm('Confirma nuevamente para cancelar')
-      ) {
-        const empresaId = localStorage.getItem('id_empresa');
-        const form = new URLSearchParams();
-        form.append('id_empresa', empresaId);
-        fetch('/scripts/php/cancel_subscription.php', {
-          method: 'POST',
-          body: form,
-        })
-          .then((res) => res.json())
-          .then((response) => {
-            if (response.success) {
-              alert('Suscripción cancelada');
-              location.reload();
-            } else {
-              alert(response.message || 'Error al cancelar');
-            }
-          });
-      }
-    });
-  }
 }
 
 if (document.readyState !== 'loading') {
