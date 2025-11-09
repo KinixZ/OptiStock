@@ -136,14 +136,62 @@
     }
   }
 
-  const DEFAULT_COMPANY_LOGO = '/images/optistockLogo.png';
+  const APP_ROOT = (() => {
+    try {
+      const path = window.location && typeof window.location.pathname === 'string'
+        ? window.location.pathname
+        : '';
+      const pagesIndex = path.indexOf('/pages/');
+      if (pagesIndex !== -1) {
+        return path.slice(0, pagesIndex);
+      }
+      const lastSlash = path.lastIndexOf('/');
+      if (lastSlash <= 0) {
+        return '';
+      }
+      return path.slice(0, lastSlash);
+    } catch (error) {
+      return '';
+    }
+  })();
+
+  function resolveAssetPath(path) {
+    if (!path) {
+      return '';
+    }
+    const normalized = `${path}`.replace(/\\/g, '/').trim();
+    if (/^(?:[a-z]+:)?\/\//i.test(normalized)) {
+      return normalized;
+    }
+    if (APP_ROOT) {
+      const basePrefix = APP_ROOT.replace(/\/+$/, '');
+      if (basePrefix && normalized.startsWith(`${basePrefix}/`)) {
+        return normalized.startsWith('/') ? normalized : `/${normalized}`;
+      }
+    } else if (normalized.startsWith('/')) {
+      return normalized;
+    }
+    const withoutLeadingDots = normalized.replace(/^(\.\/)+/, '');
+    const cleaned = withoutLeadingDots.replace(/^\/+/, '');
+    const base = APP_ROOT ? `${APP_ROOT.replace(/\/+$/, '')}/` : '/';
+    const resolved = `${base}${cleaned}`;
+    return resolved.startsWith('/') ? resolved : `/${resolved}`;
+  }
+
+  const DEFAULT_COMPANY_LOGO = resolveAssetPath('images/optistockLogo.png');
 
   function sanitizeLogoPath(path) {
     if (typeof path !== 'string') {
       return '';
     }
     const trimmed = path.trim();
-    return trimmed || '';
+    if (!trimmed) {
+      return '';
+    }
+    if (isDataUrl(trimmed) || /^(?:[a-z]+:)?\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return resolveAssetPath(trimmed);
   }
 
   function isDataUrl(value) {
@@ -154,20 +202,21 @@
     if (!path) {
       return null;
     }
-    if (isDataUrl(path)) {
-      return path;
+    const sanitized = sanitizeLogoPath(path);
+    if (!sanitized) {
+      return null;
     }
-    if (/^https?:/i.test(path)) {
-      return path;
+    if (isDataUrl(sanitized) || /^(?:[a-z]+:)?\/\//i.test(sanitized)) {
+      return sanitized;
     }
     try {
       const base = window.location && window.location.origin ? window.location.origin : '';
-      if (path.startsWith('/')) {
-        return base ? `${base}${path}` : path;
+      if (sanitized.startsWith('/')) {
+        return base ? `${base}${sanitized}` : sanitized;
       }
-      return base ? `${base.replace(/\/$/, '')}/${path}` : path;
+      return base ? `${base.replace(/\/$/, '')}/${sanitized}` : sanitized;
     } catch (error) {
-      return path;
+      return sanitized;
     }
   }
 
