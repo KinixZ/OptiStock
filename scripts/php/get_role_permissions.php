@@ -139,10 +139,5 @@ $formatear = static function (array $registros, string $origen) use ($permisosCa
 
 $configPersonalizado = $formatear($personalizados, 'empresa');
 $configPredeterminado = $formatear($predeterminados, 'default');
-$catalogoPermisos = array_keys($permisosCatalogo);
 
-responder(true, '', [
-    'config' => $configPersonalizado,
-    'defaults' => $configPredeterminado,
-    'catalog' => $catalogoPermisos
-]);
+responder(true, '', ['config' => $configPersonalizado, 'defaults' => $configPredeterminado]);
