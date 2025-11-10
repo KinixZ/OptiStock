@@ -47,20 +47,59 @@ if ($usuarioEncontrado) {
 $solicitudesPendientes = $usuarioId > 0 ? contarSolicitudesPendientesPorUsuario($conn, $usuarioId) : 0;
 $incidenciasPendientes = $usuarioId > 0 ? contarIncidenciasPendientesPorUsuario($conn, $usuarioId) : 0;
 
+$bloqueos = [];
+
 if ($solicitudesPendientes > 0) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'No se puede eliminar el usuario porque tiene solicitudes pendientes en revisión.',
-        'solicitudes_pendientes' => $solicitudesPendientes
-    ]);
-    exit;
+    $descripcion = $solicitudesPendientes === 1
+        ? '1 solicitud pendiente por revisar'
+        : $solicitudesPendientes . ' solicitudes pendientes por revisar';
+
+    $bloqueos[] = [
+        'tipo' => 'solicitudes',
+        'total' => $solicitudesPendientes,
+        'descripcion' => $descripcion
+    ];
 }
 
 if ($incidenciasPendientes > 0) {
+    $descripcion = $incidenciasPendientes === 1
+        ? '1 incidencia pendiente de revisión'
+        : $incidenciasPendientes . ' incidencias pendientes de revisión';
+
+    $bloqueos[] = [
+        'tipo' => 'incidencias',
+        'total' => $incidenciasPendientes,
+        'descripcion' => $descripcion
+    ];
+}
+
+if (!empty($bloqueos)) {
+    $descripciones = array_map(static function (array $detalle) {
+        return $detalle['descripcion'] ?? '';
+    }, $bloqueos);
+
+    $descripciones = array_filter($descripciones, static function ($descripcion) {
+        return $descripcion !== '';
+    });
+
+    $mensajeDetalle = '';
+    if (!empty($descripciones)) {
+        if (count($descripciones) === 1) {
+            $mensajeDetalle = $descripciones[0];
+        } else {
+            $ultimo = array_pop($descripciones);
+            $mensajeDetalle = implode(', ', $descripciones) . ' y ' . $ultimo;
+        }
+    }
+
+    $mensaje = 'No se puede eliminar el usuario porque tiene ' . ($mensajeDetalle !== '' ? $mensajeDetalle : 'pendientes en revisión') . '.';
+
     echo json_encode([
         'success' => false,
-        'message' => 'No se puede eliminar el usuario porque tiene incidencias pendientes por revisar.',
-        'incidencias_pendientes' => $incidenciasPendientes
+        'message' => $mensaje,
+        'solicitudes_pendientes' => $solicitudesPendientes,
+        'incidencias_pendientes' => $incidenciasPendientes,
+        'detalles_bloqueo' => $bloqueos
     ]);
     exit;
 }
