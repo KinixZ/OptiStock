@@ -64,6 +64,8 @@ $permisosCatalogo = [
     'warehouse.zones.delete' => 'warehouse_zones_delete',
     'warehouse.assign.products_to_zone' => 'warehouse_assign_products_to_zone',
     'warehouse.alerts.receive' => 'warehouse_alerts_receive',
+    'warehouse.incidents.record' => 'warehouse_incidents_record',
+    'warehouse.incidents.alerts' => 'warehouse_incidents_alerts',
     'reports.generate' => 'reports_generate',
     'reports.export.pdf' => 'reports_export_pdf',
     'reports.export.xlsx' => 'reports_export_xlsx',
@@ -139,5 +141,10 @@ $formatear = static function (array $registros, string $origen) use ($permisosCa
 
 $configPersonalizado = $formatear($personalizados, 'empresa');
 $configPredeterminado = $formatear($predeterminados, 'default');
+$catalogoPermisos = array_keys($permisosCatalogo);
 
-responder(true, '', ['config' => $configPersonalizado, 'defaults' => $configPredeterminado]);
+responder(true, '', [
+    'config' => $configPersonalizado,
+    'defaults' => $configPredeterminado,
+    'catalog' => $catalogoPermisos
+]);
