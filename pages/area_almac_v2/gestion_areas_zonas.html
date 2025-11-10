@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de Áreas y Zonas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/Area_almac_v2/gestion_areas_zonas.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="../../scripts/reports/report-history-client.js" defer></script>
+  <script src="../../scripts/utils/report_export.js" defer></script>
+  <script src="../../scripts/utils/simple_table_sorter.js" defer></script>
+  <script defer src="../../scripts/area_almac_v2/gestion_areas_zonas.js"></script>
+</head>
+<body>
+  <div class="warehouse-page">
+    <section class="page-header">
+      <span class="header-eyebrow">Infraestructura</span>
+      <h1 class="header-title">Gestión de áreas y zonas</h1>
+      <p class="header-description">
+        Organiza tu almacén con la misma experiencia visual de los módulos de inventario y bitácora. Registra áreas, agrega zonas
+        y mantén actualizado el mapa logístico de tu operación.
+      </p>
+
+      <div class="header-highlights">
+        <article class="highlight-card">
+          <span class="card-label">Áreas activas</span>
+          <strong class="card-title" id="totalAreas">0</strong>
+          <span class="card-subtitle">Espacios principales definidos</span>
+        </article>
+        <article class="highlight-card">
+          <span class="card-label">Zonas creadas</span>
+          <strong class="card-title" id="totalZonas">0</strong>
+          <span class="card-subtitle">Segmentos operativos</span>
+        </article>
+        <article class="highlight-card">
+          <span class="card-label">Zonas sin área</span>
+          <strong class="card-title" id="zonasSinArea">0</strong>
+          <span class="card-subtitle">Pendientes de asignar</span>
+        </article>
+        <article class="highlight-card highlight-card--alert">
+          <span class="card-label">Incidencias abiertas</span>
+          <strong class="card-title" id="totalIncidencias">0</strong>
+          <span class="card-subtitle">Reportes pendientes por revisar</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="warehouse-shell">
+      <div class="shell-header">
+        <div class="shell-header__info">
+          <span class="shell-eyebrow">Mapa logístico</span>
+          <h2 class="shell-title">Controla ubicaciones y espacios del almacén</h2>
+          <p class="shell-subtitle">
+            Alterna entre formularios y consulta los resúmenes generales desde una vista limpia y moderna coherente con el resto del sistema.
+          </p>
+        </div>
+      <div class="shell-header__actions">
+        <button id="nuevaArea" class="shell-action shell-action--primary">Registrar nueva área</button>
+        <button id="nuevaZona" class="shell-action">Registrar nueva zona</button>
+      </div>
+    </div>
+
+    <section class="filters-panel" aria-label="Filtros y reportes de zonas">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label for="filtroNombre">Buscar por nombre</label>
+          <input type="text" id="filtroNombre" placeholder="Nombre de la zona" />
+        </div>
+        <div class="filter-group">
+          <label for="filtroArea">Área asignada</label>
+          <select id="filtroArea">
+            <option value="todos">Todas las zonas</option>
+            <option value="sin-area">Zonas sin área</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filtroOcupacion">Capacidad utilizada mínima (%)</label>
+          <input type="range" id="filtroOcupacion" min="0" max="100" step="5" value="0" />
+          <span id="filtroOcupacionValor" class="filter-hint">Desde 0%</span>
+        </div>
+        <div class="filter-group">
+          <label for="filtroProductos">Productos almacenados (mínimo)</label>
+          <input type="number" id="filtroProductos" min="0" step="1" value="0" />
+        </div>
+      </div>
+      <div class="filters-actions">
+        <button type="button" id="exportExcel" class="shell-action">Exportar a Excel</button>
+        <button type="button" id="exportPdf" class="shell-action">Exportar a PDF</button>
+      </div>
+    </section>
+
+    <div id="alertasSaturacion" class="alerts-banner" role="status" aria-live="polite"></div>
+
+    <div class="shell-grid">
+        <div class="summary-stack">
+          <section id="resumenAreas" class="data-card" aria-labelledby="tituloAreas">
+            <header class="data-card__header">
+              <span class="summary-eyebrow">Vista general</span>
+              <h3 id="tituloAreas" class="data-card__title">Áreas registradas</h3>
+              <p class="data-card__description">Detalle de dimensiones, volumen calculado y zonas asociadas.</p>
+            </header>
+            <div class="table-wrapper">
+              <table id="tablaAreas" class="data-table" data-sortable="true">
+                <thead>
+                  <tr>
+                    <th>Área</th>
+                    <th>Descripción</th>
+                    <th>Dimensiones (m)</th>
+                    <th>Volumen (m³)</th>
+                    <th>Capacidad utilizada (m³)</th>
+                    <th>Disponible (m³)</th>
+                    <th>Ocupación</th>
+                    <th>Productos (tipos / uds.)</th>
+                    <th data-sortable="false">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="incident-center" aria-labelledby="incidentPanelTitle">
+            <header class="incident-header">
+              <div>
+                <span class="incident-eyebrow">Notas y seguimiento</span>
+                <h3 id="incidentPanelTitle">Incidencias en áreas y zonas</h3>
+                <p class="incident-description">
+                  Registra observaciones sobre el estado físico de cada área o zona y marca como revisadas las incidencias una vez atendidas.
+                </p>
+              </div>
+            </header>
+            <div class="incident-grid">
+              <article class="incident-card">
+                <header class="incident-card__header">
+                  <h4 class="incident-card__title">Registrar incidencia</h4>
+                  <p class="incident-card__subtitle">Selecciona el objetivo y describe lo sucedido.</p>
+                </header>
+                <form id="incidentForm" class="incident-form" autocomplete="off">
+                  <div class="form-group">
+                    <span class="form-label">Ubicación objetivo</span>
+                    <div class="incident-options">
+                      <label class="incident-option">
+                        <input type="radio" name="incidentScope" value="area" checked />
+                        <span>Área</span>
+                      </label>
+                      <label class="incident-option">
+                        <input type="radio" name="incidentScope" value="zona" />
+                        <span>Zona</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="form-group" id="incidentAreaGroup">
+                    <label for="incidentAreaSelect">Selecciona el área</label>
+                    <select id="incidentAreaSelect" required>
+                      <option value="">Selecciona un área</option>
+                    </select>
+                  </div>
+                  <div class="form-group incident-group--hidden" id="incidentZoneGroup">
+                    <label for="incidentZoneSelect">Selecciona la zona</label>
+                    <select id="incidentZoneSelect" disabled>
+                      <option value="">Selecciona una zona</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="incidentDescription">Descripción de la incidencia</label>
+                    <textarea id="incidentDescription" rows="4" maxlength="500" placeholder="Describe lo sucedido, acciones tomadas o materiales afectados" required></textarea>
+                  </div>
+                  <div class="form-actions incident-actions">
+                    <button type="submit" class="shell-action shell-action--primary">Guardar incidencia</button>
+                  </div>
+                </form>
+              </article>
+              <article class="incident-card incident-card--list">
+                <header class="incident-card__header">
+                  <h4 class="incident-card__title">Incidencias registradas</h4>
+                  <p class="incident-card__subtitle">Solo se muestran incidencias con estado pendiente.</p>
+                </header>
+                <div id="incidentList" class="incident-list" role="log" aria-live="polite">
+                  <p class="incident-empty">No hay incidencias pendientes.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="resumenZonas" class="data-card" aria-labelledby="tituloZonas">
+            <header class="data-card__header">
+              <span class="summary-eyebrow">Zonas asignadas</span>
+              <h3 id="tituloZonas" class="data-card__title">Resumen de zonas</h3>
+              <p class="data-card__description">Zonas vinculadas a un área específica y su tipo de almacenamiento.</p>
+            </header>
+            <div class="table-wrapper">
+              <table id="tablaZonas" class="data-table" data-sortable="true">
+                <thead>
+                  <tr>
+                    <th>Zona</th>
+                    <th>Área</th>
+                    <th>Dimensiones (m)</th>
+                    <th>Capacidad utilizada (m³)</th>
+                    <th>Disponible (m³)</th>
+                    <th>Ocupación</th>
+                    <th>Productos (tipos / uds.)</th>
+                    <th data-sortable="false">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="resumenZonasSinArea" class="data-card" aria-labelledby="tituloZonasSinArea">
+            <header class="data-card__header">
+              <span class="summary-eyebrow">Pendientes</span>
+              <h3 id="tituloZonasSinArea" class="data-card__title">Zonas sin asignar</h3>
+              <p class="data-card__description">Revisa qué zonas necesitan asociarse a un área para mantener el control.</p>
+            </header>
+            <div class="table-wrapper">
+              <table id="tablaZonasSinArea" class="data-table" data-sortable="true">
+                <thead>
+                  <tr>
+                    <th>Zona</th>
+                    <th>Dimensiones (m)</th>
+                    <th>Capacidad utilizada (m³)</th>
+                    <th>Disponible (m³)</th>
+                    <th>Ocupación</th>
+                    <th>Productos (tipos / uds.)</th>
+                    <th data-sortable="false">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="form-stack">
+          <section class="forms-card">
+            <div class="form-toggle">
+              <span class="form-toggle__label">Completa la información para registrar nuevos espacios.</span>
+            </div>
+
+            <form id="formArea" class="formulario" autocomplete="off">
+              <h4>Registrar área de almacén</h4>
+              <div class="form-group">
+                <label for="areaNombre">Nombre del área</label>
+                <input type="text" id="areaNombre" placeholder="Nombre del área" required />
+              </div>
+              <div class="form-group">
+                <label for="areaDescripcion">Descripción</label>
+                <textarea id="areaDescripcion" rows="3" placeholder="Uso o características del área" required></textarea>
+              </div>
+              <div class="form-group">
+                <label>Dimensiones físicas (m)</label>
+                <div class="dimension-row">
+                  <input type="number" id="areaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
+                  <input type="number" id="areaLargo" placeholder="Largo" min="0.01" step="0.01" required />
+                  <input type="number" id="areaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+                </div>
+              </div>
+              <p class="form-helper">Volumen estimado: <span id="areaVolumen">0</span> m³</p>
+              <div class="form-actions">
+                <button type="submit" class="shell-action shell-action--primary">Guardar área</button>
+              </div>
+            </form>
+
+            <form id="formZona" class="formulario d-none" autocomplete="off">
+              <h4>Registrar zona de almacenamiento</h4>
+              <div class="form-group">
+                <label for="zonaNombre">Nombre de la zona</label>
+                <input type="text" id="zonaNombre" placeholder="Nombre de la zona" required />
+              </div>
+              <div class="form-group">
+                <label for="zonaArea">Área asociada</label>
+                <select id="zonaArea" required>
+                  <option value="">Seleccione un área</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="zonaDescripcion">Descripción</label>
+                <textarea id="zonaDescripcion" rows="3" placeholder="Uso específico o notas" required></textarea>
+              </div>
+              <div class="form-group">
+                <label>Dimensiones físicas (m)</label>
+                <div class="dimension-row">
+                  <input type="number" id="zonaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
+                  <input type="number" id="zonaLargo" placeholder="Largo" min="0.01" step="0.01" required />
+                  <input type="number" id="zonaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="zonaTipo">Tipo de almacenamiento</label>
+                <select id="zonaTipo" required></select>
+              </div>
+              <div class="form-group">
+                <label for="zonaSubniveles">Cantidad de subniveles</label>
+                <input type="number" id="zonaSubniveles" min="0" step="1" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="zonaDistancia">Distancia entre subniveles (cm)</label>
+                <input type="number" id="zonaDistancia" min="0" step="0.1" value="0" />
+              </div>
+              <p class="form-helper">Volumen estimado: <span id="zonaVolumen">0</span> m³</p>
+              <div class="form-actions">
+                <button type="submit" class="shell-action shell-action--primary">Guardar zona</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="incident-center" aria-labelledby="incidentPanelTitle">
+            <header class="incident-header">
+              <div>
+                <span class="incident-eyebrow">Notas y seguimiento</span>
+                <h3 id="incidentPanelTitle">Incidencias en áreas y zonas</h3>
+                <p class="incident-description">
+                  Registra observaciones sobre el estado físico de cada área o zona y marca como revisadas las incidencias una vez atendidas.
+                </p>
+              </div>
+            </header>
+            <div class="incident-grid">
+              <article class="incident-card">
+                <header class="incident-card__header">
+                  <h4 class="incident-card__title">Registrar incidencia</h4>
+                  <p class="incident-card__subtitle">Selecciona el objetivo y describe lo sucedido.</p>
+                </header>
+                <form id="incidentForm" class="incident-form" autocomplete="off">
+                  <div class="form-group">
+                    <span class="form-label">Ubicación objetivo</span>
+                    <div class="incident-options">
+                      <label class="incident-option">
+                        <input type="radio" name="incidentScope" value="area" checked />
+                        <span>Área</span>
+                      </label>
+                      <label class="incident-option">
+                        <input type="radio" name="incidentScope" value="zona" />
+                        <span>Zona</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="form-group" id="incidentAreaGroup">
+                    <label for="incidentAreaSelect">Selecciona el área</label>
+                    <select id="incidentAreaSelect" required>
+                      <option value="">Selecciona un área</option>
+                    </select>
+                  </div>
+                  <div class="form-group incident-group--hidden" id="incidentZoneGroup">
+                    <label for="incidentZoneSelect">Selecciona la zona</label>
+                    <select id="incidentZoneSelect" disabled>
+                      <option value="">Selecciona una zona</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="incidentDescription">Descripción de la incidencia</label>
+                    <textarea id="incidentDescription" rows="4" maxlength="500" placeholder="Describe lo sucedido, acciones tomadas o materiales afectados" required></textarea>
+                  </div>
+                  <div class="form-actions incident-actions">
+                    <button type="submit" class="shell-action shell-action--primary">Guardar incidencia</button>
+                  </div>
+                </form>
+              </article>
+              <article class="incident-card incident-card--list">
+                <header class="incident-card__header">
+                  <h4 class="incident-card__title">Incidencias registradas</h4>
+                  <p class="incident-card__subtitle">Solo se muestran incidencias con estado pendiente.</p>
+                </header>
+                <div id="incidentList" class="incident-list" role="log" aria-live="polite">
+                  <p class="incident-empty">No hay incidencias pendientes.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
