@@ -5,7 +5,8 @@
 const BASE_URL = window.location.pathname.includes('pages/') ? '../../' : './';
 const API_ENDPOINTS = {
   areas: `${BASE_URL}scripts/php/guardar_areas.php`,
-  zonas: `${BASE_URL}scripts/php/guardar_zonas.php`
+  zonas: `${BASE_URL}scripts/php/guardar_zonas.php`,
+  incidencias: `${BASE_URL}scripts/php/gestionar_incidencias.php`
 };
 const empresaId = localStorage.getItem('id_empresa');
 
@@ -20,6 +21,7 @@ const errorContainer = document.getElementById('error-message');
 const resumenAreasEl = document.getElementById('totalAreas');
 const resumenZonasEl = document.getElementById('totalZonas');
 const resumenZonasSinAreaEl = document.getElementById('zonasSinArea');
+const resumenIncidenciasEl = document.getElementById('totalIncidencias');
 const areaFilterSelect = document.getElementById('areaFilter');
 const zonaFilterSelect = document.getElementById('zonaFilter');
 const areasInventoryBody = document.getElementById('areasInventoryBody');
@@ -36,8 +38,16 @@ const reasignacionSelect = document.getElementById('reasignacionSelect');
 const reasignacionError = document.getElementById('reasignacionError');
 const confirmarReasignacionBtn = document.getElementById('confirmarReasignacion');
 const cancelarReasignacionBtn = document.getElementById('cancelarReasignacion');
+const incidentForm = document.getElementById('incidentForm');
+const incidentAreaSelect = document.getElementById('incidentAreaSelect');
+const incidentZoneSelect = document.getElementById('incidentZoneSelect');
+const incidentAreaGroup = document.getElementById('incidentAreaGroup');
+const incidentZoneGroup = document.getElementById('incidentZoneGroup');
+const incidentList = document.getElementById('incidentList');
+const incidentScopeRadios = document.querySelectorAll('input[name="incidentScope"]');
+const incidentDescriptionInput = document.getElementById('incidentDescription');
 
-let datosActuales = { areas: [], zonas: [] };
+let datosActuales = { areas: [], zonas: [], incidencias: [] };
 let zonaPendienteReasignacion = null;
 
 // Utilidades de caché en localStorage
@@ -75,6 +85,42 @@ function formatearDimensiones(ancho, alto, largo) {
   return [formatearNumero(ancho), formatearNumero(alto), formatearNumero(largo)].join(' × ');
 }
 
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const mapa = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+
+  return String(value).replace(/[&<>"']/g, (char) => mapa[char] || char);
+}
+
+function formatearFechaIncidencia(fecha) {
+  if (!fecha) {
+    return '';
+  }
+
+  const normalizada = typeof fecha === 'string' ? fecha.replace(' ', 'T') : fecha;
+  const date = new Date(normalizada);
+  if (Number.isNaN(date.getTime())) {
+    return typeof fecha === 'string' ? fecha : '';
+  }
+
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function contarProductosZona(zona) {
   if (!zona) return 0;
   let total = obtenerValorNumerico(zona.productos_activos ?? zona.productos ?? zona.total_productos);
@@ -104,6 +150,25 @@ function formatearProductosActivos(total) {
 function obtenerNombreArea(areaId) {
   const area = datosActuales.areas.find(a => `${a.id}` === `${areaId}`);
   return area ? area.nombre : 'Sin área asignada';
+}
+
+function obtenerListaIncidencias() {
+  return Array.isArray(datosActuales.incidencias) ? datosActuales.incidencias : [];
+}
+
+function contarIncidenciasPendientesArea(areaId) {
+  if (!areaId) return 0;
+  return obtenerListaIncidencias().filter(inc => `${inc.area_id}` === `${areaId}` && !inc.zona_id).length;
+}
+
+function contarIncidenciasPendientesZonasEnArea(areaId) {
+  if (!areaId) return 0;
+  return obtenerListaIncidencias().filter(inc => `${inc.area_id}` === `${areaId}` && inc.zona_id).length;
+}
+
+function contarIncidenciasPendientesZona(zonaId) {
+  if (!zonaId) return 0;
+  return obtenerListaIncidencias().filter(inc => `${inc.zona_id}` === `${zonaId}`).length;
 }
 
 function construirSubtituloExport(dataset, countLabel) {
@@ -391,6 +456,20 @@ function manejarRespuestaSolicitud(payload, mensajeSolicitud, mensajeInmediato =
 }
 
 
+function mostrarExito(mensaje) {
+  if (!mensaje) {
+    return;
+  }
+
+  if (typeof showToast === 'function') {
+    showToast(mensaje, 'success');
+  } else if (typeof window !== 'undefined' && typeof window.toastOk === 'function') {
+    window.toastOk(mensaje);
+  } else {
+    alert(mensaje);
+  }
+}
+
 // Función para mostrar errores
 function mostrarError(mensaje) {
   if (errorContainer) {
@@ -514,18 +593,30 @@ async function mostrarFormulario(tipo, datos = null) {
 // Cargar y mostrar todos los registros
 async function cargarYMostrarRegistros() {
   try {
-    const [areas, zonas] = await Promise.all([
+    const [areas, zonas, incidenciasPayload] = await Promise.all([
       fetchAPI(`${API_ENDPOINTS.areas}?empresa_id=${empresaId}`),
-      fetchAPI(`${API_ENDPOINTS.zonas}?empresa_id=${empresaId}`)
+      fetchAPI(`${API_ENDPOINTS.zonas}?empresa_id=${empresaId}`),
+      fetchAPI(`${API_ENDPOINTS.incidencias}?empresa_id=${empresaId}`)
     ]);
+
+    const incidencias = Array.isArray(incidenciasPayload?.data)
+      ? incidenciasPayload.data
+      : Array.isArray(incidenciasPayload)
+        ? incidenciasPayload
+        : [];
+
     setCache('areas', areas);
     setCache('zonas', zonas);
-    mostrarResumen({ areas, zonas });
+    setCache('incidencias', incidencias);
+    mostrarResumen({ areas, zonas, incidencias });
+    renderIncidencias(incidencias);
   } catch (error) {
     console.error('Error cargando registros:', error);
     const areas = getCache('areas') || [];
     const zonas = getCache('zonas') || [];
-    mostrarResumen({ areas, zonas });
+    const incidencias = getCache('incidencias') || [];
+    mostrarResumen({ areas, zonas, incidencias });
+    renderIncidencias(incidencias);
   }
 }
 
@@ -533,10 +624,12 @@ async function cargarYMostrarRegistros() {
 function mostrarResumen(data) {
   const areas = Array.isArray(data?.areas) ? data.areas : [];
   const zonas = Array.isArray(data?.zonas) ? data.zonas : [];
+  const incidencias = Array.isArray(data?.incidencias) ? data.incidencias : [];
 
   datosActuales = {
     areas: [...areas],
-    zonas: [...zonas]
+    zonas: [...zonas],
+    incidencias: [...incidencias]
   };
 
   if (resumenAreasEl) {
@@ -552,6 +645,13 @@ function mostrarResumen(data) {
     resumenZonasSinAreaEl.textContent = sinArea;
   }
 
+  if (resumenIncidenciasEl) {
+    const pendientes = incidencias.filter(inc => (inc.estado ?? 'Pendiente').toLowerCase() === 'pendiente').length;
+    resumenIncidenciasEl.textContent = pendientes;
+  }
+
+  renderIncidentTargets();
+
   if (!areas.length && !zonas.length) {
     registroLista.innerHTML = `
       <p class="vacio">No hay áreas ni zonas registradas.</p>
@@ -562,16 +662,22 @@ function mostrarResumen(data) {
 
   let html = '<div class="resumen-grid">';
 
-  // Mostrar áreas con sus zonas
   areas.forEach(area => {
     const zonasArea = zonas.filter(z => z.area_id == area.id);
     const productosArea = contarProductosArea(area, zonas);
+    const incidentesDirectos = contarIncidenciasPendientesArea(area.id);
+    const incidentesZonas = contarIncidenciasPendientesZonasEnArea(area.id);
+    const totalIncidencias = incidentesDirectos + incidentesZonas;
+    const badge = totalIncidencias
+      ? `<span class="incident-pill">${totalIncidencias === 1 ? '1 incidencia pendiente' : `${totalIncidencias} incidencias pendientes`}</span>`
+      : '';
 
     html += `
       <div class="area-card">
         <div class="area-header">
           <div class="area-meta">
             <h4>${area.nombre}</h4>
+            ${badge}
             <span class="area-products">${formatearProductosActivos(productosArea)} activos</span>
           </div>
           <div class="area-actions">
@@ -584,10 +690,16 @@ function mostrarResumen(data) {
           ${zonasArea.length > 0 ?
             zonasArea.map(zona => {
               const productosZona = contarProductosZona(zona);
+              const incidentesZona = contarIncidenciasPendientesZona(zona.id);
+              const zonaBadge = incidentesZona
+                ? `<span class="incident-pill">${incidentesZona === 1 ? '1 incidencia pendiente' : `${incidentesZona} incidencias pendientes`}</span>`
+                : '';
+              const zonaClase = incidentesZona ? 'zona-item zona-item--incident' : 'zona-item';
               return `
-                <div class="zona-item">
+                <div class="${zonaClase}">
                   <span>
                     ${zona.nombre} (${zona.tipo_almacenamiento}) - ${formatearDimensiones(zona.ancho, zona.alto, zona.largo)}
+                    ${zonaBadge}
                     <span class="zona-products">${formatearProductosActivos(productosZona)} activos</span>
                   </span>
                   <div class="zona-actions">
@@ -602,24 +714,31 @@ function mostrarResumen(data) {
     `;
   });
 
-  // Mostrar zonas sin área asignada
   const zonasSinArea = zonas.filter(z => !z.area_id);
   if (zonasSinArea.length > 0) {
     html += `
       <div class="area-card">
         <h4>Zonas sin área asignada</h4>
-        ${zonasSinArea.map(zona => `
-          <div class="zona-item">
-            <span>
-              ${zona.nombre} (${zona.tipo_almacenamiento}) - ${formatearDimensiones(zona.ancho, zona.alto, zona.largo)}
-              <span class="zona-products">${formatearProductosActivos(contarProductosZona(zona))} activos</span>
-            </span>
-            <div class="zona-actions">
-              <button onclick="editarZona(${zona.id})">✏️</button>
-              <button onclick="eliminarZona(${zona.id})">🗑️</button>
+        ${zonasSinArea.map(zona => {
+          const incidentesZona = contarIncidenciasPendientesZona(zona.id);
+          const zonaBadge = incidentesZona
+            ? `<span class="incident-pill">${incidentesZona === 1 ? '1 incidencia pendiente' : `${incidentesZona} incidencias pendientes`}</span>`
+            : '';
+          const zonaClase = incidentesZona ? 'zona-item zona-item--incident' : 'zona-item';
+          return `
+            <div class="${zonaClase}">
+              <span>
+                ${zona.nombre} (${zona.tipo_almacenamiento}) - ${formatearDimensiones(zona.ancho, zona.alto, zona.largo)}
+                ${zonaBadge}
+                <span class="zona-products">${formatearProductosActivos(contarProductosZona(zona))} activos</span>
+              </span>
+              <div class="zona-actions">
+                <button onclick="editarZona(${zona.id})">✏️</button>
+                <button onclick="eliminarZona(${zona.id})">🗑️</button>
+              </div>
             </div>
-          </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     `;
   }
@@ -629,6 +748,150 @@ function mostrarResumen(data) {
   registroLista.innerHTML = html;
 
   renderInventoryTables();
+}
+
+function renderIncidentTargets() {
+  if (incidentAreaSelect) {
+    const selected = incidentAreaSelect.value;
+    incidentAreaSelect.innerHTML = '<option value="">Selecciona un área</option>';
+    datosActuales.areas.forEach(area => {
+      const option = document.createElement('option');
+      option.value = area.id;
+      option.textContent = area.nombre;
+      incidentAreaSelect.appendChild(option);
+    });
+    if (selected && incidentAreaSelect.querySelector(`option[value="${selected}"]`)) {
+      incidentAreaSelect.value = selected;
+    }
+  }
+
+  if (incidentZoneSelect) {
+    const selectedZona = incidentZoneSelect.value;
+    incidentZoneSelect.innerHTML = '<option value="">Selecciona una zona</option>';
+    datosActuales.zonas.forEach(zona => {
+      const option = document.createElement('option');
+      const areaNombre = obtenerNombreArea(zona.area_id);
+      option.value = zona.id;
+      option.textContent = `${zona.nombre || 'Zona sin nombre'}${areaNombre ? ' • ' + areaNombre : ''}`;
+      incidentZoneSelect.appendChild(option);
+    });
+    if (selectedZona && incidentZoneSelect.querySelector(`option[value="${selectedZona}"]`)) {
+      incidentZoneSelect.value = selectedZona;
+    }
+  }
+
+  actualizarSelectorIncidencia();
+}
+
+function obtenerScopeIncidencia() {
+  const activo = incidentScopeRadios ? Array.from(incidentScopeRadios).find(radio => radio.checked) : null;
+  return activo ? activo.value : 'area';
+}
+
+function actualizarSelectorIncidencia() {
+  if (!incidentAreaGroup || !incidentZoneGroup) {
+    return;
+  }
+
+  const scope = obtenerScopeIncidencia();
+  const esZona = scope === 'zona';
+
+  incidentAreaGroup.classList.toggle('incident-group--hidden', esZona);
+  incidentZoneGroup.classList.toggle('incident-group--hidden', !esZona);
+
+  if (incidentAreaSelect) {
+    incidentAreaSelect.required = !esZona;
+    if (esZona) {
+      incidentAreaSelect.value = '';
+    }
+  }
+
+  if (incidentZoneSelect) {
+    incidentZoneSelect.required = esZona;
+    incidentZoneSelect.disabled = !esZona;
+    if (!esZona) {
+      incidentZoneSelect.value = '';
+    }
+  }
+}
+
+function renderIncidencias(list = obtenerListaIncidencias()) {
+  if (!incidentList) {
+    return;
+  }
+
+  const incidencias = Array.isArray(list) ? list : [];
+
+  if (!incidencias.length) {
+    incidentList.innerHTML = '<p class="incident-empty">No hay incidencias pendientes.</p>';
+    return;
+  }
+
+  const items = incidencias.map((inc) => {
+    const zonaNombre = inc.zona_nombre || inc.zona || '';
+    const areaNombre = inc.area_nombre || inc.area || (inc.area_id ? obtenerNombreArea(inc.area_id) : '');
+    const scopeLabel = inc.zona_id ? 'Zona' : 'Área';
+    const objetivo = inc.zona_id
+      ? `${escapeHtml(zonaNombre || 'Zona sin nombre')}${areaNombre ? ` · ${escapeHtml(areaNombre)}` : ''}`
+      : escapeHtml(areaNombre || 'Área sin nombre');
+    const descripcionBase = escapeHtml(inc.descripcion || '');
+    const descripcion = descripcionBase ? descripcionBase.replace(/\n/g, '<br />') : '<em>Sin descripción proporcionada</em>';
+    const reportadoPor = escapeHtml(inc.reportado_por || inc.usuario_reporta || 'Usuario sin nombre');
+    const creadoEn = formatearFechaIncidencia(inc.creado_en);
+    const areaReferencia = inc.zona_id && areaNombre
+      ? `<span>Área asociada: <strong>${escapeHtml(areaNombre)}</strong></span>`
+      : '';
+
+    return `
+      <article class="incident-item">
+        <div class="incident-item__target">
+          <strong>${scopeLabel}: ${objetivo}</strong>
+          ${areaReferencia}
+        </div>
+        <p>${descripcion}</p>
+        <div class="incident-item__meta">
+          <span>Reportado por: <strong>${reportadoPor}</strong></span>
+          ${creadoEn ? `<span>Registrado: ${escapeHtml(creadoEn)}</span>` : ''}
+        </div>
+        <div class="incident-item__actions">
+          <button type="button" data-incident-resolver="${inc.id}">Marcar revisada</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  incidentList.innerHTML = items;
+
+  incidentList.querySelectorAll('[data-incident-resolver]').forEach((boton) => {
+    boton.addEventListener('click', () => {
+      const id = boton.getAttribute('data-incident-resolver');
+      resolverIncidencia(id);
+    });
+  });
+}
+
+async function resolverIncidencia(id) {
+  const incidenteId = parseInt(id, 10);
+  if (!incidenteId) {
+    return;
+  }
+
+  if (!confirm('¿Marcar como revisada esta incidencia? Se retirará del listado una vez confirmes.')) {
+    return;
+  }
+
+  try {
+    const respuesta = await fetchAPI(`${API_ENDPOINTS.incidencias}?id=${incidenteId}`, 'PUT', { estado: 'Revisado' });
+    if (respuesta?.success) {
+      mostrarExito('Incidencia marcada como revisada.');
+      await cargarYMostrarRegistros();
+    } else {
+      const mensaje = respuesta?.message || 'No se pudo actualizar la incidencia.';
+      mostrarError(mensaje);
+    }
+  } catch (error) {
+    console.error('Error marcando incidencia como revisada:', error);
+  }
 }
 
 // Manejar formulario de área
@@ -843,6 +1106,69 @@ if (zonaFilterSelect) {
   zonaFilterSelect.addEventListener('change', renderInventoryTables);
 }
 
+if (incidentScopeRadios && incidentScopeRadios.length) {
+  incidentScopeRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      actualizarSelectorIncidencia();
+    });
+  });
+}
+
+if (incidentForm) {
+  incidentForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    if (!empresaId) {
+      mostrarError('No se encontró la empresa asociada a la incidencia. Vuelve a iniciar sesión.');
+      return;
+    }
+
+    const scope = obtenerScopeIncidencia();
+    const descripcion = incidentDescriptionInput ? incidentDescriptionInput.value.trim() : '';
+
+    if (!descripcion) {
+      mostrarError('Describe brevemente la incidencia para poder registrarla.');
+      return;
+    }
+
+    const payload = {
+      empresa_id: parseInt(empresaId, 10),
+      descripcion
+    };
+
+    if (scope === 'zona') {
+      const zonaId = incidentZoneSelect ? parseInt(incidentZoneSelect.value, 10) : 0;
+      if (!zonaId) {
+        mostrarError('Selecciona la zona donde ocurrió la incidencia.');
+        return;
+      }
+      payload.zona_id = zonaId;
+    } else {
+      const areaId = incidentAreaSelect ? parseInt(incidentAreaSelect.value, 10) : 0;
+      if (!areaId) {
+        mostrarError('Selecciona el área que presenta la incidencia.');
+        return;
+      }
+      payload.area_id = areaId;
+    }
+
+    try {
+      const respuesta = await fetchAPI(API_ENDPOINTS.incidencias, 'POST', payload);
+      if (respuesta?.success) {
+        incidentForm.reset();
+        mostrarExito('Incidencia registrada correctamente.');
+        actualizarSelectorIncidencia();
+        await cargarYMostrarRegistros();
+      } else {
+        const mensaje = respuesta?.message || 'No se pudo guardar la incidencia.';
+        mostrarError(mensaje);
+      }
+    } catch (error) {
+      console.error('Error registrando incidencia:', error);
+    }
+  });
+}
+
 if (exportAreasPdfBtn) {
   exportAreasPdfBtn.addEventListener('click', () => {
     exportarInventarioAlmacen({
@@ -980,12 +1306,16 @@ async function initAreasZonas() {
   }
 
   // No additional listeners: se configuran arriba
+  actualizarSelectorIncidencia();
 
   // Mostrar datos en caché si existen
   const cachedAreas = getCache('areas');
   const cachedZonas = getCache('zonas');
-  if (cachedAreas || cachedZonas) {
-    mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [] });
+  const cachedIncidencias = getCache('incidencias');
+  if (cachedAreas || cachedZonas || cachedIncidencias) {
+    const incidencias = cachedIncidencias || [];
+    mostrarResumen({ areas: cachedAreas || [], zonas: cachedZonas || [], incidencias });
+    renderIncidencias(incidencias);
   }
 
   // Cargar datos iniciales desde el servidor

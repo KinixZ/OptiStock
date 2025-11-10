@@ -198,3 +198,75 @@ function obtenerCapacidadDisponibleArea(mysqli $conn, int $areaId, ?int $zonaExc
     $totalZonas = obtenerVolumenTotalZonas($conn, $areaId, $zonaExcluir);
     return max(((float) $volumenArea) - $totalZonas, 0);
 }
+
+function contarIncidenciasPendientesPorArea(mysqli $conn, int $empresaId, int $areaId): int
+{
+    $stmt = $conn->prepare('SELECT COUNT(*) FROM incidencias_infraestructura WHERE id_empresa = ? AND area_id = ? AND zona_id IS NULL AND estado = "Pendiente"');
+    $stmt->bind_param('ii', $empresaId, $areaId);
+    $stmt->execute();
+    $stmt->bind_result($total);
+    $stmt->fetch();
+    $stmt->close();
+
+    return (int) $total;
+}
+
+function contarIncidenciasPendientesZonasEnArea(mysqli $conn, int $empresaId, int $areaId): int
+{
+    $stmt = $conn->prepare('SELECT COUNT(*) FROM incidencias_infraestructura WHERE id_empresa = ? AND area_id = ? AND zona_id IS NOT NULL AND estado = "Pendiente"');
+    $stmt->bind_param('ii', $empresaId, $areaId);
+    $stmt->execute();
+    $stmt->bind_result($total);
+    $stmt->fetch();
+    $stmt->close();
+
+    return (int) $total;
+}
+
+function contarIncidenciasPendientesPorZona(mysqli $conn, int $empresaId, int $zonaId): int
+{
+    $stmt = $conn->prepare('SELECT COUNT(*) FROM incidencias_infraestructura WHERE id_empresa = ? AND zona_id = ? AND estado = "Pendiente"');
+    $stmt->bind_param('ii', $empresaId, $zonaId);
+    $stmt->execute();
+    $stmt->bind_result($total);
+    $stmt->fetch();
+    $stmt->close();
+
+    return (int) $total;
+}
+
+function contarIncidenciasPendientesPorUsuario(mysqli $conn, int $usuarioId): int
+{
+    $stmt = $conn->prepare('SELECT COUNT(*) FROM incidencias_infraestructura WHERE id_usuario_reporta = ? AND estado = "Pendiente"');
+    $stmt->bind_param('i', $usuarioId);
+    $stmt->execute();
+    $stmt->bind_result($total);
+    $stmt->fetch();
+    $stmt->close();
+
+    return (int) $total;
+}
+
+function eliminarIncidenciasPorArea(mysqli $conn, int $areaId): void
+{
+    $stmt = $conn->prepare('DELETE FROM incidencias_infraestructura WHERE area_id = ?');
+    $stmt->bind_param('i', $areaId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function eliminarIncidenciasPorZona(mysqli $conn, int $zonaId): void
+{
+    $stmt = $conn->prepare('DELETE FROM incidencias_infraestructura WHERE zona_id = ?');
+    $stmt->bind_param('i', $zonaId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function eliminarIncidenciasPorUsuario(mysqli $conn, int $usuarioId): void
+{
+    $stmt = $conn->prepare('DELETE FROM incidencias_infraestructura WHERE id_usuario_reporta = ?');
+    $stmt->bind_param('i', $usuarioId);
+    $stmt->execute();
+    $stmt->close();
+}
