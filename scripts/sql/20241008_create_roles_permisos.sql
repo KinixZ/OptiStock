@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS roles_permisos (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     rol VARCHAR(50) NOT NULL,
-    id_empresa INT UNSIGNED NULL,
+    id_empresa INT NULL,
     auth_login TINYINT(1) NOT NULL DEFAULT 0,
     auth_logout TINYINT(1) NOT NULL DEFAULT 0,
     auth_password_reset TINYINT(1) NOT NULL DEFAULT 0,
