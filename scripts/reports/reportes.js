@@ -1654,6 +1654,13 @@
       throw new Error(message);
     }
 
+    if (data.requiresApproval) {
+      const infoMessage = typeof data.message === 'string' && data.message
+        ? data.message
+        : 'Tu solicitud para actualizar las automatizaciones fue enviada para revisión.';
+      showAlert(infoMessage, 'info', true);
+    }
+
     if (Array.isArray(data.automations)) {
       state.automations = deduplicateAutomations(
         data.automations.map((item) => normalizeAutomation(item))

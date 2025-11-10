@@ -2508,11 +2508,21 @@ function formatRequestActionLabel(rawAction) {
         return '';
     }
 
-    const sanitized = rawAction.toString().trim().replace(/_/g, ' ');
-    if (!sanitized) {
+    const normalized = rawAction.toString().trim();
+    if (!normalized) {
         return '';
     }
 
+    const dictionary = {
+        'reportes_automatizados_sync': 'Automatizaciones de reportes'
+    };
+
+    const lower = normalized.toLowerCase();
+    if (dictionary[lower]) {
+        return dictionary[lower];
+    }
+
+    const sanitized = normalized.replace(/_/g, ' ');
     return sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
 }
 

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/log_utils.php';
 require_once __DIR__ . '/infraestructura_utils.php';
+require_once __DIR__ . '/automation_runtime.php';
 
 /**
  * Determina si las tablas necesarias para el flujo de solicitudes están disponibles.
@@ -1581,6 +1582,198 @@ function opti_aplicar_zona_eliminar(mysqli $conn, array $payload, int $idRevisor
     return ['success' => true];
 }
 
+if (!function_exists('opti_automation_to_iso_datetime')) {
+    function opti_automation_to_iso_datetime($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $timestamp = strtotime((string)$value);
+        if ($timestamp === false) {
+            return null;
+        }
+        return gmdate('c', $timestamp);
+    }
+}
+
+if (!function_exists('opti_automation_to_mysql_datetime')) {
+    function opti_automation_to_mysql_datetime($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $timestamp = strtotime((string)$value);
+        if ($timestamp === false) {
+            return null;
+        }
+        return date('Y-m-d H:i:s', $timestamp);
+    }
+}
+
+function opti_obtener_reportes_automatizados(mysqli $conn, int $empresaId): array
+{
+    $stmt = $conn->prepare('SELECT uuid, id_empresa, nombre, modulo, formato, frecuencia, hora_ejecucion, dia_semana, dia_mes, notas, activo, ultimo_ejecutado, proxima_ejecucion, creado_en, actualizado_en FROM reportes_automatizados WHERE id_empresa = ? ORDER BY proxima_ejecucion IS NULL, proxima_ejecucion ASC, creado_en ASC');
+    if (!$stmt) {
+        return [];
+    }
+
+    $stmt->bind_param('i', $empresaId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $automations = [];
+
+    while ($row = $result->fetch_assoc()) {
+        $time = (string)($row['hora_ejecucion'] ?? '08:00:00');
+        $automations[] = [
+            'id' => (string)($row['uuid'] ?? ''),
+            'empresaId' => (int)($row['id_empresa'] ?? 0),
+            'name' => (string)($row['nombre'] ?? ''),
+            'module' => normalize_module_value($row['modulo'] ?? ''),
+            'format' => (string)($row['formato'] ?? 'pdf'),
+            'frequency' => (string)($row['frecuencia'] ?? 'daily'),
+            'time' => substr($time, 0, 5),
+            'weekday' => $row['dia_semana'] !== null ? (int)$row['dia_semana'] : null,
+            'monthday' => $row['dia_mes'] !== null ? (int)$row['dia_mes'] : null,
+            'notes' => (string)($row['notas'] ?? ''),
+            'active' => (bool)($row['activo'] ?? 0),
+            'lastRunAt' => opti_automation_to_iso_datetime($row['ultimo_ejecutado'] ?? null),
+            'nextRunAt' => opti_automation_to_iso_datetime($row['proxima_ejecucion'] ?? null),
+            'createdAt' => opti_automation_to_iso_datetime($row['creado_en'] ?? null),
+            'updatedAt' => opti_automation_to_iso_datetime($row['actualizado_en'] ?? null),
+        ];
+    }
+
+    $stmt->close();
+
+    return $automations;
+}
+
+function opti_sync_reportes_automatizados(mysqli $conn, int $empresaId, array $normalized): array
+{
+    try {
+        $conn->begin_transaction();
+
+        if (count($normalized) === 0) {
+            $stmtDelete = $conn->prepare('DELETE FROM reportes_automatizados WHERE id_empresa = ?');
+            if (!$stmtDelete) {
+                throw new RuntimeException('No se pudo preparar la eliminación de automatizaciones.');
+            }
+            $stmtDelete->bind_param('i', $empresaId);
+            $stmtDelete->execute();
+            $stmtDelete->close();
+        } else {
+            $placeholders = implode(',', array_fill(0, count($normalized), '?'));
+            $stmtDelete = $conn->prepare("DELETE FROM reportes_automatizados WHERE id_empresa = ? AND uuid NOT IN ($placeholders)");
+            if (!$stmtDelete) {
+                throw new RuntimeException('No se pudo preparar la eliminación selectiva de automatizaciones.');
+            }
+            $types = 'i' . str_repeat('s', count($normalized));
+            $params = [$empresaId];
+            foreach ($normalized as $item) {
+                $params[] = (string)($item['uuid'] ?? $item['id'] ?? '');
+            }
+            $stmtDelete->bind_param($types, ...$params);
+            $stmtDelete->execute();
+            $stmtDelete->close();
+
+            $stmt = $conn->prepare('INSERT INTO reportes_automatizados (uuid, id_empresa, nombre, modulo, formato, frecuencia, hora_ejecucion, dia_semana, dia_mes, notas, activo, ultimo_ejecutado, proxima_ejecucion, creado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW())) ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), modulo = VALUES(modulo), formato = VALUES(formato), frecuencia = VALUES(frecuencia), hora_ejecucion = VALUES(hora_ejecucion), dia_semana = VALUES(dia_semana), dia_mes = VALUES(dia_mes), notas = VALUES(notas), activo = VALUES(activo), ultimo_ejecutado = VALUES(ultimo_ejecutado), proxima_ejecucion = VALUES(proxima_ejecucion), actualizado_en = CURRENT_TIMESTAMP');
+            if (!$stmt) {
+                throw new RuntimeException('No se pudo preparar la sincronización de automatizaciones.');
+            }
+
+            $uuid = $name = $module = $format = $frequency = $time = $weekday = $monthday = $notes = $lastRunAt = $nextRunAt = $createdAt = null;
+            $active = 0;
+
+            $stmt->bind_param(
+                'sisssssssissss',
+                $uuid,
+                $empresaId,
+                $name,
+                $module,
+                $format,
+                $frequency,
+                $time,
+                $weekday,
+                $monthday,
+                $notes,
+                $active,
+                $lastRunAt,
+                $nextRunAt,
+                $createdAt
+            );
+
+            foreach ($normalized as $item) {
+                $uuid = (string)($item['uuid'] ?? $item['id'] ?? '');
+                $name = (string)($item['name'] ?? 'Reporte automatizado');
+                $module = normalize_module_value($item['module'] ?? '');
+                $format = strtolower((string)($item['format'] ?? 'pdf')) === 'excel' ? 'excel' : 'pdf';
+                $frequency = strtolower((string)($item['frequency'] ?? 'daily'));
+                if (!in_array($frequency, ['daily', 'weekly', 'biweekly', 'monthly'], true)) {
+                    $frequency = 'daily';
+                }
+                $rawTime = (string)($item['time'] ?? '08:00:00');
+                if (preg_match('/^(\d{1,2}):(\d{1,2})$/', $rawTime)) {
+                    $rawTime .= ':00';
+                }
+                $time = substr($rawTime, 0, 8);
+                if (!preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
+                    $time = '08:00:00';
+                }
+                $weekdayValue = $item['weekday'] ?? null;
+                $monthdayValue = $item['monthday'] ?? null;
+                $weekday = $weekdayValue === null || $weekdayValue === '' ? null : (string)max(0, min(6, (int)$weekdayValue));
+                $monthday = $monthdayValue === null || $monthdayValue === '' ? null : (string)max(1, min(31, (int)$monthdayValue));
+                $notes = trim((string)($item['notes'] ?? ''));
+                if (function_exists('mb_substr')) {
+                    $notes = mb_substr($notes, 0, 240);
+                } else {
+                    $notes = substr($notes, 0, 240);
+                }
+                $active = !empty($item['active']) ? 1 : 0;
+                $lastRunAt = opti_automation_to_mysql_datetime($item['lastRunAt'] ?? null);
+                $nextRunAt = opti_automation_to_mysql_datetime($item['nextRunAt'] ?? null);
+                $createdAt = opti_automation_to_mysql_datetime($item['createdAt'] ?? null);
+                $stmt->execute();
+            }
+
+            $stmt->close();
+        }
+
+        $conn->commit();
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        return ['success' => false, 'message' => 'No se pudieron sincronizar las automatizaciones.'];
+    }
+
+    $automations = opti_obtener_reportes_automatizados($conn, $empresaId);
+
+    return ['success' => true, 'automations' => $automations];
+}
+
+function opti_aplicar_reportes_automatizados_sync(mysqli $conn, array $payload, int $idRevisor)
+{
+    $empresaId = (int)($payload['empresa_id'] ?? $payload['empresaId'] ?? 0);
+    if ($empresaId <= 0) {
+        return ['success' => false, 'message' => 'Empresa no válida para sincronizar automatizaciones.'];
+    }
+
+    $automations = [];
+    if (isset($payload['automations']) && is_array($payload['automations'])) {
+        $automations = $payload['automations'];
+    } elseif (isset($payload['normalized']) && is_array($payload['normalized'])) {
+        $automations = $payload['normalized'];
+    }
+
+    $resultado = opti_sync_reportes_automatizados($conn, $empresaId, $automations);
+    if (empty($resultado['success'])) {
+        return $resultado;
+    }
+
+    registrarLog($conn, $idRevisor, 'Reportes', 'Actualización aprobada de las automatizaciones de reportes.');
+
+    return $resultado;
+}
+
 function opti_aplicar_solicitud(mysqli $conn, array $solicitud, int $idRevisor)
 {
     $tipo = $solicitud['tipo_accion'] ?? '';
@@ -1619,6 +1812,8 @@ function opti_aplicar_solicitud(mysqli $conn, array $solicitud, int $idRevisor)
             return opti_aplicar_zona_actualizar($conn, $payload, $idRevisor);
         case 'zona_eliminar':
             return opti_aplicar_zona_eliminar($conn, $payload, $idRevisor);
+        case 'reportes_automatizados_sync':
+            return opti_aplicar_reportes_automatizados_sync($conn, $payload, $idRevisor);
         default:
             return ['success' => false, 'message' => 'Acción de solicitud no soportada.'];
     }

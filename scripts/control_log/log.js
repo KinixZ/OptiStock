@@ -412,6 +412,27 @@
             const nombre = obtenerNombreDesdePayload(item, ['nombre_zona', 'nombre']);
             const id = obtenerNumeroDesdeRutas(payload, ['zona_id']);
             return construirFraseAccion('Eliminar zona', nombre, id);
+        },
+        reportes_automatizados_sync: item => {
+            const payload = item && typeof item.payload === 'object' ? item.payload : {};
+            const changes = Array.isArray(payload.changes) ? payload.changes : [];
+            if (changes.length === 1) {
+                const change = changes[0];
+                const automation = change && typeof change.automation === 'object' ? change.automation : {};
+                const nombre = (automation.name || '').trim();
+                const baseNombre = nombre ? `"${nombre}"` : 'reporte automático';
+                switch (change.action) {
+                    case 'create':
+                        return `Programar ${baseNombre}`;
+                    case 'update':
+                        return `Actualizar ${baseNombre}`;
+                    case 'delete':
+                        return `Eliminar ${baseNombre}`;
+                    default:
+                        break;
+                }
+            }
+            return `Actualizar automatizaciones (${changes.length || 1} cambios)`;
         }
     };
 

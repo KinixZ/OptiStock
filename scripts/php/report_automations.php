@@ -11,53 +11,21 @@ const DB_USER = 'u296155119_Admin';
 const DB_PASSWORD = '4Dmin123o';
 const DB_NAME = 'u296155119_OptiStock';
 
-const AUTOMATION_MODULE_VALUES = [
-    'inventario',
-    'usuarios',
-    'areas_zonas',
-    'ingresos/egresos',
-    'ingresos',
-    'egresos',
-    'registro_actividades',
-    'solicitudes',
-    'accesos',
-];
+require_once __DIR__ . '/automation_runtime.php';
+require_once __DIR__ . '/solicitudes_utils.php';
 
-const LEGACY_AUTOMATION_MODULE_ALIASES = [
-    'gestión de inventario' => 'inventario',
-    'gestion de inventario' => 'inventario',
-    'gestión de usuarios' => 'usuarios',
-    'gestion de usuarios' => 'usuarios',
-    'reportes y análisis' => 'ingresos/egresos',
-    'reportes y analisis' => 'ingresos/egresos',
-    'historial de movimientos' => 'ingresos/egresos',
-    'historial_movimientos' => 'ingresos/egresos',
-    'ingresos y egresos' => 'ingresos/egresos',
-    'resumen de ingresos y egresos' => 'ingresos/egresos',
-    'recepción y almacenamiento' => 'ingresos',
-    'recepcion y almacenamiento' => 'ingresos',
-    'despacho y distribución' => 'egresos',
-    'despacho y distribucion' => 'egresos',
-    'alertas y monitoreo' => 'registro_actividades',
-    'registro de accesos' => 'accesos',
-    'accesos de usuarios' => 'accesos',
-    'control de accesos' => 'accesos',
-];
-
-function normalize_module_value(?string $value): string
-{
-    $candidate = trim((string) $value);
-    if ($candidate === '') {
-        return '';
-    }
-    if (in_array($candidate, AUTOMATION_MODULE_VALUES, true)) {
-        return $candidate;
-    }
-    $lower = function_exists('mb_strtolower') ? mb_strtolower($candidate, 'UTF-8') : strtolower($candidate);
-    if (isset(LEGACY_AUTOMATION_MODULE_ALIASES[$lower])) {
-        return LEGACY_AUTOMATION_MODULE_ALIASES[$lower];
-    }
-    return '';
+if (!defined('AUTOMATION_MODULE_VALUES')) {
+    define('AUTOMATION_MODULE_VALUES', [
+        'inventario',
+        'usuarios',
+        'areas_zonas',
+        'ingresos/egresos',
+        'ingresos',
+        'egresos',
+        'registro_actividades',
+        'solicitudes',
+        'accesos',
+    ]);
 }
 
 function respond_json(int $statusCode, array $payload): void
@@ -124,6 +92,332 @@ function normalize_monthday($value): ?string
     $int = (int) $value;
     $int = max(1, min(31, $int));
     return (string) $int;
+}
+
+function normalize_automation_for_comparison(array $automation): array
+{
+    $id = (string)($automation['id'] ?? $automation['uuid'] ?? '');
+    $name = trim((string)($automation['name'] ?? ''));
+    $module = normalize_module_value($automation['module'] ?? '');
+    $format = strtolower((string)($automation['format'] ?? 'pdf')) === 'excel' ? 'excel' : 'pdf';
+    $frequency = normalize_frequency($automation['frequency'] ?? null);
+
+    $rawTime = (string)($automation['time'] ?? '08:00');
+    if (preg_match('/^(\d{1,2}):(\d{1,2})/', $rawTime, $matches)) {
+        $hours = max(0, min(23, (int)$matches[1]));
+        $minutes = max(0, min(59, (int)$matches[2]));
+        $time = sprintf('%02d:%02d', $hours, $minutes);
+    } else {
+        $time = '08:00';
+    }
+
+    $weekdayRaw = $automation['weekday'] ?? null;
+    $weekday = ($weekdayRaw === '' || $weekdayRaw === null)
+        ? null
+        : max(0, min(6, (int)$weekdayRaw));
+
+    $monthdayRaw = $automation['monthday'] ?? null;
+    $monthday = ($monthdayRaw === '' || $monthdayRaw === null)
+        ? null
+        : max(1, min(31, (int)$monthdayRaw));
+
+    $notes = trim((string)($automation['notes'] ?? ''));
+    if (function_exists('mb_substr')) {
+        $notes = mb_substr($notes, 0, 240);
+    } else {
+        $notes = substr($notes, 0, 240);
+    }
+
+    $active = !empty($automation['active']);
+
+    return [
+        'id' => $id,
+        'name' => $name,
+        'module' => $module,
+        'format' => $format,
+        'frequency' => $frequency,
+        'time' => $time,
+        'weekday' => $weekday,
+        'monthday' => $monthday,
+        'notes' => $notes,
+        'active' => $active,
+    ];
+}
+
+function format_time_label(string $time): string
+{
+    if (preg_match('/^(\d{1,2}):(\d{1,2})/', $time, $matches)) {
+        $hours = max(0, min(23, (int)$matches[1]));
+        $minutes = max(0, min(59, (int)$matches[2]));
+        return sprintf('%02d:%02d', $hours, $minutes);
+    }
+    return '08:00';
+}
+
+function format_automation_frequency_label(array $automation): string
+{
+    $frequency = strtolower((string)($automation['frequency'] ?? 'daily'));
+    $timeLabel = format_time_label($automation['time'] ?? '08:00');
+
+    switch ($frequency) {
+        case 'weekly':
+            $weekday = isset($automation['weekday']) ? (int)$automation['weekday'] : 1;
+            return 'Semanal · ' . weekday_name($weekday) . ' · ' . $timeLabel;
+        case 'biweekly':
+            $day = isset($automation['monthday']) ? (int)$automation['monthday'] : 1;
+            return 'Quincenal · Día ' . max(1, $day) . ' · ' . $timeLabel;
+        case 'monthly':
+            $day = isset($automation['monthday']) ? (int)$automation['monthday'] : 1;
+            return 'Mensual · Día ' . max(1, $day) . ' · ' . $timeLabel;
+        default:
+            return 'Diario · ' . $timeLabel;
+    }
+}
+
+function format_automation_filters(array $automation): string
+{
+    $parts = [];
+    $moduleLabel = resolve_module_label($automation['module'] ?? '');
+    if ($moduleLabel !== '') {
+        $parts[] = 'Módulo: ' . $moduleLabel;
+    }
+
+    $format = strtolower((string)($automation['format'] ?? 'pdf')) === 'excel' ? 'Excel' : 'PDF';
+    $parts[] = 'Formato: ' . $format;
+
+    $parts[] = 'Frecuencia: ' . format_automation_frequency_label($automation);
+
+    if (!empty($automation['notes'])) {
+        $parts[] = 'Notas: ' . $automation['notes'];
+    }
+
+    $parts[] = 'Estado: ' . (!empty($automation['active']) ? 'Activa' : 'Pausada');
+
+    return implode(' · ', $parts);
+}
+
+function map_difference_label(string $field): string
+{
+    switch ($field) {
+        case 'name':
+            return 'Nombre';
+        case 'module':
+            return 'Módulo';
+        case 'format':
+            return 'Formato';
+        case 'frequency':
+            return 'Frecuencia';
+        case 'time':
+            return 'Hora';
+        case 'weekday':
+            return 'Día de la semana';
+        case 'monthday':
+            return 'Día del mes';
+        case 'notes':
+            return 'Notas';
+        case 'active':
+            return 'Estado';
+        default:
+            return ucfirst($field);
+    }
+}
+
+function format_difference_value(string $field, $value): string
+{
+    switch ($field) {
+        case 'module':
+            return resolve_module_label($value ?? '');
+        case 'format':
+            return strtolower((string)$value) === 'excel' ? 'Excel' : 'PDF';
+        case 'frequency':
+            $labels = [
+                'daily' => 'Diario',
+                'weekly' => 'Semanal',
+                'biweekly' => 'Quincenal',
+                'monthly' => 'Mensual',
+            ];
+            return $labels[strtolower((string)$value)] ?? ucfirst((string)$value);
+        case 'time':
+            return format_time_label((string)$value);
+        case 'weekday':
+            return $value === null ? '—' : weekday_name((int)$value);
+        case 'monthday':
+            return $value === null ? '—' : 'Día ' . (int)$value;
+        case 'notes':
+            $text = trim((string)$value);
+            return $text === '' ? 'Sin notas' : $text;
+        case 'active':
+            return !empty($value) ? 'Activa' : 'Pausada';
+        case 'name':
+        default:
+            return (string)$value;
+    }
+}
+
+function describe_field_differences(array $differences): string
+{
+    if (empty($differences)) {
+        return '';
+    }
+    $parts = [];
+    foreach ($differences as $field => $change) {
+        $before = $change['before'] ?? null;
+        $after = $change['after'] ?? null;
+        $label = map_difference_label($field);
+        $parts[] = sprintf(
+            '%s (%s → %s)',
+            $label,
+            format_difference_value($field, $before),
+            format_difference_value($field, $after)
+        );
+    }
+    return implode('; ', $parts);
+}
+
+function compute_automation_changes(array $current, array $proposed): array
+{
+    $currentMap = [];
+    foreach ($current as $entry) {
+        $normalized = normalize_automation_for_comparison($entry);
+        if ($normalized['id'] !== '') {
+            $currentMap[$normalized['id']] = $normalized;
+        }
+    }
+
+    $changes = [];
+    $processedIds = [];
+
+    foreach ($proposed as $entry) {
+        $normalized = normalize_automation_for_comparison($entry);
+        $id = $normalized['id'];
+        if ($id === '') {
+            $id = sanitize_uuid('auto-' . bin2hex(random_bytes(6)));
+            $normalized['id'] = $id;
+        }
+
+        $processedIds[] = $id;
+
+        if (!isset($currentMap[$id])) {
+            $changes[] = [
+                'action' => 'create',
+                'automation' => $normalized,
+            ];
+            continue;
+        }
+
+        $existing = $currentMap[$id];
+        $differences = [];
+        foreach (['name', 'module', 'format', 'frequency', 'time', 'weekday', 'monthday', 'notes', 'active'] as $field) {
+            $before = $existing[$field];
+            $after = $normalized[$field];
+            if ($field === 'notes') {
+                $before = trim((string)$before);
+                $after = trim((string)$after);
+            }
+            if ($before === $after) {
+                continue;
+            }
+            $differences[$field] = [
+                'before' => $before,
+                'after' => $after,
+            ];
+        }
+
+        if (!empty($differences)) {
+            $changes[] = [
+                'action' => 'update',
+                'automation' => $normalized,
+                'previous' => $existing,
+                'differences' => $differences,
+            ];
+        }
+    }
+
+    foreach ($currentMap as $id => $existing) {
+        if (!in_array($id, $processedIds, true)) {
+            $changes[] = [
+                'action' => 'delete',
+                'automation' => $existing,
+            ];
+        }
+    }
+
+    return $changes;
+}
+
+function describe_automation_change(array $change): string
+{
+    $automation = $change['automation'] ?? [];
+    $name = trim((string)($automation['name'] ?? ''));
+    $label = $name !== '' ? '"' . $name . '"' : 'reporte automático';
+    $filters = format_automation_filters($automation);
+
+    switch ($change['action']) {
+        case 'create':
+            return 'Nuevo: ' . $label . ' — ' . $filters;
+        case 'update':
+            $differences = describe_field_differences($change['differences'] ?? []);
+            $description = 'Actualizar: ' . $label . ' — ' . $filters;
+            if ($differences) {
+                $description .= ' (Cambios: ' . $differences . ')';
+            }
+            return $description;
+        case 'delete':
+            return 'Eliminar: ' . $label . ' — ' . $filters;
+        default:
+            return $filters;
+    }
+}
+
+function build_automation_request_summary(array $changes): array
+{
+    if (empty($changes)) {
+        return [
+            'summary' => 'Actualización de automatizaciones de reportes',
+            'description' => 'No se detectaron cambios en las automatizaciones.',
+            'userMessage' => 'No se detectaron cambios en las automatizaciones.',
+        ];
+    }
+
+    $first = $changes[0];
+    $automation = $first['automation'] ?? [];
+    $name = trim((string)($automation['name'] ?? ''));
+    $displayName = $name !== '' ? '"' . $name . '"' : 'reporte automático';
+
+    if (count($changes) === 1) {
+        switch ($first['action']) {
+            case 'create':
+                $summary = 'Programar reporte automático ' . $displayName;
+                $userMessage = 'Tu solicitud para programar el reporte automático ' . $displayName . ' fue enviada para revisión.';
+                break;
+            case 'update':
+                $summary = 'Actualizar reporte automático ' . $displayName;
+                $userMessage = 'Tu solicitud para actualizar el reporte automático ' . $displayName . ' fue enviada para revisión.';
+                break;
+            case 'delete':
+                $summary = 'Eliminar reporte automático ' . $displayName;
+                $userMessage = 'Tu solicitud para eliminar el reporte automático ' . $displayName . ' fue enviada para revisión.';
+                break;
+            default:
+                $summary = 'Actualizar automatizaciones de reportes';
+                $userMessage = 'Tu solicitud para actualizar las automatizaciones fue enviada para revisión.';
+                break;
+        }
+    } else {
+        $summary = 'Actualizar automatizaciones de reportes (' . count($changes) . ' cambios)';
+        $userMessage = 'Tu solicitud para actualizar las automatizaciones de reportes fue enviada para revisión.';
+    }
+
+    $descriptionLines = array_map(static function ($change) {
+        return '• ' . describe_automation_change($change);
+    }, $changes);
+    $description = "Cambios solicitados:\n" . implode("\n", $descriptionLines);
+
+    return [
+        'summary' => $summary,
+        'description' => $description,
+        'userMessage' => $userMessage,
+    ];
 }
 
 function to_mysql_datetime($value): ?string
@@ -306,87 +600,70 @@ function sync_automations(): void
         respond_json(500, ['success' => false, 'message' => 'No se pudo conectar a la base de datos.']);
     }
 
-    try {
-        $conn->begin_transaction();
+    $requestsEnabled = opti_solicitudes_habilitadas($conn);
+    $isAdmin = opti_usuario_actual_es_admin();
 
-        if (count($normalized) === 0) {
-            $stmtDelete = $conn->prepare('DELETE FROM reportes_automatizados WHERE id_empresa = ?');
-            $stmtDelete->bind_param('i', $empresaId);
-            $stmtDelete->execute();
-            $stmtDelete->close();
-        } else {
-            $placeholders = implode(',', array_fill(0, count($normalized), '?'));
-            $stmtDelete = $conn->prepare("DELETE FROM reportes_automatizados WHERE id_empresa = ? AND uuid NOT IN ($placeholders)");
-            $types = 'i' . str_repeat('s', count($normalized));
-            $params = [$empresaId];
-            foreach ($normalized as $item) {
-                $params[] = $item['uuid'];
-            }
-            $stmtDelete->bind_param($types, ...$params);
-            $stmtDelete->execute();
-            $stmtDelete->close();
+    if (!$isAdmin && $requestsEnabled) {
+        $currentAutomations = opti_obtener_reportes_automatizados($conn, $empresaId);
+        $changes = compute_automation_changes($currentAutomations, $normalized);
+
+        if (empty($changes)) {
+            $conn->close();
+            respond_json(200, [
+                'success' => true,
+                'requiresApproval' => false,
+                'message' => 'No se detectaron cambios en las automatizaciones.',
+                'automations' => $currentAutomations,
+            ]);
         }
 
-        if (!empty($normalized)) {
-            $stmt = $conn->prepare('INSERT INTO reportes_automatizados (uuid, id_empresa, nombre, modulo, formato, frecuencia, hora_ejecucion, dia_semana, dia_mes, notas, activo, ultimo_ejecutado, proxima_ejecucion, creado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW())) ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), modulo = VALUES(modulo), formato = VALUES(formato), frecuencia = VALUES(frecuencia), hora_ejecucion = VALUES(hora_ejecucion), dia_semana = VALUES(dia_semana), dia_mes = VALUES(dia_mes), notas = VALUES(notas), activo = VALUES(activo), ultimo_ejecutado = VALUES(ultimo_ejecutado), proxima_ejecucion = VALUES(proxima_ejecucion), actualizado_en = CURRENT_TIMESTAMP');
+        $summary = build_automation_request_summary($changes);
+        $solicitud = opti_registrar_solicitud($conn, [
+            'id_empresa' => $empresaId,
+            'modulo' => 'Reportes automáticos',
+            'tipo_accion' => 'reportes_automatizados_sync',
+            'resumen' => $summary['summary'],
+            'descripcion' => $summary['description'],
+            'payload' => [
+                'empresa_id' => $empresaId,
+                'automations' => $normalized,
+                'changes' => $changes,
+            ],
+        ]);
 
-            $uuid = $name = $module = $format = $frequency = $time = $weekday = $monthday = $notes = $lastRunAt = $nextRunAt = $createdAt = null;
-            $active = 0;
-
-            $stmt->bind_param(
-                'sisssssssissss',
-                $uuid,
-                $empresaId,
-                $name,
-                $module,
-                $format,
-                $frequency,
-                $time,
-                $weekday,
-                $monthday,
-                $notes,
-                $active,
-                $lastRunAt,
-                $nextRunAt,
-                $createdAt
-            );
-
-            foreach ($normalized as $item) {
-                $uuid = $item['uuid'];
-                $name = $item['name'];
-                $module = $item['module'];
-                $format = $item['format'];
-                $frequency = $item['frequency'];
-                $time = $item['time'];
-                $weekday = $item['weekday'];
-                $monthday = $item['monthday'];
-                $notes = $item['notes'];
-                $active = (int) $item['active'];
-                $lastRunAt = $item['lastRunAt'];
-                $nextRunAt = $item['nextRunAt'];
-                $createdAt = $item['createdAt'];
-                $stmt->execute();
-            }
-
-            $stmt->close();
+        if (empty($solicitud['success'])) {
+            $conn->close();
+            respond_json(500, ['success' => false, 'message' => $solicitud['message'] ?? 'No se pudo registrar la solicitud.']);
         }
 
-        $conn->commit();
-    } catch (Throwable $exception) {
-        $conn->rollback();
+        $response = [
+            'success' => true,
+            'requiresApproval' => true,
+            'message' => $summary['userMessage'],
+            'automations' => $currentAutomations,
+        ];
+        if (!empty($solicitud['id'])) {
+            $response['requestId'] = $solicitud['id'];
+        }
+
         $conn->close();
-        respond_json(500, ['success' => false, 'message' => 'No se pudieron sincronizar las automatizaciones.']);
+        respond_json(200, $response);
     }
 
+    $resultado = opti_sync_reportes_automatizados($conn, $empresaId, $normalized);
+    if (empty($resultado['success'])) {
+        $conn->close();
+        respond_json(500, ['success' => false, 'message' => $resultado['message'] ?? 'No se pudieron sincronizar las automatizaciones.']);
+    }
+
+    $automations = $resultado['automations'] ?? [];
     $conn->close();
 
-    try {
-        $automations = fetch_automations($empresaId);
-    } catch (Throwable $exception) {
-        respond_json(200, ['success' => true, 'automations' => []]);
-    }
-
-    respond_json(200, ['success' => true, 'automations' => $automations]);
+    respond_json(200, [
+        'success' => true,
+        'automations' => $automations,
+        'requiresApproval' => false,
+    ]);
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
