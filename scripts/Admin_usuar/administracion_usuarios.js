@@ -290,7 +290,14 @@
     (permisosHelper && permisosHelper.STORAGE_KEY) ||
     'optistock::configuracion_permisos_roles';
   const estadoPermisosPorRol = new Map();
-  const permisosGuardadosPorRol = cargarPermisosGuardados();
+  const permisosGuardadosLocales = cargarPermisosGuardadosLocal();
+  let permisosPredeterminadosPorRol = {};
+  let permisosGuardadosPorRol = permisosGuardadosLocales && typeof permisosGuardadosLocales === 'object'
+    ? { ...permisosGuardadosLocales }
+    : {};
+  let permisosServidorCargado = false;
+  let permisosServidorPromesa = null;
+  let ultimoRolSeleccionado = null;
 
   function addListener(element, event, handler) {
     if (!element) return;
@@ -379,9 +386,51 @@
     }
   }
 
-  function cargarPermisosGuardados() {
+  function normalizarPermisosGuardados(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return {};
+    }
+
+    return Object.entries(raw).reduce((acumulado, [rol, registro]) => {
+      if (!registro) {
+        return acumulado;
+      }
+
+      const listaActivos = Array.isArray(registro?.activos)
+        ? registro.activos
+        : Array.isArray(registro)
+        ? registro
+        : [];
+
+      const filtrados = listaActivos.filter(clave => clavesPermisosCatalogo.includes(clave));
+      const conocidos = Array.isArray(registro?.conocidos)
+        ? registro.conocidos.filter(clave => typeof clave === 'string' && clave.length > 0)
+        : null;
+
+      const origenRegistro =
+        typeof registro?.origen === 'string'
+          ? registro.origen
+          : listaActivos.length > 0
+          ? 'empresa'
+          : null;
+
+      acumulado[rol] = {
+        activos: filtrados,
+        conocidos,
+        actualizado:
+          typeof registro?.actualizado === 'number' && Number.isFinite(registro.actualizado)
+            ? registro.actualizado
+            : null,
+        origen: origenRegistro
+      };
+
+      return acumulado;
+    }, {});
+  }
+
+  function cargarPermisosGuardadosLocal() {
     if (permisosHelper && typeof permisosHelper.loadConfig === 'function') {
-      return permisosHelper.loadConfig();
+      return normalizarPermisosGuardados(permisosHelper.loadConfig());
     }
 
     if (!puedeUsarLocalStorage()) {
@@ -395,44 +444,14 @@
       }
 
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') {
-        return {};
-      }
-
-      return Object.entries(parsed).reduce((acumulado, [rol, registro]) => {
-        if (!registro) {
-          return acumulado;
-        }
-
-        const listaActivos = Array.isArray(registro?.activos)
-          ? registro.activos
-          : Array.isArray(registro)
-          ? registro
-          : [];
-
-        const filtrados = listaActivos.filter(clave => clavesPermisosCatalogo.includes(clave));
-        const conocidos = Array.isArray(registro?.conocidos)
-          ? registro.conocidos.filter(clave => typeof clave === 'string' && clave.length > 0)
-          : null;
-
-        acumulado[rol] = {
-          activos: filtrados,
-          conocidos,
-          actualizado:
-            typeof registro?.actualizado === 'number' && Number.isFinite(registro.actualizado)
-              ? registro.actualizado
-              : null
-        };
-
-        return acumulado;
-      }, {});
+      return normalizarPermisosGuardados(parsed);
     } catch (error) {
       console.warn('No se pudieron cargar los permisos guardados de roles.', error);
       return {};
     }
   }
 
-  function persistirPermisosGuardados() {
+  function persistirPermisosLocales() {
     if (permisosHelper && typeof permisosHelper.saveConfig === 'function') {
       permisosHelper.saveConfig(permisosGuardadosPorRol);
       return;
@@ -447,6 +466,112 @@
     } catch (error) {
       console.warn('No se pudieron guardar los permisos de roles.', error);
     }
+  }
+
+  function asignarPermisosGuardados(config, defaults) {
+    if (defaults && typeof defaults === 'object') {
+      permisosPredeterminadosPorRol = normalizarPermisosGuardados(defaults);
+    }
+
+    permisosGuardadosPorRol = normalizarPermisosGuardados(config);
+    persistirPermisosLocales();
+    estadoPermisosPorRol.clear();
+  }
+
+  async function asegurarPermisosCargados() {
+    if (permisosServidorCargado) {
+      return permisosGuardadosPorRol;
+    }
+
+    if (permisosServidorPromesa) {
+      return permisosServidorPromesa;
+    }
+
+    const idEmpresa = localStorage.getItem('id_empresa');
+    if (!idEmpresa) {
+      permisosServidorCargado = true;
+      return permisosGuardadosPorRol;
+    }
+
+    permisosServidorPromesa = fetch('/scripts/php/get_role_permissions.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_empresa: Number(idEmpresa) })
+    })
+      .then(respuesta => respuesta.json())
+      .then(data => {
+        if (data?.success) {
+          asignarPermisosGuardados(data.config || {}, data.defaults || {});
+        }
+        return permisosGuardadosPorRol;
+      })
+      .catch(error => {
+        console.warn('No se pudieron sincronizar los permisos de roles desde el servidor.', error);
+        return permisosGuardadosPorRol;
+      })
+      .finally(() => {
+        permisosServidorCargado = true;
+        permisosServidorPromesa = null;
+      });
+
+    return permisosServidorPromesa;
+  }
+
+  async function guardarPermisosRolServidor(rol, permisosActivos) {
+    const idEmpresa = localStorage.getItem('id_empresa');
+    if (!idEmpresa) {
+      throw new Error('Identificador de empresa no disponible.');
+    }
+
+    const respuesta = await fetch('/scripts/php/guardar_permisos_rol.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rol,
+        id_empresa: Number(idEmpresa),
+        permisos_activos: Array.isArray(permisosActivos) ? permisosActivos : []
+      })
+    });
+
+    const data = await respuesta.json();
+    if (!respuesta.ok || !data?.success) {
+      throw new Error(data?.message || 'No fue posible guardar los permisos del rol.');
+    }
+
+    const marcaTiempo = typeof data.actualizado === 'number' ? data.actualizado : Date.now();
+    permisosGuardadosPorRol[rol] = {
+      activos: Array.isArray(permisosActivos) ? permisosActivos.slice() : [],
+      conocidos: clavesPermisosCatalogo.slice(),
+      actualizado: marcaTiempo,
+      origen: 'empresa'
+    };
+    persistirPermisosLocales();
+    return marcaTiempo;
+  }
+
+  async function restablecerPermisosRolServidor(rol) {
+    const idEmpresa = localStorage.getItem('id_empresa');
+    if (!idEmpresa) {
+      throw new Error('Identificador de empresa no disponible.');
+    }
+
+    const respuesta = await fetch('/scripts/php/restablecer_permisos_rol.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rol, id_empresa: Number(idEmpresa) })
+    });
+
+    const data = await respuesta.json();
+    if (!respuesta.ok || !data?.success) {
+      throw new Error(data?.message || 'No fue posible restablecer los permisos del rol.');
+    }
+
+    if (permisosGuardadosPorRol && Object.prototype.hasOwnProperty.call(permisosGuardadosPorRol, rol)) {
+      delete permisosGuardadosPorRol[rol];
+      persistirPermisosLocales();
+    }
+
+    return data;
   }
 
   function coincideReglaPermiso(permiso, regla) {
@@ -473,21 +598,34 @@
     const config = configuracionInicialPermisosPorRol[rol] || { modo: 'all' };
     const porDefecto = new Set();
 
-    clavesPermisosCatalogo.forEach(clave => {
-      let habilitado = config?.modo === 'none' ? false : true;
+    const registroPredeterminado = permisosPredeterminadosPorRol?.[rol];
+    let tienePredeterminado = false;
+    if (registroPredeterminado && Array.isArray(registroPredeterminado.activos)) {
+      tienePredeterminado = true;
+      registroPredeterminado.activos.forEach(clave => {
+        if (clavesPermisosCatalogo.includes(clave)) {
+          porDefecto.add(clave);
+        }
+      });
+    }
 
-      if (Array.isArray(config?.deshabilitar) && config.deshabilitar.some(regla => coincideReglaPermiso(clave, regla))) {
-        habilitado = false;
-      }
+    if (!tienePredeterminado) {
+      clavesPermisosCatalogo.forEach(clave => {
+        let habilitado = config?.modo === 'none' ? false : true;
 
-      if (Array.isArray(config?.habilitar) && config.habilitar.some(regla => coincideReglaPermiso(clave, regla))) {
-        habilitado = true;
-      }
+        if (Array.isArray(config?.deshabilitar) && config.deshabilitar.some(regla => coincideReglaPermiso(clave, regla))) {
+          habilitado = false;
+        }
 
-      if (habilitado) {
-        porDefecto.add(clave);
-      }
-    });
+        if (Array.isArray(config?.habilitar) && config.habilitar.some(regla => coincideReglaPermiso(clave, regla))) {
+          habilitado = true;
+        }
+
+        if (habilitado) {
+          porDefecto.add(clave);
+        }
+      });
+    }
 
     const registroGuardado = permisosGuardadosPorRol[rol];
     const guardadoActivos = Array.isArray(registroGuardado?.activos)
@@ -619,6 +757,12 @@
     if (botonGuardar) {
       botonGuardar.disabled = !estado.cambiosPendientes;
     }
+
+    const botonReset = contenedor.querySelector('[data-role-reset]');
+    if (botonReset) {
+      const registro = permisosGuardadosPorRol?.[rol];
+      botonReset.disabled = !registro || registro.origen !== 'empresa';
+    }
   }
 
   function configurarInteraccionesPermisos(panel, rol) {
@@ -656,36 +800,99 @@
 
     const botonGuardar = tarjeta.querySelector('[data-role-save]');
     if (botonGuardar) {
-      addListener(botonGuardar, 'click', () => {
+      addListener(botonGuardar, 'click', async () => {
+        if (botonGuardar.dataset.saving === 'true') {
+          return;
+        }
+
         const permisosActivos = Array.from(estado.activos).sort();
         const permisosInactivos = clavesPermisosCatalogo.filter(clave => !estado.activos.has(clave)).sort();
 
-        estado.referenciaGuardada = new Set(estado.activos);
-        estado.cambiosPendientes = false;
-        estado.ultimaGuardado = new Date();
+        botonGuardar.dataset.saving = 'true';
+        botonGuardar.disabled = true;
 
-        permisosGuardadosPorRol[rol] = {
-          activos: permisosActivos,
-          conocidos: clavesPermisosCatalogo.slice(),
-          actualizado: estado.ultimaGuardado.getTime()
-        };
-        persistirPermisosGuardados();
+        try {
+          const marcaTiempo = await guardarPermisosRolServidor(rol, permisosActivos);
 
-        if (typeof console !== 'undefined') {
-          if (typeof console.groupCollapsed === 'function') {
-            console.groupCollapsed(`Configuración de permisos guardada para ${rol}`);
-            console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
-            console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
-            console.groupEnd();
-          } else {
-            console.log(`Configuración de permisos guardada para ${rol}`);
-            console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
-            console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+          estado.referenciaGuardada = new Set(estado.activos);
+          estado.cambiosPendientes = false;
+          estado.ultimaGuardado = new Date(marcaTiempo);
+
+          if (typeof console !== 'undefined') {
+            if (typeof console.groupCollapsed === 'function') {
+              console.groupCollapsed(`Configuración de permisos guardada para ${rol}`);
+              console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
+              console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+              console.groupEnd();
+            } else {
+              console.log(`Configuración de permisos guardada para ${rol}`);
+              console.log('Permisos activos (%d):', permisosActivos.length, permisosActivos);
+              console.log('Permisos inactivos (%d):', permisosInactivos.length, permisosInactivos);
+            }
           }
+
+          notificar('success', `Configuración de permisos guardada para ${rol}.`);
+        } catch (error) {
+          console.error(`No se pudo guardar la configuración de permisos para ${rol}:`, error);
+          estado.cambiosPendientes = !sonSetsIguales(estado.activos, estado.referenciaGuardada);
+          notificar('error', 'No se pudieron guardar los permisos. Intenta nuevamente.');
+        } finally {
+          delete botonGuardar.dataset.saving;
+          actualizarResumenPermisosUI(tarjeta, rol);
+        }
+      });
+    }
+
+    const botonRestablecer = tarjeta.querySelector('[data-role-reset]');
+    if (botonRestablecer) {
+      const actualizarEstadoBotonReset = () => {
+        const registro = permisosGuardadosPorRol?.[rol];
+        botonRestablecer.disabled = !registro || registro.origen !== 'empresa';
+      };
+
+      actualizarEstadoBotonReset();
+
+      addListener(botonRestablecer, 'click', async () => {
+        if (botonRestablecer.dataset.resetting === 'true') {
+          return;
         }
 
-        notificar('success', `Configuración de permisos guardada para ${rol}.`);
-        actualizarResumenPermisosUI(tarjeta, rol);
+        const confirmar =
+          typeof window !== 'undefined' && typeof window.confirm === 'function'
+            ? window.confirm(`¿Deseas restablecer los permisos de ${rol} a los valores predeterminados?`)
+            : true;
+        if (!confirmar) {
+          return;
+        }
+
+        botonRestablecer.dataset.resetting = 'true';
+        botonRestablecer.disabled = true;
+
+        try {
+          await restablecerPermisosRolServidor(rol);
+          const nuevoEstado = generarEstadoInicialPermisos(rol);
+          estado.activos = nuevoEstado.activos;
+          estado.referenciaGuardada = nuevoEstado.referenciaGuardada;
+          estado.cambiosPendientes = false;
+          estado.ultimaGuardado = nuevoEstado.ultimaGuardado;
+
+          checkboxes.forEach(checkbox => {
+            const clave = checkbox.dataset.permissionKey;
+            if (!clave) {
+              return;
+            }
+            checkbox.checked = estado.activos.has(clave);
+          });
+
+          notificar('success', `Permisos restablecidos para ${rol}.`);
+        } catch (error) {
+          console.error(`No se pudieron restablecer los permisos para ${rol}:`, error);
+          notificar('error', 'No se pudieron restablecer los permisos. Intenta nuevamente.');
+        } finally {
+          delete botonRestablecer.dataset.resetting;
+          actualizarEstadoBotonReset();
+          actualizarResumenPermisosUI(tarjeta, rol);
+        }
       });
     }
 
@@ -702,6 +909,8 @@
     const totalPermisos = totalPermisosCatalogo;
     const totalActivos = estadoPermisos?.activos?.size || 0;
     const textoEstado = obtenerTextoEstadoPermisos(estadoPermisos);
+    const registroGuardado = permisosGuardadosPorRol?.[rol];
+    const restablecerDeshabilitado = !registroGuardado || registroGuardado.origen !== 'empresa';
 
     const categoriasMarkup = catalogoPermisosCategorias
       .map((categoria, categoriaIndex) => {
@@ -779,9 +988,14 @@
               estadoPermisos?.cambiosPendientes ? ' roles-permissions-status--pending' : ''
             }" data-role-permissions-status>${escapeHtml(textoEstado)}</span>
           </div>
-          <button type="button" class="roles-permissions-save" data-role-save ${
-            estadoPermisos?.cambiosPendientes ? '' : 'disabled'
-          }>Guardar configuración</button>
+          <div class="roles-permissions-actions">
+            <button type="button" class="roles-permissions-reset" data-role-reset ${
+              restablecerDeshabilitado ? 'disabled' : ''
+            }>Restablecer predeterminado</button>
+            <button type="button" class="roles-permissions-save" data-role-save ${
+              estadoPermisos?.cambiosPendientes ? '' : 'disabled'
+            }>Guardar configuración</button>
+          </div>
         </footer>
       </article>
     `;
@@ -821,11 +1035,20 @@
     });
   }
 
-  function inicializarConfiguracionRoles() {
+  async function inicializarConfiguracionRoles() {
     const panel = document.getElementById('rolePermissionsPanel');
     const botones = Array.from(document.querySelectorAll('[data-role-config]'));
     if (!panel || !botones.length) {
       return;
+    }
+
+    panel.innerHTML =
+      '<div class="roles-permissions-placeholder">Cargando permisos configurados para la empresa…</div>';
+
+    try {
+      await asegurarPermisosCargados();
+    } catch (error) {
+      console.warn('No fue posible sincronizar los permisos antes de renderizar el panel.', error);
     }
 
     panel.innerHTML =
@@ -839,6 +1062,7 @@
       }
 
       rolActivo = rol;
+      ultimoRolSeleccionado = rol;
       botones.forEach(boton => {
         const esActivo = boton.dataset.roleConfig === rol;
         boton.classList.toggle('role-chip--active', esActivo);
@@ -867,7 +1091,16 @@
       addListener(boton, 'click', () => seleccionarRol(rol));
     });
 
-    const rolInicial = botones[0] ? botones[0].dataset.roleConfig : null;
+    let rolInicial = null;
+    if (ultimoRolSeleccionado) {
+      const existe = botones.some(boton => boton.dataset.roleConfig === ultimoRolSeleccionado);
+      if (existe) {
+        rolInicial = ultimoRolSeleccionado;
+      }
+    }
+    if (!rolInicial && botones[0]) {
+      rolInicial = botones[0].dataset.roleConfig;
+    }
     if (rolInicial) {
       seleccionarRol(rolInicial);
     }
