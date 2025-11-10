@@ -263,10 +263,18 @@ function eliminarIncidenciasPorZona(mysqli $conn, int $zonaId): void
     $stmt->close();
 }
 
-function eliminarIncidenciasPorUsuario(mysqli $conn, int $usuarioId): void
+function eliminarIncidenciasPorUsuario(mysqli $conn, int $usuarioId): int
 {
-    $stmt = $conn->prepare('DELETE FROM incidencias_infraestructura WHERE id_usuario_reporta = ?');
+    $stmt = $conn->prepare('DELETE FROM incidencias_infraestructura WHERE id_usuario_reporta = ? AND estado = "Revisado"');
+    if (!$stmt) {
+        error_log('No se pudo preparar la eliminación de incidencias revisadas para el usuario ID ' . $usuarioId);
+        return 0;
+    }
+
     $stmt->bind_param('i', $usuarioId);
     $stmt->execute();
+    $eliminadas = $stmt->affected_rows;
     $stmt->close();
+
+    return max(0, (int) $eliminadas);
 }
