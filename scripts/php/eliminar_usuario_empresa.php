@@ -44,11 +44,34 @@ if ($usuarioEncontrado) {
     $nombreUsuario = trim($nombre . ' ' . $apellido);
 }
 
+$solicitudesPendientes = $usuarioId > 0 ? contarSolicitudesPendientesPorUsuario($conn, $usuarioId) : 0;
+$incidenciasPendientes = $usuarioId > 0 ? contarIncidenciasPendientesPorUsuario($conn, $usuarioId) : 0;
+
+if ($solicitudesPendientes > 0) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'No se puede eliminar el usuario porque tiene solicitudes pendientes en revisión.',
+        'solicitudes_pendientes' => $solicitudesPendientes
+    ]);
+    exit;
+}
+
+if ($incidenciasPendientes > 0) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'No se puede eliminar el usuario porque tiene incidencias pendientes por revisar.',
+        'incidencias_pendientes' => $incidenciasPendientes
+    ]);
+    exit;
+}
+
 $payload = [
     'correo' => $correo,
     'id_usuario' => $usuarioId,
     'nombre_usuario' => $nombreUsuario,
-    'id_empresa' => $idEmpresa
+    'id_empresa' => $idEmpresa,
+    'solicitudes_pendientes' => $solicitudesPendientes,
+    'incidencias_pendientes' => $incidenciasPendientes
 ];
 
 $idSolicitante = opti_resolver_id_solicitante($data, $payload);
