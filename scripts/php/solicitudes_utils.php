@@ -690,6 +690,55 @@ function opti_aplicar_usuario_eliminar_acceso(mysqli $conn, array $payload, int 
     return ['success' => true, 'message' => 'Asignación eliminada.'];
 }
 
+function contarSolicitudesPendientesPorUsuario(mysqli $conn, int $usuarioId): int
+{
+    if ($usuarioId <= 0) {
+        return 0;
+    }
+
+    $usuarioIdStr = (string) $usuarioId;
+    $total = 0;
+
+    $sqlJson = "SELECT COUNT(*)
+            FROM solicitudes_cambios
+            WHERE estado = 'en_proceso'
+              AND (
+                    id_solicitante = ?
+                 OR JSON_UNQUOTE(JSON_EXTRACT(payload, '$.id_usuario')) = ?
+                 OR JSON_UNQUOTE(JSON_EXTRACT(payload, '$.usuario_id')) = ?
+              )";
+
+    $stmt = $conn->prepare($sqlJson);
+    if ($stmt) {
+        $stmt->bind_param('iss', $usuarioId, $usuarioIdStr, $usuarioIdStr);
+        $stmt->execute();
+        $stmt->bind_result($total);
+        $stmt->fetch();
+        $stmt->close();
+
+        return (int) $total;
+    }
+
+    $patron = '"(id_usuario|usuario_id)"[[:space:]]*:[[:space:]]*"?' . $usuarioId . '"?(,|}|]|[[:space:]])';
+    $sqlRegex = "SELECT COUNT(*)
+            FROM solicitudes_cambios
+            WHERE estado = 'en_proceso'
+              AND (id_solicitante = ? OR payload REGEXP ?)";
+
+    $stmt = $conn->prepare($sqlRegex);
+    if ($stmt) {
+        $stmt->bind_param('is', $usuarioId, $patron);
+        $stmt->execute();
+        $stmt->bind_result($total);
+        $stmt->fetch();
+        $stmt->close();
+    } else {
+        error_log('No se pudo preparar la verificación de solicitudes pendientes para el usuario ID ' . $usuarioId);
+    }
+
+    return (int) $total;
+}
+
 function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevisor)
 {
     $correo = trim($payload['correo'] ?? '');
@@ -712,6 +761,16 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
         }
 
         $idUsuario = (int)$resultado['id_usuario'];
+
+        $solicitudesPendientes = contarSolicitudesPendientesPorUsuario($conn, $idUsuario);
+        if ($solicitudesPendientes > 0) {
+            $conn->rollback();
+            return [
+                'success' => false,
+                'message' => 'No se puede eliminar el usuario porque tiene solicitudes pendientes en revisión.',
+                'solicitudes_pendientes' => $solicitudesPendientes
+            ];
+        }
 
         if (contarIncidenciasPendientesPorUsuario($conn, $idUsuario) > 0) {
             $conn->rollback();
