@@ -209,6 +209,69 @@
         </div>
       </div>
 
+      <section class="incident-center" aria-labelledby="incidentPanelTitle">
+        <header class="incident-header">
+          <div>
+            <span class="incident-eyebrow">Notas y seguimiento</span>
+            <h3 id="incidentPanelTitle">Incidencias en áreas y zonas</h3>
+            <p class="incident-description">
+              Registra observaciones sobre el estado físico de cada área o zona y marca como revisadas las incidencias una vez atendidas.
+            </p>
+          </div>
+        </header>
+        <div class="incident-grid">
+          <article class="incident-card">
+            <header class="incident-card__header">
+              <h4 class="incident-card__title">Registrar incidencia</h4>
+              <p class="incident-card__subtitle">Selecciona el objetivo y describe lo sucedido.</p>
+            </header>
+            <form id="incidentForm" class="incident-form" autocomplete="off">
+              <div class="form-group">
+                <span class="form-label">Ubicación objetivo</span>
+                <div class="incident-options">
+                  <label class="incident-option">
+                    <input type="radio" name="incidentScope" value="area" checked />
+                    <span>Área</span>
+                  </label>
+                  <label class="incident-option">
+                    <input type="radio" name="incidentScope" value="zona" />
+                    <span>Zona</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-group" id="incidentAreaGroup">
+                <label for="incidentAreaSelect">Selecciona el área</label>
+                <select id="incidentAreaSelect" required>
+                  <option value="">Selecciona un área</option>
+                </select>
+              </div>
+              <div class="form-group incident-group--hidden" id="incidentZoneGroup">
+                <label for="incidentZoneSelect">Selecciona la zona</label>
+                <select id="incidentZoneSelect" disabled>
+                  <option value="">Selecciona una zona</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="incidentDescription">Descripción de la incidencia</label>
+                <textarea id="incidentDescription" rows="4" maxlength="500" placeholder="Describe lo sucedido, acciones tomadas o materiales afectados" required></textarea>
+              </div>
+              <div class="form-actions incident-actions">
+                <button type="submit" class="shell-action shell-action--primary">Guardar incidencia</button>
+              </div>
+            </form>
+          </article>
+          <article class="incident-card incident-card--list">
+            <header class="incident-card__header">
+              <h4 class="incident-card__title">Incidencias registradas</h4>
+              <p class="incident-card__subtitle">Solo se muestran incidencias con estado pendiente.</p>
+            </header>
+            <div id="incidentList" class="incident-list" role="log" aria-live="polite">
+              <p class="incident-empty">No hay incidencias pendientes.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section class="inventory-status" aria-labelledby="inventarioTitulo">
         <header class="inventory-header">
           <div>
