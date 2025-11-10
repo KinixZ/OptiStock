@@ -713,10 +713,17 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
 
         $idUsuario = (int)$resultado['id_usuario'];
 
+        if (contarIncidenciasPendientesPorUsuario($conn, $idUsuario) > 0) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'No se puede eliminar el usuario porque tiene incidencias pendientes por revisar.'];
+        }
+
         $stmtDelRel = $conn->prepare('DELETE FROM usuario_empresa WHERE id_usuario = ?');
         $stmtDelRel->bind_param('i', $idUsuario);
         $stmtDelRel->execute();
         $stmtDelRel->close();
+
+        eliminarIncidenciasPorUsuario($conn, $idUsuario);
 
         $stmtDel = $conn->prepare('DELETE FROM usuario WHERE id_usuario = ?');
         $stmtDel->bind_param('i', $idUsuario);
@@ -1177,6 +1184,12 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
         return ['success' => false, 'message' => 'Datos insuficientes para eliminar el área.'];
     }
 
+    $pendientesArea = contarIncidenciasPendientesPorArea($conn, $empresaId, $areaId);
+    $pendientesZonas = contarIncidenciasPendientesZonasEnArea($conn, $empresaId, $areaId);
+    if (($pendientesArea + $pendientesZonas) > 0) {
+        return ['success' => false, 'message' => 'No se puede eliminar el área porque existen incidencias pendientes por revisar.'];
+    }
+
     $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
     if (!$stmt) {
         return ['success' => false, 'message' => 'No se pudo validar las zonas asociadas.'];
@@ -1209,6 +1222,8 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
     if ($eliminadas <= 0) {
         return ['success' => false, 'message' => 'El área indicada ya no existe.'];
     }
+
+    eliminarIncidenciasPorArea($conn, $areaId);
 
     registrarLog($conn, $idRevisor, 'Áreas', 'Eliminación aprobada del área ID ' . $areaId);
 
@@ -1344,6 +1359,10 @@ function opti_aplicar_zona_eliminar(mysqli $conn, array $payload, int $idRevisor
         return ['success' => false, 'message' => 'Datos insuficientes para eliminar la zona.'];
     }
 
+    if (contarIncidenciasPendientesPorZona($conn, $empresaId, $zonaId) > 0) {
+        return ['success' => false, 'message' => 'No se puede eliminar la zona porque existe una incidencia pendiente por revisar.'];
+    }
+
     $stmtProductos = $conn->prepare('SELECT COUNT(*) FROM productos WHERE zona_id = ?');
     if (!$stmtProductos) {
         return ['success' => false, 'message' => 'No se pudo validar los productos de la zona.'];
@@ -1394,6 +1413,8 @@ function opti_aplicar_zona_eliminar(mysqli $conn, array $payload, int $idRevisor
     if ($areaId) {
         actualizarOcupacionArea($conn, $areaId);
     }
+
+    eliminarIncidenciasPorZona($conn, $zonaId);
 
     $nombreZona = trim((string)($payload['nombre_zona'] ?? ''));
     $detalleZona = $nombreZona !== '' ? ' (' . $nombreZona . ')' : '';
