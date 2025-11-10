@@ -33,6 +33,10 @@ img {
     display: block;
 }
 
+.permissions-hidden {
+    display: none !important;
+}
+
 /* Sidebar */
 .sidebar {
     background: var(--sidebar-color);
@@ -95,6 +99,17 @@ img {
 .sidebar-menu a.active {
     background: rgba(255, 255, 255, 0.12);
     border-color: rgba(255, 255, 255, 0.65);
+}
+
+.sidebar-menu a.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.sidebar-menu a.is-disabled:hover,
+.sidebar-menu a.is-disabled.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: transparent;
 }
 
 .sidebar-footer {
@@ -506,6 +521,10 @@ img {
     position: relative;
 }
 
+.notification-wrapper.permissions-hidden {
+    display: none !important;
+}
+
 .notification-bell,
 .alert-settings {
     position: relative;
@@ -523,11 +542,25 @@ img {
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
+.alert-settings.is-disabled,
+.notification-bell.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .notification-bell:hover,
 .alert-settings:hover {
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.3);
     box-shadow: 0 12px 32px -20px rgba(15, 50, 87, 0.35);
+}
+
+.alert-settings.is-disabled:hover,
+.notification-bell.is-disabled:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
 }
 
 .notification-badge {
@@ -1068,6 +1101,12 @@ img {
     box-shadow: 0 20px 35px -25px rgba(255, 111, 145, 0.65);
 }
 
+.btn.btn-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .btn i {
     font-size: 1rem;
 }
@@ -1095,6 +1134,11 @@ img {
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 22px 45px -25px rgba(15, 40, 65, 0.35);
+}
+
+.btn.btn-disabled:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 /* Dashboard */
