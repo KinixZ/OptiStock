@@ -46,6 +46,55 @@ document.addEventListener("DOMContentLoaded", function () {
         }).catch(() => {});
     };
 
+    const sincronizarPermisosRoles = async (idEmpresa) => {
+        if (!permissionsHelper) {
+            return;
+        }
+
+        const opciones = {};
+        const numeroEmpresa = Number.parseInt(idEmpresa, 10);
+        if (Number.isFinite(numeroEmpresa) && numeroEmpresa > 0) {
+            opciones.idEmpresa = numeroEmpresa;
+        }
+
+        if (typeof permissionsHelper.synchronizeFromServer === 'function') {
+            await permissionsHelper.synchronizeFromServer(opciones);
+            return;
+        }
+
+        if (typeof window.fetch !== 'function') {
+            throw new Error('Sin soporte para sincronizar permisos.');
+        }
+
+        const payload = opciones.idEmpresa ? { id_empresa: opciones.idEmpresa } : {};
+        const respuesta = await fetch('/scripts/php/get_role_permissions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!respuesta.ok) {
+            throw new Error(`HTTP ${respuesta.status}`);
+        }
+
+        const data = await respuesta.json();
+        if (!data?.success) {
+            throw new Error(data?.message || 'No se pudo obtener la configuración de permisos.');
+        }
+
+        const defaults = data.defaults && typeof data.defaults === 'object' ? data.defaults : {};
+        const overrides = data.config && typeof data.config === 'object' ? data.config : {};
+        const merged = { ...defaults };
+
+        Object.keys(overrides).forEach(rol => {
+            merged[rol] = overrides[rol];
+        });
+
+        if (typeof permissionsHelper.saveConfig === 'function') {
+            permissionsHelper.saveConfig(merged);
+        }
+    };
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('msg') === 'created') {
         const statusDiv = document.getElementById('status-message');
@@ -63,7 +112,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     // Función para manejar la respuesta del login con Google
-    function handleCredentialResponse(response) {
+    async function handleCredentialResponse(response) {
         function parseJwt(token) {
             const base64Url = token.split('.')[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -83,60 +132,73 @@ document.addEventListener("DOMContentLoaded", function () {
         const apellido = encodeURIComponent(userData.family_name || '');
         const email = encodeURIComponent(userData.email || '');
 
-        fetch("../../../scripts/php/login_google.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                token: response.credential,
-                email: userData.email,
-                nombre: userData.given_name,
-                apellido: userData.family_name,
-                picture: userData.picture,
-                google_id: userData.sub
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
+        try {
+            const respuesta = await fetch("../../../scripts/php/login_google.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    token: response.credential,
+                    email: userData.email,
+                    nombre: userData.given_name,
+                    apellido: userData.family_name,
+                    picture: userData.picture,
+                    google_id: userData.sub
+                })
+            });
+
+            const data = await respuesta.json();
             console.log("Respuesta del backend:", data);
 
-            if (data.success) {
-                if (!tienePermiso(data.rol, 'auth.login')) {
-                    cerrarSesionServidor().finally(() => {
-                        mostrarError('Tu cuenta no tiene permiso para acceder.');
-                    });
-                    return;
-                }
-
-                limpiarError();
-                // Guardar la sesión en localStorage
-                localStorage.setItem('usuario_id', data.id);
-                localStorage.setItem('usuario_nombre', data.nombre);
-                localStorage.setItem('usuario_email', userData.email);
-                localStorage.setItem('usuario_rol', data.rol);
-                localStorage.setItem('usuario_suscripcion', data.suscripcion);
-
-                localStorage.setItem('id_empresa', data.id_empresa);
-                localStorage.setItem('empresa_nombre', data.empresa_nombre);
-
-                storeTutorialStatus(data.id, data.tutorial_visto ?? 0);
-                
-                // Normaliza la ruta antes de guardar en localStorage
-                let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
-                if (fotoPerfil && !fotoPerfil.startsWith('/')) {
-                    fotoPerfil = '/' + fotoPerfil;
-                }
-                localStorage.setItem('foto_perfil', fotoPerfil);
-
-                if (data.completo) {
-                    window.location.href = "../../main_menu/main_menu.html";
-                } else {
-                    window.location.href = `../regist/regist_google.html?email=${email}&nombre=${nombre}&apellido=${apellido}`;
-                }
-            } else {
+            if (!data.success) {
                 mostrarError(data.message || "Error en autenticación con Google.");
                 console.error("Mensaje backend:", data.message || data.error);
+                return;
             }
-        });
+
+            try {
+                await sincronizarPermisosRoles(data.id_empresa);
+            } catch (error) {
+                console.error('No se pudieron sincronizar los permisos del rol.', error);
+                await cerrarSesionServidor();
+                mostrarError('No se pudieron validar tus permisos. Inténtalo más tarde.');
+                return;
+            }
+
+            if (!tienePermiso(data.rol, 'auth.login')) {
+                await cerrarSesionServidor();
+                mostrarError('Tu cuenta no tiene permiso para acceder.');
+                return;
+            }
+
+            limpiarError();
+            // Guardar la sesión en localStorage
+            localStorage.setItem('usuario_id', data.id);
+            localStorage.setItem('usuario_nombre', data.nombre);
+            localStorage.setItem('usuario_email', userData.email);
+            localStorage.setItem('usuario_rol', data.rol);
+            localStorage.setItem('usuario_suscripcion', data.suscripcion);
+
+            localStorage.setItem('id_empresa', data.id_empresa);
+            localStorage.setItem('empresa_nombre', data.empresa_nombre);
+
+            storeTutorialStatus(data.id, data.tutorial_visto ?? 0);
+
+            // Normaliza la ruta antes de guardar en localStorage
+            let fotoPerfil = data.foto_perfil || '/images/profile.jpg';
+            if (fotoPerfil && !fotoPerfil.startsWith('/')) {
+                fotoPerfil = '/' + fotoPerfil;
+            }
+            localStorage.setItem('foto_perfil', fotoPerfil);
+
+            if (data.completo) {
+                window.location.href = "../../main_menu/main_menu.html";
+            } else {
+                window.location.href = `../regist/regist_google.html?email=${email}&nombre=${nombre}&apellido=${apellido}`;
+            }
+        } catch (error) {
+            console.error('Error en autenticación con Google:', error);
+            mostrarError('No se pudo completar el inicio de sesión con Google. Inténtalo más tarde.');
+        }
     }
 
     // Inicialización del login con Google
@@ -189,6 +251,15 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(async data => {
             console.log("Respuesta del backend:", data);
             if (data.success) {
+                try {
+                    await sincronizarPermisosRoles(data.id_empresa);
+                } catch (error) {
+                    console.error('No se pudieron sincronizar los permisos del rol.', error);
+                    await cerrarSesionServidor();
+                    mostrarError('No se pudieron validar tus permisos. Inténtalo más tarde.');
+                    return;
+                }
+
                 if (!tienePermiso(data.rol, 'auth.login')) {
                     await cerrarSesionServidor();
                     mostrarError('Tu cuenta no tiene permiso para acceder.');

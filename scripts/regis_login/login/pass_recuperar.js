@@ -9,6 +9,7 @@ const permissionsHelper =
         : null;
 
 let rolVerificado = null;
+let permisosSincronizados = false;
 
 const tienePermiso = (rol, permiso) => {
     if (!permiso) return true;
@@ -16,6 +17,69 @@ const tienePermiso = (rol, permiso) => {
         return true;
     }
     return permissionsHelper.isPermissionEnabled(rol, permiso);
+};
+
+const asegurarPermisosDisponibles = async () => {
+    if (!permissionsHelper) {
+        permisosSincronizados = true;
+        return;
+    }
+
+    if (permisosSincronizados) {
+        return;
+    }
+
+    try {
+        const configLocal = typeof permissionsHelper.loadConfig === 'function'
+            ? permissionsHelper.loadConfig()
+            : {};
+
+        if (configLocal && typeof configLocal === 'object' && Object.keys(configLocal).length > 0) {
+            permisosSincronizados = true;
+            return;
+        }
+
+        if (typeof permissionsHelper.synchronizeFromServer === 'function') {
+            await permissionsHelper.synchronizeFromServer();
+            permisosSincronizados = true;
+            return;
+        }
+
+        if (typeof window.fetch !== 'function') {
+            throw new Error('Sin soporte para sincronizar permisos.');
+        }
+
+        const respuesta = await fetch('/scripts/php/get_role_permissions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+
+        if (!respuesta.ok) {
+            throw new Error(`HTTP ${respuesta.status}`);
+        }
+
+        const data = await respuesta.json();
+        if (!data?.success) {
+            throw new Error(data?.message || 'No se pudo cargar la configuración de permisos.');
+        }
+
+        const defaults = data.defaults && typeof data.defaults === 'object' ? data.defaults : {};
+        const overrides = data.config && typeof data.config === 'object' ? data.config : {};
+        const merged = { ...defaults };
+        Object.keys(overrides).forEach(rol => {
+            merged[rol] = overrides[rol];
+        });
+
+        if (typeof permissionsHelper.saveConfig === 'function') {
+            permissionsHelper.saveConfig(merged);
+        }
+
+        permisosSincronizados = true;
+    } catch (error) {
+        permisosSincronizados = false;
+        throw error;
+    }
 };
 
 const mostrarMensaje = (texto, color = 'red') => {
@@ -43,6 +107,7 @@ emailForm.addEventListener("submit", async function (event) {
     const email = document.getElementById("email").value;
 
     try {
+        await asegurarPermisosDisponibles();
         const resultadoRol = await obtenerRolPorCorreo(email);
         if (!resultadoRol.success) {
             mostrarMensaje(resultadoRol.message || 'No se pudo verificar el rol del usuario.');

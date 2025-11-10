@@ -428,9 +428,35 @@
     }, {});
   }
 
+  function filtrarConfiguracionEmpresa(config) {
+    if (!config || typeof config !== 'object') {
+      return {};
+    }
+
+    return Object.entries(config).reduce((acumulado, [rol, registro]) => {
+      if (registro && registro.origen === 'empresa') {
+        acumulado[rol] = registro;
+      }
+      return acumulado;
+    }, {});
+  }
+
+  function construirConfiguracionCompleta() {
+    const base =
+      permisosPredeterminadosPorRol && typeof permisosPredeterminadosPorRol === 'object'
+        ? { ...permisosPredeterminadosPorRol }
+        : {};
+
+    Object.entries(permisosGuardadosPorRol || {}).forEach(([rol, registro]) => {
+      base[rol] = registro;
+    });
+
+    return base;
+  }
+
   function cargarPermisosGuardadosLocal() {
     if (permisosHelper && typeof permisosHelper.loadConfig === 'function') {
-      return normalizarPermisosGuardados(permisosHelper.loadConfig());
+      return filtrarConfiguracionEmpresa(normalizarPermisosGuardados(permisosHelper.loadConfig()));
     }
 
     if (!puedeUsarLocalStorage()) {
@@ -444,7 +470,7 @@
       }
 
       const parsed = JSON.parse(raw);
-      return normalizarPermisosGuardados(parsed);
+      return filtrarConfiguracionEmpresa(normalizarPermisosGuardados(parsed));
     } catch (error) {
       console.warn('No se pudieron cargar los permisos guardados de roles.', error);
       return {};
@@ -452,8 +478,9 @@
   }
 
   function persistirPermisosLocales() {
+    const configuracionCompleta = construirConfiguracionCompleta();
     if (permisosHelper && typeof permisosHelper.saveConfig === 'function') {
-      permisosHelper.saveConfig(permisosGuardadosPorRol);
+      permisosHelper.saveConfig(configuracionCompleta);
       return;
     }
 
@@ -462,7 +489,7 @@
     }
 
     try {
-      window.localStorage.setItem(STORAGE_KEY_CONFIG_ROLES, JSON.stringify(permisosGuardadosPorRol));
+      window.localStorage.setItem(STORAGE_KEY_CONFIG_ROLES, JSON.stringify(configuracionCompleta));
     } catch (error) {
       console.warn('No se pudieron guardar los permisos de roles.', error);
     }
@@ -487,17 +514,53 @@
       return permisosServidorPromesa;
     }
 
-    const idEmpresa = localStorage.getItem('id_empresa');
-    if (!idEmpresa) {
+    const idEmpresaLocal = (() => {
+      try {
+        return window.localStorage.getItem('id_empresa');
+      } catch (error) {
+        return null;
+      }
+    })();
+
+    const idEmpresaNumero = Number.parseInt(idEmpresaLocal, 10);
+    const opcionesSync = Number.isFinite(idEmpresaNumero) && idEmpresaNumero > 0
+      ? { idEmpresa: idEmpresaNumero }
+      : {};
+
+    if (permisosHelper && typeof permisosHelper.synchronizeFromServer === 'function') {
+      permisosServidorPromesa = permisosHelper
+        .synchronizeFromServer(opcionesSync)
+        .then(resultado => {
+          const defaults = resultado?.defaults || {};
+          const overrides = resultado?.overrides || {};
+          asignarPermisosGuardados(overrides, defaults);
+          return permisosGuardadosPorRol;
+        })
+        .catch(error => {
+          console.warn('No se pudieron sincronizar los permisos de roles desde el servidor.', error);
+          return permisosGuardadosPorRol;
+        })
+        .finally(() => {
+          permisosServidorCargado = true;
+          permisosServidorPromesa = null;
+        });
+
+      return permisosServidorPromesa;
+    }
+
+    if (typeof window.fetch !== 'function') {
       permisosServidorCargado = true;
       return permisosGuardadosPorRol;
     }
 
-    permisosServidorPromesa = fetch('/scripts/php/get_role_permissions.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_empresa: Number(idEmpresa) })
-    })
+    const payload = Object.keys(opcionesSync).length > 0 ? { id_empresa: opcionesSync.idEmpresa } : {};
+
+    permisosServidorPromesa = window
+      .fetch('/scripts/php/get_role_permissions.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
       .then(respuesta => respuesta.json())
       .then(data => {
         if (data?.success) {
