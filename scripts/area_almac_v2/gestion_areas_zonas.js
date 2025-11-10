@@ -32,6 +32,7 @@ let editZoneId = null;
   const totalAreasEl          = document.getElementById('totalAreas');
   const totalZonasEl          = document.getElementById('totalZonas');
   const zonasSinAreaEl        = document.getElementById('zonasSinArea');
+  const totalIncidenciasEl    = document.getElementById('totalIncidencias');
   const filtroNombre          = document.getElementById('filtroNombre');
   const filtroArea            = document.getElementById('filtroArea');
   const filtroOcupacion       = document.getElementById('filtroOcupacion');
@@ -40,9 +41,18 @@ let editZoneId = null;
   const exportExcelBtn        = document.getElementById('exportExcel');
   const exportPdfBtn          = document.getElementById('exportPdf');
   const alertasBanner         = document.getElementById('alertasSaturacion');
+  const incidentForm          = document.getElementById('incidentForm');
+  const incidentAreaSelect    = document.getElementById('incidentAreaSelect');
+  const incidentZoneSelect    = document.getElementById('incidentZoneSelect');
+  const incidentAreaGroup     = document.getElementById('incidentAreaGroup');
+  const incidentZoneGroup     = document.getElementById('incidentZoneGroup');
+  const incidentDescription   = document.getElementById('incidentDescription');
+  const incidentList          = document.getElementById('incidentList');
+  const incidentScopeRadios   = document.querySelectorAll('input[name="incidentScope"]');
 
   let areasData = [];
   let zonasData = [];
+  let incidenciasData = [];
 
   if (window.SimpleTableSorter) {
     if (tablaAreasElement) {
@@ -73,6 +83,48 @@ let editZoneId = null;
       return match.nombre;
     }
     return `Área ${areaId}`;
+  }
+
+  function obtenerNombreZonaPorId(zonaId) {
+    if (zonaId === null || zonaId === undefined) {
+      return 'Sin zona';
+    }
+    const match = zonasData.find(zona => `${zona.id}` === `${zonaId}`);
+    if (match && match.nombre) {
+      return match.nombre;
+    }
+    return `Zona ${zonaId}`;
+  }
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    return String(value).replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[char] || char));
+  }
+
+  function formatearFechaIncidencia(fecha) {
+    if (!fecha) {
+      return '';
+    }
+    const normalizada = typeof fecha === 'string' ? fecha.replace(' ', 'T') : fecha;
+    const date = new Date(normalizada);
+    if (Number.isNaN(date.getTime())) {
+      return typeof fecha === 'string' ? fecha : '';
+    }
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
   function describirFiltrosActivos() {
@@ -206,8 +258,9 @@ let editZoneId = null;
     }
   }
 
-  const API_BASE     = '../../scripts/php';
-  const EMP_ID       = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
+  const API_BASE           = '../../scripts/php';
+  const INCIDENTS_ENDPOINT = `${API_BASE}/gestionar_incidencias.php`;
+  const EMP_ID             = parseInt(localStorage.getItem('id_empresa'), 10) || 0;
 
   const tiposZona = [
     'Rack', 'Mostrador', 'Caja', 'Estantería',
@@ -297,6 +350,28 @@ let editZoneId = null;
     };
   }
 
+  function normalizarIncidencia(incidencia = {}) {
+    const zonaId = incidencia.zona_id !== undefined && incidencia.zona_id !== null
+      ? Number(incidencia.zona_id)
+      : null;
+    const areaIdBase = incidencia.area_id !== undefined && incidencia.area_id !== null
+      ? Number(incidencia.area_id)
+      : (zonaId ? zonasData.find(z => Number(z.id) === zonaId)?.area_id ?? null : null);
+
+    return {
+      id: Number(incidencia.id) || 0,
+      descripcion: incidencia.descripcion || '',
+      estado: incidencia.estado || 'Pendiente',
+      creado_en: incidencia.creado_en || incidencia.creadoEn || incidencia.created_at || '',
+      revisado_en: incidencia.revisado_en || incidencia.revisadoEn || null,
+      area_id: areaIdBase,
+      area_nombre: incidencia.area_nombre || incidencia.area || obtenerNombreAreaPorId(areaIdBase),
+      zona_id: zonaId,
+      zona_nombre: zonaId ? (incidencia.zona_nombre || incidencia.zona || obtenerNombreZonaPorId(zonaId)) : null,
+      reportado_por: incidencia.reportado_por || incidencia.reportadoPor || 'Usuario sin nombre'
+    };
+  }
+
   function renderBarraOcupacion(valor) {
     const porcentaje = Math.min(Math.max(Number(valor) || 0, 0), 100);
     const estado = porcentaje >= 90 ? ' capacity-bar--critical' : porcentaje >= 70 ? ' capacity-bar--warning' : '';
@@ -352,12 +427,17 @@ let editZoneId = null;
   function actualizarOpcionesArea() {
     const selectedZona = zonaAreaSel?.value || '';
     const selectedFiltro = filtroArea?.value || 'todos';
+    const selectedIncidentArea = incidentAreaSelect?.value || '';
+    const selectedIncidentZona = incidentZoneSelect?.value || '';
 
     if (zonaAreaSel) {
       zonaAreaSel.innerHTML = '<option value="">Seleccione un área</option>';
     }
     if (filtroArea) {
       filtroArea.innerHTML = '<option value="todos">Todas las zonas</option><option value="sin-area">Zonas sin área</option>';
+    }
+    if (incidentAreaSelect) {
+      incidentAreaSelect.innerHTML = '<option value="">Selecciona un área</option>';
     }
 
     areasData.forEach(area => {
@@ -373,6 +453,12 @@ let editZoneId = null;
         optFiltro.textContent = area.nombre;
         filtroArea.appendChild(optFiltro);
       }
+      if (incidentAreaSelect) {
+        const optInc = document.createElement('option');
+        optInc.value = area.id;
+        optInc.textContent = area.nombre;
+        incidentAreaSelect.appendChild(optInc);
+      }
     });
 
     if (zonaAreaSel) {
@@ -380,6 +466,25 @@ let editZoneId = null;
     }
     if (filtroArea) {
       filtroArea.value = selectedFiltro;
+    }
+    if (incidentAreaSelect && incidentAreaSelect.querySelector(`option[value="${selectedIncidentArea}"]`)) {
+      incidentAreaSelect.value = selectedIncidentArea;
+    }
+    if (incidentZoneSelect) {
+      incidentZoneSelect.innerHTML = '<option value="">Selecciona una zona</option>';
+      zonasData.forEach(zona => {
+        if (!zona.id) {
+          return;
+        }
+        const optZona = document.createElement('option');
+        optZona.value = zona.id;
+        const areaTag = zona.area_id ? ` · ${obtenerNombreAreaPorId(zona.area_id)}` : '';
+        optZona.textContent = `${zona.nombre || 'Sin nombre'}${areaTag}`;
+        incidentZoneSelect.appendChild(optZona);
+      });
+      if (selectedIncidentZona && incidentZoneSelect.querySelector(`option[value="${selectedIncidentZona}"]`)) {
+        incidentZoneSelect.value = selectedIncidentZona;
+      }
     }
   }
 
@@ -392,6 +497,10 @@ let editZoneId = null;
     }
     if (zonasSinAreaEl) {
       zonasSinAreaEl.textContent = zonasData.filter(z => !z.area_id).length;
+    }
+    if (totalIncidenciasEl) {
+      const pendientes = incidenciasData.filter(inc => (inc.estado || 'Pendiente').toLowerCase() === 'pendiente');
+      totalIncidenciasEl.textContent = pendientes.length;
     }
   }
 
@@ -701,20 +810,132 @@ formArea.addEventListener('submit', async e => {
 
   // —————— CRUD Zonas ——————
   async function fetchZonas() {
-  const res = await fetch(`${API_BASE}/guardar_zonas.php?empresa_id=${EMP_ID}`);
-  return await res.json();
-}
+    const res = await fetch(`${API_BASE}/guardar_zonas.php?empresa_id=${EMP_ID}`);
+    return await res.json();
+  }
 
+  async function fetchIncidencias() {
+    if (!EMP_ID) {
+      return [];
+    }
+    const url = `${INCIDENTS_ENDPOINT}?empresa_id=${EMP_ID}&estado=Pendiente`;
+    const res = await fetch(url);
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload.message || payload.error || 'No se pudo obtener las incidencias.');
+    }
+    const data = payload;
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (Array.isArray(data?.data)) {
+      return data.data;
+    }
+    return [];
+  }
+
+  async function recargarIncidencias() {
+    try {
+      const incidencias = await fetchIncidencias();
+      incidenciasData = Array.isArray(incidencias) ? incidencias.map(normalizarIncidencia) : [];
+      actualizarResumen();
+      renderIncidencias();
+    } catch (error) {
+      console.error('Error al recargar incidencias', error);
+      showToast('No se pudieron actualizar las incidencias');
+    }
+  }
+
+  function obtenerScopeIncidencia() {
+    const activo = incidentScopeRadios && incidentScopeRadios.length
+      ? Array.from(incidentScopeRadios).find(radio => radio.checked)
+      : null;
+    return activo ? activo.value : 'area';
+  }
+
+  function actualizarVisibilidadIncidencia() {
+    const scope = obtenerScopeIncidencia();
+    const esZona = scope === 'zona';
+    if (incidentAreaGroup) {
+      incidentAreaGroup.classList.toggle('incident-group--hidden', esZona);
+    }
+    if (incidentZoneGroup) {
+      incidentZoneGroup.classList.toggle('incident-group--hidden', !esZona);
+    }
+    if (incidentAreaSelect) {
+      incidentAreaSelect.required = !esZona;
+      if (esZona) {
+        incidentAreaSelect.value = '';
+      }
+    }
+    if (incidentZoneSelect) {
+      incidentZoneSelect.required = esZona;
+      incidentZoneSelect.disabled = !esZona;
+      if (!esZona) {
+        incidentZoneSelect.value = '';
+      }
+    }
+  }
+
+  function renderIncidencias() {
+    if (!incidentList) {
+      return;
+    }
+
+    if (!incidenciasData.length) {
+      incidentList.innerHTML = '<p class="incident-empty">No hay incidencias pendientes.</p>';
+      return;
+    }
+
+    const items = incidenciasData.map((inc) => {
+      const esZona = Boolean(inc.zona_id);
+      const objetivoTitulo = esZona
+        ? `Zona: ${escapeHtml(inc.zona_nombre || 'Sin nombre')}`
+        : `Área: ${escapeHtml(inc.area_nombre || 'Sin nombre')}`;
+      const objetivoDetalle = esZona
+        ? `<span>${escapeHtml(inc.area_nombre || 'Sin área asociada')}</span>`
+        : '';
+      const descripcion = escapeHtml(inc.descripcion || 'Sin descripción');
+      const reportadoPor = escapeHtml(inc.reportado_por || 'Usuario sin nombre');
+      const fecha = formatearFechaIncidencia(inc.creado_en);
+
+      return `
+        <article class="incident-item">
+          <div class="incident-item__target">
+            <strong>${objetivoTitulo}</strong>
+            ${objetivoDetalle}
+          </div>
+          <p>${descripcion}</p>
+          <div class="incident-item__meta">
+            <span>Reportado por ${reportadoPor}</span>
+            ${fecha ? `<span>${fecha}</span>` : ''}
+          </div>
+          <div class="incident-item__actions">
+            <button type="button" data-incident-resolver="${inc.id}">Marcar revisada</button>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    incidentList.innerHTML = items;
+  }
 
   async function recargarDatos() {
     try {
-      const [areas, zonas] = await Promise.all([fetchAreas(), fetchZonas()]);
+      const [areas, zonas, incidencias] = await Promise.all([
+        fetchAreas(),
+        fetchZonas(),
+        fetchIncidencias()
+      ]);
       areasData = Array.isArray(areas) ? areas.map(normalizarArea) : [];
       zonasData = Array.isArray(zonas) ? zonas.map(normalizarZona) : [];
+      incidenciasData = Array.isArray(incidencias) ? incidencias.map(normalizarIncidencia) : [];
       actualizarResumen();
       actualizarOpcionesArea();
       renderAreas();
       renderZonas();
+      renderIncidencias();
+      actualizarVisibilidadIncidencia();
     } catch (error) {
       console.error('Error al recargar datos', error);
       showToast('No se pudo actualizar la información de áreas y zonas');
@@ -928,6 +1149,105 @@ formZona.addEventListener('submit', async e => {
   }
 });
 
+if (incidentScopeRadios && incidentScopeRadios.length) {
+  incidentScopeRadios.forEach((radio) => {
+    radio.addEventListener('change', actualizarVisibilidadIncidencia);
+  });
+}
+
+if (incidentForm) {
+  incidentForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!EMP_ID) {
+      showToast('Tu sesión expiró. Vuelve a iniciar sesión para registrar incidencias.');
+      return;
+    }
+
+    const scope = obtenerScopeIncidencia();
+    const descripcion = incidentDescription?.value.trim() || '';
+    if (!descripcion) {
+      showToast('Describe brevemente la incidencia para poder registrarla.');
+      return;
+    }
+
+    const payload = {
+      descripcion,
+      empresa_id: EMP_ID
+    };
+
+    if (scope === 'zona') {
+      const zonaId = parseInt(incidentZoneSelect?.value || '', 10) || 0;
+      if (!zonaId) {
+        showToast('Selecciona la zona donde ocurrió la incidencia.');
+        return;
+      }
+      payload.zona_id = zonaId;
+    } else {
+      const areaId = parseInt(incidentAreaSelect?.value || '', 10) || 0;
+      if (!areaId) {
+        showToast('Selecciona el área que presenta la incidencia.');
+        return;
+      }
+      payload.area_id = areaId;
+    }
+
+    try {
+      const res = await fetch(INCIDENTS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || data.error || 'No se pudo guardar la incidencia.');
+      }
+      showToast('Incidencia registrada');
+      incidentForm.reset();
+      actualizarVisibilidadIncidencia();
+      await recargarIncidencias();
+    } catch (error) {
+      console.error('Error registrando incidencia', error);
+      showToast(error.message || 'No se pudo guardar la incidencia.');
+    }
+  });
+}
+
+if (incidentList) {
+  incidentList.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-incident-resolver]');
+    if (!button) {
+      return;
+    }
+    const id = parseInt(button.getAttribute('data-incident-resolver') || '', 10) || 0;
+    if (!id) {
+      return;
+    }
+    if (!confirm('¿Marcar como revisada esta incidencia? Se retirará del listado.')) {
+      return;
+    }
+
+    button.disabled = true;
+    try {
+      const res = await fetch(`${INCIDENTS_ENDPOINT}?id=${id}&empresa_id=${EMP_ID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'Revisado', empresa_id: EMP_ID })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || data.error || 'No se pudo actualizar la incidencia.');
+      }
+      showToast('Incidencia marcada como revisada');
+      await recargarIncidencias();
+    } catch (error) {
+      console.error('Error marcando incidencia como revisada', error);
+      showToast(error.message || 'No se pudo actualizar la incidencia.');
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 
 async function deleteArea(id) {
   if (!confirm('¿Seguro que deseas eliminar esta área?')) {
@@ -1057,5 +1377,6 @@ tablaZonasSinAreaBody.addEventListener('click', e => {
   if (filtroOcupacion && filtroOcupacionValor) {
     filtroOcupacionValor.textContent = `Desde ${filtroOcupacion.value}%`;
   }
+  actualizarVisibilidadIncidencia();
   recargarDatos();
 })();
