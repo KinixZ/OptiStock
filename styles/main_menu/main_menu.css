@@ -33,6 +33,10 @@ img {
     display: block;
 }
 
+.permissions-hidden {
+    display: none !important;
+}
+
 /* Sidebar */
 .sidebar {
     background: var(--sidebar-color);

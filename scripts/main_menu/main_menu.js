@@ -254,8 +254,133 @@ function actualizarPermisosComplementarios() {
         notificationWrapper.classList.toggle('permissions-hidden', !puedeVerNotificaciones);
         if (!puedeVerNotificaciones) {
             notificationWrapper.setAttribute('aria-hidden', 'true');
+            notificationWrapper.dataset.permissionDenied = 'true';
+            notificationWrapper.dataset.permissionMessage = 'No tienes permiso para recibir notificaciones.';
         } else {
             notificationWrapper.removeAttribute('aria-hidden');
+            notificationWrapper.dataset.permissionDenied = 'false';
+            delete notificationWrapper.dataset.permissionMessage;
+        }
+    }
+}
+
+function togglePermissionSection(sectionElement, permitido) {
+    if (!sectionElement) {
+        return;
+    }
+
+    const allowed = Boolean(permitido);
+    sectionElement.classList.toggle('permissions-hidden', !allowed);
+    if (!allowed) {
+        sectionElement.setAttribute('aria-hidden', 'true');
+        sectionElement.dataset.permissionDenied = 'true';
+    } else {
+        sectionElement.removeAttribute('aria-hidden');
+        sectionElement.dataset.permissionDenied = 'false';
+    }
+}
+
+function actualizarPermisosSecciones() {
+    const puedeVerDashboard = tienePermisoAccion('dashboard.view.metrics');
+    togglePermissionSection(document.querySelector('.header-stats'), puedeVerDashboard);
+    togglePermissionSection(document.querySelector('.dashboard-grid'), puedeVerDashboard);
+
+    const puedeVerAlertasStock = tienePermisoAccion('inventory.alerts.receive');
+    const stockCard = document.getElementById('stockAlertsCard');
+    togglePermissionSection(stockCard, puedeVerAlertasStock);
+    if (stockCard) {
+        if (!puedeVerAlertasStock) {
+            stockCard.dataset.permissionMessage = 'No tienes permiso para ver alertas de inventario.';
+        } else {
+            delete stockCard.dataset.permissionMessage;
+        }
+    }
+
+    const puedeVerRotacion = puedeVerDashboard && tienePermisoAccion('inventory.products.read');
+    const highRotationCardElement = document.getElementById('highRotationCard');
+    togglePermissionSection(highRotationCardElement, puedeVerRotacion);
+    if (highRotationCardElement) {
+        if (!puedeVerRotacion) {
+            highRotationCardElement.dataset.permissionMessage = 'No tienes permiso para ver la rotación de productos.';
+        } else {
+            delete highRotationCardElement.dataset.permissionMessage;
+        }
+    }
+
+    const recentActivityCardElement = document.getElementById('recentActivityCard');
+    togglePermissionSection(recentActivityCardElement, puedeVerDashboard);
+    if (recentActivityCardElement) {
+        if (!puedeVerDashboard) {
+            recentActivityCardElement.dataset.permissionMessage = 'No tienes permiso para ver los movimientos recientes.';
+        } else {
+            delete recentActivityCardElement.dataset.permissionMessage;
+        }
+    }
+
+    const puedeVerInfraestructura = puedeVerDashboard && evaluarPermisos(
+        ['warehouse.alerts.receive', 'warehouse.areas.read', 'warehouse.zones.read']
+    );
+    const zoneCapacityCardElement = document.getElementById('zoneCapacityCard');
+    togglePermissionSection(zoneCapacityCardElement, puedeVerInfraestructura);
+    if (zoneCapacityCardElement) {
+        if (!puedeVerInfraestructura) {
+            zoneCapacityCardElement.dataset.permissionMessage = 'No tienes permiso para ver el estado de las zonas.';
+        } else {
+            delete zoneCapacityCardElement.dataset.permissionMessage;
+        }
+    }
+
+    const spaceOptimizationCardElement = document.getElementById('spaceOptimizationCard');
+    togglePermissionSection(spaceOptimizationCardElement, puedeVerInfraestructura);
+    if (spaceOptimizationCardElement) {
+        if (!puedeVerInfraestructura) {
+            spaceOptimizationCardElement.dataset.permissionMessage = 'No tienes permiso para ver sugerencias de optimización.';
+        } else {
+            delete spaceOptimizationCardElement.dataset.permissionMessage;
+        }
+    }
+
+    const puedeVerLog = puedeVerDashboard && tienePermisoAccion('log.read');
+    const accessLogsCardElement = document.getElementById('employeeAccessCard');
+    togglePermissionSection(accessLogsCardElement, puedeVerLog);
+    if (accessLogsCardElement) {
+        if (!puedeVerLog) {
+            accessLogsCardElement.dataset.permissionMessage = 'No tienes permiso para ver los accesos recientes.';
+        } else {
+            delete accessLogsCardElement.dataset.permissionMessage;
+        }
+    }
+
+    const quickActionsContainer = document.querySelector('.quick-actions');
+    if (quickActionsContainer) {
+        const anyQuickActionEnabled = QUICK_ACTION_PERMISSION_RULES.some(regla =>
+            evaluarPermisos(regla.permisos, regla.modo || 'any')
+        );
+        togglePermissionSection(quickActionsContainer, anyQuickActionEnabled);
+        if (!anyQuickActionEnabled) {
+            quickActionsContainer.dataset.permissionMessage = 'No tienes permisos para ejecutar movimientos rápidos.';
+        } else {
+            delete quickActionsContainer.dataset.permissionMessage;
+        }
+        const headerActionsContainer = quickActionsContainer.closest('.header-actions');
+        if (headerActionsContainer) {
+            headerActionsContainer.classList.toggle('permissions-hidden', !anyQuickActionEnabled);
+        }
+    }
+
+    const personalizationTrigger = document.getElementById('openColorModal');
+    const puedePersonalizar = tienePermisoAccion('account.theme.configure');
+    if (personalizationTrigger) {
+        personalizationTrigger.classList.toggle('permissions-hidden', !puedePersonalizar);
+        personalizationTrigger.disabled = !puedePersonalizar;
+        if (!puedePersonalizar) {
+            personalizationTrigger.setAttribute('aria-hidden', 'true');
+            personalizationTrigger.dataset.permissionDenied = 'true';
+            personalizationTrigger.dataset.permissionMessage = 'No tienes permiso para personalizar el panel.';
+        } else {
+            personalizationTrigger.removeAttribute('aria-hidden');
+            personalizationTrigger.dataset.permissionDenied = 'false';
+            delete personalizationTrigger.dataset.permissionMessage;
         }
     }
 }
@@ -264,6 +389,7 @@ function aplicarPermisosUI() {
     actualizarPermisosSidebar();
     actualizarPermisosAccionesRapidas();
     actualizarPermisosComplementarios();
+    actualizarPermisosSecciones();
 }
 
 function sincronizarPermisosEmpresa() {
@@ -1636,6 +1762,15 @@ async function fetchPendingRequestNotifications(options = {}) {
         return;
     }
 
+    if (!tienePermisoAccion('notifications.receive.critical')) {
+        if (pendingRequestNotifications.length || pendingRequestState.size) {
+            pendingRequestNotifications = [];
+            pendingRequestState.clear();
+            refreshNotificationUI();
+        }
+        return;
+    }
+
     if (!activeEmpresaId) {
         if (pendingRequestNotifications.length || pendingRequestState.size) {
             pendingRequestNotifications = [];
@@ -1722,6 +1857,15 @@ async function fetchNotifications(options = {}) {
         return;
     }
 
+    if (!tienePermisoAccion('notifications.receive.critical')) {
+        if (notificationList) {
+            cachedNotifications = [];
+            serverNotifications = [];
+            refreshNotificationUI();
+        }
+        return;
+    }
+
     const { force = false } = options;
     const now = Date.now();
 
@@ -1789,6 +1933,11 @@ async function fetchNotifications(options = {}) {
 
 function startNotificationPolling() {
     if (notificationPollIntervalId) {
+        return;
+    }
+
+    if (!tienePermisoAccion('notifications.receive.critical')) {
+        stopPendingRequestsPolling();
         return;
     }
 
@@ -2655,6 +2804,13 @@ function toggleStockAlertMenu(forceOpen) {
 async function loadHighRotation() {
     if (!highRotationList) return;
 
+    const puedeVerRotacion = tienePermisoAccion('dashboard.view.metrics')
+        && tienePermisoAccion('inventory.products.read');
+    if (!puedeVerRotacion) {
+        highRotationList.innerHTML = '';
+        return;
+    }
+
     const empresaId = localStorage.getItem('id_empresa');
     if (!empresaId) {
         setListState(highRotationList, 'Registra tu empresa para ver los productos con mayor rotación.', 'fas fa-info-circle', 'card-empty-state');
@@ -2918,6 +3074,19 @@ async function loadInfrastructureMetrics() {
         return;
     }
 
+    const puedeVerInfraestructura = tienePermisoAccion('dashboard.view.metrics')
+        && evaluarPermisos(['warehouse.alerts.receive', 'warehouse.areas.read', 'warehouse.zones.read']);
+    if (!puedeVerInfraestructura) {
+        if (zoneCapacityList) {
+            zoneCapacityList.innerHTML = '';
+        }
+        if (spaceOptimizationList) {
+            spaceOptimizationList.innerHTML = '';
+        }
+        updateDashboardStat('criticalZones', 0);
+        return;
+    }
+
     const empresaId = localStorage.getItem('id_empresa');
     if (!empresaId) {
         if (zoneCapacityList) {
@@ -2991,6 +3160,13 @@ async function loadInfrastructureMetrics() {
 
 async function loadStockAlerts() {
     if (!stockAlertList) return;
+
+    if (!tienePermisoAccion('inventory.alerts.receive')) {
+        stockAlertList.innerHTML = '';
+        updateCriticalStockNotifications([], getStockAlertThreshold());
+        updateDashboardStat('alerts', 0);
+        return;
+    }
 
     const threshold = getStockAlertThreshold();
     if (stockAlertThresholdInput) {
@@ -3102,6 +3278,10 @@ function startStockAlertAutoRefresh() {
         return;
     }
 
+    if (!tienePermisoAccion('inventory.alerts.receive')) {
+        return;
+    }
+
     stockAlertPollIntervalId = window.setInterval(() => {
         loadStockAlerts();
     }, STOCK_ALERT_REFRESH_MS);
@@ -3118,6 +3298,12 @@ function stopStockAlertAutoRefresh() {
 
 async function loadRecentMovements() {
     if (!recentActivityList) return;
+
+    if (!tienePermisoAccion('dashboard.view.metrics')) {
+        recentActivityList.innerHTML = '';
+        updateDashboardStat('movements', 0);
+        return;
+    }
 
     const empresaId = localStorage.getItem('id_empresa');
     if (!empresaId) {
@@ -3257,6 +3443,10 @@ async function loadRecentMovements() {
 }
 
 function loadMetrics() {
+    if (!tienePermisoAccion('dashboard.view.metrics')) {
+        return;
+    }
+
     loadHighRotation();
     loadInfrastructureMetrics();
     loadStockAlerts();
@@ -3348,6 +3538,10 @@ function formatTime(date) {
 }
 function loadAccessLogs() {
     if (!accessLogsList) return;
+    if (!tienePermisoAccion('log.read')) {
+        accessLogsList.innerHTML = '';
+        return;
+    }
     const idEmpresa = localStorage.getItem('id_empresa') || '';
     fetch(`/scripts/php/get_access_logs.php?id_empresa=${idEmpresa}`)
         .then(res => {
@@ -3802,6 +3996,11 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
     notificationBell.addEventListener('click', event => {
         event.stopPropagation();
+        if (!tienePermisoAccion('notifications.receive.critical')) {
+            event.preventDefault();
+            mostrarAvisoPermisoDenegado(notificationWrapper, notificationWrapper?.dataset.permissionMessage);
+            return;
+        }
         const isOpen = notificationWrapper.classList.toggle('open');
         notificationBell.setAttribute('aria-expanded', String(isOpen));
 
@@ -3830,6 +4029,10 @@ if (notificationWrapper && notificationBell && notificationTray) {
 
 if (notificationViewAll) {
     notificationViewAll.addEventListener('click', () => {
+        if (!tienePermisoAccion('notifications.receive.critical')) {
+            mostrarAvisoPermisoDenegado(notificationWrapper, notificationWrapper?.dataset.permissionMessage);
+            return;
+        }
         const targetRoute = 'control_log/log.html';
 
         if (typeof window.loadPageIntoMainFromNotifications === 'function') {
@@ -3852,6 +4055,10 @@ if (notificationViewAll) {
 
 if (notificationClearButton) {
     notificationClearButton.addEventListener('click', () => {
+        if (!tienePermisoAccion('notifications.receive.critical')) {
+            mostrarAvisoPermisoDenegado(notificationWrapper, notificationWrapper?.dataset.permissionMessage);
+            return;
+        }
         clearNotificationTray();
     });
 }
@@ -3911,6 +4118,13 @@ let manualMovimientoTipo = 'ingreso';
 let manualProductosCache = [];
 let manualProductosEmpresaId = null;
 let manualCargandoProductos = false;
+
+function manualPuedeRegistrar(tipo) {
+    if (tipo === 'egreso') {
+        return evaluarPermisos(['inventory.products.update', 'inventory.products.delete']);
+    }
+    return evaluarPermisos(['inventory.products.create', 'inventory.products.update']);
+}
 
 function manualResetFeedback() {
     if (manualMovimientoError) {
@@ -4068,7 +4282,15 @@ function manualAbrirModal(tipo) {
         return;
     }
 
-    manualMovimientoTipo = tipo === 'egreso' ? 'egreso' : 'ingreso';
+    const tipoMovimiento = tipo === 'egreso' ? 'egreso' : 'ingreso';
+    if (!manualPuedeRegistrar(tipoMovimiento)) {
+        const trigger = tipoMovimiento === 'egreso' ? manualSalidaBtn : manualEntradaBtn;
+        mostrarAvisoPermisoDenegado(trigger, 'No tienes permiso para registrar este movimiento manual.');
+        notifyUnauthorizedMovement('Movimiento manual no autorizado para tu rol.');
+        return;
+    }
+
+    manualMovimientoTipo = tipoMovimiento;
     manualResetFeedback();
 
     if (manualMovimientoTitulo) {
@@ -4104,6 +4326,12 @@ async function manualRegistrarMovimiento(event) {
     }
 
     manualMostrarError('');
+
+    if (!manualPuedeRegistrar(manualMovimientoTipo)) {
+        manualMostrarError('No tienes permiso para registrar este movimiento.');
+        notifyUnauthorizedMovement('Movimiento manual no autorizado.');
+        return;
+    }
 
     if (!FLASH_EMPRESA_ID) {
         flashShowToast('Registra tu empresa para poder registrar movimientos.', 'error');
@@ -4490,6 +4718,13 @@ function flashHandleScanError(errorMessage) {
 }
 
 async function flashProcesarLectura(decodedText) {
+    if (!tienePermisoAccion('inventory.movements.quick_io')) {
+        await flashDetenerScanner();
+        flashShowToast('No tienes permiso para registrar movimientos rápidos.', 'error');
+        notifyUnauthorizedMovement('Movimiento rápido no autorizado.');
+        return;
+    }
+
     await flashDetenerScanner();
 
     const productoId = parseInt(String(decodedText).trim(), 10);
@@ -4575,6 +4810,13 @@ async function flashAbrirScanner(tipo) {
     }
     if (!FLASH_EMPRESA_ID) {
         flashShowToast('Registra una empresa antes de usar el escáner QR.', 'error');
+        return;
+    }
+
+    if (!tienePermisoAccion('inventory.movements.quick_io')) {
+        const trigger = tipo === 'egreso' ? egresoFlashBtn : ingresoFlashBtn;
+        mostrarAvisoPermisoDenegado(trigger, 'No tienes permiso para registrar movimientos rápidos.');
+        notifyUnauthorizedMovement('Movimiento rápido no autorizado para tu rol.');
         return;
     }
 
@@ -4665,6 +4907,12 @@ flashScanReintentar?.addEventListener('click', async () => {
 });
 
 flashScanRegistrar?.addEventListener('click', async () => {
+    if (!tienePermisoAccion('inventory.movements.quick_io')) {
+        flashShowToast('No tienes permiso para registrar movimientos rápidos.', 'error');
+        notifyUnauthorizedMovement('Movimiento rápido no autorizado.');
+        return;
+    }
+
     if (!flashProductoActual) {
         flashShowToast('Escanea un producto antes de registrar el movimiento.', 'error');
         return;
@@ -4842,18 +5090,30 @@ if (cancelAlertSettings) {
 
 if (stockAlertsRefreshBtn) {
     stockAlertsRefreshBtn.addEventListener('click', () => {
+        if (!tienePermisoAccion('inventory.alerts.receive')) {
+            mostrarAvisoPermisoDenegado(document.getElementById('stockAlertsCard'), 'No tienes permiso para ver alertas de inventario.');
+            return;
+        }
         loadStockAlerts();
     });
 }
 
 if (recentActivityRefreshBtn) {
     recentActivityRefreshBtn.addEventListener('click', () => {
+        if (!tienePermisoAccion('dashboard.view.metrics')) {
+            mostrarAvisoPermisoDenegado(document.getElementById('recentActivityCard'), 'No tienes permiso para ver movimientos recientes.');
+            return;
+        }
         loadRecentMovements();
     });
 }
 
 if (stockAlertsMenuBtn) {
     stockAlertsMenuBtn.addEventListener('click', event => {
+        if (!tienePermisoAccion('inventory.alerts.receive')) {
+            mostrarAvisoPermisoDenegado(document.getElementById('stockAlertsCard'), 'No tienes permiso para configurar alertas de inventario.');
+            return;
+        }
         event.stopPropagation();
         toggleStockAlertMenu();
     });
@@ -4861,6 +5121,10 @@ if (stockAlertsMenuBtn) {
 
 if (stockAlertApplyBtn) {
     stockAlertApplyBtn.addEventListener('click', () => {
+        if (!tienePermisoAccion('inventory.alerts.receive')) {
+            mostrarAvisoPermisoDenegado(document.getElementById('stockAlertsCard'), 'No tienes permiso para configurar alertas de inventario.');
+            return;
+        }
         const value = stockAlertThresholdInput ? stockAlertThresholdInput.value : DEFAULT_STOCK_ALERT_THRESHOLD;
         const sanitized = setStockAlertThreshold(value);
         toggleStockAlertMenu(false);
@@ -4871,6 +5135,10 @@ if (stockAlertApplyBtn) {
 
 if (stockAlertCancelBtn) {
     stockAlertCancelBtn.addEventListener('click', () => {
+        if (!tienePermisoAccion('inventory.alerts.receive')) {
+            toggleStockAlertMenu(false);
+            return;
+        }
         if (stockAlertThresholdInput) {
             stockAlertThresholdInput.value = getStockAlertThreshold();
         }
@@ -5322,6 +5590,10 @@ const openColorModal = document.getElementById('openColorModal');
 const colorModal = document.getElementById('colorModal');
 
 openColorModal.addEventListener('click', () => {
+    if (!tienePermisoAccion('account.theme.configure')) {
+        mostrarAvisoPermisoDenegado(openColorModal, 'No tienes permiso para personalizar el panel.');
+        return;
+    }
     colorModal.style.display = 'flex';
 });
 
@@ -5355,6 +5627,10 @@ document.querySelectorAll('#topbarColors button').forEach(btn => {
 });
 
 document.getElementById('guardarConfigVisual').addEventListener('click', () => {
+    if (!tienePermisoAccion('account.theme.configure')) {
+        mostrarAvisoPermisoDenegado(openColorModal, 'No tienes permiso para guardar esta configuración.');
+        return;
+    }
     const empresaId = data.empresa_id;
     const menuItems = Array.from(document.querySelectorAll('.sidebar-menu a'));
     const ordenSidebar = menuItems.map(el => el.dataset.page);
