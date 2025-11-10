@@ -313,25 +313,24 @@ if ($method === 'DELETE') {
 
     $nombreArea = trim((string) ($areaDatos['nombre'] ?? ''));
 
-    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
+    $stmt = $conn->prepare('SELECT id FROM zonas WHERE area_id = ?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
-    $stmt->bind_result($zonasAsociadas);
-    $stmt->fetch();
-    $stmt->close();
-
-    if ($zonasAsociadas > 0) {
-        http_response_code(409);
-        echo json_encode(['error' => 'No se puede eliminar el área porque existen zonas asociadas. Reasigna o elimina las zonas primero.']);
-        exit;
+    $resZonas = $stmt->get_result();
+    $zonasAsociadasIds = [];
+    while ($row = $resZonas->fetch_assoc()) {
+        $zonasAsociadasIds[] = (int) ($row['id'] ?? 0);
     }
+    $stmt->close();
 
     $empresaDestino = $empresaId > 0 ? $empresaId : (int) ($areaDatos['id_empresa'] ?? 0);
 
     $payloadEliminar = [
         'area_id' => $id,
         'empresa_id' => $empresaDestino,
-        'nombre_area' => $nombreArea
+        'nombre_area' => $nombreArea,
+        'zonas_liberar' => $zonasAsociadasIds,
+        'total_zonas_liberar' => count($zonasAsociadasIds)
     ];
 
     if (opti_usuario_actual_es_admin()) {
@@ -343,6 +342,11 @@ if ($method === 'DELETE') {
         exit;
     }
 
+    $descripcionSolicitud = 'Solicitud de eliminación de área.';
+    if (!empty($zonasAsociadasIds)) {
+        $descripcionSolicitud .= ' Las zonas asociadas se liberarán automáticamente y quedarán sin área.';
+    }
+
     $resultadoSolicitud = opti_registrar_solicitud($conn, [
         'id_empresa' => $empresaDestino,
         'id_solicitante' => $usuarioId,
@@ -351,7 +355,7 @@ if ($method === 'DELETE') {
         'resumen' => $nombreArea !== ''
             ? 'Eliminación del área "' . $nombreArea . '" (ID #' . $id . ')'
             : 'Eliminación del área ID #' . $id,
-        'descripcion' => 'Solicitud de eliminación de área.',
+        'descripcion' => $descripcionSolicitud,
         'payload' => $payloadEliminar
     ]);
 

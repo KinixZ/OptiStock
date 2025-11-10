@@ -1190,44 +1190,66 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
         return ['success' => false, 'message' => 'No se puede eliminar el área porque existen incidencias pendientes por revisar.'];
     }
 
-    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
-    if (!$stmt) {
-        return ['success' => false, 'message' => 'No se pudo validar las zonas asociadas.'];
-    }
-    $stmt->bind_param('i', $areaId);
-    $stmt->execute();
-    $stmt->bind_result($zonasAsociadas);
-    $stmt->fetch();
-    $stmt->close();
-
-    if ($zonasAsociadas > 0) {
-        return ['success' => false, 'message' => 'No se puede eliminar el área porque existen zonas asociadas.'];
+    $zonasLiberar = [];
+    if (isset($payload['zonas_liberar']) && is_array($payload['zonas_liberar'])) {
+        $zonasLiberar = array_values(array_filter(array_map('intval', $payload['zonas_liberar'])));
     }
 
-    $stmtDel = $conn->prepare('DELETE FROM areas WHERE id = ? AND id_empresa = ?');
-    if (!$stmtDel) {
-        return ['success' => false, 'message' => 'No se pudo preparar la eliminación del área.'];
+    if (!$zonasLiberar) {
+        $stmtZonas = $conn->prepare('SELECT id FROM zonas WHERE area_id = ?');
+        if ($stmtZonas) {
+            $stmtZonas->bind_param('i', $areaId);
+            $stmtZonas->execute();
+            $resultadoZonas = $stmtZonas->get_result();
+            while ($fila = $resultadoZonas->fetch_assoc()) {
+                $zonasLiberar[] = (int) ($fila['id'] ?? 0);
+            }
+            $stmtZonas->close();
+        }
     }
-    $stmtDel->bind_param('ii', $areaId, $empresaId);
+
+    $zonasLiberadas = 0;
 
     try {
+        $conn->begin_transaction();
+
+        $stmtLiberar = $conn->prepare('UPDATE zonas SET area_id = NULL WHERE area_id = ?');
+        if (!$stmtLiberar) {
+            throw new mysqli_sql_exception('No se pudo preparar la liberación de zonas.');
+        }
+        $stmtLiberar->bind_param('i', $areaId);
+        $stmtLiberar->execute();
+        $zonasLiberadas = $stmtLiberar->affected_rows;
+        $stmtLiberar->close();
+
+        $stmtDel = $conn->prepare('DELETE FROM areas WHERE id = ? AND id_empresa = ?');
+        if (!$stmtDel) {
+            throw new mysqli_sql_exception('No se pudo preparar la eliminación del área.');
+        }
+        $stmtDel->bind_param('ii', $areaId, $empresaId);
         $stmtDel->execute();
         $eliminadas = $stmtDel->affected_rows;
         $stmtDel->close();
+
+        if ($eliminadas <= 0) {
+            throw new mysqli_sql_exception('El área indicada ya no existe.');
+        }
+
+        eliminarIncidenciasPorArea($conn, $areaId);
+
+        $conn->commit();
     } catch (mysqli_sql_exception $e) {
-        $stmtDel->close();
+        $conn->rollback();
         return ['success' => false, 'message' => 'No se pudo eliminar el área: ' . $e->getMessage()];
     }
 
-    if ($eliminadas <= 0) {
-        return ['success' => false, 'message' => 'El área indicada ya no existe.'];
-    }
-
-    eliminarIncidenciasPorArea($conn, $areaId);
-
     registrarLog($conn, $idRevisor, 'Áreas', 'Eliminación aprobada del área ID ' . $areaId);
 
-    return ['success' => true];
+    return [
+        'success' => true,
+        'zonas_liberadas' => $zonasLiberadas,
+        'zonas_ids' => $zonasLiberar
+    ];
 }
 
 function opti_aplicar_zona_crear(mysqli $conn, array $payload, int $idRevisor)
