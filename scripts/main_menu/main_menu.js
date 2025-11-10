@@ -94,6 +94,212 @@ const permissionsHelper =
         ? window.OptiStockPermissions
         : null;
 
+let permisosInicioPromesa = null;
+
+const SIDEBAR_PERMISSION_RULES = {
+    'area_almac_v2/gestion_areas_zonas.html': {
+        permisos: ['warehouse.areas.read', 'warehouse.zones.read'],
+        mensaje: 'No tienes permiso para administrar áreas y zonas.'
+    },
+    'gest_inve/inventario_basico.html': {
+        permisos: ['inventory.products.read'],
+        mensaje: 'No tienes permiso para consultar el inventario.'
+    },
+    'admin_usuar/administracion_usuarios.html': {
+        permisos: ['users.read'],
+        mensaje: 'No tienes permiso para administrar usuarios.'
+    },
+    'reports/reportes.html': {
+        permisos: ['reports.generate', 'reports.export.pdf', 'reports.export.xlsx'],
+        mensaje: 'No tienes permiso para acceder a los reportes.'
+    },
+    'control_log/log.html': {
+        permisos: ['log.read'],
+        mensaje: 'No tienes permiso para revisar el registro de actividades.'
+    },
+    'account_suscrip/account_suscrip.html': {
+        permisos: ['account.profile.read'],
+        mensaje: 'No tienes permiso para administrar la cuenta.'
+    }
+};
+
+const QUICK_ACTION_PERMISSION_RULES = [
+    {
+        element: ingresoFlashBtn,
+        permisos: ['inventory.movements.quick_io'],
+        mensaje: 'No tienes permiso para registrar ingresos rápidos.'
+    },
+    {
+        element: egresoFlashBtn,
+        permisos: ['inventory.movements.quick_io'],
+        mensaje: 'No tienes permiso para registrar egresos rápidos.'
+    },
+    {
+        element: manualEntradaBtn,
+        permisos: ['inventory.products.create', 'inventory.products.update'],
+        mensaje: 'No tienes permiso para registrar entradas manuales.'
+    },
+    {
+        element: manualSalidaBtn,
+        permisos: ['inventory.products.update', 'inventory.products.delete'],
+        mensaje: 'No tienes permiso para registrar salidas manuales.'
+    }
+];
+
+function mostrarAvisoPermisoDenegado(elemento, mensajePredeterminado) {
+    const mensaje = (elemento && elemento.dataset && elemento.dataset.permissionMessage)
+        || mensajePredeterminado
+        || 'No tienes permiso para realizar esta acción.';
+    notifyUnauthorizedMovement(mensaje);
+}
+
+function evaluarPermisos(permisos, modo = 'any') {
+    if (!Array.isArray(permisos) || permisos.length === 0) {
+        return true;
+    }
+
+    if (modo === 'all') {
+        return permisos.every(permiso => tienePermisoAccion(permiso));
+    }
+
+    return permisos.some(permiso => tienePermisoAccion(permiso));
+}
+
+function actualizarPermisosSidebar() {
+    const enlaces = document.querySelectorAll('.sidebar-menu a[data-page]');
+    enlaces.forEach(link => {
+        const page = link.getAttribute('data-page');
+        const regla = SIDEBAR_PERMISSION_RULES[page];
+
+        if (!regla) {
+            link.classList.remove('is-disabled');
+            link.removeAttribute('aria-disabled');
+            link.removeAttribute('tabindex');
+            delete link.dataset.permissionDenied;
+            delete link.dataset.permissionMessage;
+            return;
+        }
+
+        const permitido = evaluarPermisos(regla.permisos, regla.modo || 'any');
+
+        if (permitido) {
+            link.classList.remove('is-disabled');
+            link.removeAttribute('aria-disabled');
+            link.removeAttribute('tabindex');
+            link.dataset.permissionDenied = 'false';
+        } else {
+            link.classList.add('is-disabled');
+            link.setAttribute('aria-disabled', 'true');
+            link.setAttribute('tabindex', '-1');
+            link.dataset.permissionDenied = 'true';
+        }
+
+        if (regla.mensaje) {
+            link.dataset.permissionMessage = regla.mensaje;
+        } else {
+            delete link.dataset.permissionMessage;
+        }
+    });
+}
+
+function actualizarPermisosAccionesRapidas() {
+    QUICK_ACTION_PERMISSION_RULES.forEach(regla => {
+        const { element, permisos, mensaje } = regla;
+        if (!element) {
+            return;
+        }
+
+        const permitido = evaluarPermisos(permisos, regla.modo || 'any');
+        element.dataset.permissionDenied = permitido ? 'false' : 'true';
+
+        if (permitido) {
+            element.classList.remove('btn-disabled');
+            element.removeAttribute('aria-disabled');
+        } else {
+            element.classList.add('btn-disabled');
+            element.setAttribute('aria-disabled', 'true');
+        }
+
+        if (mensaje) {
+            element.dataset.permissionMessage = mensaje;
+        } else {
+            delete element.dataset.permissionMessage;
+        }
+    });
+}
+
+function actualizarPermisosComplementarios() {
+    const puedeConfigurarAlertas = tienePermisoAccion('inventory.alerts.receive');
+    if (alertSettingsBtn) {
+        if (puedeConfigurarAlertas) {
+            alertSettingsBtn.classList.remove('is-disabled');
+            alertSettingsBtn.removeAttribute('aria-disabled');
+            alertSettingsBtn.dataset.permissionDenied = 'false';
+            delete alertSettingsBtn.dataset.permissionMessage;
+        } else {
+            alertSettingsBtn.classList.add('is-disabled');
+            alertSettingsBtn.setAttribute('aria-disabled', 'true');
+            alertSettingsBtn.dataset.permissionDenied = 'true';
+            alertSettingsBtn.dataset.permissionMessage = 'No tienes permiso para configurar alertas.';
+        }
+    }
+
+    const puedeVerNotificaciones = tienePermisoAccion('notifications.receive.critical');
+    if (notificationWrapper) {
+        notificationWrapper.classList.toggle('permissions-hidden', !puedeVerNotificaciones);
+        if (!puedeVerNotificaciones) {
+            notificationWrapper.setAttribute('aria-hidden', 'true');
+        } else {
+            notificationWrapper.removeAttribute('aria-hidden');
+        }
+    }
+}
+
+function aplicarPermisosUI() {
+    actualizarPermisosSidebar();
+    actualizarPermisosAccionesRapidas();
+    actualizarPermisosComplementarios();
+}
+
+function sincronizarPermisosEmpresa() {
+    if (!permissionsHelper || typeof permissionsHelper.synchronizeFromServer !== 'function') {
+        return Promise.resolve();
+    }
+
+    if (permisosInicioPromesa) {
+        return permisosInicioPromesa;
+    }
+
+    const idEmpresa = (() => {
+        try {
+            return localStorage.getItem('id_empresa');
+        } catch (error) {
+            return null;
+        }
+    })();
+
+    const idNumero = Number.parseInt(idEmpresa, 10);
+    const opciones = Number.isFinite(idNumero) && idNumero > 0 ? { idEmpresa: idNumero } : {};
+
+    permisosInicioPromesa = permissionsHelper
+        .synchronizeFromServer(opciones)
+        .catch(error => {
+            console.warn('No se pudieron sincronizar los permisos de la empresa.', error);
+            throw error;
+        })
+        .finally(() => {
+            permisosInicioPromesa = null;
+        });
+
+    return permisosInicioPromesa;
+}
+
+sincronizarPermisosEmpresa()
+    .catch(() => {})
+    .finally(() => {
+        aplicarPermisosUI();
+    });
+
 function obtenerRolParaPermisos() {
     if (activeUsuarioRol) {
         return activeUsuarioRol;
@@ -3563,10 +3769,15 @@ const menuItems = document.querySelectorAll('.sidebar-menu a');
 menuItems.forEach(item => {
     item.addEventListener('click', function(e) {
         e.preventDefault();
-        
+
+        if (this.dataset.permissionDenied === 'true') {
+            mostrarAvisoPermisoDenegado(this);
+            return;
+        }
+
         menuItems.forEach(i => i.classList.remove('active'));
         this.classList.add('active');
-        
+
         const pageTitle = this.textContent.trim();
         document.querySelector('.topbar-title').textContent = pageTitle;
     });
@@ -4535,18 +4746,34 @@ flashScanRegistrar?.addEventListener('click', async () => {
 });
 
 ingresoFlashBtn?.addEventListener('click', () => {
+    if (ingresoFlashBtn.dataset.permissionDenied === 'true') {
+        mostrarAvisoPermisoDenegado(ingresoFlashBtn);
+        return;
+    }
     flashAbrirScanner('ingreso');
 });
 
 egresoFlashBtn?.addEventListener('click', () => {
+    if (egresoFlashBtn.dataset.permissionDenied === 'true') {
+        mostrarAvisoPermisoDenegado(egresoFlashBtn);
+        return;
+    }
     flashAbrirScanner('egreso');
 });
 
 manualEntradaBtn?.addEventListener('click', () => {
+    if (manualEntradaBtn.dataset.permissionDenied === 'true') {
+        mostrarAvisoPermisoDenegado(manualEntradaBtn);
+        return;
+    }
     manualAbrirModal('ingreso');
 });
 
 manualSalidaBtn?.addEventListener('click', () => {
+    if (manualSalidaBtn.dataset.permissionDenied === 'true') {
+        mostrarAvisoPermisoDenegado(manualSalidaBtn);
+        return;
+    }
     manualAbrirModal('egreso');
 });
 
@@ -4589,6 +4816,10 @@ document.addEventListener('keydown', function(e) {
 // Alert settings handlers
 if (alertSettingsBtn) {
     alertSettingsBtn.addEventListener('click', () => {
+        if (alertSettingsBtn.dataset.permissionDenied === 'true') {
+            mostrarAvisoPermisoDenegado(alertSettingsBtn);
+            return;
+        }
         if (!alertModal) return;
         alertMovCriticos.checked = JSON.parse(localStorage.getItem('alertMovCriticos') || 'true');
         alertFallosInventario.checked = JSON.parse(localStorage.getItem('alertFallosInventario') || 'true');
@@ -5185,6 +5416,11 @@ document.getElementById('guardarConfigVisual').addEventListener('click', () => {
             e.preventDefault();
 
             const pageUrl = this.getAttribute('data-page');
+
+            if (this.dataset.permissionDenied === 'true') {
+                mostrarAvisoPermisoDenegado(this);
+                return;
+            }
 
             if (pageUrl === 'inicio') {
                 const label = setActiveSidebarItem('inicio') || this.textContent.trim();
