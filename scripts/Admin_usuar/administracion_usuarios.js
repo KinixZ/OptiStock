@@ -210,10 +210,6 @@
         {
           clave: 'log.flag_records',
           descripcion: 'Marcar registros para revisión o auditoría.'
-        },
-        {
-          clave: 'log.immutability.enforce',
-          descripcion: 'Garantizar que los registros del LOG no puedan modificarse o eliminarse.'
         }
       ]
     },
@@ -244,10 +240,6 @@
         {
           clave: 'account.theme.configure',
           descripcion: 'Cambiar colores, logotipo y tema visual del panel.'
-        },
-        {
-          clave: 'subscription.manage',
-          descripcion: 'Gestionar el plan de suscripción, pagos y renovaciones.'
         }
       ]
     }
@@ -894,95 +886,6 @@
     } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
       window.alert(mensaje);
     }
-  }
-
-  function normalizarDetalles(detalles) {
-    if (!Array.isArray(detalles)) {
-      return [];
-    }
-
-    return detalles
-      .map(detalle => {
-        if (!detalle) {
-          return '';
-        }
-        if (typeof detalle === 'string') {
-          return detalle;
-        }
-        if (typeof detalle === 'object') {
-          if (typeof detalle.descripcion === 'string' && detalle.descripcion.trim() !== '') {
-            return detalle.descripcion;
-          }
-
-          const partes = [];
-          if (typeof detalle.total === 'number' && !Number.isNaN(detalle.total)) {
-            partes.push(`${detalle.total}`);
-          }
-          if (detalle.tipo) {
-            partes.push(String(detalle.tipo));
-          }
-
-          if (partes.length > 0) {
-            return partes.join(' ');
-          }
-        }
-
-        return '';
-      })
-      .filter(texto => texto.trim() !== '');
-  }
-
-  function mostrarMensajeEnPagina(tipo, mensaje, detalles = []) {
-    const contenedor = document.getElementById('usuariosFeedback');
-    if (!contenedor) {
-      return;
-    }
-
-    const clases = ['alert'];
-    switch (tipo) {
-      case 'success':
-        clases.push('alert-success');
-        break;
-      case 'error':
-        clases.push('alert-danger');
-        break;
-      case 'warning':
-        clases.push('alert-warning');
-        break;
-      default:
-        clases.push('alert-info');
-        break;
-    }
-
-    contenedor.className = clases.join(' ');
-    contenedor.setAttribute('role', 'alert');
-    contenedor.setAttribute('aria-live', tipo === 'error' ? 'assertive' : 'polite');
-
-    const secciones = [];
-    if (mensaje) {
-      secciones.push(`<div class="fw-semibold">${escapeHtml(mensaje)}</div>`);
-    }
-
-    const listaDetalles = normalizarDetalles(detalles);
-    if (listaDetalles.length > 0) {
-      const items = listaDetalles.map(item => `<li>${escapeHtml(item)}</li>`).join('');
-      secciones.push(`<ul class="mb-0 mt-2 ps-3">${items}</ul>`);
-    }
-
-    contenedor.innerHTML = secciones.join('');
-    contenedor.classList.remove('d-none');
-  }
-
-  function limpiarMensajeEnPagina() {
-    const contenedor = document.getElementById('usuariosFeedback');
-    if (!contenedor) {
-      return;
-    }
-
-    contenedor.innerHTML = '';
-    contenedor.className = 'alert d-none';
-    contenedor.setAttribute('role', 'alert');
-    contenedor.setAttribute('aria-live', 'polite');
   }
 
   function poblarFiltroRoles(roles) {
@@ -1675,8 +1578,6 @@
       body.id_solicitante = solicitanteId;
     }
 
-    limpiarMensajeEnPagina();
-
     fetch('/scripts/php/eliminar_usuario_empresa.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1685,76 +1586,21 @@
       .then(res => res.json())
       .then(data => {
         if (data?.solicitud) {
-          const mensajeSolicitud = `Solicitud registrada para eliminar al usuario ${correo}. Folio ${data.solicitud.id}.`;
-          mostrarMensajeEnPagina('info', mensajeSolicitud);
-          alert(mensajeSolicitud);
+          alert(`Solicitud registrada para eliminar al usuario ${correo}. Folio ${data.solicitud.id}.`);
           return;
         }
         if (!data?.success) {
-          const detallesBloqueo = Array.isArray(data?.detalles_bloqueo)
-            ? data.detalles_bloqueo
-                .map(detalle => {
-                  if (!detalle || typeof detalle !== 'object') return '';
-                  return detalle.descripcion || '';
-                })
-                .filter(Boolean)
-            : [];
-
-          if (typeof data?.solicitudes_pendientes === 'number' && data.solicitudes_pendientes > 0) {
-            const textoSolicitudes = data.solicitudes_pendientes === 1
-              ? '1 solicitud pendiente'
-              : `${data.solicitudes_pendientes} solicitudes pendientes`;
-            if (!detallesBloqueo.includes(textoSolicitudes)) {
-              detallesBloqueo.push(textoSolicitudes);
-            }
-          }
-
-          if (typeof data?.incidencias_pendientes === 'number' && data.incidencias_pendientes > 0) {
-            const textoIncidencias = data.incidencias_pendientes === 1
-              ? '1 incidencia pendiente'
-              : `${data.incidencias_pendientes} incidencias pendientes`;
-            if (!detallesBloqueo.includes(textoIncidencias)) {
-              detallesBloqueo.push(textoIncidencias);
-            }
-          }
-
-          const mensajeBase = data?.message || 'No se pudo completar la eliminación del usuario.';
-          let mensajeDetallado = mensajeBase;
-
-          if (detallesBloqueo.length > 0) {
-            let detalleTexto = '';
-            if (detallesBloqueo.length === 1) {
-              detalleTexto = detallesBloqueo[0];
-            } else {
-              const ultimoDetalle = detallesBloqueo[detallesBloqueo.length - 1];
-              const anteriores = detallesBloqueo.slice(0, -1).join(', ');
-              detalleTexto = `${anteriores} y ${ultimoDetalle}`;
-            }
-
-            if (!mensajeDetallado.includes(detalleTexto)) {
-              mensajeDetallado = `${mensajeDetallado} (${detalleTexto})`;
-            }
-          }
-
-          notificar('error', `❌ ${mensajeDetallado}`);
-          mostrarMensajeEnPagina('error', mensajeDetallado, detallesBloqueo);
-          if (detallesBloqueo.length > 0) {
-            console.info('Motivos que impiden eliminar al usuario:', detallesBloqueo);
-          }
+          notificar('error', '❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
           return;
         }
 
         usuariosEmpresa = usuariosEmpresa.filter(usuario => (usuario.correo || '').toLowerCase() !== correo.toLowerCase());
         sincronizarUsuariosEmpresaUI();
-        const mensajeExito = data?.message || `Usuario ${correo} eliminado.`;
-        notificar('success', mensajeExito);
-        mostrarMensajeEnPagina('success', mensajeExito);
+        notificar('success', data?.message || `Usuario ${correo} eliminado.`);
       })
       .catch(err => {
         console.error('Error eliminando usuario:', err);
-        const mensajeError = '❌ Error al eliminar usuario.';
-        notificar('error', mensajeError);
-        mostrarMensajeEnPagina('error', 'No se pudo eliminar al usuario. Inténtalo más tarde.');
+        notificar('error', '❌ Error al eliminar usuario.');
       });
   }
 
