@@ -955,6 +955,25 @@ INSERT INTO `notificaciones` (`id`, `id_empresa`, `titulo`, `mensaje`, `tipo_des
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `incidencias_infraestructura`
+--
+
+CREATE TABLE `incidencias_infraestructura` (
+  `id` int(11) NOT NULL,
+  `id_empresa` int(11) NOT NULL,
+  `area_id` int(11) DEFAULT NULL,
+  `zona_id` int(11) DEFAULT NULL,
+  `id_usuario_reporta` int(11) NOT NULL,
+  `id_usuario_revisa` int(11) DEFAULT NULL,
+  `descripcion` text NOT NULL,
+  `estado` enum('Pendiente','Revisado') NOT NULL DEFAULT 'Pendiente',
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `revisado_en` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `pass_resets`
 --
 
@@ -2367,6 +2386,16 @@ ALTER TABLE `notificaciones`
   ADD KEY `idx_notificaciones_destinatario` (`tipo_destinatario`,`rol_destinatario`,`id_usuario_destinatario`);
 
 --
+-- Indexes for table `incidencias_infraestructura`
+--
+ALTER TABLE `incidencias_infraestructura`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_incidencias_empresa_estado` (`id_empresa`,`estado`),
+  ADD KEY `idx_incidencias_area` (`area_id`),
+  ADD KEY `idx_incidencias_zona` (`zona_id`),
+  ADD KEY `idx_incidencias_reporta` (`id_usuario_reporta`);
+
+--
 -- Indexes for table `pass_resets`
 --
 ALTER TABLE `pass_resets`
@@ -2520,6 +2549,12 @@ ALTER TABLE `notificaciones`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=305;
 
 --
+-- AUTO_INCREMENT for table `incidencias_infraestructura`
+--
+ALTER TABLE `incidencias_infraestructura`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `pass_resets`
 --
 ALTER TABLE `pass_resets`
@@ -2621,6 +2656,16 @@ ALTER TABLE `movimientos`
   ADD CONSTRAINT `fk_mov_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
   ADD CONSTRAINT `fk_movimientos_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
   ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`);
+
+--
+-- Constraints for table `incidencias_infraestructura`
+--
+ALTER TABLE `incidencias_infraestructura`
+  ADD CONSTRAINT `fk_incidencias_area` FOREIGN KEY (`area_id`) REFERENCES `areas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_incidencias_empresa` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id_empresa`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_incidencias_usuario_reporta` FOREIGN KEY (`id_usuario_reporta`) REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_incidencias_usuario_revisa` FOREIGN KEY (`id_usuario_revisa`) REFERENCES `usuario` (`id_usuario`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_incidencias_zona` FOREIGN KEY (`zona_id`) REFERENCES `zonas` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `pass_resets`
