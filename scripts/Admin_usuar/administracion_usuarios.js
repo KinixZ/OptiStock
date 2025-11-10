@@ -1598,7 +1598,55 @@
           return;
         }
         if (!data?.success) {
-          notificar('error', '❌ No se pudo eliminar: ' + (data.message || 'Error desconocido.'));
+          const detallesBloqueo = Array.isArray(data?.detalles_bloqueo)
+            ? data.detalles_bloqueo
+                .map(detalle => {
+                  if (!detalle || typeof detalle !== 'object') return '';
+                  return detalle.descripcion || '';
+                })
+                .filter(Boolean)
+            : [];
+
+          if (typeof data?.solicitudes_pendientes === 'number' && data.solicitudes_pendientes > 0) {
+            const textoSolicitudes = data.solicitudes_pendientes === 1
+              ? '1 solicitud pendiente'
+              : `${data.solicitudes_pendientes} solicitudes pendientes`;
+            if (!detallesBloqueo.includes(textoSolicitudes)) {
+              detallesBloqueo.push(textoSolicitudes);
+            }
+          }
+
+          if (typeof data?.incidencias_pendientes === 'number' && data.incidencias_pendientes > 0) {
+            const textoIncidencias = data.incidencias_pendientes === 1
+              ? '1 incidencia pendiente'
+              : `${data.incidencias_pendientes} incidencias pendientes`;
+            if (!detallesBloqueo.includes(textoIncidencias)) {
+              detallesBloqueo.push(textoIncidencias);
+            }
+          }
+
+          const mensajeBase = data?.message || 'No se pudo completar la eliminación del usuario.';
+          let mensajeDetallado = mensajeBase;
+
+          if (detallesBloqueo.length > 0) {
+            let detalleTexto = '';
+            if (detallesBloqueo.length === 1) {
+              detalleTexto = detallesBloqueo[0];
+            } else {
+              const ultimoDetalle = detallesBloqueo[detallesBloqueo.length - 1];
+              const anteriores = detallesBloqueo.slice(0, -1).join(', ');
+              detalleTexto = `${anteriores} y ${ultimoDetalle}`;
+            }
+
+            if (!mensajeDetallado.includes(detalleTexto)) {
+              mensajeDetallado = `${mensajeDetallado} (${detalleTexto})`;
+            }
+          }
+
+          notificar('error', `❌ ${mensajeDetallado}`);
+          if (detallesBloqueo.length > 0) {
+            console.info('Motivos que impiden eliminar al usuario:', detallesBloqueo);
+          }
           return;
         }
 

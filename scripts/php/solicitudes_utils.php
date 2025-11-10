@@ -690,6 +690,107 @@ function opti_aplicar_usuario_eliminar_acceso(mysqli $conn, array $payload, int 
     return ['success' => true, 'message' => 'Asignación eliminada.'];
 }
 
+function contarSolicitudesPendientesPorUsuario(mysqli $conn, int $usuarioId): int
+{
+    if ($usuarioId <= 0) {
+        return 0;
+    }
+
+    $usuarioIdStr = (string) $usuarioId;
+    $total = 0;
+
+    $sqlJson = "SELECT COUNT(*)
+            FROM solicitudes_cambios
+            WHERE estado = 'en_proceso'
+              AND (
+                    id_solicitante = ?
+                 OR JSON_UNQUOTE(JSON_EXTRACT(payload, '$.id_usuario')) = ?
+                 OR JSON_UNQUOTE(JSON_EXTRACT(payload, '$.usuario_id')) = ?
+              )";
+
+    $stmt = $conn->prepare($sqlJson);
+    if ($stmt) {
+        $stmt->bind_param('iss', $usuarioId, $usuarioIdStr, $usuarioIdStr);
+        $stmt->execute();
+        $stmt->bind_result($total);
+        $stmt->fetch();
+        $stmt->close();
+
+        return (int) $total;
+    }
+
+    $patron = '"(id_usuario|usuario_id)"[[:space:]]*:[[:space:]]*"?' . $usuarioId . '"?(,|}|]|[[:space:]])';
+    $sqlRegex = "SELECT COUNT(*)
+            FROM solicitudes_cambios
+            WHERE estado = 'en_proceso'
+              AND (id_solicitante = ? OR payload REGEXP ?)";
+
+    $stmt = $conn->prepare($sqlRegex);
+    if ($stmt) {
+        $stmt->bind_param('is', $usuarioId, $patron);
+        $stmt->execute();
+        $stmt->bind_result($total);
+        $stmt->fetch();
+        $stmt->close();
+    } else {
+        error_log('No se pudo preparar la verificación de solicitudes pendientes para el usuario ID ' . $usuarioId);
+    }
+
+    return (int) $total;
+}
+
+function opti_eliminar_dependencias_usuario(mysqli $conn, int $idUsuario): array
+{
+    $detalle = [
+        'registros_actividades_eliminados' => 0,
+        'movimientos_eliminados' => 0,
+        'tokens_recuperacion_eliminados' => 0,
+        'empresas_actualizadas' => 0
+    ];
+
+    $stmtLog = $conn->prepare('DELETE FROM log_control WHERE id_usuario = ?');
+    if ($stmtLog) {
+        $stmtLog->bind_param('i', $idUsuario);
+        $stmtLog->execute();
+        $detalle['registros_actividades_eliminados'] = max(0, (int) $stmtLog->affected_rows);
+        $stmtLog->close();
+    } else {
+        error_log('No se pudo preparar la eliminación de registros de log para el usuario ID ' . $idUsuario);
+    }
+
+    $stmtMov = $conn->prepare('DELETE FROM movimientos WHERE id_usuario = ?');
+    if ($stmtMov) {
+        $stmtMov->bind_param('i', $idUsuario);
+        $stmtMov->execute();
+        $detalle['movimientos_eliminados'] = max(0, (int) $stmtMov->affected_rows);
+        $stmtMov->close();
+    } else {
+        error_log('No se pudo preparar la eliminación de movimientos para el usuario ID ' . $idUsuario);
+    }
+
+    $stmtTokens = $conn->prepare('DELETE FROM pass_resets WHERE id_usuario = ?');
+    if ($stmtTokens) {
+        $stmtTokens->bind_param('i', $idUsuario);
+        $stmtTokens->execute();
+        $detalle['tokens_recuperacion_eliminados'] = max(0, (int) $stmtTokens->affected_rows);
+        $stmtTokens->close();
+    } else {
+        error_log('No se pudo preparar la eliminación de tokens de recuperación para el usuario ID ' . $idUsuario);
+    }
+
+    $stmtEmpresa = $conn->prepare('UPDATE empresa SET usuario_creador = NULL WHERE usuario_creador = ?');
+    if ($stmtEmpresa) {
+        $stmtEmpresa->bind_param('i', $idUsuario);
+        $stmtEmpresa->execute();
+        $detalle['empresas_actualizadas'] = max(0, (int) $stmtEmpresa->affected_rows);
+        $stmtEmpresa->close();
+    } else {
+        error_log('No se pudo preparar la actualización de empresas creadas por el usuario ID ' . $idUsuario);
+    }
+
+    return $detalle;
+}
+
 function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevisor)
 {
     $correo = trim($payload['correo'] ?? '');
@@ -713,32 +814,56 @@ function opti_aplicar_usuario_eliminar(mysqli $conn, array $payload, int $idRevi
 
         $idUsuario = (int)$resultado['id_usuario'];
 
+        $solicitudesPendientes = contarSolicitudesPendientesPorUsuario($conn, $idUsuario);
+        if ($solicitudesPendientes > 0) {
+            $conn->rollback();
+            return [
+                'success' => false,
+                'message' => 'No se puede eliminar el usuario porque tiene solicitudes pendientes en revisión.',
+                'solicitudes_pendientes' => $solicitudesPendientes
+            ];
+        }
+
         if (contarIncidenciasPendientesPorUsuario($conn, $idUsuario) > 0) {
             $conn->rollback();
             return ['success' => false, 'message' => 'No se puede eliminar el usuario porque tiene incidencias pendientes por revisar.'];
         }
 
         $stmtDelRel = $conn->prepare('DELETE FROM usuario_empresa WHERE id_usuario = ?');
-        $stmtDelRel->bind_param('i', $idUsuario);
-        $stmtDelRel->execute();
-        $stmtDelRel->close();
+        if ($stmtDelRel) {
+            $stmtDelRel->bind_param('i', $idUsuario);
+            $stmtDelRel->execute();
+            $stmtDelRel->close();
+        }
 
-        eliminarIncidenciasPorUsuario($conn, $idUsuario);
+        $incidenciasEliminadas = eliminarIncidenciasPorUsuario($conn, $idUsuario);
+        $dependencias = opti_eliminar_dependencias_usuario($conn, $idUsuario);
 
         $stmtDel = $conn->prepare('DELETE FROM usuario WHERE id_usuario = ?');
-        $stmtDel->bind_param('i', $idUsuario);
-        $stmtDel->execute();
-        $stmtDel->close();
+        if ($stmtDel) {
+            $stmtDel->bind_param('i', $idUsuario);
+            $stmtDel->execute();
+            $stmtDel->close();
+        }
 
         $conn->commit();
     } catch (mysqli_sql_exception $e) {
         $conn->rollback();
+        error_log('Error al eliminar usuario ' . $correo . ': ' . $e->getMessage());
         return ['success' => false, 'message' => 'No se pudo eliminar el usuario.'];
     }
 
     registrarLog($conn, $idRevisor, 'Usuarios', 'Eliminación de usuario aprobada: ' . $correo);
 
-    return ['success' => true, 'message' => 'Usuario eliminado.'];
+    $resultado = [
+        'success' => true,
+        'message' => 'Usuario eliminado.',
+        'dependencias' => array_merge($dependencias ?? [], [
+            'incidencias_revisadas_eliminadas' => $incidenciasEliminadas ?? 0
+        ])
+    ];
+
+    return $resultado;
 }
 
 function opti_aplicar_usuario_editar(mysqli $conn, array $payload, int $idRevisor)
