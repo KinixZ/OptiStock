@@ -896,6 +896,95 @@
     }
   }
 
+  function normalizarDetalles(detalles) {
+    if (!Array.isArray(detalles)) {
+      return [];
+    }
+
+    return detalles
+      .map(detalle => {
+        if (!detalle) {
+          return '';
+        }
+        if (typeof detalle === 'string') {
+          return detalle;
+        }
+        if (typeof detalle === 'object') {
+          if (typeof detalle.descripcion === 'string' && detalle.descripcion.trim() !== '') {
+            return detalle.descripcion;
+          }
+
+          const partes = [];
+          if (typeof detalle.total === 'number' && !Number.isNaN(detalle.total)) {
+            partes.push(`${detalle.total}`);
+          }
+          if (detalle.tipo) {
+            partes.push(String(detalle.tipo));
+          }
+
+          if (partes.length > 0) {
+            return partes.join(' ');
+          }
+        }
+
+        return '';
+      })
+      .filter(texto => texto.trim() !== '');
+  }
+
+  function mostrarMensajeEnPagina(tipo, mensaje, detalles = []) {
+    const contenedor = document.getElementById('usuariosFeedback');
+    if (!contenedor) {
+      return;
+    }
+
+    const clases = ['alert'];
+    switch (tipo) {
+      case 'success':
+        clases.push('alert-success');
+        break;
+      case 'error':
+        clases.push('alert-danger');
+        break;
+      case 'warning':
+        clases.push('alert-warning');
+        break;
+      default:
+        clases.push('alert-info');
+        break;
+    }
+
+    contenedor.className = clases.join(' ');
+    contenedor.setAttribute('role', 'alert');
+    contenedor.setAttribute('aria-live', tipo === 'error' ? 'assertive' : 'polite');
+
+    const secciones = [];
+    if (mensaje) {
+      secciones.push(`<div class="fw-semibold">${escapeHtml(mensaje)}</div>`);
+    }
+
+    const listaDetalles = normalizarDetalles(detalles);
+    if (listaDetalles.length > 0) {
+      const items = listaDetalles.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+      secciones.push(`<ul class="mb-0 mt-2 ps-3">${items}</ul>`);
+    }
+
+    contenedor.innerHTML = secciones.join('');
+    contenedor.classList.remove('d-none');
+  }
+
+  function limpiarMensajeEnPagina() {
+    const contenedor = document.getElementById('usuariosFeedback');
+    if (!contenedor) {
+      return;
+    }
+
+    contenedor.innerHTML = '';
+    contenedor.className = 'alert d-none';
+    contenedor.setAttribute('role', 'alert');
+    contenedor.setAttribute('aria-live', 'polite');
+  }
+
   function poblarFiltroRoles(roles) {
     const filtroRol = document.getElementById('filtroRol');
     if (!filtroRol) return;
@@ -1586,6 +1675,8 @@
       body.id_solicitante = solicitanteId;
     }
 
+    limpiarMensajeEnPagina();
+
     fetch('/scripts/php/eliminar_usuario_empresa.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1594,7 +1685,9 @@
       .then(res => res.json())
       .then(data => {
         if (data?.solicitud) {
-          alert(`Solicitud registrada para eliminar al usuario ${correo}. Folio ${data.solicitud.id}.`);
+          const mensajeSolicitud = `Solicitud registrada para eliminar al usuario ${correo}. Folio ${data.solicitud.id}.`;
+          mostrarMensajeEnPagina('info', mensajeSolicitud);
+          alert(mensajeSolicitud);
           return;
         }
         if (!data?.success) {
@@ -1644,6 +1737,7 @@
           }
 
           notificar('error', `❌ ${mensajeDetallado}`);
+          mostrarMensajeEnPagina('error', mensajeDetallado, detallesBloqueo);
           if (detallesBloqueo.length > 0) {
             console.info('Motivos que impiden eliminar al usuario:', detallesBloqueo);
           }
@@ -1652,11 +1746,15 @@
 
         usuariosEmpresa = usuariosEmpresa.filter(usuario => (usuario.correo || '').toLowerCase() !== correo.toLowerCase());
         sincronizarUsuariosEmpresaUI();
-        notificar('success', data?.message || `Usuario ${correo} eliminado.`);
+        const mensajeExito = data?.message || `Usuario ${correo} eliminado.`;
+        notificar('success', mensajeExito);
+        mostrarMensajeEnPagina('success', mensajeExito);
       })
       .catch(err => {
         console.error('Error eliminando usuario:', err);
-        notificar('error', '❌ Error al eliminar usuario.');
+        const mensajeError = '❌ Error al eliminar usuario.';
+        notificar('error', mensajeError);
+        mostrarMensajeEnPagina('error', 'No se pudo eliminar al usuario. Inténtalo más tarde.');
       });
   }
 
