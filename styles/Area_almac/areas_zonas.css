@@ -282,12 +282,6 @@ img {
   color: var(--muted-color);
 }
 
-.incident-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
 .incident-card {
   border-radius: var(--radius-md);
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -299,8 +293,8 @@ img {
   box-shadow: 0 20px 45px -38px rgba(15, 23, 42, 0.45);
 }
 
-.incident-card--list {
-  max-height: 100%;
+.incident-card--stacked {
+  gap: 1.5rem;
 }
 
 .incident-card__header {
@@ -352,6 +346,13 @@ img {
 
 .incident-group--hidden {
   display: none;
+}
+
+.incident-divider {
+  height: 1px;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.1);
+  border-radius: var(--radius-pill);
 }
 
 .incident-list {

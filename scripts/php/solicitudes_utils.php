@@ -1190,6 +1190,11 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
         return ['success' => false, 'message' => 'No se puede eliminar el área porque existen incidencias pendientes por revisar.'];
     }
 
+    $stmt = $conn->prepare('SELECT COUNT(*) FROM zonas WHERE area_id = ?');
+    if (!$stmt) {
+        return ['success' => false, 'message' => 'No se pudo validar las zonas asociadas.'];
+    }
+
     $zonasLiberar = [];
     if (isset($payload['zonas_liberar']) && is_array($payload['zonas_liberar'])) {
         $zonasLiberar = array_values(array_filter(array_map('intval', $payload['zonas_liberar'])));
@@ -1242,6 +1247,12 @@ function opti_aplicar_area_eliminar(mysqli $conn, array $payload, int $idRevisor
         $conn->rollback();
         return ['success' => false, 'message' => 'No se pudo eliminar el área: ' . $e->getMessage()];
     }
+
+    if ($eliminadas <= 0) {
+        return ['success' => false, 'message' => 'El área indicada ya no existe.'];
+    }
+
+    eliminarIncidenciasPorArea($conn, $areaId);
 
     registrarLog($conn, $idRevisor, 'Áreas', 'Eliminación aprobada del área ID ' . $areaId);
 

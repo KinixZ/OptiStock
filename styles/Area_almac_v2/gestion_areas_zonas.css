@@ -287,12 +287,6 @@ img {
   max-width: 560px;
 }
 
-.incident-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
 .incident-card {
   background: var(--card-surface);
   border-radius: var(--radius-md);
@@ -303,10 +297,8 @@ img {
   gap: 1rem;
 }
 
-.incident-card--list {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(18, 26, 69, 0.08);
-  box-shadow: inset 0 1px 0 rgba(18, 26, 69, 0.08);
+.incident-card--stacked {
+  gap: 1.5rem;
 }
 
 .incident-card__header {
@@ -364,6 +356,13 @@ img {
 
 .incident-group--hidden {
   display: none;
+}
+
+.incident-divider {
+  height: 1px;
+  width: 100%;
+  background: rgba(18, 26, 69, 0.12);
+  border-radius: var(--radius-pill);
 }
 
 .incident-list {
