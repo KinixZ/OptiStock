@@ -242,6 +242,12 @@ img {
   gap: 1.5rem;
 }
 
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .incident-center {
   background: var(--card-bg);
   border-radius: var(--radius-lg);

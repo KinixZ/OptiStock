@@ -237,77 +237,142 @@
           </section>
         </div>
 
-        <section class="forms-card">
-          <div class="form-toggle">
-            <span class="form-toggle__label">Completa la información para registrar nuevos espacios.</span>
-          </div>
+        <div class="form-stack">
+          <section class="forms-card">
+            <div class="form-toggle">
+              <span class="form-toggle__label">Completa la información para registrar nuevos espacios.</span>
+            </div>
 
-          <form id="formArea" class="formulario" autocomplete="off">
-            <h4>Registrar área de almacén</h4>
-            <div class="form-group">
-              <label for="areaNombre">Nombre del área</label>
-              <input type="text" id="areaNombre" placeholder="Nombre del área" required />
-            </div>
-            <div class="form-group">
-              <label for="areaDescripcion">Descripción</label>
-              <textarea id="areaDescripcion" rows="3" placeholder="Uso o características del área" required></textarea>
-            </div>
-            <div class="form-group">
-              <label>Dimensiones físicas (m)</label>
-              <div class="dimension-row">
-                <input type="number" id="areaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
-                <input type="number" id="areaLargo" placeholder="Largo" min="0.01" step="0.01" required />
-                <input type="number" id="areaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+            <form id="formArea" class="formulario" autocomplete="off">
+              <h4>Registrar área de almacén</h4>
+              <div class="form-group">
+                <label for="areaNombre">Nombre del área</label>
+                <input type="text" id="areaNombre" placeholder="Nombre del área" required />
               </div>
-            </div>
-            <p class="form-helper">Volumen estimado: <span id="areaVolumen">0</span> m³</p>
-            <div class="form-actions">
-              <button type="submit" class="shell-action shell-action--primary">Guardar área</button>
-            </div>
-          </form>
+              <div class="form-group">
+                <label for="areaDescripcion">Descripción</label>
+                <textarea id="areaDescripcion" rows="3" placeholder="Uso o características del área" required></textarea>
+              </div>
+              <div class="form-group">
+                <label>Dimensiones físicas (m)</label>
+                <div class="dimension-row">
+                  <input type="number" id="areaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
+                  <input type="number" id="areaLargo" placeholder="Largo" min="0.01" step="0.01" required />
+                  <input type="number" id="areaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+                </div>
+              </div>
+              <p class="form-helper">Volumen estimado: <span id="areaVolumen">0</span> m³</p>
+              <div class="form-actions">
+                <button type="submit" class="shell-action shell-action--primary">Guardar área</button>
+              </div>
+            </form>
 
-          <form id="formZona" class="formulario d-none" autocomplete="off">
-            <h4>Registrar zona de almacenamiento</h4>
-            <div class="form-group">
-              <label for="zonaNombre">Nombre de la zona</label>
-              <input type="text" id="zonaNombre" placeholder="Nombre de la zona" required />
-            </div>
-            <div class="form-group">
-              <label for="zonaArea">Área asociada</label>
-              <select id="zonaArea" required>
-                <option value="">Seleccione un área</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="zonaDescripcion">Descripción</label>
-              <textarea id="zonaDescripcion" rows="3" placeholder="Uso específico o notas" required></textarea>
-            </div>
-            <div class="form-group">
-              <label>Dimensiones físicas (m)</label>
-              <div class="dimension-row">
-                <input type="number" id="zonaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
-                <input type="number" id="zonaLargo" placeholder="Largo" min="0.01" step="0.01" required />
-                <input type="number" id="zonaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+            <form id="formZona" class="formulario d-none" autocomplete="off">
+              <h4>Registrar zona de almacenamiento</h4>
+              <div class="form-group">
+                <label for="zonaNombre">Nombre de la zona</label>
+                <input type="text" id="zonaNombre" placeholder="Nombre de la zona" required />
               </div>
+              <div class="form-group">
+                <label for="zonaArea">Área asociada</label>
+                <select id="zonaArea" required>
+                  <option value="">Seleccione un área</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="zonaDescripcion">Descripción</label>
+                <textarea id="zonaDescripcion" rows="3" placeholder="Uso específico o notas" required></textarea>
+              </div>
+              <div class="form-group">
+                <label>Dimensiones físicas (m)</label>
+                <div class="dimension-row">
+                  <input type="number" id="zonaAncho" placeholder="Ancho" min="0.01" step="0.01" required />
+                  <input type="number" id="zonaLargo" placeholder="Largo" min="0.01" step="0.01" required />
+                  <input type="number" id="zonaAlto" placeholder="Alto" min="0.01" step="0.01" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="zonaTipo">Tipo de almacenamiento</label>
+                <select id="zonaTipo" required></select>
+              </div>
+              <div class="form-group">
+                <label for="zonaSubniveles">Cantidad de subniveles</label>
+                <input type="number" id="zonaSubniveles" min="0" step="1" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="zonaDistancia">Distancia entre subniveles (cm)</label>
+                <input type="number" id="zonaDistancia" min="0" step="0.1" value="0" />
+              </div>
+              <p class="form-helper">Volumen estimado: <span id="zonaVolumen">0</span> m³</p>
+              <div class="form-actions">
+                <button type="submit" class="shell-action shell-action--primary">Guardar zona</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="incident-center" aria-labelledby="incidentPanelTitle">
+            <header class="incident-header">
+              <div>
+                <span class="incident-eyebrow">Notas y seguimiento</span>
+                <h3 id="incidentPanelTitle">Incidencias en áreas y zonas</h3>
+                <p class="incident-description">
+                  Registra observaciones sobre el estado físico de cada área o zona y marca como revisadas las incidencias una vez atendidas.
+                </p>
+              </div>
+            </header>
+            <div class="incident-grid">
+              <article class="incident-card">
+                <header class="incident-card__header">
+                  <h4 class="incident-card__title">Registrar incidencia</h4>
+                  <p class="incident-card__subtitle">Selecciona el objetivo y describe lo sucedido.</p>
+                </header>
+                <form id="incidentForm" class="incident-form" autocomplete="off">
+                  <div class="form-group">
+                    <span class="form-label">Ubicación objetivo</span>
+                    <div class="incident-options">
+                      <label class="incident-option">
+                        <input type="radio" name="incidentScope" value="area" checked />
+                        <span>Área</span>
+                      </label>
+                      <label class="incident-option">
+                        <input type="radio" name="incidentScope" value="zona" />
+                        <span>Zona</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="form-group" id="incidentAreaGroup">
+                    <label for="incidentAreaSelect">Selecciona el área</label>
+                    <select id="incidentAreaSelect" required>
+                      <option value="">Selecciona un área</option>
+                    </select>
+                  </div>
+                  <div class="form-group incident-group--hidden" id="incidentZoneGroup">
+                    <label for="incidentZoneSelect">Selecciona la zona</label>
+                    <select id="incidentZoneSelect" disabled>
+                      <option value="">Selecciona una zona</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="incidentDescription">Descripción de la incidencia</label>
+                    <textarea id="incidentDescription" rows="4" maxlength="500" placeholder="Describe lo sucedido, acciones tomadas o materiales afectados" required></textarea>
+                  </div>
+                  <div class="form-actions incident-actions">
+                    <button type="submit" class="shell-action shell-action--primary">Guardar incidencia</button>
+                  </div>
+                </form>
+              </article>
+              <article class="incident-card incident-card--list">
+                <header class="incident-card__header">
+                  <h4 class="incident-card__title">Incidencias registradas</h4>
+                  <p class="incident-card__subtitle">Solo se muestran incidencias con estado pendiente.</p>
+                </header>
+                <div id="incidentList" class="incident-list" role="log" aria-live="polite">
+                  <p class="incident-empty">No hay incidencias pendientes.</p>
+                </div>
+              </article>
             </div>
-            <div class="form-group">
-              <label for="zonaTipo">Tipo de almacenamiento</label>
-              <select id="zonaTipo" required></select>
-            </div>
-            <div class="form-group">
-              <label for="zonaSubniveles">Cantidad de subniveles</label>
-              <input type="number" id="zonaSubniveles" min="0" step="1" value="0" />
-            </div>
-            <div class="form-group">
-              <label for="zonaDistancia">Distancia entre subniveles (cm)</label>
-              <input type="number" id="zonaDistancia" min="0" step="0.1" value="0" />
-            </div>
-            <p class="form-helper">Volumen estimado: <span id="zonaVolumen">0</span> m³</p>
-            <div class="form-actions">
-              <button type="submit" class="shell-action shell-action--primary">Guardar zona</button>
-            </div>
-          </form>
-        </section>
+          </section>
+        </div>
       </div>
     </section>
   </div>
