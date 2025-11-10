@@ -266,6 +266,21 @@ img {
   flex-wrap: wrap;
 }
 
+.incident-header__actions {
+  display: flex;
+  align-items: flex-start;
+  margin-left: auto;
+}
+
+.incident-report-button {
+  white-space: nowrap;
+}
+
+.incident-report-button[aria-busy="true"] {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 .incident-eyebrow {
   display: inline-flex;
   align-items: center;

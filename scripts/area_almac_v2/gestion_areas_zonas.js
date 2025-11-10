@@ -49,6 +49,7 @@ let editZoneId = null;
   const incidentDescription   = document.getElementById('incidentDescription');
   const incidentList          = document.getElementById('incidentList');
   const incidentScopeRadios   = document.querySelectorAll('input[name="incidentScope"]');
+  const incidentReportBtn     = document.getElementById('incidentReportBtn');
 
   let areasData = [];
   let zonasData = [];
@@ -215,6 +216,83 @@ let editZoneId = null;
     };
   }
 
+  function construirDatasetIncidenciasReporte(pendientes = [], revisadas = []) {
+    const normalizarLista = (lista, ordenEstado) => {
+      if (!Array.isArray(lista) || !lista.length) {
+        return [];
+      }
+      return lista.map(item => ({ item, ordenEstado }));
+    };
+
+    const registros = [
+      ...normalizarLista(pendientes, 0),
+      ...normalizarLista(revisadas, 1)
+    ];
+
+    if (!registros.length) {
+      return null;
+    }
+
+    const parseFecha = (valor) => {
+      if (!valor) {
+        return 0;
+      }
+      const normalizada = typeof valor === 'string' ? valor.replace(' ', 'T') : valor;
+      const timestamp = Date.parse(normalizada);
+      return Number.isNaN(timestamp) ? 0 : timestamp;
+    };
+
+    registros.sort((a, b) => {
+      if (a.ordenEstado !== b.ordenEstado) {
+        return a.ordenEstado - b.ordenEstado;
+      }
+      const fechaA = parseFecha(a.item?.creado_en);
+      const fechaB = parseFecha(b.item?.creado_en);
+      return fechaB - fechaA;
+    });
+
+    const header = [
+      'Estado',
+      'Tipo',
+      'Ubicación',
+      'Descripción',
+      'Reportado por',
+      'Registrado',
+      'Revisado'
+    ];
+
+    const rows = registros.map(({ item }) => {
+      const estado = (item?.estado || 'Pendiente').trim() || 'Pendiente';
+      const esZona = Boolean(item?.zona_id);
+      const areaNombre = (item?.area_nombre || '').trim() || 'Sin área';
+      const zonaNombre = (item?.zona_nombre || '').trim() || 'Sin zona';
+      const ubicacion = esZona ? `${zonaNombre} (${areaNombre})` : areaNombre;
+      const descripcion = (item?.descripcion || '').trim() || 'Sin descripción';
+      const reportadoPor = (item?.reportado_por || '').trim() || 'Usuario sin nombre';
+      const registrado = formatearFechaIncidencia(item?.creado_en) || '-';
+      const revisado = estado.toLowerCase() === 'revisado'
+        ? (formatearFechaIncidencia(item?.revisado_en) || '-')
+        : '-';
+
+      return [
+        estado,
+        esZona ? 'Zona' : 'Área',
+        ubicacion,
+        descripcion,
+        reportadoPor,
+        registrado,
+        revisado
+      ];
+    });
+
+    return {
+      header,
+      rows,
+      rowCount: rows.length,
+      columnCount: header.length
+    };
+  }
+
   function construirSubtituloZonas(rowCount) {
     const exporter = window.ReportExporter || null;
     const partes = [];
@@ -239,7 +317,7 @@ let editZoneId = null;
     return partes.filter(Boolean).join(' • ');
   }
 
-  async function guardarReporteZonas(blob, fileName, notes) {
+  async function guardarReporteHistorico(blob, fileName, notes) {
     if (!(blob instanceof Blob)) {
       return;
     }
@@ -256,6 +334,14 @@ let editZoneId = null;
     } catch (error) {
       console.warn('No se pudo guardar el reporte en el historial:', error);
     }
+  }
+
+  async function guardarReporteZonas(blob, fileName, notes) {
+    await guardarReporteHistorico(blob, fileName, notes);
+  }
+
+  async function guardarReporteIncidencias(blob, fileName, notes) {
+    await guardarReporteHistorico(blob, fileName, notes);
   }
 
   const API_BASE           = '../../scripts/php';
@@ -641,6 +727,98 @@ let editZoneId = null;
     }
   }
 
+  async function generarReporteIncidencias() {
+    const exporter = window.ReportExporter;
+    if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
+      showToast('No se pudo cargar el módulo de exportación');
+      return;
+    }
+
+    const button = incidentReportBtn || null;
+    if (button && button.disabled) {
+      return;
+    }
+
+    const textoOriginal = button ? button.textContent.trim() : '';
+    if (button) {
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      button.textContent = 'Generando…';
+    }
+
+    const contarIncidencias = (lista) => {
+      const total = Array.isArray(lista) ? lista.length : 0;
+      if (exporter?.pluralize) {
+        return exporter.pluralize(total, 'incidencia');
+      }
+      return total === 1 ? '1 incidencia' : `${total} incidencias`;
+    };
+
+    try {
+      const [pendientesRaw, revisadasRaw] = await Promise.all([
+        fetchIncidencias('Pendiente'),
+        fetchIncidencias('Revisado')
+      ]);
+
+      const pendientes = Array.isArray(pendientesRaw)
+        ? pendientesRaw.map(normalizarIncidencia)
+        : [];
+      const revisadas = Array.isArray(revisadasRaw)
+        ? revisadasRaw.map(normalizarIncidencia)
+        : [];
+
+      const dataset = construirDatasetIncidenciasReporte(pendientes, revisadas);
+      if (!dataset) {
+        showToast('No hay incidencias para exportar.');
+        return;
+      }
+
+      const metadata = [
+        { label: 'Pendientes', value: contarIncidencias(pendientes) },
+        { label: 'Revisadas', value: contarIncidencias(revisadas) },
+        { label: 'Total', value: contarIncidencias([...pendientes, ...revisadas]) }
+      ];
+
+      const result = await exporter.exportTableToPdf({
+        data: dataset,
+        title: 'Reporte de incidencias',
+        module: 'Gestión de áreas y zonas',
+        fileName: 'reporte_incidencias_areas_zonas.pdf',
+        metadata,
+        countLabel: (total) => {
+          if (exporter?.pluralize) {
+            return exporter.pluralize(total, 'incidencia');
+          }
+          return total === 1 ? '1 incidencia' : `${total} incidencias`;
+        }
+      });
+
+      if (result?.blob) {
+        await guardarReporteIncidencias(
+          result.blob,
+          result.fileName,
+          'Reporte de incidencias (pendientes y revisadas)'
+        );
+      }
+
+      showToast('Reporte de incidencias generado correctamente');
+    } catch (error) {
+      console.error('Error al generar el reporte de incidencias:', error);
+      if (error && error.message === 'PDF_LIBRARY_MISSING') {
+        showToast('La librería para generar PDF no está disponible.');
+        return;
+      }
+      showToast('No se pudo generar el reporte de incidencias');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        const etiqueta = textoOriginal || 'Reporte PDF';
+        button.textContent = etiqueta;
+      }
+    }
+  }
+
   // —————— Helpers ——————
   function showToast(msg) {
     const t = document.createElement('div');
@@ -814,11 +992,12 @@ formArea.addEventListener('submit', async e => {
     return await res.json();
   }
 
-  async function fetchIncidencias() {
+  async function fetchIncidencias(estado = 'Pendiente') {
     if (!EMP_ID) {
       return [];
     }
-    const url = `${INCIDENTS_ENDPOINT}?empresa_id=${EMP_ID}&estado=Pendiente`;
+    const estadoParam = estado ? `&estado=${encodeURIComponent(estado)}` : '';
+    const url = `${INCIDENTS_ENDPOINT}?empresa_id=${EMP_ID}${estadoParam}`;
     const res = await fetch(url);
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -1333,6 +1512,9 @@ async function deleteZone(id) {
   }
   if (exportPdfBtn) {
     exportPdfBtn.addEventListener('click', exportarZonasPDF);
+  }
+  if (incidentReportBtn) {
+    incidentReportBtn.addEventListener('click', generarReporteIncidencias);
   }
 
 // Áreas: editar / borrar
