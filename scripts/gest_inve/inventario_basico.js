@@ -176,6 +176,8 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const productoFormModeHint = document.getElementById('productoFormModeHint');
   const productoFormModeProduct = document.getElementById('productoFormModeProduct');
   const productoFormSubtitleDefault = productoFormSubtitle?.textContent.trim() || '';
+  const catForm = document.getElementById('categoriaForm');
+  const subcatForm = document.getElementById('subcategoriaForm');
 
   const qrModalElement = document.getElementById('productoQrModal');
   const qrModalImage = document.getElementById('productoQrImage');
@@ -1635,8 +1637,6 @@ async function fetchAPI(url, method = 'GET', data) {
   exportResumenExcelBtn?.addEventListener('click', () => generarExportacionResumen('excel'));
 
   const prodForm = document.getElementById('productoForm');
-  const catForm = document.getElementById('categoriaForm');
-  const subcatForm = document.getElementById('subcategoriaForm');
   const prodCategoria = document.getElementById('prodCategoria');
   const prodSubcategoria = document.getElementById('prodSubcategoria');
  // Cada vez que cambie la categoría, repoblamos el select de subcategorías
