@@ -38,6 +38,199 @@
     const notificationHistoryRefreshBtn = document.getElementById('notificationHistoryRefresh');
     const notificationHistoryExportBtn = document.getElementById('notificationHistoryExport');
 
+    const permissionUtils =
+        typeof window !== 'undefined' && window.PermissionUtils ? window.PermissionUtils : null;
+    const permisosHelper =
+        typeof window !== 'undefined' && window.OptiStockPermissions ? window.OptiStockPermissions : null;
+
+    const MODULO_PERMISOS = [
+        'log.read',
+        'log.export',
+        'log.analytics.view',
+        'log.flag_records'
+    ];
+
+    function tienePermiso(clave) {
+        if (!clave) {
+            return true;
+        }
+        if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+            return permissionUtils.hasPermission(clave);
+        }
+        if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+            try {
+                const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+                return permisosHelper.isPermissionEnabled(rol, clave);
+            } catch (error) {
+                return true;
+            }
+        }
+        return true;
+    }
+
+    function marcarDisponibilidad(elemento, permitido, mensaje) {
+        if (!elemento) {
+            return;
+        }
+        if (permissionUtils && typeof permissionUtils.markAvailability === 'function') {
+            permissionUtils.markAvailability(elemento, permitido, mensaje);
+            return;
+        }
+        if (permitido) {
+            elemento.classList.remove('permission-disabled');
+            elemento.removeAttribute('aria-disabled');
+            if (typeof elemento.disabled === 'boolean') {
+                elemento.disabled = false;
+            }
+            if (elemento.dataset) {
+                delete elemento.dataset.permissionDenied;
+                delete elemento.dataset.permissionMessage;
+            }
+            return;
+        }
+        elemento.classList.add('permission-disabled');
+        elemento.setAttribute('aria-disabled', 'true');
+        if (typeof elemento.disabled === 'boolean') {
+            elemento.disabled = true;
+        }
+        if (elemento.dataset) {
+            elemento.dataset.permissionDenied = 'true';
+            if (mensaje) {
+                elemento.dataset.permissionMessage = mensaje;
+            }
+        }
+    }
+
+    function mostrarDenegado(mensaje) {
+        const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+        if (permissionUtils && typeof permissionUtils.showDenied === 'function') {
+            permissionUtils.showDenied(texto);
+            return;
+        }
+        if (typeof window !== 'undefined' && typeof window.toastError === 'function') {
+            window.toastError(texto);
+            return;
+        }
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+            window.alert(texto);
+        }
+    }
+
+    function obtenerHandlerDenegado(mensaje) {
+        if (permissionUtils && typeof permissionUtils.createDeniedHandler === 'function') {
+            return permissionUtils.createDeniedHandler(mensaje);
+        }
+        return function manejar(evento) {
+            if (evento && typeof evento.preventDefault === 'function') {
+                evento.preventDefault();
+            }
+            if (evento && typeof evento.stopPropagation === 'function') {
+                evento.stopPropagation();
+            }
+            mostrarDenegado(mensaje);
+        };
+    }
+
+    function asegurarAccesoModulo() {
+        if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
+            return permissionUtils.ensureModuleAccess({
+                permissions: MODULO_PERMISOS,
+                container: document.querySelector('.log-page'),
+                message: 'Solicita al administrador que habilite los permisos del registro de actividades para acceder a esta sección.'
+            });
+        }
+        return true;
+    }
+
+    if (!asegurarAccesoModulo()) {
+        return;
+    }
+
+    const puedeVerLog = tienePermiso('log.read');
+    const puedeExportarLog = tienePermiso('log.export');
+    const puedeVerAnaliticas = tienePermiso('log.analytics.view');
+    const puedeMarcarRegistros = tienePermiso('log.flag_records');
+
+    if (!puedeExportarLog) {
+        marcarDisponibilidad(exportPdfBtn, false, 'No tienes permiso para exportar el registro en PDF.');
+        marcarDisponibilidad(exportExcelBtn, false, 'No tienes permiso para exportar el registro en Excel.');
+        marcarDisponibilidad(historyExportPdfBtn, false, 'No tienes permiso para exportar las solicitudes en PDF.');
+        marcarDisponibilidad(historyExportExcelBtn, false, 'No tienes permiso para exportar las solicitudes en Excel.');
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para exportar el registro.'));
+        }
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para exportar el registro.'));
+        }
+        if (historyExportPdfBtn) {
+            historyExportPdfBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para exportar las solicitudes.'));
+        }
+        if (historyExportExcelBtn) {
+            historyExportExcelBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para exportar las solicitudes.'));
+        }
+        if (notificationHistoryExportBtn) {
+            marcarDisponibilidad(notificationHistoryExportBtn, false, 'No tienes permiso para exportar el historial de notificaciones.');
+            notificationHistoryExportBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para exportar el historial.'));
+        }
+    }
+
+    if (!puedeVerAnaliticas) {
+        if (activityTrendCanvas && activityTrendCanvas.closest('.insight-card')) {
+            activityTrendCanvas.closest('.insight-card').innerHTML = '<div class="permission-block"><div class="permission-block__card"><h2>Acceso restringido</h2><p>Activa el permiso de analíticas del log para visualizar las gráficas.</p></div></div>';
+        }
+        if (moduleActivityCanvas && moduleActivityCanvas.closest('.insight-card')) {
+            moduleActivityCanvas.closest('.insight-card').innerHTML = '<div class="permission-block"><div class="permission-block__card"><h2>Acceso restringido</h2><p>Activa el permiso de analíticas del log para visualizar las gráficas.</p></div></div>';
+        }
+        if (topUsersCanvas && topUsersCanvas.closest('.insight-card')) {
+            topUsersCanvas.closest('.insight-card').innerHTML = '<div class="permission-block"><div class="permission-block__card"><h2>Acceso restringido</h2><p>Activa el permiso de analíticas del log para visualizar las gráficas.</p></div></div>';
+        }
+    }
+
+    if (!puedeVerLog) {
+        if (tablaBody) {
+            tablaBody.innerHTML = '<tr><td colspan="6"><div class="permission-block"><div class="permission-block__card"><h2>Acceso restringido</h2><p>Activa el permiso "log.read" para visualizar el registro de actividades.</p></div></div></td></tr>';
+        }
+        [filtroModulo, filtroUsuario, filtroRol, buscadorInput].forEach((control) => {
+            if (!control) {
+                return;
+            }
+            control.value = '';
+            control.disabled = true;
+            control.setAttribute('aria-disabled', 'true');
+        });
+        [notificationHistoryRefreshBtn, notificationHistoryExportBtn].forEach((boton) => {
+            if (!boton) {
+                return;
+            }
+            boton.disabled = true;
+            boton.setAttribute('aria-disabled', 'true');
+            boton.classList.add('permission-disabled');
+            boton.addEventListener('click', obtenerHandlerDenegado('Necesitas el permiso "log.read" para usar esta acción.'));
+        });
+    }
+
+    if (!puedeMarcarRegistros && refreshRequestsBtn) {
+        if (requestsBoard) {
+            requestsBoard.innerHTML = '<div class="permission-block"><div class="permission-block__card"><h2>Acceso restringido</h2><p>Activa el permiso para gestionar solicitudes del log si necesitas aprobar o rechazar cambios.</p></div></div>';
+        }
+        if (pendingRequestsContainer) {
+            pendingRequestsContainer.innerHTML = '';
+        }
+        if (historyRequestsContainer) {
+            historyRequestsContainer.innerHTML = '';
+        }
+        refreshRequestsBtn.disabled = true;
+        refreshRequestsBtn.setAttribute('aria-disabled', 'true');
+        refreshRequestsBtn.classList.add('permission-disabled');
+        const handler = obtenerHandlerDenegado('No tienes permiso para gestionar las solicitudes del log.');
+        refreshRequestsBtn.addEventListener('click', handler);
+        if (historyRequestsPrevBtn) {
+            historyRequestsPrevBtn.disabled = true;
+        }
+        if (historyRequestsNextBtn) {
+            historyRequestsNextBtn.disabled = true;
+        }
+    }
     const REPORT_SOURCE = 'Control de registros';
     const NOTIFICATION_HISTORY_LIMIT = 50;
 
@@ -117,6 +310,14 @@
     }
 
     trendRangeButtons.forEach(button => {
+        if (!puedeVerAnaliticas) {
+            button.classList.remove('is-active');
+            button.setAttribute('aria-disabled', 'true');
+            button.classList.add('permission-disabled');
+            button.addEventListener('click', obtenerHandlerDenegado('Activa el permiso de analíticas del log para modificar el rango.'));
+            return;
+        }
+
         if (button.classList.contains('is-active')) {
             trendRange = button.dataset.trendRange || trendRange;
         }
@@ -171,6 +372,10 @@
     let historyPage = 0;
 
     async function fetchSolicitudes(estado = 'en_proceso') {
+        if (!puedeMarcarRegistros) {
+            return [];
+        }
+
         const params = new URLSearchParams({ estado });
         if (ID_EMPRESA) {
             params.append('id_empresa', ID_EMPRESA);
@@ -586,13 +791,26 @@
             aprobar.type = 'button';
             aprobar.className = 'btn btn-success btn-sm';
             aprobar.textContent = 'Aprobar';
-            aprobar.addEventListener('click', () => resolverSolicitud(item.id, 'aceptada'));
 
             const rechazar = document.createElement('button');
             rechazar.type = 'button';
             rechazar.className = 'btn btn-outline-danger btn-sm';
             rechazar.textContent = 'Rechazar';
-            rechazar.addEventListener('click', () => resolverSolicitud(item.id, 'denegada'));
+
+            if (puedeMarcarRegistros) {
+                aprobar.addEventListener('click', () => resolverSolicitud(item.id, 'aceptada'));
+                rechazar.addEventListener('click', () => resolverSolicitud(item.id, 'denegada'));
+            } else {
+                aprobar.disabled = true;
+                rechazar.disabled = true;
+                aprobar.setAttribute('aria-disabled', 'true');
+                rechazar.setAttribute('aria-disabled', 'true');
+                aprobar.classList.add('permission-disabled');
+                rechazar.classList.add('permission-disabled');
+                const handler = obtenerHandlerDenegado('Activa el permiso para gestionar solicitudes del log.');
+                aprobar.addEventListener('click', handler);
+                rechazar.addEventListener('click', handler);
+            }
 
             acciones.appendChild(aprobar);
             acciones.appendChild(rechazar);
@@ -690,7 +908,7 @@
     }
 
     async function cargarTableroSolicitudes() {
-        if (!tieneTableroSolicitudes) {
+        if (!tieneTableroSolicitudes || !puedeMarcarRegistros) {
             return;
         }
 
@@ -735,6 +953,11 @@
 
     async function resolverSolicitud(id, estado) {
         if (!id) {
+            return;
+        }
+
+        if (!puedeMarcarRegistros) {
+            mostrarDenegado('No tienes permiso para actualizar solicitudes del log.');
             return;
         }
 
@@ -1080,6 +1303,13 @@
             return;
         }
 
+        if (!puedeVerLog) {
+            notificationHistoryData = [];
+            notificationHistoryList.innerHTML = '';
+            setNotificationHistoryStatus('Necesitas el permiso "log.read" para revisar las alertas registradas.');
+            return;
+        }
+
         if (!ID_EMPRESA) {
             notificationHistoryData = [];
             notificationHistoryList.innerHTML = '';
@@ -1129,6 +1359,11 @@
     }
 
     async function exportNotificationHistory() {
+        if (!puedeVerLog) {
+            mostrarDenegado('No tienes permiso para exportar el historial de alertas.');
+            return;
+        }
+
         if (!notificationHistoryData.length) {
             setNotificationHistoryStatus('No hay alertas para guardar en este momento.');
             return;
@@ -1347,7 +1582,7 @@
     }
 
     function renderTrendChart() {
-        if (!activityTrendCanvas || !window.Chart) {
+        if (!puedeVerAnaliticas || !activityTrendCanvas || !window.Chart) {
             return;
         }
 
@@ -1448,6 +1683,16 @@
     }
 
     function actualizarResumen(datosMostrados = []) {
+        if (!puedeVerLog) {
+            if (totalRegistrosEl) {
+                totalRegistrosEl.textContent = 'Permiso requerido';
+            }
+            if (logCountEl) {
+                logCountEl.textContent = 'Necesitas el permiso "log.read" para ver el historial.';
+            }
+            return;
+        }
+
         if (totalRegistrosEl) {
             totalRegistrosEl.textContent = registros.length;
         }
@@ -1541,6 +1786,10 @@
     }
 
     function mostrarLogsGuardados() {
+        if (!puedeVerLog) {
+            return;
+        }
+
         let guardados = [];
         try {
             guardados = JSON.parse(localStorage.getItem(LOGS_STORAGE_KEY)) || [];
@@ -1582,6 +1831,10 @@
 
     // CORREGIDA: Función para actualizar los charts
     function actualizarCharts(datos = []) {
+        if (!puedeVerAnaliticas) {
+            return;
+        }
+
         if (!window.Chart || (!activityTrendCanvas && !moduleActivityCanvas && !topUsersCanvas)) {
             return;
         }
@@ -1698,6 +1951,20 @@
             return;
         }
 
+        if (!puedeVerLog) {
+            paginationInfoEl.textContent = 'Permiso requerido';
+            if (prevPageBtn) {
+                prevPageBtn.disabled = true;
+            }
+            if (nextPageBtn) {
+                nextPageBtn.disabled = true;
+            }
+            if (paginationPagesEl) {
+                paginationPagesEl.innerHTML = '';
+            }
+            return;
+        }
+
         const totalPaginas = Math.max(1, Math.ceil(totalFiltrados / PAGE_SIZE));
         paginaActual = Math.min(Math.max(paginaActual, 1), totalPaginas);
 
@@ -1747,6 +2014,17 @@
     }
 
     function mostrarRegistros(datos) {
+        if (!puedeVerLog) {
+            if (tablaBody) {
+                tablaBody.innerHTML = '<tr><td colspan="6"><div class="permission-block"><div class="permission-block__card"><h2>Acceso restringido</h2><p>Activa el permiso "log.read" para visualizar el registro de actividades.</p></div></div></td></tr>';
+            }
+            actualizarResumen([]);
+            actualizarControlesPaginacion(0);
+            ultimoConjuntoFiltrado = [];
+            actualizarCharts([]);
+            return;
+        }
+
         const fuente = Array.isArray(datos) ? datos : [];
         const filtrados = filtrarPorBusqueda(fuente);
 
@@ -1857,6 +2135,11 @@
     }
 
     async function cargarRegistros() {
+        if (!puedeVerLog) {
+            actualizarResumen([]);
+            return;
+        }
+
         if (!ID_EMPRESA) {
             console.warn('No se encontró el identificador de la empresa en el navegador.');
             return;
@@ -1960,7 +2243,7 @@
         });
     }
 
-    if (historyRequestsPrevBtn) {
+    if (historyRequestsPrevBtn && puedeMarcarRegistros) {
         historyRequestsPrevBtn.addEventListener('click', () => {
             if (historyPage <= 0) {
                 return;
@@ -1970,7 +2253,7 @@
         });
     }
 
-    if (historyRequestsNextBtn) {
+    if (historyRequestsNextBtn && puedeMarcarRegistros) {
         historyRequestsNextBtn.addEventListener('click', () => {
             const totalPaginas = Math.ceil(historySolicitudes.length / HISTORY_ITEMS_PER_PAGE);
             if (historyPage >= totalPaginas - 1) {
@@ -1984,9 +2267,11 @@
     cargarFiltrosGuardados();
     mostrarLogsGuardados();
     cargarRegistros();
-    loadNotificationHistory();
+    if (puedeVerLog) {
+        loadNotificationHistory();
+    }
 
-    if (tieneTableroSolicitudes) {
+    if (tieneTableroSolicitudes && puedeMarcarRegistros) {
         cargarTableroSolicitudes();
         if (refreshRequestsBtn) {
             refreshRequestsBtn.addEventListener('click', () => {
@@ -1999,6 +2284,11 @@
 
     if (historyExportPdfBtn) {
         historyExportPdfBtn.addEventListener('click', async () => {
+            if (!puedeExportarLog) {
+                mostrarDenegado('No tienes permiso para exportar el historial de solicitudes.');
+                return;
+            }
+
             const exporter = window.ReportExporter;
             if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
                 console.warn('El módulo para exportar reportes no está disponible.');
@@ -2060,6 +2350,11 @@
 
     if (historyExportExcelBtn) {
         historyExportExcelBtn.addEventListener('click', async () => {
+            if (!puedeExportarLog) {
+                mostrarDenegado('No tienes permiso para exportar el historial de solicitudes.');
+                return;
+            }
+
             const exporter = window.ReportExporter;
             if (!exporter || typeof exporter.exportTableToExcel !== 'function') {
                 console.warn('El módulo para exportar reportes no está disponible.');
@@ -2095,6 +2390,11 @@
 
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
+            if (!puedeExportarLog) {
+                mostrarDenegado('No tienes permiso para exportar el registro de actividades.');
+                return;
+            }
+
             const exporter = window.ReportExporter;
             if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
                 console.warn('El módulo para exportar reportes no está disponible.');
@@ -2177,6 +2477,11 @@
 
     if (exportExcelBtn && window.XLSX && XLSX.utils && typeof XLSX.write === 'function') {
         exportExcelBtn.addEventListener('click', async () => {
+            if (!puedeExportarLog) {
+                mostrarDenegado('No tienes permiso para exportar el registro de actividades.');
+                return;
+            }
+
             const table = document.getElementById('logTable');
             if (!table) {
                 return;
@@ -2198,13 +2503,13 @@
         });
     }
 
-    if (notificationHistoryRefreshBtn) {
+    if (notificationHistoryRefreshBtn && puedeVerLog) {
         notificationHistoryRefreshBtn.addEventListener('click', () => {
             loadNotificationHistory();
         });
     }
 
-    if (notificationHistoryExportBtn) {
+    if (notificationHistoryExportBtn && puedeVerLog) {
         notificationHistoryExportBtn.addEventListener('click', () => {
             exportNotificationHistory();
         });

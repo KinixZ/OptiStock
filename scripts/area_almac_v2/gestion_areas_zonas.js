@@ -51,6 +51,199 @@ let editZoneId = null;
   const incidentScopeRadios   = document.querySelectorAll('input[name="incidentScope"]');
   const incidentReportBtn     = document.getElementById('incidentReportBtn');
 
+  const permissionUtils =
+    typeof window !== 'undefined' && window.PermissionUtils ? window.PermissionUtils : null;
+  const permisosHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions ? window.OptiStockPermissions : null;
+
+  const MODULO_PERMISOS = [
+    'warehouse.areas.read',
+    'warehouse.areas.create',
+    'warehouse.areas.update',
+    'warehouse.areas.delete',
+    'warehouse.zones.read',
+    'warehouse.zones.create',
+    'warehouse.zones.update',
+    'warehouse.zones.delete',
+    'warehouse.incidents.record'
+  ];
+
+  function tienePermiso(clave) {
+    if (!clave) {
+      return true;
+    }
+
+    if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+      return permissionUtils.hasPermission(clave);
+    }
+
+    if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+      try {
+        const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+        return permisosHelper.isPermissionEnabled(rol, clave);
+      } catch (error) {
+        return true;
+      }
+    }
+
+    return true;
+  }
+
+  function marcarDisponibilidad(elemento, permitido, mensaje) {
+    if (!elemento) {
+      return;
+    }
+
+    if (permissionUtils && typeof permissionUtils.markAvailability === 'function') {
+      permissionUtils.markAvailability(elemento, permitido, mensaje);
+      return;
+    }
+
+    if (permitido) {
+      elemento.classList.remove('permission-disabled');
+      elemento.removeAttribute('aria-disabled');
+      if (elemento.dataset) {
+        delete elemento.dataset.permissionDenied;
+        delete elemento.dataset.permissionMessage;
+      }
+      if (typeof elemento.disabled === 'boolean') {
+        elemento.disabled = false;
+      }
+      return;
+    }
+
+    elemento.classList.add('permission-disabled');
+    elemento.setAttribute('aria-disabled', 'true');
+    if (typeof elemento.disabled === 'boolean') {
+      elemento.disabled = true;
+    }
+    if (elemento.dataset) {
+      elemento.dataset.permissionDenied = 'true';
+      if (mensaje) {
+        elemento.dataset.permissionMessage = mensaje;
+      }
+    }
+  }
+
+  function mostrarDenegado(mensaje) {
+    const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+    if (permissionUtils && typeof permissionUtils.showDenied === 'function') {
+      permissionUtils.showDenied(texto);
+      return;
+    }
+    if (typeof window !== 'undefined' && typeof window.toastError === 'function') {
+      window.toastError(texto);
+      return;
+    }
+    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(texto);
+    }
+  }
+
+  function obtenerHandlerDenegado(mensaje) {
+    if (permissionUtils && typeof permissionUtils.createDeniedHandler === 'function') {
+      return permissionUtils.createDeniedHandler(mensaje);
+    }
+    return function manejar(evento) {
+      if (evento && typeof evento.preventDefault === 'function') {
+        evento.preventDefault();
+      }
+      if (evento && typeof evento.stopPropagation === 'function') {
+        evento.stopPropagation();
+      }
+      mostrarDenegado(mensaje);
+    };
+  }
+
+  function asegurarAccesoModulo() {
+    if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
+      return permissionUtils.ensureModuleAccess({
+        permissions: MODULO_PERMISOS,
+        container: document.querySelector('.warehouse-page'),
+        message:
+          'Solicita al administrador que habilite los permisos de áreas o zonas para gestionar la infraestructura del almacén.'
+      });
+    }
+    return true;
+  }
+
+  if (!asegurarAccesoModulo()) {
+    return;
+  }
+
+  const puedeVerAreas = tienePermiso('warehouse.areas.read');
+  const puedeCrearAreas = tienePermiso('warehouse.areas.create');
+  const puedeActualizarAreas = tienePermiso('warehouse.areas.update');
+  const puedeEliminarAreas = tienePermiso('warehouse.areas.delete');
+  const puedeVerZonas = tienePermiso('warehouse.zones.read');
+  const puedeCrearZonas = tienePermiso('warehouse.zones.create');
+  const puedeActualizarZonas = tienePermiso('warehouse.zones.update');
+  const puedeEliminarZonas = tienePermiso('warehouse.zones.delete');
+  const puedeRecibirAlertas = tienePermiso('warehouse.alerts.receive');
+  const puedeRegistrarIncidencias = tienePermiso('warehouse.incidents.record');
+  const puedeRecibirIncidencias = tienePermiso('warehouse.incidents.alerts');
+
+  if (areaBtn && !puedeCrearAreas && !puedeActualizarAreas) {
+    marcarDisponibilidad(areaBtn, false, 'No tienes permiso para registrar o editar áreas.');
+    areaBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para administrar áreas.'));
+  }
+
+  if (zonaBtn && !puedeCrearZonas && !puedeActualizarZonas) {
+    marcarDisponibilidad(zonaBtn, false, 'No tienes permiso para registrar o editar zonas.');
+    zonaBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para administrar zonas.'));
+  }
+
+  if (exportExcelBtn && !puedeVerZonas) {
+    marcarDisponibilidad(exportExcelBtn, false, 'No tienes permiso para exportar las zonas registradas.');
+    exportExcelBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para ver las zonas.'));
+  }
+
+  if (exportPdfBtn && !puedeVerZonas) {
+    marcarDisponibilidad(exportPdfBtn, false, 'No tienes permiso para exportar las zonas registradas.');
+    exportPdfBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para ver las zonas.'));
+  }
+
+  if (incidentReportBtn && !(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
+    marcarDisponibilidad(incidentReportBtn, false, 'No tienes permiso para consultar las incidencias registradas.');
+    incidentReportBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para consultar incidencias.'));
+  }
+
+  if (incidentForm && !puedeRegistrarIncidencias) {
+    const controls = incidentForm.querySelectorAll('input, textarea, select, button');
+    controls.forEach((control) => {
+      if (!control) {
+        return;
+      }
+      if (control.type === 'radio' || control.type === 'checkbox') {
+        control.disabled = true;
+      } else {
+        control.setAttribute('readonly', 'readonly');
+        control.disabled = true;
+      }
+    });
+    incidentForm.addEventListener('submit', obtenerHandlerDenegado('No tienes permiso para registrar incidencias.'));
+  }
+
+  const areaSubmit = formArea ? formArea.querySelector('button[type="submit"]') : null;
+  if (areaSubmit && !puedeCrearAreas && !puedeActualizarAreas) {
+    marcarDisponibilidad(areaSubmit, false, 'No tienes permiso para guardar cambios en las áreas.');
+  }
+
+  const zonaSubmit = formZona ? formZona.querySelector('button[type="submit"]') : null;
+  if (zonaSubmit && !puedeCrearZonas && !puedeActualizarZonas) {
+    marcarDisponibilidad(zonaSubmit, false, 'No tienes permiso para guardar cambios en las zonas.');
+  }
+
+  if (!puedeVerZonas) {
+    [filtroNombre, filtroArea, filtroOcupacion, filtroProductos].forEach((control) => {
+      if (!control) {
+        return;
+      }
+      control.disabled = true;
+      control.value = '';
+    });
+  }
+
   let areasData = [];
   let zonasData = [];
   let incidenciasData = [];
@@ -576,22 +769,38 @@ let editZoneId = null;
 
   function actualizarResumen() {
     if (totalAreasEl) {
-      totalAreasEl.textContent = areasData.length;
+      totalAreasEl.textContent = puedeVerAreas
+        ? areasData.length
+        : 'Permiso requerido';
     }
     if (totalZonasEl) {
-      totalZonasEl.textContent = zonasData.length;
+      totalZonasEl.textContent = puedeVerZonas
+        ? zonasData.length
+        : 'Permiso requerido';
     }
     if (zonasSinAreaEl) {
-      zonasSinAreaEl.textContent = zonasData.filter(z => !z.area_id).length;
+      zonasSinAreaEl.textContent = puedeVerZonas
+        ? zonasData.filter(z => !z.area_id).length
+        : 'Permiso requerido';
     }
     if (totalIncidenciasEl) {
-      const pendientes = incidenciasData.filter(inc => (inc.estado || 'Pendiente').toLowerCase() === 'pendiente');
-      totalIncidenciasEl.textContent = pendientes.length;
+      if (puedeRegistrarIncidencias || puedeRecibirIncidencias) {
+        const pendientes = incidenciasData.filter(inc => (inc.estado || 'Pendiente').toLowerCase() === 'pendiente');
+        totalIncidenciasEl.textContent = pendientes.length;
+      } else {
+        totalIncidenciasEl.textContent = 'Permiso requerido';
+      }
     }
   }
 
   function actualizarAlertas() {
     if (!alertasBanner) {
+      return;
+    }
+
+    if (!puedeRecibirAlertas) {
+      alertasBanner.classList.remove('active');
+      alertasBanner.innerHTML = '<span>Activa los permisos de alertas del almacén para recibir notificaciones de capacidad.</span>';
       return;
     }
 
@@ -644,6 +853,10 @@ let editZoneId = null;
   }
 
   async function exportarZonasExcel() {
+    if (!puedeVerZonas) {
+      mostrarDenegado('No tienes permiso para exportar la información de las zonas.');
+      return;
+    }
     const exporter = window.ReportExporter;
     if (!exporter || typeof exporter.exportTableToExcel !== 'function') {
       showToast('No se pudo cargar el módulo de exportación');
@@ -679,6 +892,10 @@ let editZoneId = null;
   }
 
   async function exportarZonasPDF() {
+    if (!puedeVerZonas) {
+      mostrarDenegado('No tienes permiso para exportar la información de las zonas.');
+      return;
+    }
     const exporter = window.ReportExporter;
     if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
       showToast('No se pudo cargar el módulo de exportación');
@@ -728,6 +945,10 @@ let editZoneId = null;
   }
 
   async function generarReporteIncidencias() {
+    if (!(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
+      mostrarDenegado('No tienes permiso para exportar las incidencias registradas.');
+      return;
+    }
     const exporter = window.ReportExporter;
     if (!exporter || typeof exporter.exportTableToPdf !== 'function') {
       showToast('No se pudo cargar el módulo de exportación');
@@ -866,6 +1087,14 @@ let editZoneId = null;
       return;
     }
 
+    if (!puedeVerAreas) {
+      tablaAreasBody.innerHTML = '<tr class="empty-row"><td colspan="9">No tienes permiso para ver las áreas registradas.</td></tr>';
+      if (tablaAreasElement && window.SimpleTableSorter) {
+        window.SimpleTableSorter.applyCurrentSort(tablaAreasElement);
+      }
+      return;
+    }
+
     const tabla = tablaAreasElement;
     tablaAreasBody.innerHTML = '';
 
@@ -939,6 +1168,15 @@ let editZoneId = null;
 
 formArea.addEventListener('submit', async e => {
   e.preventDefault();
+  const editando = Boolean(editAreaId);
+  if (editando && !puedeActualizarAreas) {
+    mostrarDenegado('No tienes permiso para modificar la información de las áreas.');
+    return;
+  }
+  if (!editando && !puedeCrearAreas) {
+    mostrarDenegado('No tienes permiso para registrar nuevas áreas.');
+    return;
+  }
   const payload = {
     nombre:      areaNombre.value.trim(),
     descripcion: areaDesc.value.trim(),
@@ -1014,6 +1252,12 @@ formArea.addEventListener('submit', async e => {
   }
 
   async function recargarIncidencias() {
+    if (!(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
+      incidenciasData = [];
+      renderIncidencias();
+      actualizarResumen();
+      return;
+    }
     try {
       const incidencias = await fetchIncidencias();
       incidenciasData = Array.isArray(incidencias) ? incidencias.map(normalizarIncidencia) : [];
@@ -1033,6 +1277,23 @@ formArea.addEventListener('submit', async e => {
   }
 
   function actualizarVisibilidadIncidencia() {
+    if (!puedeRegistrarIncidencias) {
+      if (incidentAreaGroup) {
+        incidentAreaGroup.classList.remove('incident-group--hidden');
+      }
+      if (incidentZoneGroup) {
+        incidentZoneGroup.classList.add('incident-group--hidden');
+      }
+      if (incidentAreaSelect) {
+        incidentAreaSelect.required = false;
+        incidentAreaSelect.disabled = true;
+      }
+      if (incidentZoneSelect) {
+        incidentZoneSelect.required = false;
+        incidentZoneSelect.disabled = true;
+      }
+      return;
+    }
     const scope = obtenerScopeIncidencia();
     const esZona = scope === 'zona';
     if (incidentAreaGroup) {
@@ -1058,6 +1319,11 @@ formArea.addEventListener('submit', async e => {
 
   function renderIncidencias() {
     if (!incidentList) {
+      return;
+    }
+
+    if (!(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
+      incidentList.innerHTML = '<p class="incident-empty">No tienes permiso para visualizar las incidencias registradas.</p>';
       return;
     }
 
@@ -1124,6 +1390,18 @@ formArea.addEventListener('submit', async e => {
 
   function renderZonas() {
     if (!tablaZonasBody || !tablaZonasSinAreaBody) {
+      return;
+    }
+
+    if (!puedeVerZonas) {
+      tablaZonasBody.innerHTML = '<tr class="empty-row"><td colspan="8">No tienes permiso para ver las zonas registradas.</td></tr>';
+      tablaZonasSinAreaBody.innerHTML = '<tr class="empty-row"><td colspan="7">No tienes permiso para ver las zonas sin asignar.</td></tr>';
+      if (tablaZonasElement && window.SimpleTableSorter) {
+        window.SimpleTableSorter.applyCurrentSort(tablaZonasElement);
+      }
+      if (tablaZonasSinAreaElement && window.SimpleTableSorter) {
+        window.SimpleTableSorter.applyCurrentSort(tablaZonasSinAreaElement);
+      }
       return;
     }
 
@@ -1248,6 +1526,10 @@ formArea.addEventListener('submit', async e => {
   }
 
 async function editArea(id) {
+  if (!puedeActualizarAreas) {
+    mostrarDenegado('No tienes permiso para editar áreas.');
+    return;
+  }
   // 1) Traer la área
   const res = await fetch(`${API_BASE}/guardar_areas.php?id=${id}&empresa_id=${EMP_ID}`);
   const a   = await res.json();
@@ -1263,6 +1545,10 @@ async function editArea(id) {
 }
 
 async function editZone(id) {
+  if (!puedeActualizarZonas) {
+    mostrarDenegado('No tienes permiso para editar zonas.');
+    return;
+  }
   const res = await fetch(`${API_BASE}/guardar_zonas.php?id=${id}&empresa_id=${EMP_ID}`);
   const z   = await res.json();
   activarFormulario('zona');
@@ -1279,6 +1565,15 @@ async function editZone(id) {
 
 formZona.addEventListener('submit', async e => {
   e.preventDefault();
+  const editando = Boolean(editZoneId);
+  if (editando && !puedeActualizarZonas) {
+    mostrarDenegado('No tienes permiso para modificar las zonas registradas.');
+    return;
+  }
+  if (!editando && !puedeCrearZonas) {
+    mostrarDenegado('No tienes permiso para registrar nuevas zonas.');
+    return;
+  }
   const payload = {
     nombre:             zonaNombre.value.trim(),
     descripcion:        zonaDesc.value.trim(),
@@ -1397,6 +1692,10 @@ if (incidentList) {
     if (!button) {
       return;
     }
+    if (!puedeRegistrarIncidencias) {
+      mostrarDenegado('No tienes permiso para actualizar las incidencias.');
+      return;
+    }
     const id = parseInt(button.getAttribute('data-incident-resolver') || '', 10) || 0;
     if (!id) {
       return;
@@ -1429,6 +1728,10 @@ if (incidentList) {
 
 
 async function deleteArea(id) {
+  if (!puedeEliminarAreas) {
+    mostrarDenegado('No tienes permiso para eliminar áreas.');
+    return;
+  }
   if (!confirm('¿Seguro que deseas eliminar esta área?')) {
     return;
   }
@@ -1454,6 +1757,10 @@ async function deleteArea(id) {
 
 // —————— Borrar Zona ——————
 async function deleteZone(id) {
+  if (!puedeEliminarZonas) {
+    mostrarDenegado('No tienes permiso para eliminar zonas.');
+    return;
+  }
   if (!confirm('¿Seguro que deseas eliminar esta zona?')) {
     return;
   }
@@ -1523,8 +1830,20 @@ tablaAreasBody.addEventListener('click', e => {
   if (!button) return;
   const { id, action } = button.dataset;
   if (!id || !action) return;
-  if (action === 'edit-area')  editArea(id);
-  if (action === 'delete-area') deleteArea(id);
+  if (action === 'edit-area') {
+    if (!puedeActualizarAreas) {
+      mostrarDenegado('No tienes permiso para editar áreas.');
+      return;
+    }
+    editArea(id);
+  }
+  if (action === 'delete-area') {
+    if (!puedeEliminarAreas) {
+      mostrarDenegado('No tienes permiso para eliminar áreas.');
+      return;
+    }
+    deleteArea(id);
+  }
 });
 
 // Zonas: editar / borrar
@@ -1533,8 +1852,20 @@ tablaZonasBody.addEventListener('click', e => {
   if (!button) return;
   const { id, action } = button.dataset;
   if (!id || !action) return;
-  if (action === 'edit-zone')  editZone(id);
-  if (action === 'delete-zone') deleteZone(id);
+  if (action === 'edit-zone') {
+    if (!puedeActualizarZonas) {
+      mostrarDenegado('No tienes permiso para editar zonas.');
+      return;
+    }
+    editZone(id);
+  }
+  if (action === 'delete-zone') {
+    if (!puedeEliminarZonas) {
+      mostrarDenegado('No tienes permiso para eliminar zonas.');
+      return;
+    }
+    deleteZone(id);
+  }
 });
 
 // Zonas sin asignar: editar / borrar
@@ -1543,8 +1874,20 @@ tablaZonasSinAreaBody.addEventListener('click', e => {
   if (!button) return;
   const { id, action } = button.dataset;
   if (!id || !action) return;
-  if (action === 'edit-zone')  editZone(id);
-  if (action === 'delete-zone') deleteZone(id);
+  if (action === 'edit-zone') {
+    if (!puedeActualizarZonas) {
+      mostrarDenegado('No tienes permiso para editar zonas.');
+      return;
+    }
+    editZone(id);
+  }
+  if (action === 'delete-zone') {
+    if (!puedeEliminarZonas) {
+      mostrarDenegado('No tienes permiso para eliminar zonas.');
+      return;
+    }
+    deleteZone(id);
+  }
 });
 
   // —————— Eventos de volumen en vivo ——————
