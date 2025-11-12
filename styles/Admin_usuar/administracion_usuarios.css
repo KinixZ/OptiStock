@@ -692,11 +692,22 @@ body {
   line-height: 1.3;
 }
 
-.roles-permission-code {
+.roles-permission-name {
   font-weight: 600;
   color: #2d3270;
-  font-family: 'JetBrains Mono', 'Poppins', sans-serif;
-  font-size: 0.84rem;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  font-size: 0.9rem;
+}
+
+.roles-permission-code {
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #4c4f6d;
+  background: rgba(45, 50, 112, 0.08);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  width: fit-content;
+  letter-spacing: 0.02em;
 }
 
 .roles-permission-description {
