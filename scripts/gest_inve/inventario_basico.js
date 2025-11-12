@@ -1,4 +1,133 @@
 (() => {
+  const permissionUtils =
+    typeof window !== 'undefined' && window.PermissionUtils
+      ? window.PermissionUtils
+      : null;
+  const permisosHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions
+      ? window.OptiStockPermissions
+      : null;
+
+  const INVENTARIO_PERMISOS_ACCESO = [
+    'inventory.products.read',
+    'inventory.products.create',
+    'inventory.products.update',
+    'inventory.products.delete',
+    'inventory.categories.read',
+    'inventory.categories.create',
+    'inventory.categories.update',
+    'inventory.categories.delete',
+    'inventory.subcategories.read',
+    'inventory.subcategories.create',
+    'inventory.subcategories.update',
+    'inventory.subcategories.delete'
+  ];
+
+  function tienePermiso(clave) {
+    if (!clave) {
+      return true;
+    }
+
+    if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+      return permissionUtils.hasPermission(clave);
+    }
+
+    if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+      try {
+        const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+        return permisosHelper.isPermissionEnabled(rol, clave);
+      } catch (error) {
+        return true;
+      }
+    }
+
+    return true;
+  }
+
+  function marcarDisponibilidad(elemento, permitido, mensaje) {
+    if (!elemento) {
+      return;
+    }
+
+    if (permissionUtils && typeof permissionUtils.markAvailability === 'function') {
+      permissionUtils.markAvailability(elemento, permitido, mensaje);
+      return;
+    }
+
+    if (permitido) {
+      elemento.classList.remove('permission-disabled');
+      elemento.removeAttribute('aria-disabled');
+      if (elemento.dataset) {
+        delete elemento.dataset.permissionDenied;
+        delete elemento.dataset.permissionMessage;
+      }
+      return;
+    }
+
+    elemento.classList.add('permission-disabled');
+    elemento.setAttribute('aria-disabled', 'true');
+    if (elemento.dataset) {
+      elemento.dataset.permissionDenied = 'true';
+      if (mensaje) {
+        elemento.dataset.permissionMessage = mensaje;
+      }
+    }
+  }
+
+  function obtenerHandlerDenegado(mensaje) {
+    if (permissionUtils && typeof permissionUtils.createDeniedHandler === 'function') {
+      return permissionUtils.createDeniedHandler(mensaje);
+    }
+
+    return function (evento) {
+      if (evento && typeof evento.preventDefault === 'function') {
+        evento.preventDefault();
+      }
+      if (evento && typeof evento.stopPropagation === 'function') {
+        evento.stopPropagation();
+      }
+
+      const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+      if (typeof window !== 'undefined' && typeof window.toastError === 'function') {
+        window.toastError(texto);
+      } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert(texto);
+      }
+    };
+  }
+
+  function asegurarAccesoInventario() {
+    if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
+      return permissionUtils.ensureModuleAccess({
+        permissions: INVENTARIO_PERMISOS_ACCESO,
+        container: document.querySelector('.inventory-page'),
+        message:
+          'Solicita al administrador de tu empresa que habilite los permisos de productos, categorías o subcategorías para acceder al inventario.'
+      });
+    }
+
+    return true;
+  }
+
+  if (!asegurarAccesoInventario()) {
+    return;
+  }
+
+  const puedeVerProductos = tienePermiso('inventory.products.read');
+  const puedeCrearProductos = tienePermiso('inventory.products.create');
+  const puedeActualizarProductos = tienePermiso('inventory.products.update');
+  const puedeEliminarProductos = tienePermiso('inventory.products.delete');
+  const puedeVerCategorias = tienePermiso('inventory.categories.read');
+  const puedeCrearCategorias = tienePermiso('inventory.categories.create');
+  const puedeActualizarCategorias = tienePermiso('inventory.categories.update');
+  const puedeEliminarCategorias = tienePermiso('inventory.categories.delete');
+  const puedeVerSubcategorias = tienePermiso('inventory.subcategories.read');
+  const puedeCrearSubcategorias = tienePermiso('inventory.subcategories.create');
+  const puedeActualizarSubcategorias = tienePermiso('inventory.subcategories.update');
+  const puedeEliminarSubcategorias = tienePermiso('inventory.subcategories.delete');
+  const puedeRegistrarMovimientos = tienePermiso('inventory.movements.quick_io');
+  const puedeRecibirAlertas = tienePermiso('inventory.alerts.receive');
+
   const API = {
     categorias: '../../scripts/php/guardar_categorias.php',
     subcategorias: '../../scripts/php/guardar_subcategorias.php',
@@ -27,6 +156,18 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const prodArea = document.getElementById('prodArea');
   const prodZona = document.getElementById('prodZona');
 
+  if (btnProductos && !puedeVerProductos) {
+    marcarDisponibilidad(btnProductos, false, 'No tienes permiso para ver los productos.');
+  }
+
+  if (btnCategorias && !puedeVerCategorias) {
+    marcarDisponibilidad(btnCategorias, false, 'No tienes permiso para ver las categorías.');
+  }
+
+  if (btnSubcategorias && !puedeVerSubcategorias) {
+    marcarDisponibilidad(btnSubcategorias, false, 'No tienes permiso para ver las subcategorías.');
+  }
+
   const productoFormCollapseEl = document.getElementById('productoFormCollapse');
   const productoFormToggle = document.getElementById('productoFormToggle');
   const productoFormTitle = document.getElementById('productoFormTitle');
@@ -41,6 +182,27 @@ const EMP_ID = parseInt(localStorage.getItem('id_empresa'),10) || 0;
   const qrModalDownload = document.getElementById('productoQrDownload');
   const productoLabelCompact = document.getElementById('productoLabelCompact');
   const orientRadios = document.getElementsByName('etiquetaOrientacion');
+
+  if (productoFormSubmit && !puedeCrearProductos && !puedeActualizarProductos) {
+    marcarDisponibilidad(productoFormSubmit, false, 'No tienes permiso para guardar productos.');
+    productoFormSubmit.disabled = true;
+  }
+
+  if (catForm && !puedeCrearCategorias && !puedeActualizarCategorias) {
+    const catSubmit = catForm.querySelector('[type="submit"]');
+    if (catSubmit) {
+      marcarDisponibilidad(catSubmit, false, 'No tienes permiso para guardar categorías.');
+      catSubmit.disabled = true;
+    }
+  }
+
+  if (subcatForm && !puedeCrearSubcategorias && !puedeActualizarSubcategorias) {
+    const subcatSubmit = subcatForm.querySelector('[type="submit"]');
+    if (subcatSubmit) {
+      marcarDisponibilidad(subcatSubmit, false, 'No tienes permiso para guardar subcategorías.');
+      subcatSubmit.disabled = true;
+    }
+  }
 
   // (sanitizer defined later)
 
@@ -1259,21 +1421,25 @@ async function fetchAPI(url, method = 'GET', data) {
 
   function actualizarIndicadores() {
     if (resumenProductosEl) {
-      resumenProductosEl.textContent = productos.length;
+      resumenProductosEl.textContent = puedeVerProductos ? productos.length : '—';
     }
     if (resumenCategoriasEl) {
-      resumenCategoriasEl.textContent = categorias.length;
+      resumenCategoriasEl.textContent = puedeVerCategorias ? categorias.length : '—';
     }
     if (resumenCriticosEl) {
-      const criticos = productos.filter(p => {
-        const stock = parseInt(p.stock, 10) || 0;
-        const minimo = parseInt(p.stock_minimo, 10);
-        if (Number.isFinite(minimo) && minimo > 0) {
-          return stock <= minimo;
-        }
-        return stock <= 5;
-      }).length;
-      resumenCriticosEl.textContent = criticos;
+      if (!puedeVerProductos || !puedeRecibirAlertas) {
+        resumenCriticosEl.textContent = '—';
+      } else {
+        const criticos = productos.filter(p => {
+          const stock = parseInt(p.stock, 10) || 0;
+          const minimo = parseInt(p.stock_minimo, 10);
+          if (Number.isFinite(minimo) && minimo > 0) {
+            return stock <= minimo;
+          }
+          return stock <= 5;
+        }).length;
+        resumenCriticosEl.textContent = criticos;
+      }
     }
   }
 
@@ -1548,6 +1714,26 @@ prodCategoria?.addEventListener('change', () => {
   let preferredCameraId = null;
   let fallbackCameraId = null;
   let avisoCantidadCeroMostrado = false;
+
+  if (btnIngreso && !puedeRegistrarMovimientos) {
+    marcarDisponibilidad(btnIngreso, false, 'No tienes permiso para registrar ingresos rápidos.');
+  }
+
+  if (btnEgreso && !puedeRegistrarMovimientos) {
+    marcarDisponibilidad(btnEgreso, false, 'No tienes permiso para registrar egresos rápidos.');
+  }
+
+  if (btnScanQR && !puedeRegistrarMovimientos) {
+    marcarDisponibilidad(btnScanQR, false, 'No tienes permiso para usar el escáner rápido.');
+  }
+
+  if (movGuardar && !puedeRegistrarMovimientos) {
+    marcarDisponibilidad(movGuardar, false, 'No tienes permiso para registrar movimientos manuales.');
+  }
+
+  if (scanRegistrar && !puedeRegistrarMovimientos) {
+    marcarDisponibilidad(scanRegistrar, false, 'No tienes permiso para registrar movimientos rápidos.');
+  }
 
   async function detenerScanner() {
     if (!qrScanner || !scannerActivo) {
@@ -1902,7 +2088,11 @@ prodCategoria?.addEventListener('change', () => {
     }
   });
 
-  scanRegistrar?.addEventListener('click', async () => {
+  scanRegistrar?.addEventListener('click', async event => {
+    if (!puedeRegistrarMovimientos) {
+      obtenerHandlerDenegado('No tienes permiso para registrar movimientos rápidos.')(event);
+      return;
+    }
     if (!scanProductoActual) {
       showToast('Escanea un producto antes de registrar el movimiento.', 'error');
       return;
@@ -2022,6 +2212,10 @@ function poblarSelectProductos() {
 }
 
 btnScanQR?.addEventListener('click', async () => {
+  if (!puedeRegistrarMovimientos) {
+    obtenerHandlerDenegado('No tienes permiso para usar el escáner rápido.')();
+    return;
+  }
   if (!navigator.mediaDevices || !window.isSecureContext) {
     showToast('La cámara no es compatible o se requiere HTTPS/localhost', 'error');
     return;
@@ -2080,6 +2274,10 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
 });
 
  btnIngreso?.addEventListener('click', () => {
+    if (!puedeRegistrarMovimientos) {
+      obtenerHandlerDenegado('No tienes permiso para registrar movimientos rápidos.')();
+      return;
+    }
     if (!movModal || !movTitle || !movCant) {
       console.warn('Modal de movimientos no disponible.');
       return;
@@ -2091,6 +2289,10 @@ scanModalElement?.addEventListener('shown.bs.modal', async () => {
     movModal.show();
   });
   btnEgreso?.addEventListener('click', () => {
+    if (!puedeRegistrarMovimientos) {
+      obtenerHandlerDenegado('No tienes permiso para registrar movimientos rápidos.')();
+      return;
+    }
     if (!movModal || !movTitle || !movCant) {
       console.warn('Modal de movimientos no disponible.');
       return;
@@ -2211,6 +2413,13 @@ function actualizarSelectZonas(areaId = null, zonaId = undefined) {
 }
 
   async function cargarCategorias() {
+    if (!puedeVerCategorias) {
+      categorias.length = 0;
+      actualizarSelectCategorias();
+      actualizarIndicadores();
+      return;
+    }
+
     categorias.length = 0;
     const datos = await fetchAPI(
       `${API.categorias}?empresa_id=${EMP_ID}`
@@ -2221,6 +2430,13 @@ function actualizarSelectZonas(areaId = null, zonaId = undefined) {
   }
 
   async function cargarSubcategorias() {
+    if (!puedeVerSubcategorias) {
+      subcategorias.length = 0;
+      actualizarSelectSubcategorias(null);
+      actualizarIndicadores();
+      return;
+    }
+
     subcategorias.length = 0;
     const datos = await fetchAPI(
       `${API.subcategorias}?empresa_id=${EMP_ID}`
@@ -2246,6 +2462,10 @@ async function cargarZonas() {
  }
 
 movGuardar?.addEventListener('click', async () => {
+  if (!puedeRegistrarMovimientos) {
+    obtenerHandlerDenegado('No tienes permiso para registrar movimientos manuales.')();
+    return;
+  }
   if (!movProdSel || !movCant) {
     console.warn('Formulario de movimiento incompleto.');
     return;
@@ -2294,6 +2514,12 @@ movGuardar?.addEventListener('click', async () => {
 });
 
   async function cargarProductos() {
+    if (!puedeVerProductos) {
+      productos.length = 0;
+      actualizarIndicadores();
+      return;
+    }
+
     productos.length = 0;
     const datos = await fetchAPI(`${API.productos}?empresa_id=${EMP_ID}`);
     datos.forEach(p => {
@@ -2318,6 +2544,36 @@ movGuardar?.addEventListener('click', async () => {
     }
     tablaResumen.innerHTML = '';
     tablaHead.innerHTML = '';
+
+    if (vistaActual === 'producto' && !puedeVerProductos) {
+      tablaHead.innerHTML = '<tr><th scope="col">Permiso requerido</th></tr>';
+      tablaResumen.innerHTML =
+        '<tr><td>No tienes permiso para ver el catálogo de productos.</td></tr>';
+      if (tablaDescripcionEl) {
+        tablaDescripcionEl.textContent = 'Permiso requerido para visualizar productos';
+      }
+      return;
+    }
+
+    if (vistaActual === 'categoria' && !puedeVerCategorias) {
+      tablaHead.innerHTML = '<tr><th scope="col">Permiso requerido</th></tr>';
+      tablaResumen.innerHTML =
+        '<tr><td>No tienes permiso para ver las categorías.</td></tr>';
+      if (tablaDescripcionEl) {
+        tablaDescripcionEl.textContent = 'Permiso requerido para visualizar categorías';
+      }
+      return;
+    }
+
+    if (vistaActual === 'subcategoria' && !puedeVerSubcategorias) {
+      tablaHead.innerHTML = '<tr><th scope="col">Permiso requerido</th></tr>';
+      tablaResumen.innerHTML =
+        '<tr><td>No tienes permiso para ver las subcategorías.</td></tr>';
+      if (tablaDescripcionEl) {
+        tablaDescripcionEl.textContent = 'Permiso requerido para visualizar subcategorías';
+      }
+      return;
+    }
 
     const parseSortNumber = value => {
       if (typeof value === 'number') {
@@ -2436,6 +2692,21 @@ const sub = p.subcategoria_nombre || '';
       </td>
     `;
     tablaResumen.appendChild(tr);
+
+    const botonQr = tr.querySelector('[data-accion="qr"][data-tipo="producto"]');
+    if (botonQr && !puedeVerProductos) {
+      marcarDisponibilidad(botonQr, false, 'No tienes permiso para consultar el catálogo de productos.');
+    }
+
+    const botonEditarProducto = tr.querySelector('[data-accion="edit"][data-tipo="producto"]');
+    if (botonEditarProducto && !puedeActualizarProductos) {
+      marcarDisponibilidad(botonEditarProducto, false, 'No tienes permiso para editar productos.');
+    }
+
+    const botonEliminarProducto = tr.querySelector('[data-accion="del"][data-tipo="producto"]');
+    if (botonEliminarProducto && !puedeEliminarProductos) {
+      marcarDisponibilidad(botonEliminarProducto, false, 'No tienes permiso para eliminar productos.');
+    }
   });
 } else if (vistaActual === 'categoria') {
       tablaHead.innerHTML = `
@@ -2460,6 +2731,16 @@ const sub = p.subcategoria_nombre || '';
             <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="categoria" data-id="${c.id}">Eliminar</button>
           </td>`;
         tablaResumen.appendChild(tr);
+
+        const botonEditarCategoria = tr.querySelector('[data-accion="edit"][data-tipo="categoria"]');
+        if (botonEditarCategoria && !puedeActualizarCategorias) {
+          marcarDisponibilidad(botonEditarCategoria, false, 'No tienes permiso para editar categorías.');
+        }
+
+        const botonEliminarCategoria = tr.querySelector('[data-accion="del"][data-tipo="categoria"]');
+        if (botonEliminarCategoria && !puedeEliminarCategorias) {
+          marcarDisponibilidad(botonEliminarCategoria, false, 'No tienes permiso para eliminar categorías.');
+        }
       });
     } else if (vistaActual === 'subcategoria') {
       tablaHead.innerHTML = `
@@ -2481,6 +2762,16 @@ const sub = p.subcategoria_nombre || '';
             <button class="btn btn-sm btn-danger" data-accion="del" data-tipo="subcategoria" data-id="${sc.id}">Eliminar</button>
           </td>`;
         tablaResumen.appendChild(tr);
+
+        const botonEditarSubcategoria = tr.querySelector('[data-accion="edit"][data-tipo="subcategoria"]');
+        if (botonEditarSubcategoria && !puedeActualizarSubcategorias) {
+          marcarDisponibilidad(botonEditarSubcategoria, false, 'No tienes permiso para editar subcategorías.');
+        }
+
+        const botonEliminarSubcategoria = tr.querySelector('[data-accion="del"][data-tipo="subcategoria"]');
+        if (botonEliminarSubcategoria && !puedeEliminarSubcategorias) {
+          marcarDisponibilidad(botonEliminarSubcategoria, false, 'No tienes permiso para eliminar subcategorías.');
+        }
       });
     }
 
@@ -2494,6 +2785,15 @@ const sub = p.subcategoria_nombre || '';
 
 catForm?.addEventListener('submit', async e => {
   e.preventDefault();
+  if (editCatId) {
+    if (!puedeActualizarCategorias) {
+      obtenerHandlerDenegado('No tienes permiso para editar categorías.')(e);
+      return;
+    }
+  } else if (!puedeCrearCategorias) {
+    obtenerHandlerDenegado('No tienes permiso para crear categorías.')(e);
+    return;
+  }
   // 1) Leer campos
   const nombre = document.getElementById('catNombre').value.trim();
   const descripcion = document.getElementById('catDescripcion').value.trim();
@@ -2536,6 +2836,15 @@ catForm?.addEventListener('submit', async e => {
 
 subcatForm?.addEventListener('submit', async e => {
   e.preventDefault();
+  if (editSubcatId) {
+    if (!puedeActualizarSubcategorias) {
+      obtenerHandlerDenegado('No tienes permiso para editar subcategorías.')(e);
+      return;
+    }
+  } else if (!puedeCrearSubcategorias) {
+    obtenerHandlerDenegado('No tienes permiso para crear subcategorías.')(e);
+    return;
+  }
   // 1) Leer campos
   const categoria_id = parseInt(document.getElementById('subcatCategoria').value, 10) || null;
   const nombre = document.getElementById('subcatNombre').value.trim();
@@ -2582,6 +2891,15 @@ subcatForm?.addEventListener('submit', async e => {
 
 prodForm?.addEventListener('submit', async e => {
     e.preventDefault();
+    if (editProdId) {
+      if (!puedeActualizarProductos) {
+        obtenerHandlerDenegado('No tienes permiso para editar productos.')(e);
+        return;
+      }
+    } else if (!puedeCrearProductos) {
+      obtenerHandlerDenegado('No tienes permiso para crear productos.')(e);
+      return;
+    }
 
     // 1) Leer campos de forma fiable
     const nombre = document.getElementById('prodNombre').value.trim();
@@ -2729,6 +3047,10 @@ prodForm?.addEventListener('submit', async e => {
   if (!accion || Number.isNaN(id)) return;
 
   if (accion === 'qr' && tipo === 'producto') {
+    if (!puedeVerProductos) {
+      obtenerHandlerDenegado('No tienes permiso para consultar el catálogo de productos.')();
+      return;
+    }
     const producto = productos.find(pr => parseInt(pr.id, 10) === id) || null;
     const qrSrc = `../../scripts/php/generar_qr_producto.php?producto_id=${id}&cache=${Date.now()}`;
     qrModalProducto = producto;
@@ -2806,6 +3128,18 @@ prodForm?.addEventListener('submit', async e => {
 
   // 1) Eliminar
   if (accion === 'del') {
+    if (tipo === 'producto' && !puedeEliminarProductos) {
+      obtenerHandlerDenegado('No tienes permiso para eliminar productos.')();
+      return;
+    }
+    if (tipo === 'categoria' && !puedeEliminarCategorias) {
+      obtenerHandlerDenegado('No tienes permiso para eliminar categorías.')();
+      return;
+    }
+    if (tipo === 'subcategoria' && !puedeEliminarSubcategorias) {
+      obtenerHandlerDenegado('No tienes permiso para eliminar subcategorías.')();
+      return;
+    }
     // --- BORRAR PRODUCTO CON CONFIRMACIÓN ---
     if (tipo === 'producto') {
       // 1) Encuentra el producto para mostrar su nombre en el diálogo
@@ -2972,6 +3306,10 @@ prodForm?.addEventListener('submit', async e => {
 
   // 2) Editar producto
   if (accion === 'edit' && tipo === 'producto') {
+    if (!puedeActualizarProductos) {
+      obtenerHandlerDenegado('No tienes permiso para editar productos.')();
+      return;
+    }
     const p = productos.find(pr => parseInt(pr.id, 10) === id);
     if (!p) return;
     mostrar('producto');
@@ -3002,6 +3340,10 @@ prodForm?.addEventListener('submit', async e => {
 
   // 3) Editar categoría
   if (accion === 'edit' && tipo === 'categoria') {
+    if (!puedeActualizarCategorias) {
+      obtenerHandlerDenegado('No tienes permiso para editar categorías.')();
+      return;
+    }
     const c = categorias.find(cat => parseInt(cat.id, 10) === id);
     if (!c) return;
     mostrar('categoria');
@@ -3014,6 +3356,10 @@ prodForm?.addEventListener('submit', async e => {
 
   // 4) Editar subcategoría
   if (accion === 'edit' && tipo === 'subcategoria') {
+    if (!puedeActualizarSubcategorias) {
+      obtenerHandlerDenegado('No tienes permiso para editar subcategorías.')();
+      return;
+    }
     const sc = subcategorias.find(s => parseInt(s.id, 10) === id);
     if (!sc) return;
     mostrar('subcategoria');
