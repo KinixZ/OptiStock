@@ -199,6 +199,176 @@
     manualGeneratorEmpty: document.getElementById('manualGeneratorEmpty')
   };
 
+  const permissionUtils =
+    typeof window !== 'undefined' && window.PermissionUtils ? window.PermissionUtils : null;
+  const permisosHelper =
+    typeof window !== 'undefined' && window.OptiStockPermissions ? window.OptiStockPermissions : null;
+
+  const MODULO_PERMISOS = [
+    'reports.generate',
+    'reports.export.pdf',
+    'reports.export.xlsx',
+    'reports.schedule'
+  ];
+
+  function tienePermiso(clave) {
+    if (!clave) {
+      return true;
+    }
+    if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+      return permissionUtils.hasPermission(clave);
+    }
+    if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+      try {
+        const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+        return permisosHelper.isPermissionEnabled(rol, clave);
+      } catch (error) {
+        return true;
+      }
+    }
+    return true;
+  }
+
+  function marcarDisponibilidad(elemento, permitido, mensaje) {
+    if (!elemento) {
+      return;
+    }
+    if (permissionUtils && typeof permissionUtils.markAvailability === 'function') {
+      permissionUtils.markAvailability(elemento, permitido, mensaje);
+      return;
+    }
+    if (permitido) {
+      elemento.classList.remove('permission-disabled');
+      elemento.removeAttribute('aria-disabled');
+      if (typeof elemento.disabled === 'boolean') {
+        elemento.disabled = false;
+      }
+      if (elemento.dataset) {
+        delete elemento.dataset.permissionDenied;
+        delete elemento.dataset.permissionMessage;
+      }
+      return;
+    }
+    elemento.classList.add('permission-disabled');
+    elemento.setAttribute('aria-disabled', 'true');
+    if (typeof elemento.disabled === 'boolean') {
+      elemento.disabled = true;
+    }
+    if (elemento.dataset) {
+      elemento.dataset.permissionDenied = 'true';
+      if (mensaje) {
+        elemento.dataset.permissionMessage = mensaje;
+      }
+    }
+  }
+
+  function mostrarDenegado(mensaje) {
+    const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+    if (permissionUtils && typeof permissionUtils.showDenied === 'function') {
+      permissionUtils.showDenied(texto);
+      return;
+    }
+    if (typeof window !== 'undefined' && typeof window.toastError === 'function') {
+      window.toastError(texto);
+      return;
+    }
+    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(texto);
+    }
+  }
+
+  function obtenerHandlerDenegado(mensaje) {
+    if (permissionUtils && typeof permissionUtils.createDeniedHandler === 'function') {
+      return permissionUtils.createDeniedHandler(mensaje);
+    }
+    return function manejar(evento) {
+      if (evento && typeof evento.preventDefault === 'function') {
+        evento.preventDefault();
+      }
+      if (evento && typeof evento.stopPropagation === 'function') {
+        evento.stopPropagation();
+      }
+      mostrarDenegado(mensaje);
+    };
+  }
+
+  function asegurarAccesoModulo() {
+    if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
+      return permissionUtils.ensureModuleAccess({
+        permissions: MODULO_PERMISOS,
+        container: document.querySelector('.reports-page'),
+        message: 'Solicita al administrador que habilite los permisos de reportes para acceder a esta sección.'
+      });
+    }
+    return true;
+  }
+
+  if (!asegurarAccesoModulo()) {
+    return;
+  }
+
+  const puedeVerHistorial = tienePermiso('reports.generate');
+  const puedeExportarPdf = tienePermiso('reports.export.pdf');
+  const puedeExportarExcel = tienePermiso('reports.export.xlsx');
+  const puedeProgramarReportes = tienePermiso('reports.schedule');
+  const puedeRecibirNotificaciones = tienePermiso('reports.notify');
+
+  if (!puedeVerHistorial) {
+    if (elements.historyTableBody) {
+      elements.historyTableBody.innerHTML = '<tr><td colspan="6">No tienes permiso para visualizar el historial de reportes.</td></tr>';
+    }
+    if (elements.historyTableWrapper) {
+      elements.historyTableWrapper.classList.remove('d-none');
+    }
+    if (elements.historyEmpty) {
+      elements.historyEmpty.classList.add('d-none');
+    }
+    if (elements.historyCaption) {
+      elements.historyCaption.textContent = 'Permiso requerido para consultar el historial.';
+    }
+    if (elements.historyFooter) {
+      elements.historyFooter.classList.add('d-none');
+    }
+    [elements.searchInput, elements.typeFilter].forEach((control) => {
+      if (!control) {
+        return;
+      }
+      control.value = '';
+      control.disabled = true;
+      control.setAttribute('aria-disabled', 'true');
+    });
+    if (elements.refreshButton) {
+      marcarDisponibilidad(elements.refreshButton, false, 'No tienes permiso para actualizar el historial.');
+      elements.refreshButton.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para consultar el historial.'));
+    }
+    if (elements.uploadForm) {
+      marcarDisponibilidad(elements.uploadSubmitBtn, false, 'No tienes permiso para guardar reportes en el historial.');
+      elements.uploadForm.addEventListener('submit', obtenerHandlerDenegado('No tienes permiso para guardar reportes.'));
+      if (elements.uploadFileInput) {
+        elements.uploadFileInput.disabled = true;
+      }
+      if (elements.uploadSourceInput) {
+        elements.uploadSourceInput.disabled = true;
+      }
+      if (elements.uploadNotesInput) {
+        elements.uploadNotesInput.disabled = true;
+      }
+    }
+  }
+
+  if (!puedeProgramarReportes) {
+    if (elements.automationConfigBtn) {
+      marcarDisponibilidad(elements.automationConfigBtn, false, 'No tienes permiso para configurar reportes automáticos.');
+      elements.automationConfigBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para configurar automatizaciones.'));
+    }
+    if (elements.automationSubmitBtn) {
+      marcarDisponibilidad(elements.automationSubmitBtn, false, 'No tienes permiso para guardar automatizaciones.');
+    }
+    if (elements.automationDeleteBtn) {
+      marcarDisponibilidad(elements.automationDeleteBtn, false, 'No tienes permiso para eliminar automatizaciones.');
+    }
+  }
+
   const state = {
     reports: [],
     serverReports: [],
@@ -333,7 +503,7 @@
   }
 
   function appendScheduledReportAlertLocally(notification, empresaId) {
-    if (!notification) {
+    if (!notification || !puedeRecibirNotificaciones) {
       return;
     }
     const empresaKey = empresaId && empresaId !== 'local' ? empresaId : 'local';
@@ -347,7 +517,7 @@
   }
 
   async function persistScheduledReportAlert(notification, empresaId) {
-    if (!notification) {
+    if (!notification || !puedeRecibirNotificaciones) {
       return;
     }
 
@@ -1333,6 +1503,15 @@
       return;
     }
 
+    if (!puedeExportarPdf && !puedeExportarExcel) {
+      elements.manualGeneratorGrid.innerHTML = '';
+      if (elements.manualGeneratorEmpty) {
+        elements.manualGeneratorEmpty.textContent = 'No tienes permiso para generar reportes manuales en este módulo.';
+        elements.manualGeneratorEmpty.classList.remove('d-none');
+      }
+      return;
+    }
+
     if (!hasEmpresa) {
       elements.manualGeneratorGrid.innerHTML = '';
       if (elements.manualGeneratorEmpty) {
@@ -1359,13 +1538,23 @@
           .map((format) => {
             const label = getFormatLabel(format);
             const secondaryClass = String(format).toLowerCase() === 'excel' ? ' manual-card__button--secondary' : '';
-            const disabledAttr = loading ? ' disabled' : '';
+            const normalized = String(format).toLowerCase();
+            const permitido = normalized === 'pdf'
+              ? puedeExportarPdf
+              : normalized === 'excel'
+                ? puedeExportarExcel
+                : true;
+            const disabledAttr = loading || !permitido ? ' disabled' : '';
+            const permissionClass = !permitido ? ' permission-disabled' : '';
             const text = loading
               ? (String(format).toLowerCase() === 'excel' ? 'Generando Excel…' : 'Generando PDF…')
               : label;
-            return `<button type="button" class="manual-card__button${secondaryClass}" data-report-id="${escapeHtml(
+            const messageAttr = permitido
+              ? ''
+              : ' data-permission-message="No tienes permiso para exportar en este formato."';
+            return `<button type="button" class="manual-card__button${secondaryClass}${permissionClass}" data-report-id="${escapeHtml(
               report.id
-            )}" data-report-format="${escapeHtml(String(format))}"${disabledAttr}>${escapeHtml(text)}</button>`;
+            )}" data-report-format="${escapeHtml(String(format))}"${disabledAttr}${messageAttr}>${escapeHtml(text)}</button>`;
           })
           .join('');
 
@@ -1425,6 +1614,14 @@
     }
 
     const normalizedFormat = String(format).toLowerCase();
+    if (normalizedFormat === 'pdf' && !puedeExportarPdf) {
+      mostrarDenegado('No tienes permiso para exportar reportes en PDF.');
+      return;
+    }
+    if (normalizedFormat === 'excel' && !puedeExportarExcel) {
+      mostrarDenegado('No tienes permiso para exportar reportes en Excel.');
+      return;
+    }
     if (normalizedFormat !== 'pdf' && normalizedFormat !== 'excel') {
       showAlert('Formato de reporte no soportado.', 'danger');
       return;
@@ -1545,6 +1742,15 @@
     const reportId = button.getAttribute('data-report-id');
     const format = button.getAttribute('data-report-format');
     if (!reportId || !format) {
+      return;
+    }
+    const normalizedFormat = String(format).toLowerCase();
+    if (normalizedFormat === 'pdf' && !puedeExportarPdf) {
+      mostrarDenegado('No tienes permiso para exportar reportes en PDF.');
+      return;
+    }
+    if (normalizedFormat === 'excel' && !puedeExportarExcel) {
+      mostrarDenegado('No tienes permiso para exportar reportes en Excel.');
       return;
     }
     generateManualReport(reportId, format);
@@ -2038,6 +2244,10 @@
       return;
     }
 
+    if (!puedeVerHistorial) {
+      return;
+    }
+
     const totalReports = state.reports.length;
     const filteredCount = list.length;
     const hasFilters = Boolean(
@@ -2135,6 +2345,9 @@
   }
 
   function applyFilters({ resetPage = true } = {}) {
+    if (!puedeVerHistorial) {
+      return;
+    }
     const searchTerm = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
     const typeFilter = elements.typeFilter ? elements.typeFilter.value : 'all';
     const sourceFilter = elements.sourceFilter ? elements.sourceFilter.value : 'all';
@@ -2178,6 +2391,10 @@
   }
 
   async function loadHistory({ showSpinner = true } = {}) {
+    if (!puedeVerHistorial) {
+      mostrarDenegado('No tienes permiso para consultar el historial de reportes.');
+      return;
+    }
     if (showSpinner) {
       setLoading(true);
     }
@@ -2210,6 +2427,10 @@
 
   async function handleManualUpload(event) {
     event.preventDefault();
+    if (!puedeVerHistorial) {
+      mostrarDenegado('No tienes permiso para guardar reportes en el historial.');
+      return;
+    }
     if (!elements.uploadFileInput || !elements.uploadSubmitBtn) {
       return;
     }
@@ -2451,6 +2672,13 @@
       return;
     }
 
+    if (!puedeProgramarReportes) {
+      elements.automationList.innerHTML = '';
+      elements.automationEmpty.textContent = 'No tienes permiso para administrar reportes automáticos.';
+      elements.automationEmpty.classList.remove('d-none');
+      return;
+    }
+
     if (!state.automations.length) {
       elements.automationList.innerHTML = '';
       elements.automationEmpty.classList.remove('d-none');
@@ -2545,6 +2773,15 @@
     if (!elements.automationFrequencySelect) {
       return;
     }
+    if (!puedeProgramarReportes) {
+      if (elements.automationWeekdayWrapper) {
+        elements.automationWeekdayWrapper.classList.add('d-none');
+      }
+      if (elements.automationMonthdayWrapper) {
+        elements.automationMonthdayWrapper.classList.add('d-none');
+      }
+      return;
+    }
     const value = elements.automationFrequencySelect.value;
     if (elements.automationWeekdayWrapper) {
       elements.automationWeekdayWrapper.classList.toggle('d-none', value !== 'weekly');
@@ -2555,6 +2792,10 @@
   }
 
   function openAutomationModal(automation = null) {
+    if (!puedeProgramarReportes) {
+      mostrarDenegado('No tienes permiso para configurar reportes automáticos.');
+      return;
+    }
     if (!elements.automationModal) {
       return;
     }
@@ -2647,6 +2888,10 @@
 
   function handleAutomationFormSubmit(event) {
     event.preventDefault();
+    if (!puedeProgramarReportes) {
+      mostrarDenegado('No tienes permiso para configurar reportes automáticos.');
+      return;
+    }
     if (!elements.automationForm) {
       return;
     }
@@ -2726,6 +2971,10 @@
   }
 
   function deleteAutomation(automationId) {
+    if (!puedeProgramarReportes) {
+      mostrarDenegado('No tienes permiso para eliminar automatizaciones.');
+      return;
+    }
     const index = state.automations.findIndex((item) => item.id === automationId);
     if (index < 0) {
       return;
@@ -2863,6 +3112,15 @@
   }
 
   async function registerAutomationReport(automation, executedAt) {
+    const formato = String(automation.format || 'pdf').toLowerCase();
+    if (formato === 'pdf' && !puedeExportarPdf) {
+      mostrarDenegado('No tienes permiso para generar reportes automáticos en PDF.');
+      return null;
+    }
+    if ((formato === 'excel' || formato === 'csv') && !puedeExportarExcel) {
+      mostrarDenegado('No tienes permiso para generar reportes automáticos en Excel.');
+      return null;
+    }
     const fileNameDate = new Date(executedAt);
     const safeDate = Number.isFinite(fileNameDate.getTime()) ? fileNameDate : new Date();
     const iso = safeDate.toISOString();
@@ -2987,6 +3245,9 @@
   }
 
   async function runPendingAutomations() {
+    if (!puedeProgramarReportes) {
+      return;
+    }
     if (state.automationRunInProgress) {
       state.automationRunQueued = true;
       return;
@@ -3097,6 +3358,11 @@
       return;
     }
 
+    if (!puedeProgramarReportes) {
+      mostrarDenegado('No tienes permiso para administrar las automatizaciones.');
+      return;
+    }
+
     const runBtn = target.closest('[data-automation-run]');
     if (runBtn) {
       const automationId = runBtn.getAttribute('data-automation-run');
@@ -3177,6 +3443,12 @@
       return;
     }
 
+    if (!puedeProgramarReportes) {
+      target.checked = !target.checked;
+      mostrarDenegado('No tienes permiso para administrar las automatizaciones.');
+      return;
+    }
+
     const automationId = target.getAttribute('data-automation-toggle');
     const automation = state.automations.find((item) => item.id === automationId);
     if (!automation) {
@@ -3199,6 +3471,11 @@
   }
 
   function initializeAutomations() {
+    if (!puedeProgramarReportes) {
+      state.automations = [];
+      renderAutomations();
+      return;
+    }
     state.automations = deduplicateAutomations(
       loadAutomationsFromStorage().map((item) => normalizeAutomation(item))
     );
@@ -3240,16 +3517,13 @@
       });
     }
 
-    if (elements.searchInput) {
+    if (puedeVerHistorial && elements.searchInput) {
       elements.searchInput.addEventListener('input', () => applyFilters({ resetPage: true }));
     }
-    if (elements.typeFilter) {
+    if (puedeVerHistorial && elements.typeFilter) {
       elements.typeFilter.addEventListener('change', () => applyFilters({ resetPage: true }));
     }
-    if (elements.sourceFilter) {
-      elements.sourceFilter.addEventListener('change', () => applyFilters({ resetPage: true }));
-    }
-    if (elements.historyPaginationPrev) {
+    if (puedeVerHistorial && elements.historyPaginationPrev) {
       elements.historyPaginationPrev.addEventListener('click', () => {
         if (state.historyPage > 1) {
           state.historyPage -= 1;
@@ -3257,7 +3531,7 @@
         }
       });
     }
-    if (elements.historyPaginationNext) {
+    if (puedeVerHistorial && elements.historyPaginationNext) {
       elements.historyPaginationNext.addEventListener('click', () => {
         const filteredCount = state.filteredReports.length;
         const totalPages = Math.max(1, Math.ceil(filteredCount / HISTORY_PAGE_SIZE));
@@ -3267,7 +3541,7 @@
         }
       });
     }
-    if (elements.refreshButton) {
+    if (puedeVerHistorial && elements.refreshButton) {
       elements.refreshButton.addEventListener('click', () => loadHistory());
     }
     if (elements.manualGeneratorGrid) {
@@ -3279,16 +3553,16 @@
     if (elements.historyTableBody) {
       elements.historyTableBody.addEventListener('click', handleTableActionClick);
     }
-    if (elements.automationConfigBtn) {
+    if (puedeProgramarReportes && elements.automationConfigBtn) {
       elements.automationConfigBtn.addEventListener('click', () => openAutomationModal());
     }
-    if (elements.automationFrequencySelect) {
+    if (puedeProgramarReportes && elements.automationFrequencySelect) {
       elements.automationFrequencySelect.addEventListener('change', updateFrequencyFields);
     }
-    if (elements.automationForm) {
+    if (puedeProgramarReportes && elements.automationForm) {
       elements.automationForm.addEventListener('submit', handleAutomationFormSubmit);
     }
-    if (elements.automationDeleteBtn) {
+    if (puedeProgramarReportes && elements.automationDeleteBtn) {
       elements.automationDeleteBtn.addEventListener('click', () => {
         const automationId = elements.automationIdInput ? elements.automationIdInput.value : '';
         if (!automationId) {
@@ -3307,7 +3581,7 @@
         }
       });
     }
-    if (elements.automationModal) {
+    if (puedeProgramarReportes && elements.automationModal) {
       elements.automationModal.addEventListener('hidden.bs.modal', () => {
         resetAutomationForm();
       });
@@ -3320,11 +3594,15 @@
     updateFrequencyFields();
     initializeAutomations();
 
-    if (empresaId) {
+    if (empresaId && puedeVerHistorial) {
       loadHistory();
     } else {
       setLoading(false);
-      showAlert('Los reportes automáticos se guardan en este navegador hasta que vincules una empresa.', 'info', true);
+      if (!puedeVerHistorial) {
+        showAlert('No tienes permisos para consultar el historial de reportes.', 'warning', true);
+      } else {
+        showAlert('Los reportes automáticos se guardan en este navegador hasta que vincules una empresa.', 'info', true);
+      }
     }
   }
 

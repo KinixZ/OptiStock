@@ -10,6 +10,121 @@
     typeof window !== 'undefined' && window.OptiStockPermissions
       ? window.OptiStockPermissions
       : null;
+  const permissionUtils =
+    typeof window !== 'undefined' && window.PermissionUtils
+      ? window.PermissionUtils
+      : null;
+
+  const MODULO_PERMISOS = [
+    'users.read',
+    'users.create',
+    'users.update',
+    'users.disable_enable',
+    'users.delete',
+    'roles.assign',
+    'roles.permissions.configure'
+  ];
+
+  function tienePermisoAccion(clave) {
+    if (!clave) {
+      return true;
+    }
+
+    if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+      return permissionUtils.hasPermission(clave);
+    }
+
+    if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+      try {
+        const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+        return permisosHelper.isPermissionEnabled(rol, clave);
+      } catch (error) {
+        return true;
+      }
+    }
+
+    return true;
+  }
+
+  function marcarElementoPermiso(elemento, permitido, mensaje) {
+    if (!elemento) {
+      return;
+    }
+
+    if (permissionUtils && typeof permissionUtils.markAvailability === 'function') {
+      permissionUtils.markAvailability(elemento, permitido, mensaje);
+      return;
+    }
+
+    if (permitido) {
+      elemento.classList.remove('permission-disabled');
+      elemento.removeAttribute('aria-disabled');
+      if (elemento.dataset) {
+        delete elemento.dataset.permissionDenied;
+        delete elemento.dataset.permissionMessage;
+      }
+      return;
+    }
+
+    elemento.classList.add('permission-disabled');
+    elemento.setAttribute('aria-disabled', 'true');
+    if (elemento.dataset) {
+      elemento.dataset.permissionDenied = 'true';
+      if (mensaje) {
+        elemento.dataset.permissionMessage = mensaje;
+      }
+    }
+  }
+
+  function obtenerHandlerDenegado(mensaje) {
+    if (permissionUtils && typeof permissionUtils.createDeniedHandler === 'function') {
+      return permissionUtils.createDeniedHandler(mensaje);
+    }
+
+    return function manejarDenegado(evento) {
+      if (evento && typeof evento.preventDefault === 'function') {
+        evento.preventDefault();
+      }
+      if (evento && typeof evento.stopPropagation === 'function') {
+        evento.stopPropagation();
+      }
+
+      const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+      if (typeof window !== 'undefined' && typeof window.toastError === 'function') {
+        window.toastError(texto);
+        return;
+      }
+      if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert(texto);
+      }
+    };
+  }
+
+  function asegurarAccesoModulo() {
+    if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
+      return permissionUtils.ensureModuleAccess({
+        permissions: MODULO_PERMISOS,
+        container: document.querySelector('.users-page'),
+        message:
+          'Solicita al administrador de tu empresa que habilite los permisos de usuarios o roles para acceder a esta sección.'
+      });
+    }
+
+    return true;
+  }
+
+  if (!asegurarAccesoModulo()) {
+    return;
+  }
+
+  const puedeVerUsuarios = tienePermisoAccion('users.read');
+  const puedeCrearUsuarios = tienePermisoAccion('users.create');
+  const puedeEditarUsuarios = tienePermisoAccion('users.update');
+  const puedeCambiarEstadoUsuarios = tienePermisoAccion('users.disable_enable');
+  const puedeEliminarUsuarios = tienePermisoAccion('users.delete');
+  const puedeGestionarAccesos = tienePermisoAccion('roles.assign');
+  const puedeConfigurarRoles = tienePermisoAccion('roles.permissions.configure');
+
   const catalogoPermisosCategorias = [
     {
       nombre: 'Sesión y Seguridad',
@@ -313,6 +428,7 @@
     listeners.push({ element, event, handler });
   }
 
+  const crearUsuarioEnlace = document.getElementById('crearUsuarioBtn');
   const modalAsignar = document.getElementById('modalAsignarAccesos');
   const tituloModalAccesos = document.getElementById('tituloModalAccesos');
   const descripcionModalAccesos = document.getElementById('descripcionModalAccesos');
@@ -333,7 +449,40 @@
     window.SimpleTableSorter.enhance(tablaUsuariosElement);
   }
 
+  if (crearUsuarioEnlace && !puedeCrearUsuarios) {
+    marcarElementoPermiso(crearUsuarioEnlace, false, 'No tienes permiso para registrar nuevos usuarios.');
+    addListener(crearUsuarioEnlace, 'click', obtenerHandlerDenegado('No tienes permiso para registrar nuevos usuarios.'));
+  }
+
+  if (botonAgregarAcceso && !puedeGestionarAccesos) {
+    marcarElementoPermiso(botonAgregarAcceso, false, 'No tienes permiso para asignar accesos.');
+  }
+
+  if (selectArea && !puedeGestionarAccesos) {
+    selectArea.disabled = true;
+  }
+
+  if (selectZona && !puedeGestionarAccesos) {
+    selectZona.disabled = true;
+  }
+
   function sincronizarUsuariosEmpresaUI() {
+    if (!puedeVerUsuarios) {
+      poblarFiltroRoles([]);
+      actualizarResumen({});
+      renderMetricas({});
+
+      if (tablaUsuariosBody) {
+        tablaUsuariosBody.innerHTML =
+          '<tr class="empty-row"><td colspan="8">No tienes permiso para visualizar la lista de usuarios.</td></tr>';
+      }
+      const contador = document.getElementById('usuariosCount');
+      if (contador) {
+        contador.textContent = 'Permiso requerido para visualizar usuarios';
+      }
+      return;
+    }
+
     const conteoPorRol = obtenerConteoPorRol(usuariosEmpresa);
     poblarFiltroRoles(Object.keys(conteoPorRol));
     actualizarResumen(conteoPorRol);
@@ -1107,6 +1256,15 @@
   }
 
   async function inicializarConfiguracionRoles() {
+    if (!puedeConfigurarRoles) {
+      const seccion = document.getElementById('configuracionRoles');
+      if (seccion) {
+        seccion.innerHTML =
+          '<section class="permission-block"><div class="permission-block__card"><h2>Permiso requerido</h2><p>No tienes permiso para configurar los roles de la empresa.</p></div></section>';
+      }
+      return;
+    }
+
     const panel = document.getElementById('rolePermissionsPanel');
     const botones = Array.from(document.querySelectorAll('[data-role-config]'));
     if (!panel || !botones.length) {
@@ -1398,7 +1556,12 @@
 
       const botonEliminar = item.querySelector('button');
       if (botonEliminar) {
-        botonEliminar.addEventListener('click', () => eliminarAcceso(acceso));
+        if (puedeGestionarAccesos) {
+          botonEliminar.addEventListener('click', () => eliminarAcceso(acceso));
+        } else {
+          marcarElementoPermiso(botonEliminar, false, 'No tienes permiso para eliminar accesos.');
+          botonEliminar.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para eliminar accesos.'));
+        }
       }
 
       listaAccesos.appendChild(item);
@@ -1465,6 +1628,11 @@
   }
 
   function abrirModalAccesos(usuario) {
+    if (!puedeGestionarAccesos) {
+      obtenerHandlerDenegado('No tienes permiso para asignar accesos.')();
+      return;
+    }
+
     if (!usuario) return;
 
     const modal = obtenerInstanciaModalAsignar();
@@ -1505,6 +1673,11 @@
 
   function manejarAsignacionAcceso(event) {
     event.preventDefault();
+
+    if (!puedeGestionarAccesos) {
+      obtenerHandlerDenegado('No tienes permiso para asignar accesos.')(event);
+      return;
+    }
 
     if (asignacionEnCurso || !usuarioAccesosSeleccionadoId) {
       return;
@@ -1569,6 +1742,11 @@
   }
 
   function eliminarAcceso(acceso) {
+    if (!puedeGestionarAccesos) {
+      obtenerHandlerDenegado('No tienes permiso para eliminar accesos.')();
+      return;
+    }
+
     if (!acceso || !acceso.id_usuario || !acceso.id_area) return;
 
     if (!confirm('¿Deseas eliminar este acceso asignado?')) {
@@ -1612,6 +1790,10 @@
   }
 
   function aplicarFiltros() {
+    if (!puedeVerUsuarios) {
+      return;
+    }
+
     const filtroRol = document.getElementById('filtroRol');
     const buscador = document.getElementById('buscarUsuario');
 
@@ -1749,35 +1931,67 @@
       }
 
       if (botonEditar) {
-        botonEditar.addEventListener('click', event => {
-          event.stopPropagation();
-          cerrarMenusAcciones();
-          editarUsuario(usuario);
-        });
+        if (puedeEditarUsuarios) {
+          botonEditar.addEventListener('click', event => {
+            event.stopPropagation();
+            cerrarMenusAcciones();
+            editarUsuario(usuario);
+          });
+        } else {
+          marcarElementoPermiso(botonEditar, false, 'No tienes permiso para editar usuarios.');
+          botonEditar.addEventListener('click', event => {
+            event.stopPropagation();
+            obtenerHandlerDenegado('No tienes permiso para editar usuarios.')(event);
+          });
+        }
       }
 
       if (botonEliminar) {
-        botonEliminar.addEventListener('click', event => {
-          event.stopPropagation();
-          cerrarMenusAcciones();
-          confirmarEliminacion(usuario.correo);
-        });
+        if (puedeEliminarUsuarios) {
+          botonEliminar.addEventListener('click', event => {
+            event.stopPropagation();
+            cerrarMenusAcciones();
+            confirmarEliminacion(usuario.correo);
+          });
+        } else {
+          marcarElementoPermiso(botonEliminar, false, 'No tienes permiso para eliminar usuarios.');
+          botonEliminar.addEventListener('click', event => {
+            event.stopPropagation();
+            obtenerHandlerDenegado('No tienes permiso para eliminar usuarios.')(event);
+          });
+        }
       }
 
       if (botonEstado) {
-        botonEstado.addEventListener('click', event => {
-          event.stopPropagation();
-          cerrarMenusAcciones();
-          cambiarEstadoUsuario(usuario);
-        });
+        if (puedeCambiarEstadoUsuarios) {
+          botonEstado.addEventListener('click', event => {
+            event.stopPropagation();
+            cerrarMenusAcciones();
+            cambiarEstadoUsuario(usuario);
+          });
+        } else {
+          marcarElementoPermiso(botonEstado, false, 'No tienes permiso para activar o desactivar usuarios.');
+          botonEstado.addEventListener('click', event => {
+            event.stopPropagation();
+            obtenerHandlerDenegado('No tienes permiso para activar o desactivar usuarios.')(event);
+          });
+        }
       }
 
       if (botonAccesos) {
-        botonAccesos.addEventListener('click', event => {
-          event.stopPropagation();
-          cerrarMenusAcciones();
-          abrirModalAccesos(usuario);
-        });
+        if (puedeGestionarAccesos) {
+          botonAccesos.addEventListener('click', event => {
+            event.stopPropagation();
+            cerrarMenusAcciones();
+            abrirModalAccesos(usuario);
+          });
+        } else {
+          marcarElementoPermiso(botonAccesos, false, 'No tienes permiso para asignar accesos.');
+          botonAccesos.addEventListener('click', event => {
+            event.stopPropagation();
+            obtenerHandlerDenegado('No tienes permiso para asignar accesos.')(event);
+          });
+        }
       }
 
       tbody.appendChild(tr);
@@ -1793,6 +2007,11 @@
   }
 
   function cambiarEstadoUsuario(usuario) {
+    if (!puedeCambiarEstadoUsuarios) {
+      obtenerHandlerDenegado('No tienes permiso para activar o desactivar usuarios.')();
+      return;
+    }
+
     if (!usuario || !usuario.id_usuario) return;
 
     const estadoActual = Number(usuario.activo) === 1;
@@ -1849,6 +2068,11 @@
   }
 
   function editarUsuario(usuario) {
+    if (!puedeEditarUsuarios) {
+      obtenerHandlerDenegado('No tienes permiso para editar usuarios.')();
+      return;
+    }
+
     document.getElementById('editar_id_usuario').value = usuario.id_usuario;
     document.getElementById('editar_nombre').value = usuario.nombre || '';
     document.getElementById('editar_apellido').value = usuario.apellido || '';
@@ -1862,6 +2086,11 @@
   }
 
   function confirmarEliminacion(correo) {
+    if (!puedeEliminarUsuarios) {
+      obtenerHandlerDenegado('No tienes permiso para eliminar usuarios.')();
+      return;
+    }
+
     if (confirm(`¿Estás seguro de que quieres eliminar al usuario ${correo}?`)) {
       if (confirm('Esta acción no se puede deshacer. ¿Deseas continuar?')) {
         eliminarUsuario(correo);
@@ -1870,6 +2099,11 @@
   }
 
   function eliminarUsuario(correo) {
+    if (!puedeEliminarUsuarios) {
+      obtenerHandlerDenegado('No tienes permiso para eliminar usuarios.')();
+      return;
+    }
+
     const solicitanteId = obtenerIdSolicitante();
     const idEmpresa = localStorage.getItem('id_empresa');
     const body = { correo };
@@ -1910,6 +2144,11 @@
 
   function manejarSubmitEdicion(e) {
     e.preventDefault();
+
+    if (!puedeEditarUsuarios) {
+      obtenerHandlerDenegado('No tienes permiso para editar usuarios.')(e);
+      return;
+    }
 
     const datos = {
       id_usuario: parseInt(document.getElementById('editar_id_usuario').value, 10),
@@ -1973,6 +2212,12 @@
   }
 
   function cargarUsuariosEmpresa() {
+    if (!puedeVerUsuarios) {
+      usuariosEmpresa = [];
+      sincronizarUsuariosEmpresaUI();
+      return;
+    }
+
     const id_empresa = localStorage.getItem('id_empresa');
     if (!id_empresa) {
       usuariosEmpresa = [];
@@ -2134,9 +2379,26 @@
   window.exportarExcel = exportarExcel;
   window.exportarPDF = exportarPDF;
 
-  addListener(document.getElementById('formEditarUsuario'), 'submit', manejarSubmitEdicion);
-  addListener(document.getElementById('filtroRol'), 'change', aplicarFiltros);
-  addListener(document.getElementById('buscarUsuario'), 'input', aplicarFiltros);
+  const formEditarUsuario = document.getElementById('formEditarUsuario');
+  const filtroRolElemento = document.getElementById('filtroRol');
+  const buscadorElemento = document.getElementById('buscarUsuario');
+
+  addListener(formEditarUsuario, 'submit', manejarSubmitEdicion);
+
+  if (puedeVerUsuarios) {
+    addListener(filtroRolElemento, 'change', aplicarFiltros);
+    addListener(buscadorElemento, 'input', aplicarFiltros);
+  } else {
+    if (filtroRolElemento) {
+      filtroRolElemento.disabled = true;
+      marcarElementoPermiso(filtroRolElemento, false, 'No tienes permiso para visualizar usuarios.');
+    }
+    if (buscadorElemento) {
+      buscadorElemento.disabled = true;
+      buscadorElemento.placeholder = 'Permiso requerido para buscar usuarios';
+      marcarElementoPermiso(buscadorElemento, false, 'No tienes permiso para visualizar usuarios.');
+    }
+  }
   addListener(formAsignarAcceso, 'submit', manejarAsignacionAcceso);
   addListener(selectArea, 'change', manejarCambioArea);
   addListener(document, 'click', manejarClickFueraMenus);
