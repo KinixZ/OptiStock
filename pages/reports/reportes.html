@@ -65,6 +65,12 @@
                 <option value="excel">Excel</option>
               </select>
             </label>
+            <label class="filter-field">
+              <span class="filter-label">Origen</span>
+              <select id="historySourceFilter" class="filter-select">
+                <option value="all">Todos</option>
+              </select>
+            </label>
           </div>
           <button id="refreshHistoryBtn" type="button">Actualizar lista</button>
         </div>
@@ -237,6 +243,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <script src="../../scripts/theme.js"></script>
   <script src="../../scripts/reports/report-history-client.js"></script>
+  <script src="../../scripts/utils/permission_utils.js"></script>
   <script src="../../scripts/reports/reportes.js"></script>
 </body>
 </html>
