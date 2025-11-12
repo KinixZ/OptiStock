@@ -42,8 +42,8 @@ Esta guía resume lo que puede ver o hacer un usuario dependiendo de los permiso
 - **`warehouse.zones.update`:** habilita modificar zonas; el botón de edición en zonas y zonas sin área se mantiene.
 - **`warehouse.zones.delete`:** permite eliminar zonas; el botón de eliminación no se oculta.
 - **`warehouse.alerts.receive`:** habilita recibir alertas de capacidad crítica; las notificaciones correspondientes permanecen visibles. Por sí solo no otorga acceso a la página.
-- **`warehouse.incidents.record`:** autoriza registrar incidentes en áreas y zonas; la sección de incidencias se mantiene disponible.
-- **`warehouse.incidents.alerts`:** permite recibir alertas sobre incidentes; las notificaciones y el listado de incidencias no se ocultan.
+- **`warehouse.incidents.record`:** autoriza registrar incidentes en áreas y zonas; mantiene visible el formulario para reportar incidencias. Sin este permiso el formulario se oculta, incluso si el listado permanece habilitado por las alertas.
+- **`warehouse.incidents.alerts`:** permite recibir alertas sobre incidentes y acceder al listado de incidencias pendientes; al desactivarse se ocultan las notificaciones y el historial, mostrando únicamente el formulario si el registro está habilitado. Cuando el registro está desactivado pero este permiso sigue activo, solo se muestra el listado de incidencias.
 
 ## Reportes (`reports.*`)
 
