@@ -16,14 +16,17 @@
       permisos: [
         {
           clave: 'auth.login',
+          nombre: 'Autorizar inicio de sesión',
           descripcion: 'Permite iniciar sesión en la plataforma.'
         },
         {
           clave: 'auth.logout',
+          nombre: 'Cerrar sesiones activas',
           descripcion: 'Permite cerrar sesión y finalizar otras sesiones activas.'
         },
         {
           clave: 'auth.password.reset',
+          nombre: 'Restablecer contraseñas',
           descripcion: 'Permite restablecer contraseñas mediante correo o token.'
         }
       ]
@@ -33,30 +36,37 @@
       permisos: [
         {
           clave: 'users.read',
+          nombre: 'Ver usuarios',
           descripcion: 'Ver y buscar usuarios en el sistema.'
         },
         {
           clave: 'users.create',
+          nombre: 'Registrar usuarios',
           descripcion: 'Registrar nuevos usuarios y asignarles un rol.'
         },
         {
           clave: 'users.update',
+          nombre: 'Editar usuarios',
           descripcion: 'Editar datos de usuarios (nombre, correo, rol, área, etc.).'
         },
         {
           clave: 'users.disable_enable',
+          nombre: 'Activar o desactivar usuarios',
           descripcion: 'Activar o desactivar usuarios temporalmente.'
         },
         {
           clave: 'users.delete',
+          nombre: 'Eliminar usuarios',
           descripcion: 'Eliminar usuarios definitivamente del sistema.'
         },
         {
           clave: 'roles.assign',
+          nombre: 'Asignar roles',
           descripcion: 'Asignar roles a los usuarios.'
         },
         {
           clave: 'roles.permissions.configure',
+          nombre: 'Configurar permisos de roles',
           descripcion: 'Editar y configurar los permisos que tiene cada rol.'
         }
       ]
@@ -66,58 +76,72 @@
       permisos: [
         {
           clave: 'inventory.products.read',
+          nombre: 'Ver productos',
           descripcion: 'Ver todos los productos y sus detalles.'
         },
         {
           clave: 'inventory.products.create',
+          nombre: 'Agregar productos',
           descripcion: 'Agregar nuevos productos al inventario.'
         },
         {
           clave: 'inventory.products.update',
+          nombre: 'Editar productos',
           descripcion: 'Editar datos de productos existentes (stock, precio, nombre).'
         },
         {
           clave: 'inventory.products.delete',
+          nombre: 'Eliminar productos',
           descripcion: 'Eliminar productos del inventario.'
         },
         {
           clave: 'inventory.categories.read',
+          nombre: 'Ver categorías',
           descripcion: 'Ver las categorías de productos.'
         },
         {
           clave: 'inventory.categories.create',
+          nombre: 'Crear categorías',
           descripcion: 'Crear nuevas categorías.'
         },
         {
           clave: 'inventory.categories.update',
+          nombre: 'Editar categorías',
           descripcion: 'Modificar categorías existentes.'
         },
         {
           clave: 'inventory.categories.delete',
+          nombre: 'Eliminar categorías',
           descripcion: 'Eliminar categorías (si no tienen productos activos).'
         },
         {
           clave: 'inventory.subcategories.read',
+          nombre: 'Ver subcategorías',
           descripcion: 'Ver subcategorías dentro de una categoría.'
         },
         {
           clave: 'inventory.subcategories.create',
+          nombre: 'Crear subcategorías',
           descripcion: 'Crear nuevas subcategorías.'
         },
         {
           clave: 'inventory.subcategories.update',
+          nombre: 'Editar subcategorías',
           descripcion: 'Modificar subcategorías existentes.'
         },
         {
           clave: 'inventory.subcategories.delete',
+          nombre: 'Eliminar subcategorías',
           descripcion: 'Eliminar subcategorías.'
         },
         {
           clave: 'inventory.movements.quick_io',
+          nombre: 'Registrar movimientos rápidos',
           descripcion: 'Registrar ingresos o egresos rápidos (movimientos de stock).'
         },
         {
           clave: 'inventory.alerts.receive',
+          nombre: 'Recibir alertas de inventario',
           descripcion: 'Recibir notificaciones de bajo stock o productos críticos.'
         }
       ]
@@ -127,50 +151,62 @@
       permisos: [
         {
           clave: 'warehouse.areas.read',
+          nombre: 'Ver áreas',
           descripcion: 'Ver todas las áreas del almacén.'
         },
         {
           clave: 'warehouse.areas.create',
+          nombre: 'Crear áreas',
           descripcion: 'Crear nuevas áreas.'
         },
         {
           clave: 'warehouse.areas.update',
+          nombre: 'Editar áreas',
           descripcion: 'Editar nombres o descripciones de áreas.'
         },
         {
           clave: 'warehouse.areas.delete',
+          nombre: 'Eliminar áreas',
           descripcion: 'Eliminar áreas (si no contienen zonas o productos).'
         },
         {
           clave: 'warehouse.zones.read',
+          nombre: 'Ver zonas',
           descripcion: 'Ver zonas dentro de cada área.'
         },
         {
           clave: 'warehouse.zones.create',
+          nombre: 'Crear zonas',
           descripcion: 'Crear nuevas zonas.'
         },
         {
           clave: 'warehouse.zones.update',
+          nombre: 'Editar zonas',
           descripcion: 'Modificar nombre, capacidad o configuración de una zona.'
         },
         {
           clave: 'warehouse.zones.delete',
+          nombre: 'Eliminar zonas',
           descripcion: 'Eliminar zonas del sistema.'
         },
         {
           clave: 'warehouse.assign.products_to_zone',
+          nombre: 'Asignar productos a zonas',
           descripcion: 'Asignar productos a zonas específicas.'
         },
         {
           clave: 'warehouse.alerts.receive',
+          nombre: 'Recibir alertas de almacén',
           descripcion: 'Recibir alertas de zonas llenas o sobrecapacidad.'
         },
         {
           clave: 'warehouse.incidents.record',
+          nombre: 'Registrar incidentes',
           descripcion: 'Registrar incidentes en áreas y zonas.'
         },
         {
           clave: 'warehouse.incidents.alerts',
+          nombre: 'Recibir alertas de incidentes',
           descripcion: 'Recibir alertas de incidentes en áreas y zonas.'
         }
       ]
@@ -180,22 +216,27 @@
       permisos: [
         {
           clave: 'reports.generate',
+          nombre: 'Generar reportes',
           descripcion: 'Generar reportes manualmente desde la interfaz.'
         },
         {
           clave: 'reports.export.pdf',
+          nombre: 'Exportar reportes a PDF',
           descripcion: 'Exportar reportes a formato PDF.'
         },
         {
           clave: 'reports.export.xlsx',
+          nombre: 'Exportar reportes a Excel',
           descripcion: 'Exportar reportes a formato Excel.'
         },
         {
           clave: 'reports.schedule',
+          nombre: 'Programar reportes',
           descripcion: 'Programar reportes automáticos (diarios, semanales, etc.).'
         },
         {
           clave: 'reports.notify',
+          nombre: 'Notificaciones de reportes',
           descripcion: 'Recibir notificaciones de reportes generados o programados.'
         }
       ]
@@ -205,18 +246,22 @@
       permisos: [
         {
           clave: 'log.read',
+          nombre: 'Ver registro de actividades',
           descripcion: 'Ver el historial de acciones realizadas por todos los usuarios.'
         },
         {
           clave: 'log.export',
+          nombre: 'Exportar registro de actividades',
           descripcion: 'Exportar registros del LOG a PDF o Excel.'
         },
         {
           clave: 'log.analytics.view',
+          nombre: 'Ver estadísticas del registro',
           descripcion: 'Ver estadísticas y gráficas del LOG (por módulo, usuario, fecha).'
         },
         {
           clave: 'log.flag_records',
+          nombre: 'Marcar registros para revisión',
           descripcion: 'Marcar registros para revisión o auditoría.'
         }
       ]
@@ -226,10 +271,12 @@
       permisos: [
         {
           clave: 'dashboard.view.metrics',
+          nombre: 'Ver métricas del panel',
           descripcion: 'Ver métricas generales (productos, stock, movimientos, accesos).'
         },
         {
           clave: 'notifications.receive.critical',
+          nombre: 'Recibir alertas críticas',
           descripcion: 'Recibir notificaciones importantes del sistema (errores, alertas críticas).'
         }
       ]
@@ -239,14 +286,17 @@
       permisos: [
         {
           clave: 'account.profile.read',
+          nombre: 'Ver perfil y empresa',
           descripcion: 'Ver los datos de perfil y empresa.'
         },
         {
           clave: 'account.profile.update',
+          nombre: 'Editar perfil y empresa',
           descripcion: 'Modificar datos personales o de la empresa.'
         },
         {
           clave: 'account.theme.configure',
+          nombre: 'Personalizar apariencia',
           descripcion: 'Cambiar colores, logotipo y tema visual del panel.'
         }
       ]
@@ -1003,16 +1053,20 @@
 
             const permisoClave = permiso.clave || `permiso-${categoriaIndex + 1}-${permisoIndex + 1}`;
             const permisoDescripcion = permiso.descripcion || '';
+            const permisoTitulo = permiso.nombre || permisoClave;
             const permisoId = `permiso-${rolSlug}-${categoriaSlug}-${permisoIndex}`;
             const permisoActivo = Boolean(estadoPermisos?.activos?.has(permisoClave));
+            const permisoTooltip = permisoClave
+              ? ` title="${escapeHtml(permisoClave)}"`
+              : '';
 
             return `
-              <label class="roles-permission-item" for="${escapeHtml(permisoId)}">
+              <label class="roles-permission-item" for="${escapeHtml(permisoId)}"${permisoTooltip}>
                 <input id="${escapeHtml(permisoId)}" type="checkbox" data-permission-key="${escapeHtml(permisoClave)}" ${
               permisoActivo ? 'checked' : ''
             } />
                 <span class="roles-permission-text">
-                  <span class="roles-permission-code">${escapeHtml(permisoClave)}</span>
+                  <span class="roles-permission-name">${escapeHtml(permisoTitulo)}</span>
                   <span class="roles-permission-description">${escapeHtml(permisoDescripcion)}</span>
                 </span>
               </label>

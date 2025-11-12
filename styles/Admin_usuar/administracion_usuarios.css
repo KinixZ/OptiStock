@@ -692,11 +692,11 @@ body {
   line-height: 1.3;
 }
 
-.roles-permission-code {
+.roles-permission-name {
   font-weight: 600;
   color: #2d3270;
-  font-family: 'JetBrains Mono', 'Poppins', sans-serif;
-  font-size: 0.84rem;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  font-size: 0.9rem;
 }
 
 .roles-permission-description {
