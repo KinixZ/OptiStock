@@ -11,6 +11,11 @@ body {
   font-family: var(--font-main);
 }
 
+.permission-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .reports-page {
   max-width: 1200px;
   margin: 0 auto;
@@ -1186,4 +1191,34 @@ body {
     width: 100%;
     justify-content: center;
   }
+}
+
+.permission-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.permission-block__card {
+  background-color: #ffffff;
+  border-radius: 1.25rem;
+  padding: 3rem 2.5rem;
+  max-width: 560px;
+  box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.35);
+}
+
+.permission-block__card h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 1rem;
+}
+
+.permission-block__card p {
+  margin: 0;
+  font-size: 1rem;
+  color: #4b5563;
 }
