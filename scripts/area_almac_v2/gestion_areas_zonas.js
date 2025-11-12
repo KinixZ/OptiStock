@@ -51,6 +51,46 @@ let editZoneId = null;
   const incidentScopeRadios   = document.querySelectorAll('input[name="incidentScope"]');
   const incidentReportBtn     = document.getElementById('incidentReportBtn');
 
+  const incidentCardContainer = (function resolveIncidentCardContainer() {
+    if (incidentForm && typeof incidentForm.closest === 'function') {
+      const container = incidentForm.closest('.incident-card');
+      if (container) {
+        return container;
+      }
+    }
+    if (incidentList && typeof incidentList.closest === 'function') {
+      const container = incidentList.closest('.incident-card');
+      if (container) {
+        return container;
+      }
+    }
+    return null;
+  })();
+
+  const incidentCardHeaders = incidentCardContainer
+    ? incidentCardContainer.querySelectorAll('.incident-card__header')
+    : [];
+  const incidentFormHeader = incidentCardHeaders.length > 0 ? incidentCardHeaders[0] : null;
+  const incidentListHeader = incidentCardHeaders.length > 1 ? incidentCardHeaders[1] : null;
+  const incidentDivider = incidentCardContainer
+    ? incidentCardContainer.querySelector('.incident-divider')
+    : null;
+
+  const INCIDENT_PERMISSION_MESSAGE =
+    'Solicita al administrador que habilite los permisos de incidencias para acceder a esta sección.';
+
+  let incidentPermissionNotice = incidentCardContainer
+    ? incidentCardContainer.querySelector('[data-incident-permission-notice]')
+    : null;
+  if (!incidentPermissionNotice && incidentCardContainer) {
+    incidentPermissionNotice = document.createElement('p');
+    incidentPermissionNotice.className = 'incident-empty incident-empty--permissions d-none';
+    incidentPermissionNotice.setAttribute('data-incident-permission-notice', 'true');
+    incidentPermissionNotice.textContent = INCIDENT_PERMISSION_MESSAGE;
+    incidentPermissionNotice.setAttribute('aria-hidden', 'true');
+    incidentCardContainer.appendChild(incidentPermissionNotice);
+  }
+
   const permissionUtils =
     typeof window !== 'undefined' && window.PermissionUtils ? window.PermissionUtils : null;
   const permisosHelper =
@@ -155,6 +195,36 @@ let editZoneId = null;
     };
   }
 
+  function toggleIncidentsSectionVisibility(elemento, visible) {
+    if (!elemento) {
+      return;
+    }
+    elemento.classList.toggle('d-none', !visible);
+    if (!visible) {
+      elemento.setAttribute('aria-hidden', 'true');
+    } else {
+      elemento.removeAttribute('aria-hidden');
+    }
+  }
+
+  function actualizarSeccionesIncidenciasPorPermiso() {
+    const mostrarFormulario = Boolean(puedeRegistrarIncidencias);
+    const mostrarListado = Boolean(puedeRecibirIncidencias);
+    const mostrarAviso = !mostrarFormulario && !mostrarListado;
+    const mostrarDivisor = mostrarFormulario && mostrarListado;
+
+    toggleIncidentsSectionVisibility(incidentFormHeader, mostrarFormulario);
+    toggleIncidentsSectionVisibility(incidentForm, mostrarFormulario);
+    toggleIncidentsSectionVisibility(incidentListHeader, mostrarListado);
+    toggleIncidentsSectionVisibility(incidentList, mostrarListado);
+    toggleIncidentsSectionVisibility(incidentDivider, mostrarDivisor);
+    toggleIncidentsSectionVisibility(incidentPermissionNotice, mostrarAviso);
+
+    if (incidentPermissionNotice && mostrarAviso) {
+      incidentPermissionNotice.textContent = INCIDENT_PERMISSION_MESSAGE;
+    }
+  }
+
   function asegurarAccesoModulo() {
     if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
       return permissionUtils.ensureModuleAccess({
@@ -184,6 +254,8 @@ let editZoneId = null;
   const puedeRecibirIncidencias = tienePermiso('warehouse.incidents.alerts');
   const puedeExportarReportesPdf = tienePermiso('reports.export.pdf');
   const puedeExportarReportesExcel = tienePermiso('reports.export.xlsx');
+
+  actualizarSeccionesIncidenciasPorPermiso();
 
   if (areaBtn && !puedeCrearAreas && !puedeActualizarAreas) {
     marcarDisponibilidad(areaBtn, false, 'No tienes permiso para registrar o editar áreas.');
@@ -1373,8 +1445,8 @@ formArea.addEventListener('submit', async e => {
       return;
     }
 
-    if (!(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
-      incidentList.innerHTML = '<p class="incident-empty">No tienes permiso para visualizar las incidencias registradas.</p>';
+    if (!puedeRecibirIncidencias) {
+      incidentList.innerHTML = '';
       return;
     }
 
@@ -1394,6 +1466,10 @@ formArea.addEventListener('submit', async e => {
       const descripcion = escapeHtml(inc.descripcion || 'Sin descripción');
       const reportadoPor = escapeHtml(inc.reportado_por || 'Usuario sin nombre');
       const fecha = formatearFechaIncidencia(inc.creado_en);
+      const resolverInhabilitado = !puedeRegistrarIncidencias;
+      const resolverAtributos = resolverInhabilitado
+        ? ' disabled aria-disabled="true" data-permission-denied="true" title="No tienes permiso para actualizar las incidencias."'
+        : '';
 
       return `
         <article class="incident-item">
@@ -1407,7 +1483,7 @@ formArea.addEventListener('submit', async e => {
             ${fecha ? `<span>${fecha}</span>` : ''}
           </div>
           <div class="incident-item__actions">
-            <button type="button" data-incident-resolver="${inc.id}">Marcar revisada</button>
+            <button type="button" data-incident-resolver="${inc.id}"${resolverAtributos}>Marcar revisada</button>
           </div>
         </article>
       `;
@@ -1418,10 +1494,13 @@ formArea.addEventListener('submit', async e => {
 
   async function recargarDatos() {
     try {
+      const incidentPromise = (puedeRegistrarIncidencias || puedeRecibirIncidencias)
+        ? fetchIncidencias()
+        : Promise.resolve([]);
       const [areas, zonas, incidencias] = await Promise.all([
         fetchAreas(),
         fetchZonas(),
-        fetchIncidencias()
+        incidentPromise
       ]);
       areasData = Array.isArray(areas) ? areas.map(normalizarArea) : [];
       zonasData = Array.isArray(zonas) ? zonas.map(normalizarZona) : [];
@@ -1674,13 +1753,13 @@ formZona.addEventListener('submit', async e => {
   }
 });
 
-if (incidentScopeRadios && incidentScopeRadios.length) {
+if (incidentScopeRadios && incidentScopeRadios.length && puedeRegistrarIncidencias) {
   incidentScopeRadios.forEach((radio) => {
     radio.addEventListener('change', actualizarVisibilidadIncidencia);
   });
 }
 
-if (incidentForm) {
+if (incidentForm && puedeRegistrarIncidencias) {
   incidentForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!EMP_ID) {
