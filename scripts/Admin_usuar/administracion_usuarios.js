@@ -275,10 +275,6 @@
           descripcion: 'Eliminar zonas del sistema.'
         },
         {
-          clave: 'warehouse.assign.products_to_zone',
-          descripcion: 'Asignar productos a zonas específicas.'
-        },
-        {
           clave: 'warehouse.alerts.receive',
           descripcion: 'Recibir alertas de zonas llenas o sobrecapacidad.'
         },
