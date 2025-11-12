@@ -129,26 +129,6 @@
 
   const catalogoPermisosCategorias = [
     {
-      nombre: 'Sesión y Seguridad',
-      permisos: [
-        {
-          clave: 'auth.login',
-          nombre: 'Iniciar sesión',
-          descripcion: 'Permite iniciar sesión en la plataforma.'
-        },
-        {
-          clave: 'auth.logout',
-          nombre: 'Cerrar sesión',
-          descripcion: 'Permite cerrar sesión y finalizar otras sesiones activas.'
-        },
-        {
-          clave: 'auth.password.reset',
-          nombre: 'Restablecer contraseñas',
-          descripcion: 'Permite restablecer contraseñas mediante correo o token.'
-        }
-      ]
-    },
-    {
       nombre: 'Usuarios y Roles',
       permisos: [
         {
