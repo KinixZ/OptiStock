@@ -29,10 +29,13 @@ try {
     responder(false, 'No fue posible conectar con la base de datos.');
 }
 
-$permisosCatalogo = [
+$permisosFijos = [
     'auth.login' => 'auth_login',
     'auth.logout' => 'auth_logout',
-    'auth.password.reset' => 'auth_password_reset',
+    'auth.password.reset' => 'auth_password_reset'
+];
+
+$permisosCatalogo = [
     'users.read' => 'users_read',
     'users.create' => 'users_create',
     'users.update' => 'users_update',
@@ -82,10 +85,10 @@ $permisosCatalogo = [
     'account.theme.configure' => 'account_theme_configure'
 ];
 
-$columnas = array_values($permisosCatalogo);
+$columnasConsulta = array_merge(array_values($permisosFijos), array_values($permisosCatalogo));
 $columnList = implode(', ', array_map(static function ($col) {
     return "`" . $col . "`";
-}, $columnas));
+}, $columnasConsulta));
 
 $predeterminados = [];
 $personalizados = [];

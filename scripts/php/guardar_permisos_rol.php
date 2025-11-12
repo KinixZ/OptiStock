@@ -30,10 +30,13 @@ if ($idEmpresa <= 0) {
     responder(false, 'Debes indicar la empresa a la que aplican los permisos.');
 }
 
-$permisosCatalogo = [
+$permisosFijos = [
     'auth.login' => 'auth_login',
     'auth.logout' => 'auth_logout',
-    'auth.password.reset' => 'auth_password_reset',
+    'auth.password.reset' => 'auth_password_reset'
+];
+
+$permisosCatalogo = [
     'users.read' => 'users_read',
     'users.create' => 'users_create',
     'users.update' => 'users_update',
@@ -101,15 +104,27 @@ try {
     responder(false, 'No fue posible conectar con la base de datos.');
 }
 
-$columnas = array_values($permisosCatalogo);
+$columnasFijas = array_values($permisosFijos);
+$columnasVariables = array_values($permisosCatalogo);
+$todasLasColumnas = array_merge($columnasFijas, $columnasVariables);
+
 $columnList = implode(', ', array_map(static function ($col) {
     return "`" . $col . "`";
-}, $columnas));
+}, $todasLasColumnas));
 
-$placeholders = implode(', ', array_fill(0, count($columnas), '?'));
-$updates = implode(', ', array_map(static function ($col) {
-    return "`{$col}` = VALUES(`{$col}`)";
-}, $columnas));
+$placeholders = implode(', ', array_merge(
+    array_fill(0, count($columnasFijas), '1'),
+    array_fill(0, count($columnasVariables), '?')
+));
+
+$updates = implode(', ', array_merge(
+    array_map(static function ($col) {
+        return "`{$col}` = 1";
+    }, $columnasFijas),
+    array_map(static function ($col) {
+        return "`{$col}` = VALUES(`{$col}`)";
+    }, $columnasVariables)
+));
 
 $sql = "INSERT INTO roles_permisos (rol, id_empresa, $columnList) VALUES (?, ?, $placeholders)
         ON DUPLICATE KEY UPDATE $updates";
