@@ -206,8 +206,6 @@
 
   const MODULO_PERMISOS = [
     'reports.generate',
-    'reports.export.pdf',
-    'reports.export.xlsx',
     'reports.schedule'
   ];
 
@@ -312,6 +310,26 @@
   const puedeExportarExcel = tienePermiso('reports.export.xlsx');
   const puedeProgramarReportes = tienePermiso('reports.schedule');
   const puedeRecibirNotificaciones = tienePermiso('reports.notify');
+
+  if (!puedeVerHistorial && !puedeProgramarReportes) {
+    const container = document.querySelector('.reports-page');
+    if (permissionUtils && typeof permissionUtils.blockPage === 'function') {
+      permissionUtils.blockPage({
+        container,
+        message: 'Solicita al administrador que habilite los permisos de reportes para acceder a esta sección.'
+      });
+    } else if (container) {
+      container.innerHTML = `
+        <section class="permission-block">
+          <div class="permission-block__card">
+            <h2>Acceso restringido</h2>
+            <p>Solicita al administrador que habilite los permisos de reportes para acceder a esta sección.</p>
+          </div>
+        </section>
+      `;
+    }
+    return;
+  }
 
   if (!puedeVerHistorial) {
     if (elements.historyTableBody) {
