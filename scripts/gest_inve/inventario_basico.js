@@ -127,6 +127,8 @@
   const puedeEliminarSubcategorias = tienePermiso('inventory.subcategories.delete');
   const puedeRegistrarMovimientos = tienePermiso('inventory.movements.quick_io');
   const puedeRecibirAlertas = tienePermiso('inventory.alerts.receive');
+  const puedeExportarReportesPdf = tienePermiso('reports.export.pdf');
+  const puedeExportarReportesExcel = tienePermiso('reports.export.xlsx');
 
   const API = {
     categorias: '../../scripts/php/guardar_categorias.php',
@@ -1527,6 +1529,16 @@ async function fetchAPI(url, method = 'GET', data) {
   }
 
   async function generarExportacionResumen(formato) {
+    const formatoNormalizado = String(formato || '').toLowerCase();
+    if (formatoNormalizado === 'pdf' && !puedeExportarReportesPdf) {
+      obtenerHandlerDenegado('No tienes permiso para exportar reportes en PDF.')();
+      return;
+    }
+    if (formatoNormalizado === 'excel' && !puedeExportarReportesExcel) {
+      obtenerHandlerDenegado('No tienes permiso para exportar reportes en Excel.')();
+      return;
+    }
+
     const exporter = window.ReportExporter;
     if (!exporter) {
       showToast('No se pudo cargar el módulo de exportación. Recarga la página e inténtalo nuevamente.', 'error');
@@ -1633,8 +1645,43 @@ async function fetchAPI(url, method = 'GET', data) {
   btnCategorias?.addEventListener('click', () => mostrar('categoria'));
   btnSubcategorias?.addEventListener('click', () => mostrar('subcategoria'));
 
-  exportResumenPdfBtn?.addEventListener('click', () => generarExportacionResumen('pdf'));
-  exportResumenExcelBtn?.addEventListener('click', () => generarExportacionResumen('excel'));
+  if (exportResumenPdfBtn) {
+    if (!puedeExportarReportesPdf) {
+      exportResumenPdfBtn.disabled = true;
+      marcarDisponibilidad(
+        exportResumenPdfBtn,
+        false,
+        'No tienes permiso para exportar reportes en PDF.'
+      );
+      exportResumenPdfBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en PDF.')
+      );
+    } else {
+      exportResumenPdfBtn.disabled = false;
+      marcarDisponibilidad(exportResumenPdfBtn, true);
+      exportResumenPdfBtn.addEventListener('click', () => generarExportacionResumen('pdf'));
+    }
+  }
+
+  if (exportResumenExcelBtn) {
+    if (!puedeExportarReportesExcel) {
+      exportResumenExcelBtn.disabled = true;
+      marcarDisponibilidad(
+        exportResumenExcelBtn,
+        false,
+        'No tienes permiso para exportar reportes en Excel.'
+      );
+      exportResumenExcelBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en Excel.')
+      );
+    } else {
+      exportResumenExcelBtn.disabled = false;
+      marcarDisponibilidad(exportResumenExcelBtn, true);
+      exportResumenExcelBtn.addEventListener('click', () => generarExportacionResumen('excel'));
+    }
+  }
 
   const prodForm = document.getElementById('productoForm');
   const prodCategoria = document.getElementById('prodCategoria');

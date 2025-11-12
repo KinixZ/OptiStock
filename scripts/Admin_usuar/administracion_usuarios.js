@@ -124,6 +124,8 @@
   const puedeEliminarUsuarios = tienePermisoAccion('users.delete');
   const puedeGestionarAccesos = tienePermisoAccion('roles.assign');
   const puedeConfigurarRoles = tienePermisoAccion('roles.permissions.configure');
+  const puedeExportarReportesPdf = tienePermisoAccion('reports.export.pdf');
+  const puedeExportarReportesExcel = tienePermisoAccion('reports.export.xlsx');
 
   const catalogoPermisosCategorias = [
     {
@@ -2291,6 +2293,10 @@
   }
 
   async function exportarExcel() {
+    if (!puedeExportarReportesExcel) {
+      obtenerHandlerDenegado('No tienes permiso para exportar reportes en Excel.')();
+      return;
+    }
     const tabla = document.getElementById('tablaUsuariosEmpresa');
     if (!tabla) {
       notificar('error', '❌ No se encontró la tabla de usuarios.');
@@ -2315,6 +2321,10 @@
   }
 
   async function exportarPDF() {
+    if (!puedeExportarReportesPdf) {
+      obtenerHandlerDenegado('No tienes permiso para exportar reportes en PDF.')();
+      return;
+    }
     const tabla = document.getElementById('tablaUsuariosEmpresa');
     if (!(tabla instanceof HTMLTableElement)) {
       notificar('error', '❌ No se encontró la tabla de usuarios.');
@@ -2378,6 +2388,44 @@
 
   window.exportarExcel = exportarExcel;
   window.exportarPDF = exportarPDF;
+
+  const exportUsuariosPdfBtn = document.getElementById('exportUsuariosPdf');
+  if (exportUsuariosPdfBtn) {
+    if (!puedeExportarReportesPdf) {
+      exportUsuariosPdfBtn.disabled = true;
+      marcarElementoPermiso(
+        exportUsuariosPdfBtn,
+        false,
+        'No tienes permiso para exportar reportes en PDF.'
+      );
+      exportUsuariosPdfBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en PDF.')
+      );
+    } else {
+      exportUsuariosPdfBtn.disabled = false;
+      marcarElementoPermiso(exportUsuariosPdfBtn, true);
+    }
+  }
+
+  const exportUsuariosExcelBtn = document.getElementById('exportUsuariosExcel');
+  if (exportUsuariosExcelBtn) {
+    if (!puedeExportarReportesExcel) {
+      exportUsuariosExcelBtn.disabled = true;
+      marcarElementoPermiso(
+        exportUsuariosExcelBtn,
+        false,
+        'No tienes permiso para exportar reportes en Excel.'
+      );
+      exportUsuariosExcelBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en Excel.')
+      );
+    } else {
+      exportUsuariosExcelBtn.disabled = false;
+      marcarElementoPermiso(exportUsuariosExcelBtn, true);
+    }
+  }
 
   const formEditarUsuario = document.getElementById('formEditarUsuario');
   const filtroRolElemento = document.getElementById('filtroRol');

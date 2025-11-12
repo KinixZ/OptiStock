@@ -182,6 +182,8 @@ let editZoneId = null;
   const puedeRecibirAlertas = tienePermiso('warehouse.alerts.receive');
   const puedeRegistrarIncidencias = tienePermiso('warehouse.incidents.record');
   const puedeRecibirIncidencias = tienePermiso('warehouse.incidents.alerts');
+  const puedeExportarReportesPdf = tienePermiso('reports.export.pdf');
+  const puedeExportarReportesExcel = tienePermiso('reports.export.xlsx');
 
   if (areaBtn && !puedeCrearAreas && !puedeActualizarAreas) {
     marcarDisponibilidad(areaBtn, false, 'No tienes permiso para registrar o editar áreas.');
@@ -193,19 +195,56 @@ let editZoneId = null;
     zonaBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para administrar zonas.'));
   }
 
-  if (exportExcelBtn && !puedeVerZonas) {
-    marcarDisponibilidad(exportExcelBtn, false, 'No tienes permiso para exportar las zonas registradas.');
-    exportExcelBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para ver las zonas.'));
+  if (exportExcelBtn) {
+    if (!puedeExportarReportesExcel) {
+      exportExcelBtn.disabled = true;
+      marcarDisponibilidad(exportExcelBtn, false, 'No tienes permiso para exportar reportes en Excel.');
+      exportExcelBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en Excel.')
+      );
+    } else if (!puedeVerZonas) {
+      exportExcelBtn.disabled = true;
+      marcarDisponibilidad(exportExcelBtn, false, 'No tienes permiso para ver las zonas.');
+      exportExcelBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para ver las zonas.'));
+    }
   }
 
-  if (exportPdfBtn && !puedeVerZonas) {
-    marcarDisponibilidad(exportPdfBtn, false, 'No tienes permiso para exportar las zonas registradas.');
-    exportPdfBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para ver las zonas.'));
+  if (exportPdfBtn) {
+    if (!puedeExportarReportesPdf) {
+      exportPdfBtn.disabled = true;
+      marcarDisponibilidad(exportPdfBtn, false, 'No tienes permiso para exportar reportes en PDF.');
+      exportPdfBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en PDF.')
+      );
+    } else if (!puedeVerZonas) {
+      exportPdfBtn.disabled = true;
+      marcarDisponibilidad(exportPdfBtn, false, 'No tienes permiso para ver las zonas.');
+      exportPdfBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para ver las zonas.'));
+    }
   }
 
-  if (incidentReportBtn && !(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
-    marcarDisponibilidad(incidentReportBtn, false, 'No tienes permiso para consultar las incidencias registradas.');
-    incidentReportBtn.addEventListener('click', obtenerHandlerDenegado('No tienes permiso para consultar incidencias.'));
+  if (incidentReportBtn) {
+    if (!puedeExportarReportesPdf) {
+      incidentReportBtn.disabled = true;
+      marcarDisponibilidad(incidentReportBtn, false, 'No tienes permiso para exportar reportes en PDF.');
+      incidentReportBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para exportar reportes en PDF.')
+      );
+    } else if (!(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
+      incidentReportBtn.disabled = true;
+      marcarDisponibilidad(
+        incidentReportBtn,
+        false,
+        'No tienes permiso para consultar las incidencias registradas.'
+      );
+      incidentReportBtn.addEventListener(
+        'click',
+        obtenerHandlerDenegado('No tienes permiso para consultar incidencias.')
+      );
+    }
   }
 
   if (incidentForm && !puedeRegistrarIncidencias) {
@@ -853,6 +892,10 @@ let editZoneId = null;
   }
 
   async function exportarZonasExcel() {
+    if (!puedeExportarReportesExcel) {
+      mostrarDenegado('No tienes permiso para exportar reportes en Excel.');
+      return;
+    }
     if (!puedeVerZonas) {
       mostrarDenegado('No tienes permiso para exportar la información de las zonas.');
       return;
@@ -892,6 +935,10 @@ let editZoneId = null;
   }
 
   async function exportarZonasPDF() {
+    if (!puedeExportarReportesPdf) {
+      mostrarDenegado('No tienes permiso para exportar reportes en PDF.');
+      return;
+    }
     if (!puedeVerZonas) {
       mostrarDenegado('No tienes permiso para exportar la información de las zonas.');
       return;
@@ -945,6 +992,10 @@ let editZoneId = null;
   }
 
   async function generarReporteIncidencias() {
+    if (!puedeExportarReportesPdf) {
+      mostrarDenegado('No tienes permiso para exportar reportes en PDF.');
+      return;
+    }
     if (!(puedeRegistrarIncidencias || puedeRecibirIncidencias)) {
       mostrarDenegado('No tienes permiso para exportar las incidencias registradas.');
       return;
@@ -1812,15 +1863,21 @@ async function deleteZone(id) {
   if (filtroProductos) {
     filtroProductos.addEventListener('input', renderZonas);
   }
-  if (exportExcelBtn) {
+  if (exportExcelBtn && puedeExportarReportesExcel && puedeVerZonas) {
+    exportExcelBtn.disabled = false;
+    marcarDisponibilidad(exportExcelBtn, true);
     exportExcelBtn.addEventListener('click', () => {
       exportarZonasExcel();
     });
   }
-  if (exportPdfBtn) {
+  if (exportPdfBtn && puedeExportarReportesPdf && puedeVerZonas) {
+    exportPdfBtn.disabled = false;
+    marcarDisponibilidad(exportPdfBtn, true);
     exportPdfBtn.addEventListener('click', exportarZonasPDF);
   }
-  if (incidentReportBtn) {
+  if (incidentReportBtn && (puedeRegistrarIncidencias || puedeRecibirIncidencias) && puedeExportarReportesPdf) {
+    incidentReportBtn.disabled = false;
+    marcarDisponibilidad(incidentReportBtn, true);
     incidentReportBtn.addEventListener('click', generarReporteIncidencias);
   }
 
