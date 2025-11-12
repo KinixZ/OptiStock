@@ -166,6 +166,7 @@
     historyPaginationPages: document.getElementById('historyPaginationPages'),
     searchInput: document.getElementById('historySearch'),
     typeFilter: document.getElementById('historyTypeFilter'),
+    sourceFilter: document.getElementById('historySourceFilter'),
     refreshButton: document.getElementById('refreshHistoryBtn'),
     uploadForm: document.getElementById('manualUploadForm'),
     uploadFileInput: document.getElementById('uploadFileInput'),
@@ -391,6 +392,7 @@
     serverReports: [],
     localAutomationReports: [],
     filteredReports: [],
+    availableSources: [],
     historyPage: 1,
     retentionDays: RETENTION_DAYS_FALLBACK,
     loading: false,
@@ -2068,6 +2070,7 @@
     });
     state.reports = combined;
     updateSummary();
+    refreshSourceFilterOptions();
     applyFilters({ resetPage: true });
   }
 
@@ -2128,6 +2131,53 @@
     if (elements.uploadHint) {
       elements.uploadHint.textContent = `Los reportes se eliminan automáticamente a los ${state.retentionDays} días.`;
     }
+  }
+
+  function refreshSourceFilterOptions() {
+    if (!elements.sourceFilter) {
+      state.availableSources = [];
+      return;
+    }
+
+    const previousValue = elements.sourceFilter.value || 'all';
+    const uniqueSources = new Map();
+
+    state.reports.forEach((report) => {
+      if (!report || typeof report.source !== 'string') {
+        return;
+      }
+      const trimmed = report.source.trim();
+      if (!trimmed) {
+        return;
+      }
+      const normalized = trimmed.toLowerCase();
+      if (!uniqueSources.has(normalized)) {
+        uniqueSources.set(normalized, trimmed);
+      }
+    });
+
+    state.availableSources = Array.from(uniqueSources.values()).sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+
+    elements.sourceFilter.innerHTML = '';
+
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'Todos';
+    elements.sourceFilter.append(allOption);
+
+    state.availableSources.forEach((source) => {
+      const option = document.createElement('option');
+      option.value = source;
+      option.textContent = source;
+      elements.sourceFilter.append(option);
+    });
+
+    const nextValue = previousValue !== 'all' && !state.availableSources.includes(previousValue)
+      ? 'all'
+      : previousValue;
+    elements.sourceFilter.value = nextValue;
   }
 
   function updateHistoryFooter({ filteredCount, start = 0, end = 0, totalPages = 1 }) {
@@ -2218,7 +2268,11 @@
 
     const totalReports = state.reports.length;
     const filteredCount = list.length;
-    const hasFilters = Boolean((elements.searchInput && elements.searchInput.value.trim()) || (elements.typeFilter && elements.typeFilter.value !== 'all'));
+    const hasFilters = Boolean(
+      (elements.searchInput && elements.searchInput.value.trim()) ||
+      (elements.typeFilter && elements.typeFilter.value !== 'all') ||
+      (elements.sourceFilter && elements.sourceFilter.value !== 'all')
+    );
 
     if (elements.historyFooter) {
       elements.historyFooter.classList.remove('d-none');
@@ -2232,7 +2286,7 @@
         if (totalReports === 0) {
           elements.historyEmpty.innerHTML = '<p class="mb-1 fw-semibold">Aún no hay reportes guardados.</p><p class="mb-0">Cuando generes un PDF o Excel desde cualquier módulo aparecerá automáticamente aquí.</p>';
         } else if (hasFilters) {
-          elements.historyEmpty.innerHTML = '<p class="mb-1 fw-semibold">No encontramos coincidencias.</p><p class="mb-0">Ajusta tu búsqueda o el tipo de archivo para ver otros resultados.</p>';
+          elements.historyEmpty.innerHTML = '<p class="mb-1 fw-semibold">No encontramos coincidencias.</p><p class="mb-0">Ajusta tu búsqueda, el tipo de archivo o el origen para ver otros resultados.</p>';
         } else {
           elements.historyEmpty.innerHTML = '<p class="mb-1 fw-semibold">No hay reportes disponibles.</p><p class="mb-0">Vuelve a intentarlo más tarde.</p>';
         }
@@ -2314,6 +2368,8 @@
     }
     const searchTerm = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
     const typeFilter = elements.typeFilter ? elements.typeFilter.value : 'all';
+    const sourceFilter = elements.sourceFilter ? elements.sourceFilter.value : 'all';
+    const normalizedSourceFilter = sourceFilter === 'all' ? 'all' : sourceFilter.toLowerCase();
 
     if (resetPage) {
       state.historyPage = 1;
@@ -2327,17 +2383,23 @@
         return false;
       }
 
-      if (typeFilter === 'all') {
-        return true;
-      }
-
       const normalizedMime = (report.mimeType || '').toLowerCase();
-      if (typeFilter === 'application/pdf') {
-        return normalizedMime.includes('pdf');
+      if (typeFilter === 'application/pdf' && !normalizedMime.includes('pdf')) {
+        return false;
       }
 
-      if (typeFilter === 'excel') {
-        return normalizedMime.includes('sheet') || normalizedMime.includes('excel') || normalizedMime.includes('csv');
+      if (
+        typeFilter === 'excel' &&
+        !(normalizedMime.includes('sheet') || normalizedMime.includes('excel') || normalizedMime.includes('csv'))
+      ) {
+        return false;
+      }
+
+      if (normalizedSourceFilter !== 'all') {
+        const reportSource = typeof report.source === 'string' ? report.source.trim().toLowerCase() : '';
+        if (!reportSource || reportSource !== normalizedSourceFilter) {
+          return false;
+        }
       }
 
       return true;
