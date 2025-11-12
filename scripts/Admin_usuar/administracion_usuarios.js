@@ -304,7 +304,7 @@
         {
           clave: 'warehouse.incidents.alerts',
           nombre: 'Recibir alertas de incidentes',
-          descripcion: 'Recibir alertas de incidentes en áreas y zonas.'
+          descripcion: 'Recibir y visualizar alertas de incidentes en áreas y zonas.'
         }
       ]
     },
@@ -394,7 +394,7 @@
         {
           clave: 'account.theme.configure',
           nombre: 'Personalizar apariencia',
-          descripcion: 'Cambiar colores, logotipo y tema visual del panel.'
+          descripcion: 'Cambiar colores y tema visual del panel.'
         }
       ]
     }
