@@ -40,7 +40,7 @@
         </div>
 
         <div class="header-cta">
-          <a href="../admin_usuar/registro_usuario_empresa.html" class="cta-button">
+          <a id="crearUsuarioBtn" href="../admin_usuar/registro_usuario_empresa.html" class="cta-button">
             <span class="cta-button__icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -98,7 +98,7 @@
           <h2 class="filters-title">Filtra y exporta la información de tus colaboradores</h2>
         </div>
         <div class="filters-actions">
-          <button type="button" onclick="exportarPDF()" class="btn-icon" title="Exportar PDF">
+          <button type="button" onclick="exportarPDF()" id="exportUsuariosPdf" class="btn-icon" title="Exportar PDF">
             <span class="btn-icon__circle">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -110,7 +110,7 @@
             </span>
             <span class="btn-icon__label">PDF</span>
           </button>
-          <button type="button" onclick="exportarExcel()" class="btn-icon" title="Exportar Excel">
+          <button type="button" onclick="exportarExcel()" id="exportUsuariosExcel" class="btn-icon" title="Exportar Excel">
             <span class="btn-icon__circle">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -284,6 +284,7 @@
   <script src="../../scripts/utils/report_export.js"></script>
   <script src="../../scripts/utils/toast.js"></script>
   <script src="../../scripts/utils/simple_table_sorter.js"></script>
+  <script src="../../scripts/utils/permission_utils.js"></script>
   <script src="../../scripts/utils/role_permissions.js"></script>
   <script src="../../scripts/Admin_usuar/administracion_usuarios.js"></script>
 </body>

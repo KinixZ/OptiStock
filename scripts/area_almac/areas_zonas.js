@@ -47,6 +47,88 @@ const incidentList = document.getElementById('incidentList');
 const incidentScopeRadios = document.querySelectorAll('input[name="incidentScope"]');
 const incidentDescriptionInput = document.getElementById('incidentDescription');
 
+const permissionUtils = typeof window !== 'undefined' && window.PermissionUtils
+  ? window.PermissionUtils
+  : null;
+const permisosHelper = typeof window !== 'undefined' && window.OptiStockPermissions
+  ? window.OptiStockPermissions
+  : null;
+
+function tienePermiso(clave) {
+  if (!clave) {
+    return true;
+  }
+  if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+    return permissionUtils.hasPermission(clave);
+  }
+  if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+    try {
+      const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+      return permisosHelper.isPermissionEnabled(rol, clave);
+    } catch (error) {
+      return true;
+    }
+  }
+  return true;
+}
+
+function mostrarDenegado(mensaje) {
+  const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+  if (permissionUtils && typeof permissionUtils.showDenied === 'function') {
+    permissionUtils.showDenied(texto);
+    return;
+  }
+  mostrarError(texto);
+}
+
+function bloquearBotonExportacion(boton, permitido, mensaje) {
+  if (!boton) {
+    return;
+  }
+  if (permitido) {
+    boton.disabled = false;
+    boton.classList.remove('permission-disabled');
+    boton.removeAttribute('aria-disabled');
+    return;
+  }
+  boton.disabled = true;
+  boton.classList.add('permission-disabled');
+  boton.setAttribute('aria-disabled', 'true');
+  boton.addEventListener('click', (event) => {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    if (event && typeof event.stopPropagation === 'function') {
+      event.stopPropagation();
+    }
+    mostrarDenegado(mensaje);
+  });
+}
+
+const puedeExportarReportesPdf = tienePermiso('reports.export.pdf');
+const puedeExportarReportesExcel = tienePermiso('reports.export.xlsx');
+
+bloquearBotonExportacion(
+  exportAreasPdfBtn,
+  puedeExportarReportesPdf,
+  'No tienes permiso para exportar reportes en PDF.'
+);
+bloquearBotonExportacion(
+  exportAreasExcelBtn,
+  puedeExportarReportesExcel,
+  'No tienes permiso para exportar reportes en Excel.'
+);
+bloquearBotonExportacion(
+  exportZonasPdfBtn,
+  puedeExportarReportesPdf,
+  'No tienes permiso para exportar reportes en PDF.'
+);
+bloquearBotonExportacion(
+  exportZonasExcelBtn,
+  puedeExportarReportesExcel,
+  'No tienes permiso para exportar reportes en Excel.'
+);
+
 let datosActuales = { areas: [], zonas: [], incidencias: [] };
 let zonaPendienteReasignacion = null;
 
@@ -217,6 +299,15 @@ async function guardarReporteAlmacen(blob, fileName, notes) {
 }
 
 async function exportarInventarioAlmacen({ formato, tabla, meta = {} }) {
+  const formatoNormalizado = String(formato || '').toLowerCase();
+  if (formatoNormalizado === 'pdf' && !puedeExportarReportesPdf) {
+    mostrarDenegado('No tienes permiso para exportar reportes en PDF.');
+    return;
+  }
+  if (formatoNormalizado === 'excel' && !puedeExportarReportesExcel) {
+    mostrarDenegado('No tienes permiso para exportar reportes en Excel.');
+    return;
+  }
   const exporter = window.ReportExporter;
   if (!exporter) {
     mostrarError('No se pudo cargar el módulo de exportación. Recarga la página e inténtalo nuevamente.');

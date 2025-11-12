@@ -1,6 +1,124 @@
 (() => {
 // Gestión de datos de cuenta
 
+const permissionUtils =
+  typeof window !== 'undefined' && window.PermissionUtils
+    ? window.PermissionUtils
+    : null;
+const permisosHelper =
+  typeof window !== 'undefined' && window.OptiStockPermissions
+    ? window.OptiStockPermissions
+    : null;
+
+const ACCOUNT_ACCESS_PERMISSIONS = [
+  'account.profile.read',
+  'account.profile.update',
+  'account.theme.configure'
+];
+
+function tienePermiso(clave) {
+  if (!clave) {
+    return true;
+  }
+
+  if (permissionUtils && typeof permissionUtils.hasPermission === 'function') {
+    return permissionUtils.hasPermission(clave);
+  }
+
+  if (permisosHelper && typeof permisosHelper.isPermissionEnabled === 'function') {
+    try {
+      const rol = typeof localStorage !== 'undefined' ? localStorage.getItem('usuario_rol') : null;
+      return permisosHelper.isPermissionEnabled(rol, clave);
+    } catch (error) {
+      return true;
+    }
+  }
+
+  return true;
+}
+
+function marcarDisponibilidad(elemento, permitido, mensaje) {
+  if (!elemento) {
+    return;
+  }
+
+  if (permissionUtils && typeof permissionUtils.markAvailability === 'function') {
+    permissionUtils.markAvailability(elemento, permitido, mensaje);
+    return;
+  }
+
+  if (permitido) {
+    elemento.classList.remove('permission-disabled');
+    elemento.removeAttribute('aria-disabled');
+    if (elemento.dataset) {
+      delete elemento.dataset.permissionDenied;
+      delete elemento.dataset.permissionMessage;
+    }
+    return;
+  }
+
+  elemento.classList.add('permission-disabled');
+  elemento.setAttribute('aria-disabled', 'true');
+  if (elemento.dataset) {
+    elemento.dataset.permissionDenied = 'true';
+    if (mensaje) {
+      elemento.dataset.permissionMessage = mensaje;
+    }
+  }
+}
+
+function obtenerHandlerDenegado(mensaje) {
+  if (permissionUtils && typeof permissionUtils.createDeniedHandler === 'function') {
+    return permissionUtils.createDeniedHandler(mensaje);
+  }
+
+  return function (evento) {
+    if (evento && typeof evento.preventDefault === 'function') {
+      evento.preventDefault();
+    }
+    if (evento && typeof evento.stopPropagation === 'function') {
+      evento.stopPropagation();
+    }
+
+    const texto = mensaje || 'No tienes permiso para realizar esta acción.';
+    if (typeof window !== 'undefined' && typeof window.toastError === 'function') {
+      window.toastError(texto);
+    } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(texto);
+    }
+  };
+}
+
+function asegurarAccesoCuenta(contenedor) {
+  if (permissionUtils && typeof permissionUtils.ensureModuleAccess === 'function') {
+    return permissionUtils.ensureModuleAccess({
+      permissions: ACCOUNT_ACCESS_PERMISSIONS,
+      container: contenedor || document.querySelector('.account-page'),
+      message:
+        'Solicita al administrador que habilite los permisos de cuenta o personalización para acceder a esta sección.'
+    });
+  }
+
+  const puedeAcceder = ACCOUNT_ACCESS_PERMISSIONS.some((permiso) => tienePermiso(permiso));
+  if (puedeAcceder) {
+    return true;
+  }
+
+  const destino = contenedor || document.querySelector('.account-page');
+  if (destino) {
+    destino.innerHTML = `
+      <section class="permission-block">
+        <div class="permission-block__card">
+          <h2>Acceso restringido</h2>
+          <p>Solicita al administrador que habilite los permisos de cuenta o personalización para continuar.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  return false;
+}
+
 const APP_ROOT = (() => {
   const path = window.location.pathname;
   const pagesIndex = path.indexOf('/pages/');
@@ -82,6 +200,11 @@ function setImageContent(field, value, fallback) {
 function mainAccountSuscrip() {
   console.log('✅ account_suscrip.js está corriendo');
 
+  const pageContainer = document.querySelector('.account-page');
+  if (!asegurarAccesoCuenta(pageContainer)) {
+    return;
+  }
+
   const usuarioId = localStorage.getItem('usuario_id');
   const idEmpresa = localStorage.getItem('id_empresa');
 
@@ -89,6 +212,11 @@ function mainAccountSuscrip() {
     alert('Falta información del usuario en localStorage.');
     return;
   }
+
+  const puedeActualizarPerfil = tienePermiso('account.profile.update');
+  const mensajeActualizarDenegado =
+    'No tienes permiso para modificar la información de la cuenta. Solicita a un administrador que habilite account.profile.update.';
+  const manejadorDenegado = obtenerHandlerDenegado(mensajeActualizarDenegado);
 
   async function cargar() {
     const data = await obtenerDatosCuenta(usuarioId);
@@ -130,103 +258,153 @@ function mainAccountSuscrip() {
 
   cargar();
 
-  // --- Editar usuario ---
-  const modalUsuario = new bootstrap.Modal(document.getElementById('modalEditarUsuario'));
-  document.getElementById('btnEditarUsuario').addEventListener('click', async () => {
-    const d = await obtenerDatosCuenta(usuarioId);
-    if (d.success) {
-      const u = d.usuario;
-      document.getElementById('inputNombre').value = u.nombre;
-      document.getElementById('inputApellido').value = u.apellido;
-      document.getElementById('inputCorreo').value = u.correo;
-      document.getElementById('inputTelefono').value = u.telefono || '';
-      document.getElementById('inputContrasena').value = '';
-      document.getElementById('inputConfirmarContrasena').value = '';
-      modalUsuario.show();
-    }
-  });
+  const btnEditarUsuario = document.getElementById('btnEditarUsuario');
+  const btnEditarEmpresa = document.getElementById('btnEditarEmpresa');
+  const btnGuardarCambiosUsuario = document.getElementById('btnGuardarCambiosUsuario');
+  const btnGuardarCambiosEmpresa = document.getElementById('btnGuardarCambiosEmpresa');
 
-  document.getElementById('btnGuardarCambiosUsuario').addEventListener('click', async () => {
-    const formData = new FormData();
-    formData.append('id_usuario', usuarioId);
-    formData.append('nombre', document.getElementById('inputNombre').value);
-    formData.append('apellido', document.getElementById('inputApellido').value);
-    formData.append('telefono', document.getElementById('inputTelefono').value);
-    formData.append('correo', document.getElementById('inputCorreo').value);
-    const nuevaContrasena = document.getElementById('inputContrasena').value.trim();
-    const confirmarContrasena = document.getElementById('inputConfirmarContrasena').value.trim();
+  if (puedeActualizarPerfil) {
+    const modalUsuarioElemento = document.getElementById('modalEditarUsuario');
+    const modalEmpresaElemento = document.getElementById('modalEditarEmpresa');
+    const modalUsuario =
+      typeof bootstrap !== 'undefined' && modalUsuarioElemento
+        ? new bootstrap.Modal(modalUsuarioElemento)
+        : null;
+    const modalEmpresa =
+      typeof bootstrap !== 'undefined' && modalEmpresaElemento
+        ? new bootstrap.Modal(modalEmpresaElemento)
+        : null;
 
-    if (nuevaContrasena !== confirmarContrasena) {
-      alert('Las contraseñas no coinciden.');
-      return;
-    }
+    btnEditarUsuario?.addEventListener('click', async () => {
+      const d = await obtenerDatosCuenta(usuarioId);
+      if (d.success) {
+        const u = d.usuario || {};
+        const inputNombre = document.getElementById('inputNombre');
+        const inputApellido = document.getElementById('inputApellido');
+        const inputCorreo = document.getElementById('inputCorreo');
+        const inputTelefono = document.getElementById('inputTelefono');
+        const inputContrasena = document.getElementById('inputContrasena');
+        const inputConfirmar = document.getElementById('inputConfirmarContrasena');
 
-    formData.append('contrasena', nuevaContrasena);
-    const file = document.getElementById('inputFoto').files[0];
-    if (file) formData.append('foto_perfil', file);
+        if (inputNombre) inputNombre.value = u.nombre || '';
+        if (inputApellido) inputApellido.value = u.apellido || '';
+        if (inputCorreo) inputCorreo.value = u.correo || '';
+        if (inputTelefono) inputTelefono.value = u.telefono || '';
+        if (inputContrasena) inputContrasena.value = '';
+        if (inputConfirmar) inputConfirmar.value = '';
 
-    const resp = await fetch(UPDATE_USER_URL, {
-      method: 'POST',
-      body: formData,
-    }).then((r) => r.json());
+        modalUsuario?.show();
+      }
+    });
 
-    if (resp?.solicitud) {
-      alert(`Solicitud registrada para revisión (folio ${resp.solicitud.id}). Recibirás los cambios una vez aprobados.`);
-      modalUsuario.hide();
-      return;
-    }
+    btnGuardarCambiosUsuario?.addEventListener('click', async (evento) => {
+      if (!tienePermiso('account.profile.update')) {
+        manejadorDenegado(evento);
+        return;
+      }
 
-    if (!resp?.success) {
-      alert(resp?.message || 'Error al registrar la solicitud de cambio de usuario');
-      return;
-    }
+      const formData = new FormData();
+      formData.append('id_usuario', usuarioId);
+      formData.append('nombre', document.getElementById('inputNombre')?.value || '');
+      formData.append('apellido', document.getElementById('inputApellido')?.value || '');
+      formData.append('telefono', document.getElementById('inputTelefono')?.value || '');
+      formData.append('correo', document.getElementById('inputCorreo')?.value || '');
+      const nuevaContrasena = (document.getElementById('inputContrasena')?.value || '').trim();
+      const confirmarContrasena = (document.getElementById('inputConfirmarContrasena')?.value || '').trim();
 
-    await cargar();
-    modalUsuario.hide();
-    alert(resp?.message || 'Datos del usuario actualizados.');
-  });
+      if (nuevaContrasena !== confirmarContrasena) {
+        alert('Las contraseñas no coinciden.');
+        return;
+      }
 
-  // --- Editar empresa ---
-  const modalEmpresa = new bootstrap.Modal(document.getElementById('modalEditarEmpresa'));
-  document.getElementById('btnEditarEmpresa').addEventListener('click', async () => {
-    const d = await obtenerDatosCuenta(usuarioId);
-    if (d.success && d.empresa) {
-      const e = d.empresa;
-      document.getElementById('inputNombreEmpresa').value = e.nombre_empresa || '';
-      document.getElementById('inputSectorEmpresa').value = e.sector_empresa || '';
-      document.getElementById('inputLogoEmpresaFile').value = '';
-      modalEmpresa.show();
-    }
-  });
+      formData.append('contrasena', nuevaContrasena);
+      const file = document.getElementById('inputFoto')?.files?.[0];
+      if (file) formData.append('foto_perfil', file);
 
-  document.getElementById('btnGuardarCambiosEmpresa').addEventListener('click', async () => {
-    const formData = new FormData();
-    formData.append('id_empresa', idEmpresa);
-    formData.append('nombre_empresa', document.getElementById('inputNombreEmpresa').value);
-    formData.append('sector_empresa', document.getElementById('inputSectorEmpresa').value);
-    const file = document.getElementById('inputLogoEmpresaFile').files[0];
-    if (file) formData.append('logo_empresa', file);
+      const resp = await fetch(UPDATE_USER_URL, {
+        method: 'POST',
+        body: formData,
+      }).then((r) => r.json());
 
-    const resp = await fetch(UPDATE_EMPRESA_URL, {
-      method: 'POST',
-      body: formData,
-    }).then((r) => r.json());
+      if (resp?.solicitud) {
+        alert(`Solicitud registrada para revisión (folio ${resp.solicitud.id}). Recibirás los cambios una vez aprobados.`);
+        modalUsuario?.hide();
+        return;
+      }
 
-    if (resp?.solicitud) {
-      alert(`Solicitud enviada. Los cambios en la empresa se aplicarán cuando sean aprobados (folio ${resp.solicitud.id}).`);
-      modalEmpresa.hide();
-      return;
-    }
+      if (!resp?.success) {
+        alert(resp?.message || 'Error al registrar la solicitud de cambio de usuario');
+        return;
+      }
 
-    if (!resp?.success) {
-      alert(resp?.message || 'Error al registrar la solicitud de actualización de empresa');
-      return;
-    }
+      await cargar();
+      modalUsuario?.hide();
+      alert(resp?.message || 'Datos del usuario actualizados.');
+    });
 
-    await cargar();
-    modalEmpresa.hide();
-    alert(resp?.message || 'Información de la empresa actualizada.');
-  });
+    btnEditarEmpresa?.addEventListener('click', async () => {
+      const d = await obtenerDatosCuenta(usuarioId);
+      if (d.success && d.empresa) {
+        const e = d.empresa;
+        const inputNombreEmpresa = document.getElementById('inputNombreEmpresa');
+        const inputSectorEmpresa = document.getElementById('inputSectorEmpresa');
+        const inputLogoEmpresa = document.getElementById('inputLogoEmpresaFile');
+
+        if (inputNombreEmpresa) inputNombreEmpresa.value = e.nombre_empresa || '';
+        if (inputSectorEmpresa) inputSectorEmpresa.value = e.sector_empresa || '';
+        if (inputLogoEmpresa) inputLogoEmpresa.value = '';
+
+        modalEmpresa?.show();
+      }
+    });
+
+    btnGuardarCambiosEmpresa?.addEventListener('click', async (evento) => {
+      if (!tienePermiso('account.profile.update')) {
+        manejadorDenegado(evento);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('id_empresa', idEmpresa);
+      formData.append('nombre_empresa', document.getElementById('inputNombreEmpresa')?.value || '');
+      formData.append('sector_empresa', document.getElementById('inputSectorEmpresa')?.value || '');
+      const file = document.getElementById('inputLogoEmpresaFile')?.files?.[0];
+      if (file) formData.append('logo_empresa', file);
+
+      const resp = await fetch(UPDATE_EMPRESA_URL, {
+        method: 'POST',
+        body: formData,
+      }).then((r) => r.json());
+
+      if (resp?.solicitud) {
+        alert(`Solicitud enviada. Los cambios en la empresa se aplicarán cuando sean aprobados (folio ${resp.solicitud.id}).`);
+        modalEmpresa?.hide();
+        return;
+      }
+
+      if (!resp?.success) {
+        alert(resp?.message || 'Error al registrar la solicitud de actualización de empresa');
+        return;
+      }
+
+      await cargar();
+      modalEmpresa?.hide();
+      alert(resp?.message || 'Información de la empresa actualizada.');
+    });
+  } else {
+    [
+      btnEditarUsuario,
+      btnEditarEmpresa,
+      btnGuardarCambiosUsuario,
+      btnGuardarCambiosEmpresa
+    ].forEach((boton) => {
+      if (!boton) {
+        return;
+      }
+      marcarDisponibilidad(boton, false, mensajeActualizarDenegado);
+      boton.addEventListener('click', manejadorDenegado);
+    });
+  }
 
   // Navegación lateral
   const menuItems = document.querySelectorAll('.account-menu li');
