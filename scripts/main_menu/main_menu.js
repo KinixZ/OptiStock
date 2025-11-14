@@ -90,6 +90,31 @@ let criticalStockState = new Map();
 let capacityAlertState = new Map();
 let autoArchiveInProgress = false;
 
+function readBooleanPreference(key, defaultValue = true) {
+    if (!key) {
+        return Boolean(defaultValue);
+    }
+
+    try {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue === null) {
+            return Boolean(defaultValue);
+        }
+        return JSON.parse(storedValue);
+    } catch (error) {
+        console.warn(`No se pudo interpretar la preferencia "${key}".`, error);
+        return Boolean(defaultValue);
+    }
+}
+
+function areProductAlertsEnabled() {
+    return readBooleanPreference('alertMovCriticos', true);
+}
+
+function areCapacityAlertsEnabled() {
+    return readBooleanPreference('alertFallosInventario', true);
+}
+
 const NOTIFICATION_PRIORITIES = ['Alta', 'Media', 'Baja'];
 const NOTIFICATION_STATES = ['Pendiente', 'Enviada', 'Leida', 'Archivada'];
 const NOTIFICATION_TARGETS = ['General', 'Rol', 'Usuario'];
@@ -1614,6 +1639,8 @@ async function autoArchiveSeenNotifications() {
 }
 
 function refreshNotificationUI() {
+    const productAlertsEnabled = areProductAlertsEnabled();
+    const capacityAlertsEnabled = areCapacityAlertsEnabled();
     const identityMap = new Map();
     const merged = [];
 
@@ -1625,6 +1652,14 @@ function refreshNotificationUI() {
         ...serverNotifications
     ].forEach(notification => {
         if (!notification) {
+            return;
+        }
+
+        if (!productAlertsEnabled && isProductAlertNotification(notification)) {
+            return;
+        }
+
+        if (!capacityAlertsEnabled && isCapacityAlertNotification(notification)) {
             return;
         }
 
@@ -2450,7 +2485,36 @@ function buildCapacityAlertNotification(entry, markAsNew, preservedTimestamp) {
     };
 }
 
+function isCapacityAlertNotification(notification) {
+    if (!notification || typeof notification !== 'object') {
+        return false;
+    }
+
+    const idRaw = notification.id != null ? String(notification.id) : '';
+    if (idRaw.startsWith('capacity-alert-')) {
+        return true;
+    }
+
+    const ruta = (notification.ruta_destino || '').toString().toLowerCase();
+    if (!ruta) {
+        return false;
+    }
+
+    return ruta.includes('area_almac_v2/gestion_areas_zonas.html');
+}
+
 function updateCapacityAlertNotifications(entries) {
+    if (!areCapacityAlertsEnabled()) {
+        const hadState = capacityAlertNotifications.length > 0 || capacityAlertState.size > 0;
+        capacityAlertNotifications = [];
+        capacityAlertState.clear();
+        if (hadState) {
+            console.info('Alertas de áreas y zonas desactivadas: se limpió el estado local de notificaciones de capacidad.');
+        }
+        refreshNotificationUI();
+        return;
+    }
+
     const normalizedEntries = Array.isArray(entries) ? entries : [];
     const previousState = new Map(capacityAlertState);
     const nextState = new Map();
@@ -2489,18 +2553,54 @@ function updateCapacityAlertNotifications(entries) {
     }
 
     if (newlyTriggered.length) {
-        if (JSON.parse(localStorage.getItem('alertFallosInventario') || 'true')) {
-            newlyTriggered.forEach(notification => {
-                const titulo = notification.titulo || 'Espacio crítico en el almacén';
-                const mensaje = notification.mensaje || 'Se detectó una zona con espacio crítico en el almacén.';
-                showCriticalStockAlert(titulo, mensaje);
-            });
-        }
-
+        newlyTriggered.forEach(notification => {
+            const titulo = notification.titulo || 'Espacio crítico en el almacén';
+            const mensaje = notification.mensaje || 'Se detectó una zona con espacio crítico en el almacén.';
+            showCriticalStockAlert(titulo, mensaje);
+        });
         persistNotifications(newlyTriggered);
     }
 
     refreshNotificationUI();
+}
+
+function applyAlertPreferenceEffects() {
+    let clearedState = false;
+
+    if (!areProductAlertsEnabled()) {
+        if (criticalStockNotifications.length || criticalStockState.size) {
+            criticalStockNotifications = [];
+            criticalStockState.clear();
+            clearedState = true;
+        }
+    }
+
+    if (!areCapacityAlertsEnabled()) {
+        if (capacityAlertNotifications.length || capacityAlertState.size) {
+            capacityAlertNotifications = [];
+            capacityAlertState.clear();
+            clearedState = true;
+        }
+    }
+
+    if (clearedState) {
+        console.info('Preferencias de alertas actualizadas: se limpiaron las notificaciones desactivadas.');
+    }
+
+    refreshNotificationUI();
+
+    if (typeof loadStockAlerts === 'function') {
+        try {
+            const maybePromise = loadStockAlerts();
+            if (maybePromise && typeof maybePromise.then === 'function') {
+                maybePromise.catch(error => {
+                    console.error('No se pudieron actualizar las alertas después de cambiar las preferencias.', error);
+                });
+            }
+        } catch (error) {
+            console.error('No se pudieron actualizar las alertas después de cambiar las preferencias.', error);
+        }
+    }
 }
 
 function formatRequestActionLabel(rawAction) {
@@ -2707,7 +2807,36 @@ function buildCriticalStockNotification(producto, threshold, markAsNew, preserve
     };
 }
 
+function isProductAlertNotification(notification) {
+    if (!notification || typeof notification !== 'object') {
+        return false;
+    }
+
+    const idRaw = notification.id != null ? String(notification.id) : '';
+    if (idRaw.startsWith('critical-stock-')) {
+        return true;
+    }
+
+    const ruta = (notification.ruta_destino || '').toString().toLowerCase();
+    if (!ruta) {
+        return false;
+    }
+
+    return ruta.includes('gest_inve/inventario_basico.html');
+}
+
 function updateCriticalStockNotifications(productos, threshold) {
+    if (!areProductAlertsEnabled()) {
+        const hadState = criticalStockNotifications.length > 0 || criticalStockState.size > 0;
+        criticalStockNotifications = [];
+        criticalStockState.clear();
+        if (hadState) {
+            console.info('Alertas de productos desactivadas: se limpió el estado local de notificaciones de stock crítico.');
+        }
+        refreshNotificationUI();
+        return;
+    }
+
     const previousState = new Map(criticalStockState);
     const nextState = new Map();
     const newlyTriggered = [];
@@ -2742,13 +2871,10 @@ function updateCriticalStockNotifications(productos, threshold) {
     }
 
     if (newlyTriggered.length) {
-        if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
-            newlyTriggered.forEach(notification => {
-                const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
-                showCriticalStockAlert(notification.titulo || 'Stock crítico', mensaje);
-            });
-        }
-
+        newlyTriggered.forEach(notification => {
+            const mensaje = notification.mensaje || 'Se detectó stock crítico en inventario.';
+            showCriticalStockAlert(notification.titulo || 'Stock crítico', mensaje);
+        });
         persistNotifications(newlyTriggered);
     }
 
@@ -5080,8 +5206,8 @@ if (alertSettingsBtn) {
             return;
         }
         if (!alertModal) return;
-        alertMovCriticos.checked = JSON.parse(localStorage.getItem('alertMovCriticos') || 'true');
-        alertFallosInventario.checked = JSON.parse(localStorage.getItem('alertFallosInventario') || 'true');
+        alertMovCriticos.checked = areProductAlertsEnabled();
+        alertFallosInventario.checked = areCapacityAlertsEnabled();
         alertModal.style.display = 'flex';
     });
 }
@@ -5090,6 +5216,7 @@ if (saveAlertSettings) {
         localStorage.setItem('alertMovCriticos', alertMovCriticos.checked);
         localStorage.setItem('alertFallosInventario', alertFallosInventario.checked);
         alertModal.style.display = 'none';
+        applyAlertPreferenceEffects();
     });
 }
 if (cancelAlertSettings) {
@@ -5183,7 +5310,7 @@ document.addEventListener('keydown', event => {
 });
 
 function notifyUnauthorizedMovement(msg) {
-    if (JSON.parse(localStorage.getItem('alertMovCriticos') || 'true')) {
+    if (areProductAlertsEnabled()) {
         alert(msg);
 
     }
