@@ -214,9 +214,15 @@ function mainAccountSuscrip() {
   }
 
   const puedeActualizarPerfil = tienePermiso('account.profile.update');
-  const mensajeActualizarDenegado =
-    'No tienes permiso para modificar la información de la cuenta. Solicita a un administrador que habilite account.profile.update.';
-  const manejadorDenegado = obtenerHandlerDenegado(mensajeActualizarDenegado);
+  const puedeConfigurarTema = tienePermiso('account.theme.configure');
+
+  const mensajeActualizarPerfilDenegado =
+    'No tienes permiso para modificar la información personal. Solicita a un administrador que habilite account.profile.update.';
+  const mensajeConfigurarTemaDenegado =
+    'No tienes permiso para personalizar la empresa. Solicita a un administrador que habilite account.theme.configure.';
+
+  const manejadorPerfilDenegado = obtenerHandlerDenegado(mensajeActualizarPerfilDenegado);
+  const manejadorConfigurarTemaDenegado = obtenerHandlerDenegado(mensajeConfigurarTemaDenegado);
 
   async function cargar() {
     const data = await obtenerDatosCuenta(usuarioId);
@@ -263,17 +269,18 @@ function mainAccountSuscrip() {
   const btnGuardarCambiosUsuario = document.getElementById('btnGuardarCambiosUsuario');
   const btnGuardarCambiosEmpresa = document.getElementById('btnGuardarCambiosEmpresa');
 
+  const modalUsuarioElemento = document.getElementById('modalEditarUsuario');
+  const modalEmpresaElemento = document.getElementById('modalEditarEmpresa');
+  const modalUsuario =
+    typeof bootstrap !== 'undefined' && modalUsuarioElemento
+      ? new bootstrap.Modal(modalUsuarioElemento)
+      : null;
+  const modalEmpresa =
+    typeof bootstrap !== 'undefined' && modalEmpresaElemento
+      ? new bootstrap.Modal(modalEmpresaElemento)
+      : null;
+
   if (puedeActualizarPerfil) {
-    const modalUsuarioElemento = document.getElementById('modalEditarUsuario');
-    const modalEmpresaElemento = document.getElementById('modalEditarEmpresa');
-    const modalUsuario =
-      typeof bootstrap !== 'undefined' && modalUsuarioElemento
-        ? new bootstrap.Modal(modalUsuarioElemento)
-        : null;
-    const modalEmpresa =
-      typeof bootstrap !== 'undefined' && modalEmpresaElemento
-        ? new bootstrap.Modal(modalEmpresaElemento)
-        : null;
 
     btnEditarUsuario?.addEventListener('click', async () => {
       const d = await obtenerDatosCuenta(usuarioId);
@@ -299,7 +306,7 @@ function mainAccountSuscrip() {
 
     btnGuardarCambiosUsuario?.addEventListener('click', async (evento) => {
       if (!tienePermiso('account.profile.update')) {
-        manejadorDenegado(evento);
+        manejadorPerfilDenegado(evento);
         return;
       }
 
@@ -342,6 +349,17 @@ function mainAccountSuscrip() {
       alert(resp?.message || 'Datos del usuario actualizados.');
     });
 
+  } else {
+    [btnEditarUsuario, btnGuardarCambiosUsuario].forEach((boton) => {
+      if (!boton) {
+        return;
+      }
+      marcarDisponibilidad(boton, false, mensajeActualizarPerfilDenegado);
+      boton.addEventListener('click', manejadorPerfilDenegado);
+    });
+  }
+
+  if (puedeConfigurarTema) {
     btnEditarEmpresa?.addEventListener('click', async () => {
       const d = await obtenerDatosCuenta(usuarioId);
       if (d.success && d.empresa) {
@@ -359,8 +377,8 @@ function mainAccountSuscrip() {
     });
 
     btnGuardarCambiosEmpresa?.addEventListener('click', async (evento) => {
-      if (!tienePermiso('account.profile.update')) {
-        manejadorDenegado(evento);
+      if (!tienePermiso('account.theme.configure')) {
+        manejadorConfigurarTemaDenegado(evento);
         return;
       }
 
@@ -392,17 +410,12 @@ function mainAccountSuscrip() {
       alert(resp?.message || 'Información de la empresa actualizada.');
     });
   } else {
-    [
-      btnEditarUsuario,
-      btnEditarEmpresa,
-      btnGuardarCambiosUsuario,
-      btnGuardarCambiosEmpresa
-    ].forEach((boton) => {
+    [btnEditarEmpresa, btnGuardarCambiosEmpresa].forEach((boton) => {
       if (!boton) {
         return;
       }
-      marcarDisponibilidad(boton, false, mensajeActualizarDenegado);
-      boton.addEventListener('click', manejadorDenegado);
+      marcarDisponibilidad(boton, false, mensajeConfigurarTemaDenegado);
+      boton.addEventListener('click', manejadorConfigurarTemaDenegado);
     });
   }
 
