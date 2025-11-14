@@ -313,8 +313,8 @@
       permisos: [
         {
           clave: 'reports.generate',
-          nombre: 'Generar reportes',
-          descripcion: 'Generar reportes manualmente desde la interfaz.'
+          nombre: 'Historial de reportes',
+          descripcion: 'Visualizar el historial de reportes generados manualmente desde la interfaz.'
         },
         {
           clave: 'reports.export.pdf',
@@ -388,13 +388,13 @@
         },
         {
           clave: 'account.profile.update',
-          nombre: 'Editar perfil y empresa',
-          descripcion: 'Modificar datos personales o de la empresa.'
+          nombre: 'Editar perfil',
+          descripcion: 'Modificar datos personales propios del usuario.'
         },
         {
           clave: 'account.theme.configure',
-          nombre: 'Personalizar apariencia',
-          descripcion: 'Cambiar colores y tema visual del panel.'
+          nombre: 'Personalizar empresa',
+          descripcion: 'Personalizar los colores y la informacion de la empresa.'
         }
       ]
     }
