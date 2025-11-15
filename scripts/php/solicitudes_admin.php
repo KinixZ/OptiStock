@@ -7,6 +7,300 @@ $db_pass    = "4Dmin123o";
 $database   = "u296155119_OptiStock";
 
 require_once __DIR__ . '/solicitudes_utils.php';
+require_once __DIR__ . '/accesos_utils.php';
+
+function opti_normalizar_mapa_accesos(array $mapa): array
+{
+    $normalizado = [];
+
+    foreach ($mapa as $areaId => $zonas) {
+        $areaIdInt = (int) $areaId;
+        if ($areaIdInt <= 0) {
+            continue;
+        }
+
+        if ($zonas === null) {
+            $normalizado[$areaIdInt] = null;
+            continue;
+        }
+
+        if (!is_array($zonas) || empty($zonas)) {
+            $normalizado[$areaIdInt] = [];
+            continue;
+        }
+
+        $zonasValidas = [];
+        foreach ($zonas as $zona) {
+            $zonaInt = (int) $zona;
+            if ($zonaInt > 0 && !in_array($zonaInt, $zonasValidas, true)) {
+                $zonasValidas[] = $zonaInt;
+            }
+        }
+
+        $normalizado[$areaIdInt] = $zonasValidas ?: [];
+    }
+
+    return $normalizado;
+}
+
+function opti_agregar_area_contexto(array &$areas, int $areaId, ?int $zonaId = null): void
+{
+    if ($areaId <= 0) {
+        return;
+    }
+
+    $clave = (int) $areaId;
+
+    if (!array_key_exists($clave, $areas) || $areas[$clave] === null) {
+        $areas[$clave] = null;
+    }
+
+    if ($zonaId === null) {
+        $areas[$clave] = null;
+        return;
+    }
+
+    if ($areas[$clave] === null) {
+        return;
+    }
+
+    $zonaId = (int) $zonaId;
+    if ($zonaId <= 0) {
+        return;
+    }
+
+    if (!in_array($zonaId, $areas[$clave], true)) {
+        $areas[$clave][] = $zonaId;
+    }
+}
+
+function opti_normalizar_lista_ids($valor): array
+{
+    $lista = is_array($valor) ? $valor : [$valor];
+    $ids = [];
+
+    foreach ($lista as $elemento) {
+        if (is_array($elemento) && array_key_exists('id', $elemento)) {
+            $elemento = $elemento['id'];
+        }
+
+        if (is_numeric($elemento)) {
+            $numero = (int) $elemento;
+        } elseif (is_string($elemento)) {
+            $filtrado = preg_replace('/[^0-9-]+/', '', $elemento);
+            $numero = (int) $filtrado;
+        } else {
+            continue;
+        }
+
+        if ($numero > 0) {
+            $ids[] = $numero;
+        }
+    }
+
+    return $ids;
+}
+
+function opti_resolver_area_por_zona(mysqli $conn, int $zonaId): ?int
+{
+    static $cache = [];
+
+    if ($zonaId <= 0) {
+        return null;
+    }
+
+    if (array_key_exists($zonaId, $cache)) {
+        return $cache[$zonaId];
+    }
+
+    $stmt = $conn->prepare('SELECT area_id FROM zonas WHERE id = ? LIMIT 1');
+    if (!$stmt) {
+        $cache[$zonaId] = null;
+        return null;
+    }
+
+    $stmt->bind_param('i', $zonaId);
+    $stmt->execute();
+    $stmt->bind_result($areaId);
+    $areaEncontrada = $stmt->fetch() ? (int) $areaId : 0;
+    $stmt->close();
+
+    $cache[$zonaId] = $areaEncontrada > 0 ? $areaEncontrada : null;
+
+    return $cache[$zonaId];
+}
+
+function opti_procesar_estructura_areas(mysqli $conn, $estructura, array &$areas): void
+{
+    if (!is_array($estructura)) {
+        return;
+    }
+
+    $clavesArea = ['id_area', 'area_id', 'areaId', 'area_destino', 'area_anterior', 'area_nueva'];
+    foreach ($clavesArea as $clave) {
+        if (!array_key_exists($clave, $estructura)) {
+            continue;
+        }
+
+        $ids = opti_normalizar_lista_ids($estructura[$clave]);
+        foreach ($ids as $idArea) {
+            opti_agregar_area_contexto($areas, $idArea);
+        }
+    }
+
+    if (isset($estructura['area']) && is_array($estructura['area'])) {
+        $ids = opti_normalizar_lista_ids($estructura['area']);
+        foreach ($ids as $idArea) {
+            opti_agregar_area_contexto($areas, $idArea);
+        }
+    }
+
+    $clavesZona = ['id_zona', 'zona_id', 'zonaId', 'zona_destino', 'zona_anterior', 'zona_nueva'];
+    foreach ($clavesZona as $clave) {
+        if (!array_key_exists($clave, $estructura)) {
+            continue;
+        }
+
+        $zonas = opti_normalizar_lista_ids($estructura[$clave]);
+        foreach ($zonas as $zonaId) {
+            $areaId = opti_resolver_area_por_zona($conn, $zonaId);
+            if ($areaId) {
+                opti_agregar_area_contexto($areas, $areaId, $zonaId);
+            }
+        }
+    }
+
+    if (isset($estructura['zona']) && is_array($estructura['zona'])) {
+        $zonas = opti_normalizar_lista_ids($estructura['zona']);
+        foreach ($zonas as $zonaId) {
+            $areaId = opti_resolver_area_por_zona($conn, $zonaId);
+            if ($areaId) {
+                opti_agregar_area_contexto($areas, $areaId, $zonaId);
+            }
+        }
+    }
+
+    foreach ($estructura as $valor) {
+        if (is_array($valor)) {
+            opti_procesar_estructura_areas($conn, $valor, $areas);
+        }
+    }
+}
+
+function opti_extraer_contexto_areas(mysqli $conn, array $solicitud): array
+{
+    $areas = [];
+
+    $payload = $solicitud['payload'] ?? [];
+    if (is_string($payload)) {
+        $payload = json_decode($payload, true) ?: [];
+    }
+
+    opti_procesar_estructura_areas($conn, $payload, $areas);
+
+    if (isset($solicitud['resultado']) && is_array($solicitud['resultado'])) {
+        opti_procesar_estructura_areas($conn, $solicitud['resultado'], $areas);
+    }
+
+    return opti_normalizar_mapa_accesos($areas);
+}
+
+function opti_mapas_accesos_intersectan(array $mapaA, array $mapaB): bool
+{
+    if (empty($mapaA) || empty($mapaB)) {
+        return false;
+    }
+
+    foreach ($mapaB as $areaId => $zonasB) {
+        $areaIdInt = (int) $areaId;
+        if (!usuarioPuedeVerArea($mapaA, $areaIdInt)) {
+            continue;
+        }
+
+        $zonasA = $mapaA[$areaIdInt] ?? [];
+        if ($zonasA === null || $zonasB === null) {
+            return true;
+        }
+
+        $zonasA = array_map('intval', $zonasA);
+        $zonasB = array_map('intval', $zonasB);
+
+        if (array_intersect($zonasA, $zonasB)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function opti_filtrar_solicitudes_por_accesos(mysqli $conn, array $items, ?int $usuarioIdActual): array
+{
+    $usuarioId = (int) $usuarioIdActual;
+    if ($usuarioId <= 0) {
+        return $items;
+    }
+
+    $mapaAccesos = opti_normalizar_mapa_accesos(construirMapaAccesosUsuario($conn, $usuarioId));
+    if (!debeFiltrarPorAccesos($mapaAccesos)) {
+        return $items;
+    }
+
+    $cacheSolicitantes = [];
+    $filtradas = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $permitido = false;
+        $contextos = opti_extraer_contexto_areas($conn, $item);
+
+        if (!empty($contextos)) {
+            foreach ($contextos as $areaId => $zonas) {
+                $areaIdInt = (int) $areaId;
+                if (!usuarioPuedeVerArea($mapaAccesos, $areaIdInt)) {
+                    continue;
+                }
+
+                if ($zonas === null) {
+                    $permitido = true;
+                    break;
+                }
+
+                foreach ($zonas as $zonaId) {
+                    $zonaIdInt = (int) $zonaId;
+                    if ($zonaIdInt > 0 && usuarioPuedeVerZona($mapaAccesos, $areaIdInt, $zonaIdInt)) {
+                        $permitido = true;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        if (!$permitido) {
+            $solicitanteId = isset($item['id_solicitante']) ? (int) $item['id_solicitante'] : 0;
+            if ($solicitanteId > 0) {
+                if (!array_key_exists($solicitanteId, $cacheSolicitantes)) {
+                    $cacheSolicitantes[$solicitanteId] = opti_normalizar_mapa_accesos(
+                        construirMapaAccesosUsuario($conn, $solicitanteId)
+                    );
+                }
+
+                $mapaSolicitante = $cacheSolicitantes[$solicitanteId];
+                if (!empty($mapaSolicitante) && opti_mapas_accesos_intersectan($mapaAccesos, $mapaSolicitante)) {
+                    $permitido = true;
+                }
+            }
+        }
+
+        if ($permitido) {
+            $filtradas[] = $item;
+        }
+    }
+
+    return array_values($filtradas);
+}
 
 try {
     $conn = new mysqli($servername, $db_user, $db_pass, $database);
@@ -17,6 +311,7 @@ try {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
+$usuarioSesionId = obtenerUsuarioIdSesion() ?? 0;
 
 if ($method === 'GET') {
     $estado = $_GET['estado'] ?? 'en_proceso';
@@ -48,6 +343,9 @@ if ($method === 'GET') {
             $items[] = $row;
         }
         $stmt->close();
+
+        $items = opti_filtrar_solicitudes_por_accesos($conn, $items, $usuarioSesionId);
+
         echo json_encode(['success' => true, 'items' => $items]);
         exit;
     }
@@ -78,6 +376,8 @@ if ($method === 'GET') {
         $items[] = $row;
     }
     $stmt->close();
+
+    $items = opti_filtrar_solicitudes_por_accesos($conn, $items, $usuarioSesionId);
 
     echo json_encode(['success' => true, 'items' => $items]);
     exit;
