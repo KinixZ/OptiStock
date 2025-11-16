@@ -2664,7 +2664,6 @@ movGuardar?.addEventListener('click', async () => {
 if (vistaActual === 'producto') {
   tablaHead.innerHTML = `
     <tr>
-      <th data-sortable="false">Imagen</th>
       <th>Nombre</th>
       <th>Área</th>
       <th>Zona</th>
@@ -2682,13 +2681,11 @@ const cat = p.categoria_nombre   || '';
 const sub = p.subcategoria_nombre || '';
     const zona= p.zona_nombre || '';
     const area= p.area_nombre || '';
-    const nombreAlt = (p.nombre || '').replace(/"/g, '&quot;');
     const volumenSort = parseSortNumber(p.volumen_valor ?? p.volumen);
     const stockSort = parseSortNumber(p.stock);
     const precioSort = parseSortNumber(p.precio_compra);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-export-value="${p.imagenBase64 ? 'Disponible' : '—'}">${p.imagenBase64 ? `<img src="${p.imagenBase64}" width="50" class="img-thumbnail" alt="Vista del producto ${nombreAlt}">` : ''}</td>
       <td>${p.nombre}</td>
       <td>${area}</td>
       <td>${zona}</td>
