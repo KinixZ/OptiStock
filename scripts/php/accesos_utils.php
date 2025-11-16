@@ -1,16 +1,6 @@
 <?php
 require_once __DIR__ . '/log_utils.php';
 
-/**
- * Construye un mapa de accesos (áreas y zonas) para el usuario indicado.
- *
- * @param mysqli   $conn       Conexión activa a la base de datos.
- * @param int|null $usuarioId  Identificador del usuario. Si es null o <= 0, retorna un mapa vacío.
- *
- * @return array<int, null|int[]> Mapa donde la llave es el ID del área y el valor es:
- *                                - null  => acceso completo a todas las zonas del área.
- *                                - int[] => lista de IDs de zonas permitidas dentro del área.
- */
 function construirMapaAccesosUsuario(mysqli $conn, ?int $usuarioId): array
 {
     if (!$usuarioId || $usuarioId <= 0) {

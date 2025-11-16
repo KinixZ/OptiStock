@@ -1006,7 +1006,7 @@ let editZoneId = null;
     }
   }
 
-  async function exportarZonasPDF() {
+ async function exportarZonasPDF() {
     if (!puedeExportarReportesPdf) {
       mostrarDenegado('No tienes permiso para exportar reportes en PDF.');
       return;
@@ -1061,7 +1061,7 @@ let editZoneId = null;
       }
       showToast('No se pudo generar el reporte en PDF');
     }
-  }
+  } 
 
   async function generarReporteIncidencias() {
     if (!puedeExportarReportesPdf) {
@@ -1287,8 +1287,6 @@ let editZoneId = null;
     }
   }
 
-
-
 formArea.addEventListener('submit', async e => {
   e.preventDefault();
   const editando = Boolean(editAreaId);
@@ -1351,6 +1349,143 @@ formArea.addEventListener('submit', async e => {
   async function fetchZonas() {
     const res = await fetch(`${API_BASE}/guardar_zonas.php?empresa_id=${EMP_ID}`);
     return await res.json();
+  }
+
+  function renderZonas() {
+    if (!tablaZonasBody || !tablaZonasSinAreaBody) {
+      return;
+    }
+
+    if (!puedeVerZonas) {
+      tablaZonasBody.innerHTML = '<tr class="empty-row"><td colspan="8">No tienes permiso para ver las zonas registradas.</td></tr>';
+      tablaZonasSinAreaBody.innerHTML = '<tr class="empty-row"><td colspan="7">No tienes permiso para ver las zonas sin asignar.</td></tr>';
+      if (tablaZonasElement && window.SimpleTableSorter) {
+        window.SimpleTableSorter.applyCurrentSort(tablaZonasElement);
+      }
+      if (tablaZonasSinAreaElement && window.SimpleTableSorter) {
+        window.SimpleTableSorter.applyCurrentSort(tablaZonasSinAreaElement);
+      }
+      return;
+    }
+
+    const resultado = filtrarZonas();
+    const areasMap = Object.fromEntries(areasData.map(a => [a.id, a.nombre]));
+
+    const tablaAsignadas = tablaZonasElement;
+    const tablaSinArea = tablaZonasSinAreaElement;
+
+    tablaZonasBody.innerHTML = '';
+    if (!resultado.asignadas.length) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = '<td colspan="8">No hay zonas asignadas que coincidan con los filtros.</td>';
+      tablaZonasBody.appendChild(emptyRow);
+      if (window.SimpleTableSorter && tablaAsignadas) {
+        window.SimpleTableSorter.applyCurrentSort(tablaAsignadas);
+      }
+    } else {
+      resultado.asignadas.forEach(zona => {
+        const porcentaje = Number(zona.porcentaje_ocupacion || 0);
+        const capacidad = Number(zona.capacidad_utilizada || 0);
+        const disponible = zona.capacidad_disponible !== undefined
+          ? Number(zona.capacidad_disponible)
+          : Math.max(Number(zona.volumen || 0) - capacidad, 0);
+        const productos = Number(zona.productos_registrados || 0);
+        const totalUnidades = Number(zona.total_unidades || 0);
+        const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
+        const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
+        const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
+        const productosSort = productos + (totalUnidades || 0) / 1000;
+        const productosDisplay = totalUnidades
+          ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
+          : `${productos} tipo${productos === 1 ? '' : 's'}`;
+
+        const tr = document.createElement('tr');
+        if (porcentaje >= 90) {
+          tr.classList.add('row-alert');
+        }
+        tr.innerHTML = `
+          <td data-label="Zona">
+            <div class="table-title">${zona.nombre}</div>
+            <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
+          </td>
+          <td data-label="Área">${areasMap[zona.area_id] || 'Sin área'}</td>
+          <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
+          <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
+          <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
+          <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
+          <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
+          <td data-label="Acciones">
+            <div class="table-actions">
+              <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
+              <button class="table-action table-action--delete" data-action="delete-zone" data-id="${zona.id}">Eliminar</button>
+            </div>
+          </td>
+        `;
+        tablaZonasBody.appendChild(tr);
+      });
+
+      if (window.SimpleTableSorter && tablaAsignadas) {
+        window.SimpleTableSorter.applyCurrentSort(tablaAsignadas);
+      }
+    }
+
+    tablaZonasSinAreaBody.innerHTML = '';
+    if (!resultado.sinArea.length) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = '<td colspan="7">No hay zonas sin área que coincidan con los filtros.</td>';
+      tablaZonasSinAreaBody.appendChild(emptyRow);
+      if (window.SimpleTableSorter && tablaSinArea) {
+        window.SimpleTableSorter.applyCurrentSort(tablaSinArea);
+      }
+    } else {
+      resultado.sinArea.forEach(zona => {
+        const porcentaje = Number(zona.porcentaje_ocupacion || 0);
+        const capacidad = Number(zona.capacidad_utilizada || 0);
+        const disponible = zona.capacidad_disponible !== undefined
+          ? Number(zona.capacidad_disponible)
+          : Math.max(Number(zona.volumen || 0) - capacidad, 0);
+        const productos = Number(zona.productos_registrados || 0);
+        const totalUnidades = Number(zona.total_unidades || 0);
+        const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
+        const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
+        const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
+        const productosSort = productos + (totalUnidades || 0) / 1000;
+        const productosDisplay = totalUnidades
+          ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
+          : `${productos} tipo${productos === 1 ? '' : 's'}`;
+
+        const tr = document.createElement('tr');
+        if (porcentaje >= 90) {
+          tr.classList.add('row-alert');
+        }
+        tr.innerHTML = `
+          <td data-label="Zona">
+            <div class="table-title">${zona.nombre}</div>
+            <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
+          </td>
+          <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
+          <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
+          <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
+          <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
+          <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
+          <td data-label="Acciones">
+            <div class="table-actions">
+              <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
+              <button class="table-action table-action--delete" data-action="delete-zone" data-id="${zona.id}">Eliminar</button>
+            </div>
+          </td>
+        `;
+        tablaZonasSinAreaBody.appendChild(tr);
+      });
+
+      if (window.SimpleTableSorter && tablaSinArea) {
+        window.SimpleTableSorter.applyCurrentSort(tablaSinArea);
+      }
+    }
+
+    actualizarAlertas();
   }
 
   async function fetchIncidencias(estado = 'Pendiente') {
@@ -1515,144 +1650,6 @@ formArea.addEventListener('submit', async e => {
       console.error('Error al recargar datos', error);
       showToast('No se pudo actualizar la información de áreas y zonas');
     }
-  }
-
-
-  function renderZonas() {
-    if (!tablaZonasBody || !tablaZonasSinAreaBody) {
-      return;
-    }
-
-    if (!puedeVerZonas) {
-      tablaZonasBody.innerHTML = '<tr class="empty-row"><td colspan="8">No tienes permiso para ver las zonas registradas.</td></tr>';
-      tablaZonasSinAreaBody.innerHTML = '<tr class="empty-row"><td colspan="7">No tienes permiso para ver las zonas sin asignar.</td></tr>';
-      if (tablaZonasElement && window.SimpleTableSorter) {
-        window.SimpleTableSorter.applyCurrentSort(tablaZonasElement);
-      }
-      if (tablaZonasSinAreaElement && window.SimpleTableSorter) {
-        window.SimpleTableSorter.applyCurrentSort(tablaZonasSinAreaElement);
-      }
-      return;
-    }
-
-    const resultado = filtrarZonas();
-    const areasMap = Object.fromEntries(areasData.map(a => [a.id, a.nombre]));
-
-    const tablaAsignadas = tablaZonasElement;
-    const tablaSinArea = tablaZonasSinAreaElement;
-
-    tablaZonasBody.innerHTML = '';
-    if (!resultado.asignadas.length) {
-      const emptyRow = document.createElement('tr');
-      emptyRow.className = 'empty-row';
-      emptyRow.innerHTML = '<td colspan="8">No hay zonas asignadas que coincidan con los filtros.</td>';
-      tablaZonasBody.appendChild(emptyRow);
-      if (window.SimpleTableSorter && tablaAsignadas) {
-        window.SimpleTableSorter.applyCurrentSort(tablaAsignadas);
-      }
-    } else {
-      resultado.asignadas.forEach(zona => {
-        const porcentaje = Number(zona.porcentaje_ocupacion || 0);
-        const capacidad = Number(zona.capacidad_utilizada || 0);
-        const disponible = zona.capacidad_disponible !== undefined
-          ? Number(zona.capacidad_disponible)
-          : Math.max(Number(zona.volumen || 0) - capacidad, 0);
-        const productos = Number(zona.productos_registrados || 0);
-        const totalUnidades = Number(zona.total_unidades || 0);
-        const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
-        const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
-        const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
-        const productosSort = productos + (totalUnidades || 0) / 1000;
-        const productosDisplay = totalUnidades
-          ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
-          : `${productos} tipo${productos === 1 ? '' : 's'}`;
-
-        const tr = document.createElement('tr');
-        if (porcentaje >= 90) {
-          tr.classList.add('row-alert');
-        }
-        tr.innerHTML = `
-          <td data-label="Zona">
-            <div class="table-title">${zona.nombre}</div>
-            <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
-          </td>
-          <td data-label="Área">${areasMap[zona.area_id] || 'Sin área'}</td>
-          <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
-          <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
-          <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
-          <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
-          <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
-          <td data-label="Acciones">
-            <div class="table-actions">
-              <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
-              <button class="table-action table-action--delete" data-action="delete-zone" data-id="${zona.id}">Eliminar</button>
-            </div>
-          </td>
-        `;
-        tablaZonasBody.appendChild(tr);
-      });
-
-      if (window.SimpleTableSorter && tablaAsignadas) {
-        window.SimpleTableSorter.applyCurrentSort(tablaAsignadas);
-      }
-    }
-
-    tablaZonasSinAreaBody.innerHTML = '';
-    if (!resultado.sinArea.length) {
-      const emptyRow = document.createElement('tr');
-      emptyRow.className = 'empty-row';
-      emptyRow.innerHTML = '<td colspan="7">No hay zonas sin área que coincidan con los filtros.</td>';
-      tablaZonasSinAreaBody.appendChild(emptyRow);
-      if (window.SimpleTableSorter && tablaSinArea) {
-        window.SimpleTableSorter.applyCurrentSort(tablaSinArea);
-      }
-    } else {
-      resultado.sinArea.forEach(zona => {
-        const porcentaje = Number(zona.porcentaje_ocupacion || 0);
-        const capacidad = Number(zona.capacidad_utilizada || 0);
-        const disponible = zona.capacidad_disponible !== undefined
-          ? Number(zona.capacidad_disponible)
-          : Math.max(Number(zona.volumen || 0) - capacidad, 0);
-        const productos = Number(zona.productos_registrados || 0);
-        const totalUnidades = Number(zona.total_unidades || 0);
-        const capacidadSort = Number.isFinite(capacidad) ? capacidad : 0;
-        const disponibleSort = Number.isFinite(disponible) ? disponible : 0;
-        const porcentajeSort = Number.isFinite(porcentaje) ? porcentaje : 0;
-        const productosSort = productos + (totalUnidades || 0) / 1000;
-        const productosDisplay = totalUnidades
-          ? `${productos} tipo${productos === 1 ? '' : 's'} / ${totalUnidades} uds`
-          : `${productos} tipo${productos === 1 ? '' : 's'}`;
-
-        const tr = document.createElement('tr');
-        if (porcentaje >= 90) {
-          tr.classList.add('row-alert');
-        }
-        tr.innerHTML = `
-          <td data-label="Zona">
-            <div class="table-title">${zona.nombre}</div>
-            <span class="table-subtext">${zona.tipo_almacenamiento || 'Sin tipo'}</span>
-          </td>
-          <td data-label="Dimensiones">${(zona.ancho ?? 0)}×${(zona.largo ?? 0)}×${(zona.alto ?? 0)}</td>
-          <td data-label="Capacidad utilizada" data-sort-value="${capacidadSort}">${capacidad.toFixed(2)}</td>
-          <td data-label="Disponible" data-sort-value="${disponibleSort}">${disponible.toFixed(2)}</td>
-          <td data-label="Ocupación" data-sort-value="${porcentajeSort}">${renderBarraOcupacion(porcentaje)}</td>
-          <td data-label="Productos" data-sort-value="${productosSort}">${productosDisplay}</td>
-          <td data-label="Acciones">
-            <div class="table-actions">
-              <button class="table-action table-action--edit" data-action="edit-zone" data-id="${zona.id}">Editar</button>
-              <button class="table-action table-action--delete" data-action="delete-zone" data-id="${zona.id}">Eliminar</button>
-            </div>
-          </td>
-        `;
-        tablaZonasSinAreaBody.appendChild(tr);
-      });
-
-      if (window.SimpleTableSorter && tablaSinArea) {
-        window.SimpleTableSorter.applyCurrentSort(tablaSinArea);
-      }
-    }
-
-    actualizarAlertas();
   }
 
 async function editArea(id) {
