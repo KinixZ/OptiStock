@@ -6,6 +6,7 @@
   let solicitudAreas = null;
   let usuarioAccesosSeleccionadoId = null;
   let asignacionEnCurso = false;
+  let rolOriginalEdicion = null;
   const permisosHelper =
     typeof window !== 'undefined' && window.OptiStockPermissions
       ? window.OptiStockPermissions
@@ -471,6 +472,7 @@
   const selectArea = document.getElementById('asignarArea');
   const selectZona = document.getElementById('asignarZona');
   const selectZonaWrapper = selectZona ? selectZona.closest('.form-group, .mb-3, .col-12, .col') : null;
+  const selectRolEdicion = document.getElementById('editar_rol');
   const formAsignarAcceso = document.getElementById('formAsignarAcceso');
   const botonAgregarAcceso = document.getElementById('btnAgregarAcceso');
   const tablaUsuariosElement = document.getElementById('tablaUsuariosEmpresa');
@@ -496,6 +498,11 @@
 
   if (selectZona && !puedeGestionarAccesos) {
     selectZona.disabled = true;
+  }
+
+  if (selectRolEdicion && !puedeGestionarAccesos) {
+    marcarElementoPermiso(selectRolEdicion, false, 'No tienes permiso para asignar roles.');
+    selectRolEdicion.disabled = true;
   }
 
   function sincronizarUsuariosEmpresaUI() {
@@ -2169,6 +2176,7 @@
     document.getElementById('editar_nacimiento').value = usuario.fecha_nacimiento || '';
     document.getElementById('editar_correo').value = usuario.correo || '';
     document.getElementById('editar_rol').value = usuario.rol || '';
+    rolOriginalEdicion = usuario.rol || '';
 
     const modal = new bootstrap.Modal(document.getElementById('modalEditarUsuario'));
     modal.show();
@@ -2247,6 +2255,10 @@
       fecha_nacimiento: document.getElementById('editar_nacimiento').value,
       rol: document.getElementById('editar_rol').value
     };
+
+    if (!puedeGestionarAccesos) {
+      datos.rol = rolOriginalEdicion;
+    }
 
     const solicitanteId = obtenerIdSolicitante();
     if (solicitanteId) {
