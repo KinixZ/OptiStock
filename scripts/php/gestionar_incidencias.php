@@ -244,7 +244,7 @@ switch ($method) {
             ? sprintf('la zona "%s"', $zonaNombre ?: 'sin nombre')
             : sprintf('el área "%s"', $areaNombre ?: 'sin nombre');
         $mensajeNotificacion = sprintf('%s reportó una incidencia en %s.', $nombreReportante, $objetivoTexto);
-        $rutaDestino = 'area_almac/areas_zonas.html';
+        $rutaDestino = 'area_almac_v2/gestion_areas_zonas.html';
 
         $stmtNotificacion = $conn->prepare('INSERT INTO notificaciones (id_empresa, titulo, mensaje, tipo_destinatario, ruta_destino, estado, prioridad, id_usuario_creador) VALUES (?, ?, ?, "General", ?, "Pendiente", "Media", ?)');
         $tituloNotificacion = 'Incidencia reportada';
