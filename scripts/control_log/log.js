@@ -1785,6 +1785,60 @@
         savedUserFilter = filtrosGuardados.usuario || '';
     }
 
+    function normalizarRol(rol) {
+        const valor = typeof rol === 'string' ? rol.trim() : '';
+        if (!valor) {
+            return 'Empleado';
+        }
+        return valor.toLowerCase() === 'administrador' ? 'Administrador' : valor;
+    }
+
+    function normalizarModulo(modulo) {
+        const valor = typeof modulo === 'string' ? modulo.trim() : '';
+        return valor || 'Sin módulo';
+    }
+
+    function actualizarOpcionesSelect(selectEl, opciones, selectedValue, placeholder) {
+        if (!selectEl) {
+            return;
+        }
+
+        const previousValue = selectedValue || selectEl.value || '';
+        const label = placeholder || 'Todas las opciones';
+        selectEl.innerHTML = `<option value="">${label}</option>`;
+
+        opciones.forEach(opcion => {
+            const optionEl = document.createElement('option');
+            optionEl.value = opcion;
+            optionEl.textContent = opcion;
+            selectEl.appendChild(optionEl);
+        });
+
+        if (previousValue && Array.from(selectEl.options).some(opt => opt.value === previousValue)) {
+            selectEl.value = previousValue;
+        } else {
+            selectEl.value = '';
+        }
+    }
+
+    function actualizarOpcionesRoles(rolesDisponibles) {
+        const roles = Array.from(new Set((rolesDisponibles || []).map(normalizarRol)));
+        roles.sort((a, b) => {
+            if (a === 'Administrador') return -1;
+            if (b === 'Administrador') return 1;
+            return a.localeCompare(b, 'es');
+        });
+        actualizarOpcionesSelect(filtroRol, roles, filtrosGuardados.rol, 'Todos los roles');
+    }
+
+    function actualizarOpcionesModulos(modulosDisponibles) {
+        const baseModulos = ['Inventario', 'Usuarios', 'Áreas', 'Zonas', 'Reportes'];
+        const modulos = new Set(baseModulos.map(normalizarModulo));
+        (modulosDisponibles || []).forEach(mod => modulos.add(normalizarModulo(mod)));
+        const ordenados = Array.from(modulos).sort((a, b) => a.localeCompare(b, 'es'));
+        actualizarOpcionesSelect(filtroModulo, ordenados, filtrosGuardados.modulo, 'Todos los módulos');
+    }
+
     function mostrarLogsGuardados() {
         if (!puedeVerLog) {
             return;
@@ -1801,7 +1855,13 @@
             guardados = [];
         }
 
-        registros = guardados;
+        registros = guardados.map(log => ({
+            ...log,
+            rol: normalizarRol(log?.rol),
+            modulo: normalizarModulo(log?.modulo)
+        }));
+        actualizarOpcionesModulos(registros.map(reg => reg.modulo));
+        actualizarOpcionesRoles(registros.map(reg => reg.rol));
         paginaActual = 1;
         mostrarRegistros(registros);
     }
@@ -2177,11 +2237,25 @@
                 return;
             }
 
+            const rolesDisponibles = [];
+
             if (Array.isArray(data.usuarios)) {
+                rolesDisponibles.push(...data.usuarios.map(usuario => usuario?.rol));
                 actualizarOpcionesUsuario(data.usuarios);
             }
 
-            registros = Array.isArray(data.logs) ? data.logs : [];
+            registros = Array.isArray(data.logs)
+                ? data.logs.map(log => ({
+                    ...log,
+                    rol: normalizarRol(log?.rol),
+                    modulo: normalizarModulo(log?.modulo)
+                }))
+                : [];
+
+            rolesDisponibles.push(...registros.map(reg => reg.rol));
+            actualizarOpcionesModulos(registros.map(reg => reg.modulo));
+            actualizarOpcionesRoles(rolesDisponibles);
+
             paginaActual = 1;
             mostrarRegistros(registros);
             guardarRegistrosEnCache(registros);
