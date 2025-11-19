@@ -1798,6 +1798,21 @@
         return valor || 'Sin módulo';
     }
 
+    const MODULOS_FIJOS = [
+        'Áreas',
+        'Categorías',
+        'Configuración',
+        'Empresa',
+        'Empresas',
+        'Incidencias',
+        'Inventario',
+        'Productos',
+        'Reportes',
+        'Subcategorías',
+        'Usuarios',
+        'Zonas'
+    ];
+
     function actualizarOpcionesSelect(selectEl, opciones, selectedValue, placeholder) {
         if (!selectEl) {
             return;
@@ -1832,8 +1847,7 @@
     }
 
     function actualizarOpcionesModulos(modulosDisponibles) {
-        const baseModulos = ['Inventario', 'Usuarios', 'Áreas', 'Zonas', 'Reportes'];
-        const modulos = new Set(baseModulos.map(normalizarModulo));
+        const modulos = new Set(MODULOS_FIJOS.map(normalizarModulo));
         (modulosDisponibles || []).forEach(mod => modulos.add(normalizarModulo(mod)));
         const ordenados = Array.from(modulos).sort((a, b) => a.localeCompare(b, 'es'));
         actualizarOpcionesSelect(filtroModulo, ordenados, filtrosGuardados.modulo, 'Todos los módulos');
